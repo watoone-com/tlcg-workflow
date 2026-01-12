@@ -8,6 +8,8 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+    <!-- Google Identity Services for Drive API -->
+    <script src="https://accounts.google.com/gsi/client"></script>
     <style>
         :root {
             --primary: #3b82f6;      /* Blue-500 */
@@ -1799,15 +1801,29 @@
         const data = (function(b64){
   const bytes = Uint8Array.from(atob(b64), c => c.charCodeAt(0));
   return JSON.parse(new TextDecoder('utf-8').decode(bytes));
-})("eyJmb3JtX3RpdGxlIjoixJDhu4Egbmdo4buLIG11YSBow6BuZyIsInZvdWNoZXJfdHlwZXMiOlsixJDhu4Egbmdo4buLIG11YSBow6BuZyAtIEjDoG5nIGjDs2EiLCLEkOG7gSBuZ2jhu4sgbXVhIGjDoG5nIC0gVGhp4bq/dCBi4buLIiwixJDhu4Egbmdo4buLIG11YSBow6BuZyAtIEThu4tjaCB24bulIiwixJDhu4Egbmdo4buLIG11YSBow6BuZyAtIFbEg24gcGjDsm5nIHBo4bqpbSIsIsSQ4buBIG5naOG7iyBtdWEgaMOgbmcgLSBW4bqtdCB0xrAgdGnDqnUgaGFvIl0sImN1cnJlbmN5X29wdGlvbnMiOlsiVk5EIiwiVVNEIiwiRVVSIl0sImNvbXBhbnlfbmFtZXMiOlsiQ8OUTkcgVFkgQ+G7lCBQSOG6pk4gxJDhuqZVIFTGryBUTEMgR1JPVVAiLCJDw5RORyBUWSBUTkhIIE1FRElBIElOU0lERVIiLCJDw5RORyBUWSBUUsOBQ0ggTkhJ4buGTSBI4buuVSBI4bqgTiBE4buKQ0ggVuG7pCBSSU9UIEdBTUVTIiwiQ8OUTkcgVFkgVE5ISCBFR0cgVkVOVFVSRVMiLCJDw5RORyBUWSBD4buUIFBI4bqmTiBJTlNJREVSUyIsIkPDlE5HIFRZIEPhu5QgUEjhuqZOIMSQ4bqmVSBUxq8gQ0hJTkggUEhPTkciXSwiZW1wbG95ZWVfbmFtZXMiOlsiTMOqIE5nw6JuIEFuaCIsIk5ndXnhu4VuIFbEg24gQ2hpbmgiLCJMw6ogVGjDuXkgTGluaCIsIk5ndXnhu4VuIEzhu7FjIiwiTMOqIE1pbmgiLCJMw6ogTWluaCBBbmgiLCJOZ3V54buFbiBUaOG7iyBOaGFuaCIsIkzGsCBL4buzIE5ow6MiLCJOZ3V5ZW4gUGhvbmciLCJUcuG6p24gVGhhbmgiLCJBbmggVGjGsCBUaMOhaSBUaOG7iyIsIk5ndXnhu4VuIEzGsCBBbmggVGjGsCIsIk5ndXllbiBUaW1vdGh5IiwiTmd1eWVuIFRpbmEgTGluaCIsIlBo4bqhbSBUcsOtIl0sImFwcHJvdmVyX25hbWVzIjpbIk5ndXnhu4VuIFbEg24gQW4gLSBUcsaw4bufbmcgcGjDsm5nIEvhur8gdG/DoW4iLCJQaOG6oW0gVGjhu4sgRHVuZyAtIEdpw6FtIMSR4buRYyIsIkhvw6BuZyBWxINuIEVtIC0gUGjDsyBHacOhbSDEkeG7kWMiLCJMw6ogTWluaCBDxrDhu51uZyAtIFRo4bunIHF14bu5Il0sImNvbXBhbmllc19kYXRhIjpbeyJuYW1lIjoiQ8OUTkcgVFkgQ+G7lCBQSOG6pk4gxJDhuqZVIFTGryBUTEMgR1JPVVAiLCJhZGRyZXNzIjoiQi4zLjA5LCBU4bqnbmcgMywgTMO0IEIsIFPhu5EgMzQtMzUgQuG6v24gVsOibiDEkOG7k24sIFBoxrDhu51uZyBYw7NtIENoaeG6v3UsIFRQIEjhu5MgQ2jDrSBNaW5oLCBWaeG7h3QgTmFtIiwidGF4X2NvZGUiOiIxMjM0NTY3ODkiLCJwaG9uZSI6IjAyOC0zODIyLTAwMDAiLCJlbWFpbCI6ImluZm9AdGxjZ3JvdXAudm4ifSx7Im5hbWUiOiJDw5RORyBUWSBUTkhIIE1FRElBIElOU0lERVIiLCJhZGRyZXNzIjoiTOG6p3UgMywgMTIzIE5ndXnhu4VuIFbEg24gQ+G7qywgUS4xLCBUUC5IQ00iLCJ0YXhfY29kZSI6IjIzNDU2Nzg5MCIsInBob25lIjoiMDI4LTM4MjMtMTExMSIsImVtYWlsIjoiY29udGFjdEBtZWRpYWluc2lkZXIudm4ifSx7Im5hbWUiOiJDw5RORyBUWSBUUsOBQ0ggTkhJ4buGTSBI4buuVSBI4bqgTiBE4buKQ0ggVuG7pCBSSU9UIEdBTUVTIiwiYWRkcmVzcyI6IlThuqduZyAxNSwgQml0ZXhjbyBGaW5hbmNpYWwgVG93ZXIsIDIgSOG6o2kgVHJp4buBdSwgUS4xLCBUUC5IQ00iLCJ0YXhfY29kZSI6IjM0NTY3ODkwMSIsInBob25lIjoiMDI4LTM4MjQtMjIyMiIsImVtYWlsIjoic2VydmljZXNAcmlvdGdhbWVzLnZuIn0seyJuYW1lIjoiQ8OUTkcgVFkgVE5ISCBFR0cgVkVOVFVSRVMiLCJhZGRyZXNzIjoiTOG6p3UgNywgVMOyYSBuaMOgIFZpbmNvbSBDZW50ZXIsIDcyIEzDqiBUaMOhbmggVMO0biwgUS4xLCBUUC5IQ00iLCJ0YXhfY29kZSI6IjQ1Njc4OTAxMiIsInBob25lIjoiMDI4LTM4MjUtMzMzMyIsImVtYWlsIjoiaGVsbG9AZWdndmVudHVyZXMudm4ifSx7Im5hbWUiOiJDw5RORyBUWSBD4buUIFBI4bqmTiBJTlNJREVSUyIsImFkZHJlc3MiOiJU4bqnbmcgOCwgNDUgTMOqIER14bqpbiwgUS4xLCBUUC5IQ00iLCJ0YXhfY29kZSI6IjU2Nzg5MDEyMyIsInBob25lIjoiMDI4LTM4MjYtNDQ0NCIsImVtYWlsIjoidGVhbUBpbnNpZGVycy52biJ9LHsibmFtZSI6IkPDlE5HIFRZIEPhu5QgUEjhuqZOIMSQ4bqmVSBUxq8gQ0hJTkggUEhPTkciLCJhZGRyZXNzIjoiTOG6p3UgMTAsIERpYW1vbmQgUGxhemEsIDM0IEzDqiBEdeG6qW4sIFEuMSwgVFAuSENNIiwidGF4X2NvZGUiOiI2Nzg5MDEyMzQiLCJwaG9uZSI6IjAyOC0zODI3LTU1NTUiLCJlbWFpbCI6ImludmVzdEBjaGluaHBob25nLnZuIn1dfQ==");;
+})("eyJmb3JtX3RpdGxlIjoiUEhJ4bq+VSBUSFUvQ0hJIiwidm91Y2hlcl90eXBlcyI6WyJUaHUiLCJDaGkiXSwiY3VycmVuY3lfb3B0aW9ucyI6WyJWTsSQIiwiVVNEIiwiRVVSIl0sImNvbXBhbnlfbmFtZXMiOlsiQ8OUTkcgVFkgVE5ISCBUxq8gVuG6pE4gVExDIiwiQ8OUTkcgVFkgVE5ISCBFR0cgVkVOVFVSRVMiLCJDw5RORyBUWSBD4buUIFBI4bqmTiDEkOG6plUgVMavIENISU5IIFBIT05HIiwiQ8OUTkcgVFkgVE5ISCBNRURJQSBJTlNJREVSIiwiQ8OUTkcgVFkgQ+G7lCBQSOG6pk4gxJDhuqZVIFTGryBUTEMgR1JPVVAiLCJDw5RORyBUWSBD4buUIFBI4bqmTiBXT1JLU01BUlQiLCJDw5RORyBUWSBD4buUIFBI4bqmTiBJTlNJREVSUyIsIkPDlE5HIFRZIFROSEggRUdHIFZFTlRVUkVTIiwiQ8OUTkcgVFkgVFLDgUNIIE5ISeG7hk0gSOG7rlUgSOG6oE4gROG7ikNIIFbhu6QgUklPVCBHQU1FUyJdLCJlbXBsb3llZV9uYW1lcyI6WyJMw6ogTmfDom4gQW5oIiwiTmd1eeG7hW4gVsSDbiBDaGluaCIsIkzDqiBUaMO5eSBMaW5oIiwiTmd1eeG7hW4gTOG7sWMiLCJMw6ogTWluaCIsIkzDqiBNaW5oIEFuaCIsIk5ndXnhu4VuIFRo4buLIE5oYW5oIiwiTMawIEvhu7MgTmjDoyIsIk5ndXllbiBQaG9uZyIsIlRy4bqnbiBUaGFuaCIsIkFuaCBUaMawIFRow6FpIFRo4buLIiwiTmd1eeG7hW4gTMawIEFuaCBUaMawIiwiTmd1eWVuIFRpbW90aHkiLCJOZ3V5ZW4gVGluYSBMaW5oIiwiUGjhuqFtIFRyw60iXSwiYXBwcm92ZXJfbmFtZXMiOlsiTMOqIE5nw6JuIEFuaCIsIk5ndXnhu4VuIFbEg24gQ2hpbmgiLCJMw6ogVGjDuXkgTGluaCIsIk5ndXnhu4VuIEzhu7FjIiwiTMOqIE1pbmgiLCJMw6ogTWluaCBBbmgiLCJOZ3V54buFbiBUaOG7iyBOaGFuaCIsIkzGsCBL4buzIE5ow6MiLCJOZ3V5ZW4gUGhvbmciLCJUcuG6p24gVGhhbmgiLCJBbmggVGjGsCBUaMOhaSBUaOG7iyIsIk5ndXnhu4VuIEzGsCBBbmggVGjGsCIsIk5ndXllbiBUaW1vdGh5IiwiTmd1eWVuIFRpbmEgTGluaCIsIlBo4bqhbSBUcsOtIl0sImNvbXBhbmllc19kYXRhIjpbeyJUw6puIGPDtG5nIHR5IHZp4bq/dCB04bqvdCI6IlRMQyIsIlTDqm4gY8O0bmcgdHkiOiJDw5RORyBUWSBUTkhIIFTGryBW4bqkTiBUTEMiLCLEkOG7i2EgY2jhu4kiOiJCLjMuMDksIFThuqduZyAzLCBMw7QgQiwgU+G7kSAzNC0zNSBC4bq/biBWw6JuIMSQ4buTbiwgUGjGsOG7nW5nIDEzLCBRdeG6rW4gNCwgVGjDoG5oIHBo4buRIEjhu5MgQ2jDrSBNaW5oLCBWaeG7h3QgTmFtIiwiTcOjIHPhu5EgdGh14bq/IjoiMDMxMzUxOTc1NiIsIkVtYWlsIMSQ4bqhaSBkaeG7h24gcGjDoXAgbHXhuq10IjoiYW5oLmxlQG1lZGlhaW5zaWRlci52biIsIsSQ4bqhaSBkaeG7h24gcGjDoXAgbHXhuq10IjoiTMOqIE5nw6JuIEFuaCIsIkNo4buvIGvDvSDEkOG6oWkgZGnhu4duIHBow6FwIGx14bqtdCI6IiIsIkVtYWlsIEvhur8gdG/DoW4gdHLGsOG7n25nIjoibmd1eWVubmhhbmg4NjNAZ21haWwuY29tIiwiS+G6vyB0b8OhbiB0csaw4bufbmciOiJOZ3V54buFbiBUaOG7iyBOaGFuaCIsIkNo4buvIGvDvSBL4bq/IHRvw6FuIHRyxrDhu59uZyI6IiIsIkVtYWlsIFRo4bunIHF14bu5IjoibGluaC5sZUB0bC1jLmNvbS52biIsIlRo4bunIHF14bu5IjoiTMOqIFRodeG7syBMaW5oIiwiQ2jhu68ga8O9IFRo4bunIHF14bu5IjoiIiwiTmfDoHkgaGnhu4d1IGzhu7FjIjoiMTIvMjIvMjAyNSJ9LHsiVMOqbiBjw7RuZyB0eSB2aeG6v3QgdOG6r3QiOiJFLlYiLCJUw6puIGPDtG5nIHR5IjoiQ8OUTkcgVFkgVE5ISCBFR0cgVkVOVFVSRVMiLCLEkOG7i2EgY2jhu4kiOiJCLjMuMDksIFThuqduZyAzLCBMw7QgQiwgU+G7kSAzNC0zNSBC4bq/biBWw6JuIMSQ4buTbiwgUGjGsOG7nW5nIDEzLCBRdeG6rW4gNCwgVGjDoG5oIHBo4buRIEjhu5MgQ2jDrSBNaW5oLCBWaeG7h3QgTmFtIiwiTcOjIHPhu5EgdGh14bq/IjoiMDMxNDQ5NDA2MCIsIkVtYWlsIMSQ4bqhaSBkaeG7h24gcGjDoXAgbHXhuq10IjoiYW5oLmxlQG1lZGlhaW5zaWRlci52biIsIsSQ4bqhaSBkaeG7h24gcGjDoXAgbHXhuq10IjoiTMOqIE5nw6JuIEFuaCIsIkNo4buvIGvDvSDEkOG6oWkgZGnhu4duIHBow6FwIGx14bqtdCI6IiIsIkVtYWlsIEvhur8gdG/DoW4gdHLGsOG7n25nIjoibmd1eWVubmhhbmg4NjNAZ21haWwuY29tIiwiS+G6vyB0b8OhbiB0csaw4bufbmciOiJOZ3V54buFbiBUaOG7iyBOaGFuaCIsIkNo4buvIGvDvSBL4bq/IHRvw6FuIHRyxrDhu59uZyI6IiIsIkVtYWlsIFRo4bunIHF14bu5IjoibGluaC5sZUB0bC1jLmNvbS52biIsIlRo4bunIHF14bu5IjoiTMOqIFRodeG7syBMaW5oIiwiQ2jhu68ga8O9IFRo4bunIHF14bu5IjoiIiwiTmfDoHkgaGnhu4d1IGzhu7FjIjoiMTIvMjIvMjAyNSJ9LHsiVMOqbiBjw7RuZyB0eSB2aeG6v3QgdOG6r3QiOiJDLlAiLCJUw6puIGPDtG5nIHR5IjoiQ8OUTkcgVFkgQ+G7lCBQSOG6pk4gxJDhuqZVIFTGryBDSElOSCBQSE9ORyIsIsSQ4buLYSBjaOG7iSI6IkIuMy4wOSwgVOG6p25nIDMsIEzDtCBCLCBT4buRIDM0LTM1IELhur9uIFbDom4gxJDhu5NuLCBQaMaw4budbmcgMTMsIFF14bqtbiA0LCBUaMOgbmggcGjhu5EgSOG7kyBDaMOtIE1pbmgsIFZp4buHdCBOYW0iLCJNw6Mgc+G7kSB0aHXhur8iOiIwMzE0MDk3NTA3IiwiRW1haWwgxJDhuqFpIGRp4buHbiBwaMOhcCBsdeG6rXQiOiJhbmgubGVAbWVkaWFpbnNpZGVyLnZuIiwixJDhuqFpIGRp4buHbiBwaMOhcCBsdeG6rXQiOiJMw6ogTmfDom4gQW5oIiwiQ2jhu68ga8O9IMSQ4bqhaSBkaeG7h24gcGjDoXAgbHXhuq10IjoiIiwiRW1haWwgS+G6vyB0b8OhbiB0csaw4bufbmciOiJuZ3V5ZW5uaGFuaDg2M0BnbWFpbC5jb20iLCJL4bq/IHRvw6FuIHRyxrDhu59uZyI6Ik5ndXnhu4VuIFRo4buLIE5oYW5oIiwiQ2jhu68ga8O9IEvhur8gdG/DoW4gdHLGsOG7n25nIjoiIiwiRW1haWwgVGjhu6cgcXXhu7kiOiJsaW5oLmxlQHRsLWMuY29tLnZuIiwiVGjhu6cgcXXhu7kiOiJMw6ogVGh14buzIExpbmgiLCJDaOG7ryBrw70gVGjhu6cgcXXhu7kiOiIiLCJOZ8OgeSBoaeG7h3UgbOG7sWMiOiIxMi8yMi8yMDI1In0seyJUw6puIGPDtG5nIHR5IHZp4bq/dCB04bqvdCI6Ik0uSSIsIlTDqm4gY8O0bmcgdHkiOiJDw5RORyBUWSBUTkhIIE1FRElBIElOU0lERVIiLCLEkOG7i2EgY2jhu4kiOiJCLjMuMDksIFThuqduZyAzLCBMw7QgQiwgU+G7kSAzNC0zNSBC4bq/biBWw6JuIMSQ4buTbiwgUGjGsOG7nW5nIDEzLCBRdeG6rW4gNCwgVGjDoG5oIHBo4buRIEjhu5MgQ2jDrSBNaW5oLCBWaeG7h3QgTmFtIiwiTcOjIHPhu5EgdGh14bq/IjoiMDMxNTM4MDQyOSIsIkVtYWlsIMSQ4bqhaSBkaeG7h24gcGjDoXAgbHXhuq10IjoiYW5oLmxlQG1lZGlhaW5zaWRlci52biIsIsSQ4bqhaSBkaeG7h24gcGjDoXAgbHXhuq10IjoiTMOqIE5nw6JuIEFuaCIsIkNo4buvIGvDvSDEkOG6oWkgZGnhu4duIHBow6FwIGx14bqtdCI6IiIsIkVtYWlsIEvhur8gdG/DoW4gdHLGsOG7n25nIjoibmd1eWVubmhhbmg4NjNAZ21haWwuY29tIiwiS+G6vyB0b8OhbiB0csaw4bufbmciOiJOZ3V54buFbiBUaOG7iyBOaGFuaCIsIkNo4buvIGvDvSBL4bq/IHRvw6FuIHRyxrDhu59uZyI6IiIsIkVtYWlsIFRo4bunIHF14bu5IjoibGluaC5sZUB0bC1jLmNvbS52biIsIlRo4bunIHF14bu5IjoiTMOqIFRodeG7syBMaW5oIiwiQ2jhu68ga8O9IFRo4bunIHF14bu5IjoiIiwiTmfDoHkgaGnhu4d1IGzhu7FjIjoiMTIvMjIvMjAyNSJ9LHsiVMOqbiBjw7RuZyB0eSB2aeG6v3QgdOG6r3QiOiJUTENHIiwiVMOqbiBjw7RuZyB0eSI6IkPDlE5HIFRZIEPhu5QgUEjhuqZOIMSQ4bqmVSBUxq8gVExDIEdST1VQIiwixJDhu4thIGNo4buJIjoiQi4zLjA5LCBU4bqnbmcgMywgTMO0IEIsIFPhu5EgMzQtMzUgQuG6v24gVsOibiDEkOG7k24sIFBoxrDhu51uZyAxMywgUXXhuq1uIDQsIFRow6BuaCBwaOG7kSBI4buTIENow60gTWluaCwgVmnhu4d0IE5hbSIsIk3DoyBz4buRIHRodeG6vyI6IjAzMTUzMDc2NzYiLCJFbWFpbCDEkOG6oWkgZGnhu4duIHBow6FwIGx14bqtdCI6ImFuaC5sZUBtZWRpYWluc2lkZXIudm4iLCLEkOG6oWkgZGnhu4duIHBow6FwIGx14bqtdCI6IkzDqiBOZ8OibiBBbmgiLCJDaOG7ryBrw70gxJDhuqFpIGRp4buHbiBwaMOhcCBsdeG6rXQiOiIiLCJFbWFpbCBL4bq/IHRvw6FuIHRyxrDhu59uZyI6Im5ndXllbm5oYW5oODYzQGdtYWlsLmNvbSIsIkvhur8gdG/DoW4gdHLGsOG7n25nIjoiTmd1eeG7hW4gVGjhu4sgTmhhbmgiLCJDaOG7ryBrw70gS+G6vyB0b8OhbiB0csaw4bufbmciOiIiLCJFbWFpbCBUaOG7pyBxdeG7uSI6ImxpbmgubGVAdGwtYy5jb20udm4iLCJUaOG7pyBxdeG7uSI6IkzDqiBUaHXhu7MgTGluaCIsIkNo4buvIGvDvSBUaOG7pyBxdeG7uSI6IiIsIk5nw6B5IGhp4buHdSBs4buxYyI6IjEyLzIyLzIwMjUifSx7IlTDqm4gY8O0bmcgdHkgdmnhur90IHThuq90IjoiVy5TIiwiVMOqbiBjw7RuZyB0eSI6IkPDlE5HIFRZIEPhu5QgUEjhuqZOIFdPUktTTUFSVCIsIsSQ4buLYSBjaOG7iSI6IkIuMy4wOSwgVOG6p25nIDMsIEzDtCBCLCBT4buRIDM0LTM1IELhur9uIFbDom4gxJDhu5NuLCBQaMaw4budbmcgMTMsIFF14bqtbiA0LCBUaMOgbmggcGjhu5EgSOG7kyBDaMOtIE1pbmgsIFZp4buHdCBOYW0iLCJNw6Mgc+G7kSB0aHXhur8iOiIwMzE1MjQwMjA2IiwiRW1haWwgxJDhuqFpIGRp4buHbiBwaMOhcCBsdeG6rXQiOiJhbmgubGVAbWVkaWFpbnNpZGVyLnZuIiwixJDhuqFpIGRp4buHbiBwaMOhcCBsdeG6rXQiOiJMw6ogTmfDom4gQW5oIiwiQ2jhu68ga8O9IMSQ4bqhaSBkaeG7h24gcGjDoXAgbHXhuq10IjoiIiwiRW1haWwgS+G6vyB0b8OhbiB0csaw4bufbmciOiJuZ3V5ZW5uaGFuaDg2M0BnbWFpbC5jb20iLCJL4bq/IHRvw6FuIHRyxrDhu59uZyI6Ik5ndXnhu4VuIFRo4buLIE5oYW5oIiwiQ2jhu68ga8O9IEvhur8gdG/DoW4gdHLGsOG7n25nIjoiIiwiRW1haWwgVGjhu6cgcXXhu7kiOiJsaW5oLmxlQHRsLWMuY29tLnZuIiwiVGjhu6cgcXXhu7kiOiJMw6ogVGh14buzIExpbmgiLCJDaOG7ryBrw70gVGjhu6cgcXXhu7kiOiIiLCJOZ8OgeSBoaeG7h3UgbOG7sWMiOiIxMi8yMi8yMDI1In0seyJUw6puIGPDtG5nIHR5IHZp4bq/dCB04bqvdCI6IklOUyIsIlTDqm4gY8O0bmcgdHkiOiJDw5RORyBUWSBD4buUIFBI4bqmTiBJTlNJREVSUyIsIsSQ4buLYSBjaOG7iSI6IkIuMy4wOSwgVOG6p25nIDMsIEzDtCBCLCBT4buRIDM0LTM1IELhur9uIFbDom4gxJDhu5NuLCBQaMaw4budbmcgWMOzbSBDaGnhur91LCBUaMOgbmggcGjhu5EgSOG7kyBDaMOtIE1pbmgsIFZp4buHdCBOYW0iLCJNw6Mgc+G7kSB0aHXhur8iOiIwMzEzNTIyODA4IiwiRW1haWwgxJDhuqFpIGRp4buHbiBwaMOhcCBsdeG6rXQiOiJsaW5oLmxlQHRsLWMuY29tLnZuIiwixJDhuqFpIGRp4buHbiBwaMOhcCBsdeG6rXQiOiJMw6ogVGh14buzIExpbmgiLCJDaOG7ryBrw70gxJDhuqFpIGRp4buHbiBwaMOhcCBsdeG6rXQiOiIiLCJFbWFpbCBL4bq/IHRvw6FuIHRyxrDhu59uZyI6Im5ndXllbm5oYW5oODYzQGdtYWlsLmNvbSIsIkvhur8gdG/DoW4gdHLGsOG7n25nIjoiTmd1eeG7hW4gVGjhu4sgTmhhbmgiLCJDaOG7ryBrw70gS+G6vyB0b8OhbiB0csaw4bufbmciOiIiLCJFbWFpbCBUaOG7pyBxdeG7uSI6ImxpbmgubGVAdGwtYy5jb20udm4iLCJUaOG7pyBxdeG7uSI6IkzDqiBUaHXhu7MgTGluaCIsIkNo4buvIGvDvSBUaOG7pyBxdeG7uSI6IiIsIk5nw6B5IGhp4buHdSBs4buxYyI6IjEyLzIyLzIwMjUifSx7IlTDqm4gY8O0bmcgdHkgdmnhur90IHThuq90IjoiRVZfS1RUXzIwNU5UUCIsIlTDqm4gY8O0bmcgdHkiOiJDw5RORyBUWSBUTkhIIEVHRyBWRU5UVVJFUyIsIsSQ4buLYSBjaOG7iSI6IkIuMy4wOSwgVOG6p25nIDMsIEzDtCBCLCBT4buRIDM0LTM1IELhur9uIFbDom4gxJDhu5NuLCBQaMaw4budbmcgMTMsIFF14bqtbiA0LCBUaMOgbmggcGjhu5EgSOG7kyBDaMOtIE1pbmgsIFZp4buHdCBOYW0iLCJNw6Mgc+G7kSB0aHXhur8iOiIwMzE0NDk0MDYwIiwiRW1haWwgxJDhuqFpIGRp4buHbiBwaMOhcCBsdeG6rXQiOiJhbmgubGVAbWVkaWFpbnNpZGVyLnZuIiwixJDhuqFpIGRp4buHbiBwaMOhcCBsdeG6rXQiOiJMw6ogTmfDom4gQW5oIiwiQ2jhu68ga8O9IMSQ4bqhaSBkaeG7h24gcGjDoXAgbHXhuq10IjoiIiwiRW1haWwgS+G6vyB0b8OhbiB0csaw4bufbmciOiJuZ3V5ZW5uaGFuaDg2M0BnbWFpbC5jb20iLCJL4bq/IHRvw6FuIHRyxrDhu59uZyI6Ik5ndXnhu4VuIFRo4buLIE5oYW5oIiwiQ2jhu68ga8O9IEvhur8gdG/DoW4gdHLGsOG7n25nIjoiIiwiRW1haWwgVGjhu6cgcXXhu7kiOiJsaW5oLmxlQHRsLWMuY29tLnZuIiwiVGjhu6cgcXXhu7kiOiJMw6ogVGh14buzIExpbmgiLCJDaOG7ryBrw70gVGjhu6cgcXXhu7kiOiIiLCJOZ8OgeSBoaeG7h3UgbOG7sWMiOiIxMi8yMi8yMDI1In0seyJUw6puIGPDtG5nIHR5IHZp4bq/dCB04bqvdCI6IlJJT1QiLCJUw6puIGPDtG5nIHR5IjoiQ8OUTkcgVFkgVFLDgUNIIE5ISeG7hk0gSOG7rlUgSOG6oE4gROG7ikNIIFbhu6QgUklPVCBHQU1FUyIsIsSQ4buLYSBjaOG7iSI6IlThuqduZyAxMSwgVMOyYSBuaMOgIE1pc3Mgw6FvIETDoGksIHPhu5EgMjEgxJDGsOG7nW5nIE5ndXnhu4VuLCBQaMaw4budbmcgQuG6v24gTmdow6kgLCBRdeG6rW4gMSAsIFRQIEjhu5MgQ2jDrSBNaW5oIiwiTcOjIHPhu5EgdGh14bq/IjoiMDMxNDQxOTA3MCIsIkVtYWlsIMSQ4bqhaSBkaeG7h24gcGjDoXAgbHXhuq10IjoibGluaC5sZUB0bC1jLmNvbS52biIsIsSQ4bqhaSBkaeG7h24gcGjDoXAgbHXhuq10IjoiUGjhuqFtIEtpw6puIFPGoW4iLCJDaOG7ryBrw70gxJDhuqFpIGRp4buHbiBwaMOhcCBsdeG6rXQiOiIiLCJFbWFpbCBL4bq/IHRvw6FuIHRyxrDhu59uZyI6Im5ndXllbm5oYW5oODYzQGdtYWlsLmNvbSIsIkvhur8gdG/DoW4gdHLGsOG7n25nIjoiTMOqIFRodeG7syBMaW5oIiwiQ2jhu68ga8O9IEvhur8gdG/DoW4gdHLGsOG7n25nIjoiIiwiRW1haWwgVGjhu6cgcXXhu7kiOiJsaW5oLmxlQHRsLWMuY29tLnZuIiwiVGjhu6cgcXXhu7kiOiJMw6ogVGh14buzIExpbmgiLCJDaOG7ryBrw70gVGjhu6cgcXXhu7kiOiIiLCJOZ8OgeSBoaeG7h3UgbOG7sWMiOiIxMi8yMi8yMDI1In1dfQ==");;
 
         // ==================== CONFIGURATION ====================
         // Use Vercel proxy for all backend requests (handles CORS and routing)
         const VERCEL_PROXY_URL = 'https://workflow.egg-ventures.com/api/voucher';
         
-        // Payload size limits (learned from Voucher workflow)
-        const MAX_FILE_SIZE = 3 * 1024 * 1024; // 3MB per file
-        const MAX_TOTAL_PAYLOAD_SIZE = 900 * 1024; // 900KB total payload
+        // ==================== GOOGLE DRIVE API CONFIGURATION ====================
+        const DRIVE_CONFIG = {
+            CLIENT_ID: '773968721126-cjd4l27jqv5jfs3s1avvrpnss5943lm8.apps.googleusercontent.com',
+            API_KEY: 'AIzaSyDroLwCZlmqlp3z8y5V4u3AfXCdC0GOl74',
+            DRIVE_FOLDER_ID: '1RBBUUAQIrYTWeBONIgkMtELL0hxZhtqG', // Same folder as voucher workflow
+            DISCOVERY_DOCS: ['https://www.googleapis.com/discovery/v1/apis/drive/v3/rest'],
+            SCOPES: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.file'
+        };
+        
+        let driveAPIReady = false;
+        let driveTokenClient = null;
+        let driveAccessToken = null;
+        let driveTokenExpiry = 0;
+        
+        // Payload size limits (for legacy fallback only - Drive API has no limit)
+        const MAX_FILE_SIZE = 3 * 1024 * 1024; // 3MB per file (legacy)
+        const MAX_TOTAL_PAYLOAD_SIZE = 900 * 1024; // 900KB total payload (legacy)
         const MAX_SIGNATURE_SIZE = 300 * 1024; // 300KB for signatures
         
         // Check user authentication
@@ -1838,6 +1854,230 @@
         const loggedInUser = checkUserLogin();
         if (!loggedInUser) {
             // Redirect handled in checkUserLogin
+        }
+
+        // ==================== GOOGLE DRIVE API FUNCTIONS ====================
+        
+        /**
+         * Log Drive initialization errors
+         */
+        function logDriveInitError(context, error) {
+            try {
+                const serialized = JSON.stringify(error);
+                console.error(`❌ Drive init error (${context}):`, error, serialized);
+            } catch (e) {
+                console.error(`❌ Drive init error (${context}):`, error);
+            }
+            const msg = (error && (error.error || error.details || error.message)) || '';
+            if (msg && typeof msg === 'string' && msg.includes('idpiframe_initialization_failed')) {
+                console.error('⚠️ Drive API initialization failed. Please enable third-party cookies for google.com');
+            }
+        }
+
+        /**
+         * Ensure Google Identity Services script is loaded
+         */
+        function ensureGISLoaded() {
+            return new Promise((resolve, reject) => {
+                if (window.google && google.accounts && google.accounts.oauth2) {
+                    return resolve(true);
+                }
+                let attempts = 0;
+                const timer = setInterval(() => {
+                    attempts++;
+                    if (window.google && google.accounts && google.accounts.oauth2) {
+                        clearInterval(timer);
+                        resolve(true);
+                    } else if (attempts > 40) { // ~8s
+                        clearInterval(timer);
+                        reject(new Error('Google Identity Services script not loaded'));
+                    }
+                }, 200);
+            });
+        }
+
+        /**
+         * Get or refresh Drive access token via GIS
+         */
+        function ensureDriveToken(promptConsent = false) {
+            return new Promise(async (resolve, reject) => {
+                try {
+                    await ensureGISLoaded();
+
+                    // Reuse valid token
+                    if (driveAccessToken && Date.now() < driveTokenExpiry) {
+                        driveAPIReady = true;
+                        return resolve(driveAccessToken);
+                    }
+
+                    if (!driveTokenClient) {
+                        driveTokenClient = google.accounts.oauth2.initTokenClient({
+                            client_id: DRIVE_CONFIG.CLIENT_ID,
+                            scope: DRIVE_CONFIG.SCOPES,
+                            callback: (response) => {
+                                if (response.error) {
+                                    logDriveInitError('gis.token', response);
+                                    return reject(response);
+                                }
+                                driveAccessToken = response.access_token;
+                                driveTokenExpiry = Date.now() + ((response.expires_in || 1800) - 60) * 1000; // buffer 60s
+                                driveAPIReady = true;
+                                console.log('✅ Drive token acquired via GIS');
+                                resolve(driveAccessToken);
+                            }
+                        });
+                    }
+
+                    // Request token (prompt consent if needed)
+                    driveTokenClient.requestAccessToken({
+                        prompt: promptConsent ? 'consent' : ''
+                    });
+                } catch (err) {
+                    logDriveInitError('gis.ensureToken', err);
+                    reject(err);
+                }
+            });
+        }
+
+        /**
+         * Get or create Drive folder for voucher
+         */
+        async function getOrCreateDriveFolder(accessToken, voucherNumber, useParent = true) {
+            const parentId = useParent ? DRIVE_CONFIG.DRIVE_FOLDER_ID : null;
+
+            // Find existing folder
+            const parentFilter = parentId ? ` and '${parentId}' in parents` : '';
+            const query = encodeURIComponent(`name='${voucherNumber}'${parentFilter} and mimeType='application/vnd.google-apps.folder' and trashed=false`);
+            const listUrl = `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)`;
+            const listResp = await fetch(listUrl, { headers: { 'Authorization': `Bearer ${accessToken}` } });
+            if (listResp.ok) {
+                const data = await listResp.json();
+                if (data.files && data.files.length > 0) {
+                    return data.files[0].id;
+                }
+            } else {
+                console.warn('Folder search failed, will try to create. Status:', listResp.status);
+            }
+
+            // Create folder
+            const body = {
+                name: voucherNumber,
+                mimeType: 'application/vnd.google-apps.folder'
+            };
+            if (parentId) body.parents = [parentId];
+
+            const createResp = await fetch('https://www.googleapis.com/drive/v3/files', {
+                method: 'POST',
+                headers: {
+                    'Authorization': `Bearer ${accessToken}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(body)
+            });
+
+            // If parent not found (404), retry without parent (create in My Drive)
+            if (!createResp.ok) {
+                const errText = await createResp.text();
+                if (createResp.status === 404 && useParent) {
+                    console.warn('Parent folder not found or not accessible. Retrying in My Drive (no parent).');
+                    return await getOrCreateDriveFolder(accessToken, voucherNumber, false);
+                }
+                throw new Error(`Failed to create Drive folder: ${createResp.status} - ${errText}`);
+            }
+
+            const folderData = await createResp.json();
+            return folderData.id;
+        }
+
+        /**
+         * Set Drive file to public (anyone with link can view)
+         */
+        async function setDriveFilePublic(accessToken, fileId, fileName) {
+            try {
+                const permResp = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        role: 'reader',
+                        type: 'anyone'
+                    })
+                });
+                if (!permResp.ok) {
+                    const errText = await permResp.text();
+                    console.warn(`⚠️ Failed to set sharing for ${fileName}: ${permResp.status} - ${errText}`);
+                } else {
+                    console.log(`✅ Sharing permissions set for: ${fileName}`);
+                }
+            } catch (err) {
+                console.warn(`⚠️ Exception setting sharing for ${fileName}:`, err);
+            }
+        }
+
+        /**
+         * Upload file to Google Drive
+         */
+        async function uploadToDrive(file, voucherNumber) {
+            try {
+                console.log(`📤 Uploading ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB) to Drive...`);
+
+                // Get/refresh token via GIS
+                const accessToken = await ensureDriveToken(true);
+
+                // Get or create voucher folder
+                const folderId = await getOrCreateDriveFolder(accessToken, voucherNumber);
+                console.log(`✅ Using folder for voucher ${voucherNumber}: ${folderId}`);
+
+                // Upload file
+                const metadata = {
+                    name: file.name,
+                    parents: [folderId]
+                };
+                const form = new FormData();
+                form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
+                form.append('file', file);
+
+                const uploadResp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink,size', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${accessToken}`
+                    },
+                    body: form
+                });
+
+                if (!uploadResp.ok) {
+                    const errorText = await uploadResp.text();
+                    console.error(`❌ Drive upload response (${file.name}):`, uploadResp.status, errorText);
+                    throw new Error(`Upload failed: ${uploadResp.status} - ${errorText}`);
+                }
+
+                const uploadResult = await uploadResp.json();
+                console.log(`✅ File uploaded: ${uploadResult.name}`);
+
+                // Set sharing
+                await setDriveFilePublic(accessToken, uploadResult.id, uploadResult.name);
+
+                return {
+                    fileName: uploadResult.name,
+                    fileUrl: uploadResult.webViewLink || uploadResult.webContentLink || `https://drive.google.com/file/d/${uploadResult.id}/view`,
+                    fileSize: file.size,
+                    fileId: uploadResult.id
+                };
+
+            } catch (error) {
+                console.error(`❌ Failed to upload ${file.name} to Drive:`, error);
+                throw error;
+            }
+        }
+        
+        /**
+         * Check if Drive API credentials are configured
+         */
+        function isDriveConfigured() {
+            return DRIVE_CONFIG.CLIENT_ID !== 'YOUR_CLIENT_ID_HERE.apps.googleusercontent.com' &&
+                   DRIVE_CONFIG.API_KEY !== 'YOUR_API_KEY_HERE';
         }
 
         // ==================== STEPPER FUNCTIONS ====================
@@ -2217,6 +2457,19 @@
             generateVoucherNumber();
             renderProductTable();
             renderPaymentTable();
+            
+            // Initialize Google Drive API (GIS token flow)
+            if (isDriveConfigured()) {
+                console.log('🔧 Google Drive API credentials detected, initializing (GIS token)...');
+                ensureDriveToken(false)
+                    .then(() => console.log('✅ Drive API ready - unlimited file uploads enabled!'))
+                    .catch(error => {
+                        console.warn('⚠️ Drive API initialization failed:', error);
+                        console.warn('⚠️ Falling back to legacy upload (900KB limit)');
+                    });
+            } else {
+                console.log('ℹ️ Google Drive API not configured - using legacy upload (900KB limit)');
+            }
 
             document.getElementById('export-pdf-btn').addEventListener('click', exportToPDF);
             document.getElementById('import-excel-btn').addEventListener('click', importFromExcelForm);
@@ -2853,6 +3106,194 @@
                 
                 console.log('📧 Requestor email:', requestorEmail);
 
+                // ==================== FILE UPLOAD TO GOOGLE DRIVE ====================
+                const useDriveAPI = isDriveConfigured();
+                let allFilesUploaded = []; // Array to store all uploaded Drive files
+                
+                if (useDriveAPI) {
+                    console.log('📤 Using Google Drive API for file uploads (no size limit)');
+                    let uploadErrors = [];
+                    
+                    // Upload product item attachments
+                    for (let i = 0; i < productItems.length; i++) {
+                        const item = productItems[i];
+                        if (item.attachments && item.attachments.length > 0) {
+                            for (const file of item.attachments) {
+                                if (file instanceof File) {
+                                    try {
+                                        console.log(`📤 Uploading product attachment: ${file.name}...`);
+                                        const driveFile = await uploadToDrive(file, voucherNumber);
+                                        allFilesUploaded.push({
+                                            source: 'product',
+                                            index: i,
+                                            originalFile: file,
+                                            driveFile: driveFile
+                                        });
+                                        console.log(`✅ Uploaded to Drive: ${driveFile.fileName}`);
+                                    } catch (err) {
+                                        console.error(`❌ Failed to upload ${file.name}:`, err);
+                                        uploadErrors.push({ file: file.name, error: err });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Upload payment phase attachments
+                    for (let i = 0; i < paymentPhases.length; i++) {
+                        const phase = paymentPhases[i];
+                        
+                        // Upload acceptanceMinutes files
+                        if (phase.acceptanceMinutes && phase.acceptanceMinutes.length > 0) {
+                            for (const file of phase.acceptanceMinutes) {
+                                if (file instanceof File) {
+                                    try {
+                                        console.log(`📤 Uploading payment phase ${i+1} acceptanceMinutes: ${file.name}...`);
+                                        const driveFile = await uploadToDrive(file, voucherNumber);
+                                        allFilesUploaded.push({
+                                            source: 'paymentPhase',
+                                            phaseIndex: i,
+                                            field: 'acceptanceMinutes',
+                                            originalFile: file,
+                                            driveFile: driveFile
+                                        });
+                                        console.log(`✅ Uploaded to Drive: ${driveFile.fileName}`);
+                                    } catch (err) {
+                                        console.error(`❌ Failed to upload ${file.name}:`, err);
+                                        uploadErrors.push({ file: file.name, error: err });
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Upload supplierPaymentRequest files
+                        if (phase.supplierPaymentRequest && phase.supplierPaymentRequest.length > 0) {
+                            for (const file of phase.supplierPaymentRequest) {
+                                if (file instanceof File) {
+                                    try {
+                                        console.log(`📤 Uploading payment phase ${i+1} supplierPaymentRequest: ${file.name}...`);
+                                        const driveFile = await uploadToDrive(file, voucherNumber);
+                                        allFilesUploaded.push({
+                                            source: 'paymentPhase',
+                                            phaseIndex: i,
+                                            field: 'supplierPaymentRequest',
+                                            originalFile: file,
+                                            driveFile: driveFile
+                                        });
+                                        console.log(`✅ Uploaded to Drive: ${driveFile.fileName}`);
+                                    } catch (err) {
+                                        console.error(`❌ Failed to upload ${file.name}:`, err);
+                                        uploadErrors.push({ file: file.name, error: err });
+                                    }
+                                }
+                            }
+                        }
+                        
+                        // Upload invoice files
+                        if (phase.invoice && phase.invoice.length > 0) {
+                            for (const file of phase.invoice) {
+                                if (file instanceof File) {
+                                    try {
+                                        console.log(`📤 Uploading payment phase ${i+1} invoice: ${file.name}...`);
+                                        const driveFile = await uploadToDrive(file, voucherNumber);
+                                        allFilesUploaded.push({
+                                            source: 'paymentPhase',
+                                            phaseIndex: i,
+                                            field: 'invoice',
+                                            originalFile: file,
+                                            driveFile: driveFile
+                                        });
+                                        console.log(`✅ Uploaded to Drive: ${driveFile.fileName}`);
+                                    } catch (err) {
+                                        console.error(`❌ Failed to upload ${file.name}:`, err);
+                                        uploadErrors.push({ file: file.name, error: err });
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Upload contract attachments
+                    if (contractAttachments && contractAttachments.length > 0) {
+                        for (const file of contractAttachments) {
+                            if (file instanceof File) {
+                                try {
+                                    console.log(`📤 Uploading contract attachment: ${file.name}...`);
+                                    const driveFile = await uploadToDrive(file, voucherNumber);
+                                    allFilesUploaded.push({
+                                        source: 'contract',
+                                        originalFile: file,
+                                        driveFile: driveFile
+                                    });
+                                    console.log(`✅ Uploaded to Drive: ${driveFile.fileName}`);
+                                } catch (err) {
+                                    console.error(`❌ Failed to upload ${file.name}:`, err);
+                                    uploadErrors.push({ file: file.name, error: err });
+                                }
+                            }
+                        }
+                    }
+                    
+                    if (uploadErrors.length > 0) {
+                        const names = uploadErrors.map(e => e.file).join(', ');
+                        alert(`Không thể tải lên các file: ${names}. Vui lòng thử lại.`);
+                        loadingIndicator.classList.remove('show');
+                        document.getElementById('send-approval-btn').disabled = false;
+                        return;
+                    }
+                    
+                    // Guard: ensure every uploaded file has a URL
+                    const missingUrls = allFilesUploaded.filter(f => !f.driveFile.fileUrl);
+                    if (missingUrls.length > 0) {
+                        const names = missingUrls.map(f => f.driveFile.fileName).join(', ');
+                        console.error('❌ Missing fileUrl for:', names);
+                        alert(`Không lấy được link Drive cho: ${names}. Vui lòng thử lại.`);
+                        loadingIndicator.classList.remove('show');
+                        document.getElementById('send-approval-btn').disabled = false;
+                        return;
+                    }
+                    
+                    // Replace File objects with Drive file info in data structures
+                    // Update productItems
+                    for (const upload of allFilesUploaded) {
+                        if (upload.source === 'product') {
+                            const item = productItems[upload.index];
+                            const fileIndex = item.attachments.indexOf(upload.originalFile);
+                            if (fileIndex !== -1) {
+                                item.attachments[fileIndex] = upload.driveFile;
+                            }
+                        }
+                    }
+                    
+                    // Update paymentPhases
+                    for (const upload of allFilesUploaded) {
+                        if (upload.source === 'paymentPhase') {
+                            const phase = paymentPhases[upload.phaseIndex];
+                            if (phase[upload.field]) {
+                                const fileIndex = phase[upload.field].indexOf(upload.originalFile);
+                                if (fileIndex !== -1) {
+                                    phase[upload.field][fileIndex] = upload.driveFile;
+                                }
+                            }
+                        }
+                    }
+                    
+                    // Update contractAttachments
+                    for (const upload of allFilesUploaded) {
+                        if (upload.source === 'contract') {
+                            const fileIndex = contractAttachments.indexOf(upload.originalFile);
+                            if (fileIndex !== -1) {
+                                contractAttachments[fileIndex] = upload.driveFile;
+                            }
+                        }
+                    }
+                    
+                    console.log(`✅ All files uploaded to Drive: ${allFilesUploaded.length} files`);
+                } else {
+                    console.log('📦 Using legacy base64 upload (Drive API not configured)');
+                    console.warn('⚠️ File size limited to 900KB. Configure Drive API for unlimited uploads.');
+                }
+
                 // Build payload
                 const payload = {
                     action: 'sendPaymentRequest',
@@ -2893,7 +3334,8 @@
                     dueDate: dueDate,
                     amountInWords: amountInWords,
                     contractAttachments: contractAttachments,
-                    requesterSignature: signatures.requester
+                    requesterSignature: signatures.requester,
+                    useDriveAPI: useDriveAPI // Flag to indicate upload method
                 };
                 
                 // Check payload size
@@ -2908,6 +3350,46 @@
                 }
                 
                 console.log('🚀 Sending payment request to backend...');
+
+                // Helper function to format file attachments as clickable links
+                function formatFileAttachment(file) {
+                    if (!file) return '';
+                    let fileName = '';
+                    let fileSize = 0;
+                    let fileUrl = '';
+                    
+                    if (file instanceof File) {
+                        // Legacy: File object (not uploaded yet)
+                        fileName = file.name;
+                        fileSize = file.size;
+                    } else if (file && typeof file === 'object') {
+                        // Drive file object (has fileName, fileUrl, fileSize)
+                        fileName = file.fileName || file.name || '';
+                        fileSize = file.fileSize || 0;
+                        fileUrl = file.fileUrl || '';
+                    }
+                    
+                    if (!fileName) return '';
+                    
+                    const sizeMB = fileSize > 0 ? (fileSize / (1024 * 1024)).toFixed(2) : '';
+                    const sizeText = sizeMB ? ` (${sizeMB} MB)` : '';
+                    
+                    if (fileUrl) {
+                        // Clickable link with underline
+                        return `<a href="${fileUrl}" target="_blank" style="color: #1a73e8; text-decoration: underline;">${fileName}${sizeText}</a>`;
+                    } else {
+                        // Just name and size (no URL)
+                        return `${fileName}${sizeText}`;
+                    }
+                }
+                
+                function formatFileList(files) {
+                    if (!files || !Array.isArray(files) || files.length === 0) {
+                        return 'Không có';
+                    }
+                    const fileLinks = files.map(formatFileAttachment).filter(f => f);
+                    return fileLinks.length > 0 ? fileLinks.join(', ') : 'Không có';
+                }
 
             const emailBodyHtml = `
                 <p>Kính gửi các cấp quản lý,</p>
@@ -2951,7 +3433,7 @@
                                 <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">${item.quantity}</td>
                                 <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">${formatCurrency(item.unitPrice)}</td>
                                 <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">${formatCurrency(item.totalAmount)}</td>
-                                <td style="padding: 8px; border: 1px solid #ddd;">${item.attachments.map(file => file.name).join(', ') || 'Không có'}</td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">${formatFileList(item.attachments)}</td>
                             </tr>
                         `).join('')}
                     </tbody>
@@ -2970,7 +3452,7 @@
                 </ul>
                 <p><b>Hợp đồng với nhà cung cấp:</b></p>
                 <ul>
-                    <li><b>File đính kèm hợp đồng:</b> ${contractAttachments.map(file => file.name).join(', ') || 'Không có'}</li>
+                    <li><b>File đính kèm hợp đồng:</b> ${formatFileList(contractAttachments)}</li>
                     <li><b>Người phê duyệt pháp chế:</b> ${legalApproverName || 'Không có'}</li>
                     <li><b>Ý kiến bộ phận pháp chế:</b> ${legalComment || 'Không có'}</li>
                     <li><b>Chữ ký pháp chế:</b> ${legalSignature || 'Không có'}</li>
@@ -3013,9 +3495,9 @@
                                 <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">${formatCurrency(phase.amount)}</td>
                                 <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">${phase.percentage.toFixed(2)}%</td>
                                 <td style="padding: 8px; border: 1px solid #ddd; text-align: center;">${phase.signedContract ? '✔️' : '❌'}</td>
-                                <td style="padding: 8px; border: 1px solid #ddd;">${phase.acceptanceMinutes.map(file => file.name).join(', ') || 'Không có'}</td>
-                                <td style="padding: 8px; border: 1px solid #ddd;">${phase.supplierPaymentRequest.map(file => file.name).join(', ') || 'Không có'}</td>
-                                <td style="padding: 8px; border: 1px solid #ddd;">${phase.invoice.map(file => file.name).join(', ') || 'Không có'}</td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">${formatFileList(phase.acceptanceMinutes)}</td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">${formatFileList(phase.supplierPaymentRequest)}</td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">${formatFileList(phase.invoice)}</td>
                             </tr>
                         `).join('')}
                     </tbody>
