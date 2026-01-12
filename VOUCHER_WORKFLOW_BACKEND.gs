@@ -204,12 +204,24 @@ function handleSendEmail(requestBody) {
 
     // Handle files - check if using Drive API or legacy base64
     if (voucher.files && voucher.files.length > 0) {
+      Logger.log('📁 Files received: ' + voucher.files.length);
+      Logger.log('📁 useDriveAPI value: ' + voucher.useDriveAPI);
+      Logger.log('📁 useDriveAPI type: ' + typeof voucher.useDriveAPI);
       const useDriveAPI = voucher.useDriveAPI || false;
+      Logger.log('📁 useDriveAPI after || false: ' + useDriveAPI);
       
       if (useDriveAPI) {
         // NEW: Files already uploaded to Drive by frontend
         // Just format the URLs for email/sheet
         Logger.log('✅ Using Drive API - files already uploaded by frontend');
+        if (voucher.files.length > 0) {
+          Logger.log('📄 First file structure: ' + JSON.stringify({
+            fileName: voucher.files[0].fileName,
+            hasFileUrl: !!voucher.files[0].fileUrl,
+            fileUrl: voucher.files[0].fileUrl ? voucher.files[0].fileUrl.substring(0, 50) + '...' : 'MISSING',
+            fileSize: voucher.files[0].fileSize
+          }));
+        }
         fileLinks = voucher.files.map(f => {
           const sizeMB = f.fileSize ? (f.fileSize / (1024 * 1024)).toFixed(2) + " MB" : '';
           const fileNameWithSize = sizeMB ? f.fileName + " (" + sizeMB + ")" : f.fileName;
