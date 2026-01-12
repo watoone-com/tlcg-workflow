@@ -6380,6 +6380,7 @@
 
             // ==================== FILE UPLOAD TO GOOGLE DRIVE ====================
             // NEW: Upload files directly to Google Drive (no size limit!)
+            // Force Drive path when configured to avoid legacy upload errors
             const useDriveAPI = isDriveConfigured();
             
             // Define constants for legacy method (used later for payload size check)
@@ -6415,6 +6416,19 @@
                 if (uploadErrors.length > 0) {
                     const names = uploadErrors.map(e => e.file).join(', ');
                     showToast(`Không thể tải lên các file: ${names}. Vui lòng thử lại.`, 'error');
+                    loadingIndicator.classList.remove('show');
+                    isSubmitting = false;
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalButtonText;
+                    return;
+                }
+                
+                // Guard: ensure every uploaded file has a URL before sending to backend
+                const missingUrls = filesToUpload.filter(f => !f.fileUrl);
+                if (missingUrls.length > 0) {
+                    const names = missingUrls.map(f => f.fileName).join(', ');
+                    console.error('❌ Missing fileUrl for:', names);
+                    showToast(`Không lấy được link Drive cho: ${names}. Vui lòng thử lại.`, 'error');
                     loadingIndicator.classList.remove('show');
                     isSubmitting = false;
                     submitBtn.disabled = false;
@@ -6541,7 +6555,7 @@
                     amountInWords: amountInWords || '',
                     expenseItems: expenseItems || [], // Include expense items for backend to save in meta
                     files: filesToUpload,  // Files (Drive URLs if using API, base64 if legacy)
-                    useDriveAPI: useDriveAPI, // Flag to indicate upload method
+                    useDriveAPI: true, // Force Drive API path when configured
                     requesterSignature: finalRequesterSignature || '' // Requester signature for history (compressed if needed)
                 }
             };
