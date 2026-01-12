@@ -6711,6 +6711,16 @@
             console.log('Employee:', payload.voucher.employee);
             console.log('Amount:', payload.voucher.amount);
             console.log('Requestor Email:', payload.voucher.requestorEmail);
+            console.log('useDriveAPI:', payload.voucher.useDriveAPI);
+            console.log('Files count:', payload.voucher.files ? payload.voucher.files.length : 0);
+            if (payload.voucher.files && payload.voucher.files.length > 0) {
+                console.log('First file:', {
+                    fileName: payload.voucher.files[0].fileName,
+                    fileUrl: payload.voucher.files[0].fileUrl,
+                    fileSize: payload.voucher.files[0].fileSize,
+                    hasFileUrl: !!payload.voucher.files[0].fileUrl
+                });
+            }
             console.log('Full Voucher Object:', payload.voucher);
             console.log('=== END VOUCHER DATA ===');
             
