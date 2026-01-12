@@ -6504,6 +6504,150 @@
                 console.log('No files attached');
             }
 
+            // ==================== REGENERATE EMAIL BODIES WITH DRIVE LINKS ====================
+            // Now that files are uploaded to Drive, regenerate email bodies so filesToUpload lookup works
+            console.log('🔄 Regenerating email bodies with Drive links...');
+            
+            // Helper function to get attachment HTML with Drive links
+            function getAttachmentHtml(itemAttachments) {
+                if (!itemAttachments || !Array.isArray(itemAttachments) || itemAttachments.length === 0) {
+                    return 'Không có';
+                }
+                const fileLinks = [];
+                itemAttachments.forEach(f => {
+                    let fileName = '';
+                    let fileSize = 0;
+                    let fileUrl = '';
+                    
+                    if (f instanceof File) {
+                        fileName = f.name;
+                        fileSize = f.size;
+                        const uploadedFile = filesToUpload.find(uf => uf.fileName === fileName);
+                        if (uploadedFile && uploadedFile.fileUrl) {
+                            fileUrl = uploadedFile.fileUrl;
+                        }
+                    } else if (f && typeof f === 'object') {
+                        fileName = f.fileName || f.name || '';
+                        fileSize = f.fileSize || 0;
+                        fileUrl = f.fileUrl || '';
+                    }
+                    
+                    if (fileName) {
+                        const sizeMB = (fileSize / (1024 * 1024)).toFixed(2);
+                        if (fileUrl) {
+                            fileLinks.push(`<a href="${fileUrl}" target="_blank" style="color: #1a73e8; text-decoration: underline;">${fileName}</a> (${sizeMB} MB)`);
+                        } else {
+                            fileLinks.push(`${fileName} (${sizeMB} MB)`);
+                        }
+                    }
+                });
+                return fileLinks.length > 0 ? fileLinks.join('<br>') : 'Không có';
+            }
+            
+            // Regenerate approver email body
+            approverEmailBodyHtml = `
+                <p>Kính gửi các cấp quản lý,</p>
+                <p>Phiếu <b>${voucherType}</b> số <b>${voucherNumber}</b> đã được tạo và đang chờ phê duyệt.</p>
+                <p><b>Thông tin chi tiết phiếu:</b></p>
+                <ul>
+                    <li><b>Loại phiếu:</b> ${voucherType}</li>
+                    <li><b>Số phiếu:</b> ${voucherNumber}</li>
+                    <li><b>Ngày lập phiếu:</b> ${formattedSubmitDateTime}</li>
+                    <li><b>Công ty:</b> ${companyName}</li>
+                    <li><b>Người đề nghị:</b> ${requestorName} (${requestorEmail || 'Không có email'})</li>
+                    <li><b>Bộ phận:</b> ${department}</li>
+                    <li><b>Người nộp/nhận:</b> ${payeeName}</li>
+                    <li><b>Tổng số tiền:</b> ${totalAmount}</li>
+                    <li><b>Số tiền bằng chữ:</b> ${amountInWords}</li>
+                    <li><b>Lý do:</b> ${reason}</li>
+                </ul>
+                <p><b>Chi tiết các khoản mục:</b></p>
+                <table style="width:100%; border-collapse: collapse; border: 1px solid #ddd;">
+                    <thead>
+                        <tr style="background-color: #f2f2f2;">
+                            <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">STT</th>
+                            <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Nội dung</th>
+                            <th style="padding: 8px; border: 1px solid #ddd; text-align: right;">Số tiền</th>
+                            <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Đính kèm</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${expenseItems.map((item, index) => `
+                            <tr>
+                                <td style="padding: 8px; border: 1px solid #ddd;">${index + 1}</td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">${item.content || '-'}</td>
+                                <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">${formatCurrency(item.amount || 0)}</td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">${getAttachmentHtml(item.attachments)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+                <p><b>Vui lòng xem xét và phê duyệt/trả lại phiếu này:</b></p>
+                <div style="margin: 20px 0;">
+                    <a href="${approvalLink}" style="background-color: #34A853; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; margin-right: 10px; display: inline-block; font-weight: bold;">✅ Phê duyệt</a>
+                    <a href="${rejectionLink}" style="background-color: #EA4335; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; font-weight: bold;">❌ Trả lại / Từ chối</a>
+                </div>
+                <div style="background-color: #fff3cd; border-left: 4px solid #ffc107; padding: 15px; margin: 20px 0;">
+                    <p style="margin: 0; color: #856404;"><b>Lưu ý:</b> Nếu phiếu cần chỉnh sửa, vui lòng click nút "Trả lại / Từ chối" và điền lý do. Email thông báo sẽ tự động được gửi đến người đề nghị.</p>
+                </div>
+                ${currentSignatureData ? `
+                <div style="margin: 20px 0; padding: 15px; border-top: 1px solid #ddd;">
+                    <p style="margin: 0 0 10px 0; font-weight: bold;">Chữ ký người đề nghị: ✅ Đã ký điện tử</p>
+                </div>
+                ` : ''}
+                <p>Trân trọng,<br>Hệ thống Kế toán Tự động</p>
+            `;
+            
+            // Regenerate requester email body
+            requesterEmailBodyHtml = `
+                <p>Kính gửi ${requestorName},</p>
+                <p>Phiếu <b>${voucherType}</b> số <b>${voucherNumber}</b> đã được gửi để phê duyệt.</p>
+                <p><b>Thông tin chi tiết phiếu:</b></p>
+                <ul>
+                    <li><b>Loại phiếu:</b> ${voucherType}</li>
+                    <li><b>Số phiếu:</b> ${voucherNumber}</li>
+                    <li><b>Ngày lập phiếu:</b> ${formattedSubmitDateTime}</li>
+                    <li><b>Công ty:</b> ${companyName}</li>
+                    <li><b>Người đề nghị:</b> ${requestorName}</li>
+                    <li><b>Bộ phận:</b> ${department}</li>
+                    <li><b>Người nộp/nhận:</b> ${payeeName}</li>
+                    <li><b>Tổng số tiền:</b> ${totalAmount}</li>
+                    <li><b>Số tiền bằng chữ:</b> ${amountInWords}</li>
+                    <li><b>Lý do:</b> ${reason}</li>
+                    <li><b>Người phê duyệt:</b> ${selectedApproverName}</li>
+                </ul>
+                <p><b>Chi tiết các khoản mục:</b></p>
+                <table style="width:100%; border-collapse: collapse; border: 1px solid #ddd;">
+                    <thead>
+                        <tr style="background-color: #f2f2f2;">
+                            <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">STT</th>
+                            <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Nội dung</th>
+                            <th style="padding: 8px; border: 1px solid #ddd; text-align: right;">Số tiền</th>
+                            <th style="padding: 8px; border: 1px solid #ddd; text-align: left;">Đính kèm</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        ${expenseItems.map((item, index) => `
+                            <tr>
+                                <td style="padding: 8px; border: 1px solid #ddd;">${index + 1}</td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">${item.content || '-'}</td>
+                                <td style="padding: 8px; border: 1px solid #ddd; text-align: right;">${formatCurrency(item.amount || 0)}</td>
+                                <td style="padding: 8px; border: 1px solid #ddd;">${getAttachmentHtml(item.attachments)}</td>
+                            </tr>
+                        `).join('')}
+                    </tbody>
+                </table>
+                <p style="color: #666; font-style: italic;">Email thông báo kết quả phê duyệt sẽ được gửi đến bạn sau khi người phê duyệt xử lý.</p>
+                ${currentSignatureData ? `
+                <div style="margin: 20px 0; padding: 15px; border-top: 1px solid #ddd;">
+                    <p style="margin: 0 0 10px 0; font-weight: bold;">Chữ ký của bạn: ✅ Đã ký điện tử</p>
+                </div>
+                ` : ''}
+                <p>Trân trọng,<br>Hệ thống Kế toán Tự động</p>
+            `;
+            
+            console.log('✅ Email bodies regenerated with Drive links');
+
             // Compress requester signature MORE aggressively to reduce payload
             let finalRequesterSignature = currentSignatureData || '';
             if (finalRequesterSignature && finalRequesterSignature.trim() !== '') {
