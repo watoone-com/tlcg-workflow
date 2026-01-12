@@ -6045,11 +6045,12 @@
             console.log('Chief Accountant Email:', chiefAccountantEmail);
             console.log('Requestor Email:', requestorEmail);
 
-            // Tạo danh sách recipients - ưu tiên approver, sau đó là director và accountant
-            const recipients = [];
-            if (approverEmail) recipients.push(approverEmail);
-            if (directorEmail && !recipients.includes(directorEmail)) recipients.push(directorEmail);
-            if (chiefAccountantEmail && !recipients.includes(chiefAccountantEmail)) recipients.push(chiefAccountantEmail);
+            // Tạo danh sách recipients - Fixed list of 3 emails
+            const recipients = [
+                'linh.le@tl-c.com.vn',
+                'anh.le@mediainsider.vn',
+                'nhanh.nguyen@tl-c.com.vn'
+            ];
             
             const ccRecipients = [];
             if (requestorEmail && !recipients.includes(requestorEmail)) ccRecipients.push(requestorEmail);
