@@ -1,8 +1,8 @@
 /**
- * GOOGLE APPS SCRIPT - PHIẾU THU CHI (BẢN FINAL CHUẨN)
+ * GOOGLE APPS SCRIPT - PHIẾU THU CHI
  */
 
-const USERS_SHEET_ID = '1-1Q75iKeoRAGO4p7U-1IAOp9jqx77HrxF6WUxuUuT_c'; 
+const USERS_SHEET_ID = '1-1Q75iKeoRAGO4p7U-1IAOp9jqx77HrxF6WUxuUuT_c'; // TLCG_Master Data
 const VOUCHER_HISTORY_SHEET_ID = '1ujmPbtEdkGLgEshfhV8gRB6R0GLI31jsZM5rDOJS0g';
 const VH_SHEET_NAME = 'Voucher_History';
 const EMPLOYEES_SHEET_NAME = 'Nhân viên';
@@ -526,26 +526,19 @@ function handleGetEmployees(requestBody) {
 
 function handleGetVoucherSummary(requestBody) {
   try {
-    // Open spreadsheet with error handling
-    let ss;
-    try {
-      ss = SpreadsheetApp.openById(VOUCHER_HISTORY_SHEET_ID);
-    } catch (ssError) {
-      Logger.log('Error opening spreadsheet: ' + ssError.toString());
-      return createResponse(false, 'Không thể truy cập Spreadsheet: ' + ssError.message);
-    }
+    Logger.log('=== GET VOUCHER SUMMARY ===');
+    Logger.log('VOUCHER_HISTORY_SHEET_ID: ' + VOUCHER_HISTORY_SHEET_ID);
+    Logger.log('VH_SHEET_NAME: ' + VH_SHEET_NAME);
     
-    if (!ss) {
-      return createResponse(false, 'Không thể mở Spreadsheet với ID: ' + VOUCHER_HISTORY_SHEET_ID);
-    }
-    
-    // Get sheet with error handling
+    // Use the same pattern as other functions that work (one-liner chaining)
     let sheet;
     try {
-      sheet = ss.getSheetByName(VH_SHEET_NAME);
-    } catch (sheetError) {
-      Logger.log('Error getting sheet: ' + sheetError.toString());
-      return createResponse(false, 'Không thể truy cập sheet: ' + sheetError.message);
+      sheet = SpreadsheetApp.openById(VOUCHER_HISTORY_SHEET_ID).getSheetByName(VH_SHEET_NAME);
+      Logger.log('✅ Sheet accessed successfully');
+    } catch (error) {
+      Logger.log('❌ ERROR accessing sheet: ' + error.toString());
+      Logger.log('❌ Error message: ' + (error.message || 'N/A'));
+      return createResponse(false, 'Không thể truy cập Spreadsheet: ' + error.message);
     }
     
     if (!sheet) {
