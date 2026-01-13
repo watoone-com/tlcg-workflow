@@ -1293,7 +1293,7 @@
             <div class="general-voucher-info">
                 <div class="form-group">
                     <label for="voucher-number">Số đề nghị:</label>
-                    <input type="text" id="voucher-number" name="voucher-number" value="PO-2023-" required readonly>
+                    <input type="text" id="voucher-number" name="voucher-number" value="" required readonly>
                 </div>
                 <div class="form-group">
                     <label for="voucher-date">Ngày lập đề nghị:</label>
@@ -2588,6 +2588,11 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
+            // Set date and voucher number immediately (before async operations)
+            // These should always run, even if employee loading fails
+            setCurrentDate();
+            generateVoucherNumber();
+            
             // Load employees from backend before initializing form (to get departments from column C)
             loadEmployeesFromBackend().then(success => {
                 // Ensure departments are populated (either from backend or fallback)
@@ -2599,8 +2604,6 @@
                 console.log('✅ Employee departments ready:', Object.keys(data.employee_departments).length, 'employees');
                 
                 initializeForm();
-                setCurrentDate();
-                generateVoucherNumber();
                 renderProductTable();
                 renderPaymentTable();
                 
@@ -2938,10 +2941,26 @@
             }
         }
         
+        // Helper function to get current system date (YYYY-MM-DD format)
+        // Uses local date, not UTC, to match system date
+        function getCurrentVoucherDate() {
+            const today = new Date();
+            // Use local date to match system date, not UTC
+            const year = today.getFullYear();
+            const month = String(today.getMonth() + 1).padStart(2, '0');
+            const day = String(today.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        }
+        
         function setCurrentDate() {
             const voucherDateInput = document.getElementById('voucher-date');
-            const today = new Date();
-            const formattedDate = today.toISOString().substr(0, 10);
+            if (!voucherDateInput) {
+                console.error('❌ voucher-date element not found');
+                return;
+            }
+            
+            const formattedDate = getCurrentVoucherDate();
+            console.log('📅 Setting current date:', formattedDate);
             
             // Set to current date only
             voucherDateInput.value = formattedDate;
@@ -2953,13 +2972,20 @@
         }
         
         function generateVoucherNumber() {
+            const voucherNumberInput = document.getElementById('voucher-number');
+            if (!voucherNumberInput) {
+                console.error('❌ voucher-number element not found');
+                return;
+            }
+            
             const today = new Date();
             const year = today.getFullYear();
             const month = String(today.getMonth() + 1).padStart(2, '0');
             const randomNum = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
             
             const voucherNumber = `PO-${year}${month}-${randomNum}`;
-            document.getElementById('voucher-number').value = voucherNumber;
+            console.log('🔢 Generating voucher number:', voucherNumber);
+            voucherNumberInput.value = voucherNumber;
         }
 
         // CHANGE #1: Auto Purchase Request Number
