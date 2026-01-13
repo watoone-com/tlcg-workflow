@@ -3055,6 +3055,28 @@
             loadEmployeesFromBackend().then(success => {
                 if (!success) {
                     console.warn('⚠️ Using existing employee data from base64');
+                    // Fallback: Create basic department mapping from employee names if backend fails
+                    // This ensures departments still work even if backend is unavailable
+                    if (Object.keys(data.employee_departments).length === 0 && data.employee_names) {
+                        console.log('📝 Creating fallback department mapping from employee names...');
+                        data.employee_names.forEach(name => {
+                            if (name === "Lê Ngân Anh") data.employee_departments[name] = "Ban Giám đốc";
+                            else if (name === "Nguyễn Văn Chinh") data.employee_departments[name] = "Phòng Kinh doanh";
+                            else if (name === "Lê Thùy Linh") data.employee_departments[name] = "Phòng Kế toán";
+                            else if (name === "Nguyễn Lực") data.employee_departments[name] = "Phòng Kỹ thuật";
+                            else if (name === "Nguyễn Thị Nhanh") data.employee_departments[name] = "Phòng Kế toán";
+                            else if (!data.employee_departments[name]) {
+                                // Try to infer from name patterns
+                                if (name.includes("Giám đốc")) data.employee_departments[name] = "Ban Giám đốc";
+                                else if (name.includes("Kế toán")) data.employee_departments[name] = "Phòng Kế toán";
+                                else if (name.includes("Pháp chế")) data.employee_departments[name] = "Phòng Pháp chế";
+                                else if (name.includes("Kinh doanh")) data.employee_departments[name] = "Phòng Kinh doanh";
+                                else if (name.includes("Kỹ thuật")) data.employee_departments[name] = "Phòng Kỹ thuật";
+                                else data.employee_departments[name] = "Phòng ban khác";
+                            }
+                        });
+                        console.log('✅ Fallback department mapping created:', Object.keys(data.employee_departments).length, 'employees');
+                    }
                 }
                 initializeForm();
                 generateVoucherNumber();
@@ -3197,9 +3219,22 @@
             const departmentInput = document.getElementById('department');
             const selectedEmployee = employeeSelect.value;
 
+            console.log('🔍 updateEmployeeDepartment called for:', selectedEmployee);
+            console.log('Available departments map:', data.employee_departments);
+            console.log('Map keys:', Object.keys(data.employee_departments));
+            console.log('Map size:', Object.keys(data.employee_departments).length);
+
             if (selectedEmployee && data.employee_departments) {
-                departmentInput.value = data.employee_departments[selectedEmployee] || '';
+                const department = data.employee_departments[selectedEmployee];
+                console.log('Found department:', department);
+                departmentInput.value = department || '';
+                
+                if (!department) {
+                    console.warn('⚠️ No department found for employee:', selectedEmployee);
+                    console.warn('Available employee names in map:', Object.keys(data.employee_departments));
+                }
             } else {
+                console.warn('⚠️ No employee selected or employee_departments map is empty');
                 departmentInput.value = '';
             }
         }
