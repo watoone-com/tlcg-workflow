@@ -3730,16 +3730,46 @@
             `;
             
             try {
+                console.log('📥 Fetching voucher summary from:', `${GOOGLE_APPS_SCRIPT_WEB_APP_URL}?action=getVoucherSummary`);
                 const response = await fetch(`${GOOGLE_APPS_SCRIPT_WEB_APP_URL}?action=getVoucherSummary`, {
                     method: 'GET',
                     mode: 'cors',
                     redirect: 'follow'
                 });
                 
-                const result = await response.json();
-                console.log('Voucher summary:', result);
-                console.log('Recent vouchers array:', result.data?.recent);
-                console.log('Recent vouchers count:', result.data?.recent?.length);
+                console.log('📥 Response status:', response.status, response.statusText);
+                console.log('📥 Response ok:', response.ok);
+                console.log('📥 Response headers:', response.headers.get('content-type'));
+                
+                // Check if response is ok
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('❌ HTTP Error:', response.status, response.statusText);
+                    console.error('❌ Error response:', errorText.substring(0, 500));
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+                
+                // Read response text first to check if it's JSON
+                const responseText = await response.text();
+                console.log('📥 Response text (first 200 chars):', responseText.substring(0, 200));
+                
+                // Check if response is HTML (error page)
+                if (responseText.trim().toLowerCase().startsWith('<!doctype') || responseText.trim().toLowerCase().startsWith('<html')) {
+                    console.error('❌ Response is HTML (error page), not JSON');
+                    throw new Error('Backend trả về trang lỗi HTML thay vì JSON. Có thể backend chưa được deploy hoặc có lỗi.');
+                }
+                
+                let result;
+                try {
+                    result = JSON.parse(responseText);
+                    console.log('✅ Voucher summary parsed successfully:', result);
+                    console.log('📊 Recent vouchers array:', result.data?.recent);
+                    console.log('📊 Recent vouchers count:', result.data?.recent?.length);
+                } catch (parseError) {
+                    console.error('❌ Failed to parse JSON response:', parseError);
+                    console.error('❌ Response text:', responseText);
+                    throw new Error('Không thể parse phản hồi từ server: ' + parseError.message);
+                }
                 
                 if (result.success && result.data) {
                     // Update stats
@@ -3749,7 +3779,7 @@
                     
                     // Render voucher list - use all vouchers from recent array
                     const vouchers = result.data.recent || [];
-                    console.log('Rendering vouchers:', vouchers.length, 'items');
+                    console.log('🎨 Rendering vouchers:', vouchers.length, 'items');
                     if (vouchers.length === 0) {
                         voucherList.innerHTML = `
                             <div class="no-vouchers">
@@ -3761,6 +3791,7 @@
                         voucherList.innerHTML = vouchers.map(v => renderVoucherItem(v)).join('');
                     }
                 } else {
+                    console.error('❌ Backend returned unsuccessful response:', result);
                     voucherList.innerHTML = `
                         <div class="no-vouchers">
                             <p style="color: #ef4444;">Không thể tải danh sách phiếu</p>
@@ -3776,11 +3807,12 @@
                     lastRefreshEl.textContent = `(Cập nhật: ${now.toLocaleTimeString('vi-VN')})`;
                 }
             } catch (error) {
-                console.error('Error loading vouchers:', error);
+                console.error('❌ Error loading vouchers:', error);
+                console.error('❌ Error stack:', error.stack);
                 voucherList.innerHTML = `
                     <div class="no-vouchers">
                         <p style="color: #ef4444;">Lỗi kết nối</p>
-                        <p style="font-size: 0.75rem; margin-top: 0.5rem;">Vui lòng kiểm tra kết nối mạng</p>
+                        <p style="font-size: 0.75rem; margin-top: 0.5rem;">${error.message || 'Vui lòng kiểm tra kết nối mạng'}</p>
                     </div>
                 `;
             }
