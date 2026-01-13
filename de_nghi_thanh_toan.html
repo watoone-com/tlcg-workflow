@@ -2722,6 +2722,63 @@
         }
 
         /**
+         * Load purchase order types from "Purchase Order" sheet via backend
+         */
+        async function loadPurchaseOrderTypesFromBackend() {
+            try {
+                console.log('📋 Loading purchase order types from backend...');
+                
+                const response = await fetch(VERCEL_PROXY_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        action: 'getPurchaseOrderTypes'
+                    }),
+                });
+                
+                const responseText = await response.text();
+                
+                // Check for HTML error pages
+                if (responseText.trim().startsWith('<!') || responseText.includes('<!DOCTYPE')) {
+                    console.error('❌ Backend returned HTML instead of JSON');
+                    return;
+                }
+                
+                const result = JSON.parse(responseText);
+                
+                const purchaseVoucherTypeSelect = document.getElementById('purchase-voucher-type');
+                if (!purchaseVoucherTypeSelect) {
+                    console.error('❌ purchase-voucher-type element not found');
+                    return;
+                }
+                
+                // Clear existing options (except the default "Chọn loại" option)
+                purchaseVoucherTypeSelect.innerHTML = '<option value="">-- Chọn loại đề nghị mua hàng --</option>';
+                
+                if (result.success && result.data && result.data.types) {
+                    const types = result.data.types;
+                    console.log(`✅ Loaded ${types.length} purchase order types from backend`);
+                    
+                    // Populate dropdown with types from column B (Type)
+                    types.forEach(item => {
+                        if (item.type && item.type.trim() !== '') {
+                            const option = document.createElement('option');
+                            option.value = item.type;
+                            option.textContent = item.type;
+                            purchaseVoucherTypeSelect.appendChild(option);
+                        }
+                    });
+                } else {
+                    console.error('❌ Failed to load purchase order types:', result.message || 'Unknown error');
+                }
+            } catch (error) {
+                console.error('❌ Error loading purchase order types:', error);
+            }
+        }
+
+        /**
          * Load suppliers from "Nhà cung cấp" sheet via backend
          */
         async function loadSuppliersFromBackend() {
