@@ -23,6 +23,7 @@ const CONFIG = {
   SHEET_NAME: 'Payment_Request_History', // Main sheet for storing all payment requests
   SUPPLIERS_SHEET_NAME: 'Nhà cung cấp', // Existing suppliers sheet
   EMPLOYEES_SHEET_NAME: 'Nhân viên',
+  PURCHASE_ORDER_SHEET_NAME: 'Purchase Order', // Purchase Order types sheet
   DRIVE_FOLDER_NAME: '02.De_Nghi_Mua_Hang',
   
   // Column indices for Payment_Request_History sheet
@@ -111,6 +112,8 @@ function doPost(e) {
         return handleAddSupplier(data);
       case 'getEmployees':
         return handleGetEmployees(data);
+      case 'getPurchaseOrderTypes':
+        return handleGetPurchaseOrderTypes(data);
       default:
         return createResponse(false, 'Invalid action: ' + action);
     }
@@ -133,6 +136,8 @@ function doGet(e) {
       return handleGetPaymentRequestDetails({ requestId: requestId });
     } else if (action === 'getEmployees') {
       return handleGetEmployees(e.parameter);
+    } else if (action === 'getPurchaseOrderTypes') {
+      return handleGetPurchaseOrderTypes(e.parameter);
     }
     
     return createResponse(false, 'Invalid GET request');
@@ -1069,6 +1074,56 @@ function handleGetEmployees(requestBody) {
     return createResponse(true, 'Thành công', { employees: employees });
   } catch (error) {
     Logger.log('[Payment Request] ❌ ERROR in handleGetEmployees: ' + error.toString());
+    Logger.log('[Payment Request] ❌ Error stack: ' + error.stack);
+    return createResponse(false, 'Lỗi: ' + error.message);
+  }
+}
+
+// ==================== GET PURCHASE ORDER TYPES ====================
+
+function handleGetPurchaseOrderTypes(data) {
+  try {
+    Logger.log('[Payment Request] === handleGetPurchaseOrderTypes called ===');
+    
+    const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    const sheet = ss.getSheetByName(CONFIG.PURCHASE_ORDER_SHEET_NAME);
+    
+    if (!sheet) {
+      Logger.log('[Payment Request] ❌ Sheet "' + CONFIG.PURCHASE_ORDER_SHEET_NAME + '" not found');
+      return createResponse(false, 'Sheet "' + CONFIG.PURCHASE_ORDER_SHEET_NAME + '" không tồn tại');
+    }
+    
+    const dataRange = sheet.getDataRange();
+    const values = dataRange.getValues();
+    
+    if (values.length < 2) {
+      Logger.log('[Payment Request] ⚠️ No purchase order types found (only header row)');
+      return createResponse(true, 'Thành công', { types: [] });
+    }
+    
+    // Column mapping:
+    // A: No (index 0)
+    // B: Type (index 1)
+    
+    const types = [];
+    // Start from row 2 (index 1) to skip header
+    for (let i = 1; i < values.length; i++) {
+      const row = values[i];
+      const typeValue = row[1]; // Column B (Type)
+      
+      // Skip empty rows
+      if (typeValue && typeValue.toString().trim() !== '') {
+        types.push({
+          no: row[0] || '',           // Column A (No)
+          type: typeValue.toString().trim()  // Column B (Type)
+        });
+      }
+    }
+    
+    Logger.log('[Payment Request] ✅ Found ' + types.length + ' purchase order types');
+    return createResponse(true, 'Thành công', { types: types });
+  } catch (error) {
+    Logger.log('[Payment Request] ❌ ERROR in handleGetPurchaseOrderTypes: ' + error.toString());
     Logger.log('[Payment Request] ❌ Error stack: ' + error.stack);
     return createResponse(false, 'Lỗi: ' + error.message);
   }

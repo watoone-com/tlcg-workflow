@@ -1323,8 +1323,6 @@
         
         <!-- Step 2: Đề nghị mua hàng -->
         <div class="form-step" id="step-2">
-        <!-- PHẦN 1: ĐỀ NGHỊ MUA HÀNG -->
-        <h2>PHẦN 1: ĐỀ NGHỊ MUA HÀNG</h2>
         <div class="form-row">
             <div class="form-group">
                 <label for="purchase-voucher-type">Loại đề nghị mua hàng:</label>
@@ -1362,9 +1360,15 @@
                     Tạo mới
                 </button>
             </div>
-            <div class="form-group">
-                <label for="implementation-time-general">Thời gian thực hiện chung:</label>
-                <input type="text" id="implementation-time-general" name="implementation-time-general" placeholder="Ví dụ: Trong vòng 1 tuần, Tháng 12/2023">
+            <div class="form-group" style="display: flex; gap: 1rem; align-items: flex-end;">
+                <div style="flex: 1;">
+                    <label for="implementation-time-from">Thời gian thực hiện chung - Từ:</label>
+                    <input type="date" id="implementation-time-from" name="implementation-time-from" required>
+                </div>
+                <div style="flex: 1;">
+                    <label for="implementation-time-to">Đến:</label>
+                    <input type="date" id="implementation-time-to" name="implementation-time-to" required>
+                </div>
             </div>
         </div>
         
@@ -2680,15 +2684,8 @@
             });
             
             const purchaseVoucherTypeSelect = document.getElementById('purchase-voucher-type');
-            // Populate purchase voucher types from data.voucher_types
-            data.voucher_types.forEach(type => {
-                if (type.startsWith("Đề nghị mua hàng")) {
-                    const option = document.createElement('option');
-                    option.value = type;
-                    option.textContent = type;
-                    purchaseVoucherTypeSelect.appendChild(option);
-                }
-            });
+            // Purchase Order types will be loaded from backend (async)
+            loadPurchaseOrderTypesFromBackend();
 
             // FIX: Populate payment voucher types with the new specific list
             const paymentVoucherTypeSelect = document.getElementById('payment-voucher-type');
@@ -3094,7 +3091,7 @@
                         if (row.purchaseVoucherType) document.getElementById('purchase-voucher-type').value = row.purchaseVoucherType;
                         if (row.purchasePurposeReason) document.getElementById('purchase-purpose-reason').value = row.purchasePurposeReason;
                         if (row.supplier) document.getElementById('supplier-dropdown').value = row.supplier;
-                        if (row.implementationTimeGeneral) document.getElementById('implementation-time-general').value = row.implementationTimeGeneral;
+                        // Note: implementation-time-from and implementation-time-to cannot be auto-filled from Excel
                         if (row.prRequestNo) document.getElementById('pr-request-no').value = row.prRequestNo;
                         // FIX: Do not auto-populate budget-approver and supplier-approver
                         // if (row.budgetApprover) document.getElementById('budget-approver').value = row.budgetApprover;
@@ -3215,7 +3212,10 @@
                 const purchaseVoucherType = document.getElementById('purchase-voucher-type').value;
                 const purchasePurposeReason = document.getElementById('purchase-purpose-reason').value;
                 const supplier = document.getElementById('supplier-dropdown').value;
-                const implementationTimeGeneral = document.getElementById('implementation-time-general').value;
+                const implementationTimeFrom = document.getElementById('implementation-time-from').value;
+                const implementationTimeTo = document.getElementById('implementation-time-to').value;
+                const implementationTimeGeneral = implementationTimeFrom && implementationTimeTo ? 
+                    `${implementationTimeFrom} - ${implementationTimeTo}` : '';
                 const recipientName = document.getElementById('recipient-name').value;
                 const prRequestNo = document.getElementById('pr-request-no').value;
 
