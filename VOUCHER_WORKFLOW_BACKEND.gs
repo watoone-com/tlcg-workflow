@@ -530,18 +530,22 @@ function handleGetVoucherSummary(requestBody) {
     Logger.log('VOUCHER_HISTORY_SHEET_ID: ' + VOUCHER_HISTORY_SHEET_ID);
     Logger.log('VH_SHEET_NAME: ' + VH_SHEET_NAME);
     
-    // Use the same pattern as other functions that work (one-liner chaining)
+    // Use the exact same pattern as handleSendEmail and appendHistory_ (one-liner chaining)
+    // These functions work correctly, so we'll match their pattern exactly
     let sheet;
     try {
+      Logger.log('Accessing sheet using same pattern as handleSendEmail...');
       sheet = SpreadsheetApp.openById(VOUCHER_HISTORY_SHEET_ID).getSheetByName(VH_SHEET_NAME);
       Logger.log('✅ Sheet accessed successfully');
     } catch (error) {
       Logger.log('❌ ERROR accessing sheet: ' + error.toString());
       Logger.log('❌ Error message: ' + (error.message || 'N/A'));
+      Logger.log('❌ Error stack: ' + (error.stack || 'N/A'));
       return createResponse(false, 'Không thể truy cập Spreadsheet: ' + error.message);
     }
     
     if (!sheet) {
+      Logger.log('❌ Sheet object is null');
       return createResponse(false, 'Sheet "' + VH_SHEET_NAME + '" không tồn tại');
     }
     
@@ -847,4 +851,18 @@ function createResponse(success, message, data) {
 
 function grantPermissionFinal() {
   GmailApp.sendEmail(Session.getActiveUser().getEmail(), "Xác nhận quyền", "Backend đã sẵn sàng!");
+}
+
+// Test function - can be run directly from editor
+function testGetVoucherSummary() {
+  try {
+    Logger.log('=== TESTING handleGetVoucherSummary ===');
+    const result = handleGetVoucherSummary({});
+    Logger.log('Result: ' + JSON.stringify(result));
+    return result;
+  } catch (error) {
+    Logger.log('❌ Test failed: ' + error.toString());
+    Logger.log('❌ Error stack: ' + error.stack);
+    return null;
+  }
 }
