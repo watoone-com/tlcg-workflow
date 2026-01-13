@@ -23,7 +23,7 @@ const CONFIG = {
   SHEET_NAME: 'Payment_Request_History', // Main sheet for storing all payment requests
   SUPPLIERS_SHEET_NAME: 'Nhà cung cấp', // Existing suppliers sheet
   EMPLOYEES_SHEET_NAME: 'Nhân viên',
-  DRIVE_FOLDER_NAME: 'Payment Request Attachments',
+  DRIVE_FOLDER_NAME: '02.De_Nghi_Mua_Hang',
   
   // Column indices for Payment_Request_History sheet
   COLUMNS: {
