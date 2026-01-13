@@ -3055,27 +3055,40 @@
             loadEmployeesFromBackend().then(success => {
                 if (!success) {
                     console.warn('⚠️ Using existing employee data from base64');
-                    // Fallback: Create basic department mapping from employee names if backend fails
+                    // Fallback: Create department mapping from "Nhân viên" sheet data (column C - Phòng ban)
                     // This ensures departments still work even if backend is unavailable
+                    // Data source: https://docs.google.com/spreadsheets/d/1ujmPbtEdkGLgEshfhvV8gRB6R0GLI31jsZM5rDOJS0g/edit?gid=2018642708#gid=2018642708
                     if (Object.keys(data.employee_departments).length === 0 && data.employee_names) {
-                        console.log('📝 Creating fallback department mapping from employee names...');
+                        console.log('📝 Creating fallback department mapping from "Nhân viên" sheet data...');
+                        // Department mapping from "Nhân viên" sheet column C (Phòng ban)
+                        const departmentMap = {
+                            "Lê Ngân Anh": "Ban Giám đốc",
+                            "Nguyễn Văn Chinh": "Phòng Kinh Doanh",
+                            "Lê Thùy Linh": "Phòng Kế Toán",
+                            "Nguyễn Lực": "Phòng Kỹ Thuật",
+                            "Lê Minh": "Phòng Kế Toán",
+                            "Lê Minh Anh": "Bán Hàng",
+                            "Nguyễn Thị Nhanh": "Phòng Kế Toán",
+                            "Lư Kỳ Nhã": "Bán Hàng",
+                            "Nguyen Phong": "Phòng Kỹ Thuật",
+                            "Trần Thanh": "Bán Hàng",
+                            "Anh Thư Thái Thị": "Bán Hàng",
+                            "Nguyễn Lư Anh Thư": "Bán Hàng",
+                            "Nguyen Timothy": "Phòng Kỹ Thuật",
+                            "Nguyen Tina Linh": "Phòng Kỹ Thuật",
+                            "Phạm Trí": "Bán Hàng",
+                            "Nguyễn Mai Phương Thuý": "Bán Hàng"
+                        };
+                        
                         data.employee_names.forEach(name => {
-                            if (name === "Lê Ngân Anh") data.employee_departments[name] = "Ban Giám đốc";
-                            else if (name === "Nguyễn Văn Chinh") data.employee_departments[name] = "Phòng Kinh doanh";
-                            else if (name === "Lê Thùy Linh") data.employee_departments[name] = "Phòng Kế toán";
-                            else if (name === "Nguyễn Lực") data.employee_departments[name] = "Phòng Kỹ thuật";
-                            else if (name === "Nguyễn Thị Nhanh") data.employee_departments[name] = "Phòng Kế toán";
-                            else if (!data.employee_departments[name]) {
-                                // Try to infer from name patterns
-                                if (name.includes("Giám đốc")) data.employee_departments[name] = "Ban Giám đốc";
-                                else if (name.includes("Kế toán")) data.employee_departments[name] = "Phòng Kế toán";
-                                else if (name.includes("Pháp chế")) data.employee_departments[name] = "Phòng Pháp chế";
-                                else if (name.includes("Kinh doanh")) data.employee_departments[name] = "Phòng Kinh doanh";
-                                else if (name.includes("Kỹ thuật")) data.employee_departments[name] = "Phòng Kỹ thuật";
-                                else data.employee_departments[name] = "Phòng ban khác";
+                            if (departmentMap[name]) {
+                                data.employee_departments[name] = departmentMap[name];
+                            } else {
+                                // Default for any employee not in the map
+                                data.employee_departments[name] = "Phòng ban khác";
                             }
                         });
-                        console.log('✅ Fallback department mapping created:', Object.keys(data.employee_departments).length, 'employees');
+                        console.log('✅ Fallback department mapping created from sheet data:', Object.keys(data.employee_departments).length, 'employees');
                     }
                 }
                 initializeForm();

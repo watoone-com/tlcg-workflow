@@ -2,9 +2,8 @@
  * GOOGLE APPS SCRIPT - PHIẾU THU CHI (BẢN FINAL CHUẨN)
  */
 
-// Use the same spreadsheet ID for users and voucher history (same spreadsheet, different tabs)
+const USERS_SHEET_ID = '1-1Q75iKeoRAGO4p7U-1IAOp9jqx77HrxF6WUxuUuT_c'; 
 const VOUCHER_HISTORY_SHEET_ID = '1ujmPbtEdkGLgEshfhV8gRB6R0GLI31jsZM5rDOJS0g';
-const USERS_SHEET_ID = VOUCHER_HISTORY_SHEET_ID; // Same spreadsheet, "Nhân viên" tab
 const VH_SHEET_NAME = 'Voucher_History';
 const EMPLOYEES_SHEET_NAME = 'Nhân viên';
 
