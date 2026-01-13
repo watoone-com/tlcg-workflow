@@ -2315,23 +2315,45 @@
         async function loadEmployeesFromBackend() {
             try {
                 console.log('📥 Fetching employees from backend...');
+                console.log('Backend URL:', `${GOOGLE_APPS_SCRIPT_WEB_APP_URL}?action=getEmployees`);
+                
                 const response = await fetch(`${GOOGLE_APPS_SCRIPT_WEB_APP_URL}?action=getEmployees`);
+                console.log('Response status:', response.status, response.statusText);
+                console.log('Response ok:', response.ok);
+                
                 const responseText = await response.text();
+                console.log('Response text (first 500 chars):', responseText.substring(0, 500));
                 
                 if (responseText.trim().startsWith('<!') || responseText.includes('<!DOCTYPE')) {
-                    throw new Error('Backend returned HTML error page instead of JSON');
+                    console.error('❌ Backend returned HTML instead of JSON. This usually means the action is not recognized.');
+                    throw new Error('Backend returned HTML error page instead of JSON. Make sure the backend code is deployed with getEmployees action.');
                 }
                 
-                const result = JSON.parse(responseText);
+                let result;
+                try {
+                    result = JSON.parse(responseText);
+                } catch (parseError) {
+                    console.error('❌ Failed to parse JSON response:', parseError);
+                    console.error('Response text:', responseText);
+                    throw new Error('Invalid JSON response from backend: ' + parseError.message);
+                }
+                
+                console.log('Parsed result:', result);
                 
                 if (!result.success) {
-                    console.warn('⚠️ Failed to fetch employees:', result.message);
+                    console.warn('⚠️ Backend returned error:', result.message);
                     console.warn('⚠️ Using existing employee data from base64');
                     return false;
                 }
                 
                 const employees = result.data.employees || [];
                 console.log(`✅ Fetched ${employees.length} employees from backend`);
+                
+                if (employees.length === 0) {
+                    console.warn('⚠️ No employees returned from backend');
+                    console.warn('⚠️ Using existing employee data from base64');
+                    return false;
+                }
                 
                 // Build employee departments map from column C (Phòng ban)
                 data.employee_departments = {};
@@ -2342,9 +2364,15 @@
                 });
                 
                 console.log('✅ Employee departments loaded from backend (column C - Phòng ban)');
+                console.log('Sample departments:', Object.keys(data.employee_departments).slice(0, 5).map(name => `${name}: ${data.employee_departments[name]}`));
                 return true;
             } catch (error) {
                 console.error('❌ Error loading employees from backend:', error);
+                console.error('Error details:', {
+                    message: error.message,
+                    stack: error.stack,
+                    name: error.name
+                });
                 console.warn('⚠️ Using existing employee data from base64');
                 return false;
             }
