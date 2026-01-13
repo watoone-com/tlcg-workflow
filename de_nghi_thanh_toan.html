@@ -1293,11 +1293,11 @@
             <div class="general-voucher-info">
                 <div class="form-group">
                     <label for="voucher-number">Số đề nghị:</label>
-                    <input type="text" id="voucher-number" name="voucher-number" value="TL-2023-" required readonly>
+                    <input type="text" id="voucher-number" name="voucher-number" value="PO-2023-" required readonly>
                 </div>
                 <div class="form-group">
                     <label for="voucher-date">Ngày lập đề nghị:</label>
-                    <input type="date" id="voucher-date" name="voucher-date" required>
+                    <input type="date" id="voucher-date" name="voucher-date" required readonly>
                 </div>
             </div>
         </div>
@@ -2940,28 +2940,16 @@
         
         function setCurrentDate() {
             const voucherDateInput = document.getElementById('voucher-date');
+            const today = new Date();
+            const formattedDate = today.toISOString().substr(0, 10);
             
-            function updateDateRestriction() {
-                const today = new Date();
-                const formattedDate = today.toISOString().substr(0, 10);
-                voucherDateInput.value = formattedDate;
-                // Restrict to current date only (prevent selecting past or future dates)
-                voucherDateInput.setAttribute('min', formattedDate);
-                voucherDateInput.setAttribute('max', formattedDate);
-            }
-            
-            // Set initial date restriction
-            updateDateRestriction();
-            
-            // Prevent manual changes - always reset to current date
-            voucherDateInput.addEventListener('change', function() {
-                const today = new Date();
-                const formattedDate = today.toISOString().substr(0, 10);
-                if (this.value !== formattedDate) {
-                    this.value = formattedDate;
-                    alert('Ngày lập đề nghị chỉ có thể là ngày hiện tại.');
-                }
-            });
+            // Set to current date only
+            voucherDateInput.value = formattedDate;
+            // Make it readonly so user cannot change it
+            voucherDateInput.setAttribute('readonly', 'readonly');
+            // Also set min/max to current date as additional restriction
+            voucherDateInput.setAttribute('min', formattedDate);
+            voucherDateInput.setAttribute('max', formattedDate);
         }
         
         function generateVoucherNumber() {
@@ -2970,7 +2958,7 @@
             const month = String(today.getMonth() + 1).padStart(2, '0');
             const randomNum = Math.floor(Math.random() * 10000).toString().padStart(4, '0');
             
-            const voucherNumber = `TL-${year}${month}-${randomNum}`;
+            const voucherNumber = `PO-${year}${month}-${randomNum}`;
             document.getElementById('voucher-number').value = voucherNumber;
         }
 
