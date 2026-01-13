@@ -2,8 +2,10 @@
  * GOOGLE APPS SCRIPT - PHIẾU THU CHI
  */
 
-const USERS_SHEET_ID = '1-1Q75iKeoRAGO4p7U-1IAOp9jqx77HrxF6WUxuUuT_c'; // TLCG_Master Data
-const VOUCHER_HISTORY_SHEET_ID = '1ujmPbtEdkGLgEshfhV8gRB6R0GLI31jsZM5rDOJS0g';
+// TLCG Master Data spreadsheet - contains both "Nhân viên" and "Voucher_History" sheets
+const TLCG_MASTER_DATA_SHEET_ID = '1ujmPbtEdkGLgEshfhV8gRB6R0GLI31jsZM5rDOJS0g';
+const USERS_SHEET_ID = TLCG_MASTER_DATA_SHEET_ID; // Same spreadsheet
+const VOUCHER_HISTORY_SHEET_ID = TLCG_MASTER_DATA_SHEET_ID; // Same spreadsheet
 const VH_SHEET_NAME = 'Voucher_History';
 const EMPLOYEES_SHEET_NAME = 'Nhân viên';
 
@@ -864,5 +866,94 @@ function testGetVoucherSummary() {
     Logger.log('❌ Test failed: ' + error.toString());
     Logger.log('❌ Error stack: ' + error.stack);
     return null;
+  }
+}
+
+// Diagnostic function to test spreadsheet access
+function testSpreadsheetAccess() {
+  try {
+    Logger.log('=== TESTING SPREADSHEET ACCESS ===');
+    Logger.log('TLCG_MASTER_DATA_SHEET_ID: ' + TLCG_MASTER_DATA_SHEET_ID);
+    Logger.log('VOUCHER_HISTORY_SHEET_ID: ' + VOUCHER_HISTORY_SHEET_ID);
+    Logger.log('USERS_SHEET_ID: ' + USERS_SHEET_ID);
+    Logger.log('VH_SHEET_NAME: ' + VH_SHEET_NAME);
+    Logger.log('EMPLOYEES_SHEET_NAME: ' + EMPLOYEES_SHEET_NAME);
+    
+    // Test 1: Check if SpreadsheetApp is available
+    Logger.log('Test 1: Checking SpreadsheetApp...');
+    if (typeof SpreadsheetApp === 'undefined') {
+      Logger.log('❌ SpreadsheetApp is undefined!');
+      return;
+    }
+    Logger.log('✅ SpreadsheetApp is available');
+    
+    // Test 2: Check if openById method exists
+    Logger.log('Test 2: Checking openById method...');
+    if (typeof SpreadsheetApp.openById !== 'function') {
+      Logger.log('❌ SpreadsheetApp.openById is not a function!');
+      Logger.log('Available methods: ' + Object.keys(SpreadsheetApp).join(', '));
+      return;
+    }
+    Logger.log('✅ SpreadsheetApp.openById is available');
+    
+    // Test 3: Try to open the spreadsheet using direct ID string
+    Logger.log('Test 3: Opening spreadsheet with direct ID string...');
+    const spreadsheetId = '1ujmPbtEdkGLgEshfhV8gRB6R0GLI31jsZM5rDOJS0g';
+    Logger.log('Using ID: ' + spreadsheetId);
+    let ss;
+    try {
+      ss = SpreadsheetApp.openById(spreadsheetId);
+      Logger.log('✅ Spreadsheet opened successfully');
+      Logger.log('Spreadsheet name: ' + ss.getName());
+    } catch (error) {
+      Logger.log('❌ Failed to open spreadsheet: ' + error.toString());
+      Logger.log('Error message: ' + error.message);
+      Logger.log('Error name: ' + error.name);
+      Logger.log('Trying alternative: Testing if handleGetEmployees works...');
+      // Try to test if handleGetEmployees works (which uses same pattern)
+      try {
+        const empResult = handleGetEmployees({});
+        Logger.log('handleGetEmployees result: ' + (empResult ? 'success' : 'failed'));
+      } catch (empError) {
+        Logger.log('handleGetEmployees also failed: ' + empError.toString());
+      }
+      return;
+    }
+    
+    // Test 4: Try to get Voucher_History sheet
+    Logger.log('Test 4: Getting Voucher_History sheet...');
+    try {
+      const voucherSheet = ss.getSheetByName(VH_SHEET_NAME);
+      if (voucherSheet) {
+        Logger.log('✅ Voucher_History sheet found');
+        Logger.log('Sheet name: ' + voucherSheet.getName());
+        const rowCount = voucherSheet.getLastRow();
+        Logger.log('Rows in sheet: ' + rowCount);
+      } else {
+        Logger.log('❌ Voucher_History sheet not found');
+        Logger.log('Available sheets: ' + ss.getSheets().map(s => s.getName()).join(', '));
+      }
+    } catch (error) {
+      Logger.log('❌ Failed to get Voucher_History sheet: ' + error.toString());
+    }
+    
+    // Test 5: Try to get Nhân viên sheet
+    Logger.log('Test 5: Getting Nhân viên sheet...');
+    try {
+      const employeeSheet = ss.getSheetByName(EMPLOYEES_SHEET_NAME);
+      if (employeeSheet) {
+        Logger.log('✅ Nhân viên sheet found');
+        Logger.log('Sheet name: ' + employeeSheet.getName());
+      } else {
+        Logger.log('❌ Nhân viên sheet not found');
+      }
+    } catch (error) {
+      Logger.log('❌ Failed to get Nhân viên sheet: ' + error.toString());
+    }
+    
+    Logger.log('=== DIAGNOSTIC TEST COMPLETE ===');
+  } catch (error) {
+    Logger.log('❌ Diagnostic test failed: ' + error.toString());
+    Logger.log('❌ Error stack: ' + error.stack);
   }
 }
