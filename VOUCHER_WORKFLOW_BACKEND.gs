@@ -464,7 +464,7 @@ function handleLogin_(requestBody) {
 
 /**
  * Fetch all employees from "Nhân viên" sheet
- * Returns employee data with name, email, department, company, etc.
+ * Returns employee data with name, email, department (column C - Phòng ban), company, etc.
  */
 function handleGetEmployees(requestBody) {
   try {
@@ -504,7 +504,7 @@ function handleGetEmployees(requestBody) {
         employees.push({
           name: row[0] || '',           // Họ và tên
           position: row[1] || '',       // Chức vụ
-          department: row[2] || '',     // Phòng ban
+          department: row[2] || '',     // Phòng ban (Column C)
           company: row[3] || '',        // Công ty
           email: row[4] || '',          // Email
           phone: row[5] || '',          // Điện thoại

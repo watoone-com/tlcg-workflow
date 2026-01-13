@@ -2292,11 +2292,11 @@
             }
         });
 
-        // Employee departments will be populated from backend
+        // Employee departments will be loaded from backend "Nhân viên" sheet (column C - Phòng ban)
         data.employee_departments = {};
         
         /**
-         * Fetch employees from backend and build data structures
+         * Fetch employees from backend and build employee_departments map from column C (Phòng ban)
          */
         async function loadEmployeesFromBackend() {
             try {
