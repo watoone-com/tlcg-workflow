@@ -2,9 +2,11 @@
  * GOOGLE APPS SCRIPT - PHIẾU THU CHI (BẢN FINAL CHUẨN)
  */
 
-const USERS_SHEET_ID = '1-1Q75iKeoRAGO4p7U-1IAOp9jqx77HrxF6WUxuUuT_c'; 
-const VOUCHER_HISTORY_SHEET_ID = '1ujmPbtEdkGLgEshfhvV8gRB6R0GLI31jsZM5rDOJS0g';
+// Use the same spreadsheet ID for users and voucher history (same spreadsheet, different tabs)
+const VOUCHER_HISTORY_SHEET_ID = '1ujmPbtEdkGLgEshfhV8gRB6R0GLI31jsZM5rDOJS0g';
+const USERS_SHEET_ID = VOUCHER_HISTORY_SHEET_ID; // Same spreadsheet, "Nhân viên" tab
 const VH_SHEET_NAME = 'Voucher_History';
+const EMPLOYEES_SHEET_NAME = 'Nhân viên';
 
 function doGet(e) {
   try {
@@ -18,6 +20,8 @@ function doGet(e) {
       return handleGetVoucherSummary(e.parameter);
     } else if (action === 'getVoucherHistory') {
       return handleGetVoucherHistory(e.parameter);
+    } else if (action === 'getEmployees') {
+      return handleGetEmployees(e.parameter);
     } else if (action === 'approveVoucher') {
       // Handle approve via GET (fallback, but POST is preferred for signature)
       Logger.log('⚠️ Handling approveVoucher via GET (signature may be missing)');
@@ -152,6 +156,7 @@ function doPost(e) {
       case 'rejectVoucher': return handleRejectVoucher(requestBody);
       case 'getVoucherSummary': return handleGetVoucherSummary(requestBody);
       case 'getVoucherHistory': return handleGetVoucherHistory(requestBody);
+      case 'getEmployees': return handleGetEmployees(requestBody);
       default: 
         Logger.log('⚠️ WARNING: Unknown action: ' + action);
         return createResponse(false, 'Action không hợp lệ: ' + action);
@@ -445,7 +450,7 @@ function handleRejectVoucher(requestBody) {
 function handleLogin_(requestBody) {
   try {
     const ss = SpreadsheetApp.openById(USERS_SHEET_ID);
-    const data = ss.getSheetByName('Nhân viên').getDataRange().getValues();
+    const data = ss.getSheetByName(EMPLOYEES_SHEET_NAME).getDataRange().getValues();
     for (let i = 1; i < data.length; i++) {
       if (data[i][4] == requestBody.email) {
         return createResponse(true, 'Thành công', { name: data[i][0], email: data[i][4], role: data[i][1] });
@@ -453,6 +458,69 @@ function handleLogin_(requestBody) {
     }
     return createResponse(false, 'Tài khoản không tồn tại');
   } catch (error) {
+    return createResponse(false, 'Lỗi: ' + error.message);
+  }
+}
+
+/**
+ * Fetch all employees from "Nhân viên" sheet
+ * Returns employee data with name, email, department, company, etc.
+ */
+function handleGetEmployees(requestBody) {
+  try {
+    Logger.log('=== handleGetEmployees called ===');
+    
+    const ss = SpreadsheetApp.openById(USERS_SHEET_ID);
+    const sheet = ss.getSheetByName(EMPLOYEES_SHEET_NAME);
+    
+    if (!sheet) {
+      Logger.log('❌ Sheet "' + EMPLOYEES_SHEET_NAME + '" not found');
+      return createResponse(false, 'Sheet "' + EMPLOYEES_SHEET_NAME + '" không tồn tại');
+    }
+    
+    const data = sheet.getDataRange().getValues();
+    if (data.length < 2) {
+      Logger.log('⚠️ No employee data found (only header row)');
+      return createResponse(true, 'Thành công', { employees: [] });
+    }
+    
+    // Column mapping based on sheet structure:
+    // A: Họ và tên (Name) - index 0
+    // B: Chức vụ (Position) - index 1
+    // C: Phòng ban (Department) - index 2
+    // D: Công ty (Company) - index 3
+    // E: Email - index 4
+    // F: Điện thoại (Phone) - index 5
+    // G: Status - index 6
+    // H: EmployeeId - index 7
+    // I: Role - index 8
+    // J: isAdmin - index 9
+    
+    const employees = [];
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      // Only include active employees
+      if (row[6] === 'Active' || !row[6] || row[6] === '') {
+        employees.push({
+          name: row[0] || '',           // Họ và tên
+          position: row[1] || '',       // Chức vụ
+          department: row[2] || '',     // Phòng ban
+          company: row[3] || '',        // Công ty
+          email: row[4] || '',          // Email
+          phone: row[5] || '',          // Điện thoại
+          status: row[6] || 'Active',   // Status
+          employeeId: row[7] || '',     // EmployeeId
+          role: row[8] || '',           // Role
+          isAdmin: row[9] === 'TRUE' || row[9] === true  // isAdmin
+        });
+      }
+    }
+    
+    Logger.log('✅ Found ' + employees.length + ' active employees');
+    return createResponse(true, 'Thành công', { employees: employees });
+  } catch (error) {
+    Logger.log('❌ ERROR in handleGetEmployees: ' + error.toString());
+    Logger.log('❌ Error stack: ' + error.stack);
     return createResponse(false, 'Lỗi: ' + error.message);
   }
 }

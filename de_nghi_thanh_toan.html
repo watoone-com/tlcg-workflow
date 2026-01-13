@@ -2238,8 +2238,8 @@
             return new Blob([jsonString]).size;
         }
         
-        // Initialize email mappings based on provided exact emails and company data
-        const employeeEmailMap = {
+        // Initialize email mappings - will be populated from backend
+        let employeeEmailMap = {
             "Lê Ngân Anh": "anh.le@mediainsider.vn",
             "Nguyễn Văn Chinh": "chinh.nguyen@mediainsider.vn",
             "Lê Thùy Linh": "linh.le@tl-c.com.vn",
@@ -2257,7 +2257,7 @@
             "Phạm Trí": "tri.pham@example.com"
         };
 
-        const approverEmailMap = {
+        let approverEmailMap = {
             "Lê Ngân Anh": "anh.le@mediainsider.vn",
             "Nguyễn Văn Chinh": "chinh.nguyen@mediainsider.vn",
             "Lê Thùy Linh": "linh.le@tl-c.com.vn",
@@ -2292,17 +2292,79 @@
             }
         });
 
-        // Add employee departments (assuming this data exists or can be derived)
-        // For demonstration, creating a simple map. In a real app, this would come from backend.
+        // Employee departments will be populated from backend
         data.employee_departments = {};
-        data.employee_names.forEach(name => {
-            if (name.includes("Giám đốc")) data.employee_departments[name] = "Ban Giám đốc";
-            else if (name.includes("Kế toán")) data.employee_departments[name] = "Phòng Kế toán";
-            else if (name.includes("Pháp chế")) data.employee_departments[name] = "Phòng Pháp chế";
-            else if (name.includes("Kinh doanh")) data.employee_departments[name] = "Phòng Kinh doanh";
-            else if (name.includes("Kỹ thuật")) data.employee_departments[name] = "Phòng Kỹ thuật";
-            else data.employee_departments[name] = "Phòng ban khác";
-        });
+        
+        /**
+         * Fetch employees from backend and build data structures
+         */
+        async function loadEmployeesFromBackend() {
+            try {
+                console.log('📥 Fetching employees from backend...');
+                const response = await fetch(`${VERCEL_PROXY_URL}?action=getEmployees`);
+                const responseText = await response.text();
+                
+                if (responseText.trim().startsWith('<!') || responseText.includes('<!DOCTYPE')) {
+                    throw new Error('Backend returned HTML error page instead of JSON');
+                }
+                
+                const result = JSON.parse(responseText);
+                
+                if (!result.success) {
+                    console.warn('⚠️ Failed to fetch employees:', result.message);
+                    console.warn('⚠️ Using hardcoded employee data as fallback');
+                    return false;
+                }
+                
+                const employees = result.data.employees || [];
+                console.log(`✅ Fetched ${employees.length} employees from backend`);
+                
+                // Build employee names list
+                data.employee_names = employees.map(emp => emp.name).filter(name => name);
+                
+                // Build employee email map
+                employeeEmailMap = {};
+                employees.forEach(emp => {
+                    if (emp.name && emp.email) {
+                        employeeEmailMap[emp.name] = emp.email;
+                    }
+                });
+                
+                // Build approver email map (same as employee map for now)
+                approverEmailMap = { ...employeeEmailMap };
+                
+                // Build employee departments map
+                data.employee_departments = {};
+                employees.forEach(emp => {
+                    if (emp.name && emp.department) {
+                        data.employee_departments[emp.name] = emp.department;
+                    }
+                });
+                
+                // Augment employeeEmailMap and approverEmailMap with emails from companies_data
+                data.companies_data.forEach(company => {
+                    if (company["Đại diện pháp luật"] && company["Email Đại diện pháp luật"]) {
+                        employeeEmailMap[company["Đại diện pháp luật"]] = company["Email Đại diện pháp luật"];
+                        approverEmailMap[company["Đại diện pháp luật"]] = company["Email Đại diện pháp luật"];
+                    }
+                    if (company["Kế toán trưởng"] && company["Email Kế toán trưởng"]) {
+                        employeeEmailMap[company["Kế toán trưởng"]] = company["Email Kế toán trưởng"];
+                        approverEmailMap[company["Kế toán trưởng"]] = company["Email Kế toán trưởng"];
+                    }
+                    if (company["Thủ quỹ"] && company["Email Thủ quỹ"]) {
+                        employeeEmailMap[company["Thủ quỹ"]] = company["Email Thủ quỹ"];
+                        approverEmailMap[company["Thủ quỹ"]] = company["Email Thủ quỹ"];
+                    }
+                });
+                
+                console.log('✅ Employee data loaded successfully');
+                return true;
+            } catch (error) {
+                console.error('❌ Error loading employees from backend:', error);
+                console.warn('⚠️ Using hardcoded employee data as fallback');
+                return false;
+            }
+        }
 
         // Suppliers will be loaded from "Nhà cung cấp" sheet
         let suppliers = [];
@@ -2452,48 +2514,55 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
-            initializeForm();
-            setCurrentDate();
-            generateVoucherNumber();
-            renderProductTable();
-            renderPaymentTable();
-            
-            // Initialize Google Drive API (GIS token flow)
-            if (isDriveConfigured()) {
-                console.log('🔧 Google Drive API credentials detected, initializing (GIS token)...');
-                ensureDriveToken(false)
-                    .then(() => console.log('✅ Drive API ready - unlimited file uploads enabled!'))
-                    .catch(error => {
-                        console.warn('⚠️ Drive API initialization failed:', error);
-                        console.warn('⚠️ Falling back to legacy upload (900KB limit)');
-                    });
-            } else {
-                console.log('ℹ️ Google Drive API not configured - using legacy upload (900KB limit)');
-            }
+            // Load employees from backend before initializing form
+            loadEmployeesFromBackend().then(success => {
+                if (!success) {
+                    // Fallback: Use existing data.employee_names if backend fetch fails
+                    console.warn('⚠️ Using existing employee data from base64');
+                }
+                initializeForm();
+                setCurrentDate();
+                generateVoucherNumber();
+                renderProductTable();
+                renderPaymentTable();
+                
+                // Initialize Google Drive API (GIS token flow)
+                if (isDriveConfigured()) {
+                    console.log('🔧 Google Drive API credentials detected, initializing (GIS token)...');
+                    ensureDriveToken(false)
+                        .then(() => console.log('✅ Drive API ready - unlimited file uploads enabled!'))
+                        .catch(error => {
+                            console.warn('⚠️ Drive API initialization failed:', error);
+                            console.warn('⚠️ Falling back to legacy upload (900KB limit)');
+                        });
+                } else {
+                    console.log('ℹ️ Google Drive API not configured - using legacy upload (900KB limit)');
+                }
 
-            document.getElementById('export-pdf-btn').addEventListener('click', exportToPDF);
-            document.getElementById('import-excel-btn').addEventListener('click', importFromExcelForm);
-            document.getElementById('sync-sheets-btn').addEventListener('click', syncWithGoogleSheets);
-            document.getElementById('save-btn').addEventListener('click', saveVoucher);
-            document.getElementById('send-approval-btn').addEventListener('click', sendForApproval);
-            
-            document.getElementById('add-product-row-btn').addEventListener('click', addProductRow);
-            document.getElementById('copy-excel-product-btn').addEventListener('click', copyFromExcelToProductTable);
-            document.getElementById('import-product-excel-btn').addEventListener('click', importExcelToProductTable);
-            document.getElementById('add-payment-row-btn').addEventListener('click', addPaymentRow);
+                document.getElementById('export-pdf-btn').addEventListener('click', exportToPDF);
+                document.getElementById('import-excel-btn').addEventListener('click', importFromExcelForm);
+                document.getElementById('sync-sheets-btn').addEventListener('click', syncWithGoogleSheets);
+                document.getElementById('save-btn').addEventListener('click', saveVoucher);
+                document.getElementById('send-approval-btn').addEventListener('click', sendForApproval);
+                
+                document.getElementById('add-product-row-btn').addEventListener('click', addProductRow);
+                document.getElementById('copy-excel-product-btn').addEventListener('click', copyFromExcelToProductTable);
+                document.getElementById('import-product-excel-btn').addEventListener('click', importExcelToProductTable);
+                document.getElementById('add-payment-row-btn').addEventListener('click', addPaymentRow);
 
-            // Event listener for legal approver selection
-            document.getElementById('legal-approver-select').addEventListener('change', function() {
-                document.getElementById('legal-signature').value = this.value;
+                // Event listener for legal approver selection
+                document.getElementById('legal-approver-select').addEventListener('change', function() {
+                    document.getElementById('legal-signature').value = this.value;
+                });
+
+                renderApprovalHistory();
+                
+                // Load recent requests after a short delay to ensure page is ready
+                setTimeout(() => {
+                    loadRecentRequests();
+                    startAutoRefresh();
+                }, 1000);
             });
-
-            renderApprovalHistory();
-            
-            // Load recent requests after a short delay to ensure page is ready
-            setTimeout(() => {
-                loadRecentRequests();
-                startAutoRefresh();
-            }, 1000);
         });
         
         function initializeForm() {

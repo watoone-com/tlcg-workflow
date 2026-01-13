@@ -2274,49 +2274,81 @@
         let driveAccessToken = null;
         let driveTokenExpiry = 0;
 
-        // Initialize email mappings based on provided exact emails and company data
-        const employeeEmailMap = {
-            "Lê Ngân Anh": "anh.le@mediainsider.vn",
-            "Nguyễn Văn Chinh": "chinh.nguyen@mediainsider.vn",
-            "Lê Thùy Linh": "linh.le@tl-c.com.vn",
-            "Nguyễn Lực": "hieuluc.nguyen@gmail.com"
-        };
-
-        const approverEmailMap = {
-            "Lê Ngân Anh": "anh.le@mediainsider.vn",
-            "Nguyễn Văn Chinh": "chinh.nguyen@mediainsider.vn",
-            "Lê Thùy Linh": "linh.le@tl-c.com.vn",
-            "Nguyễn Lực": "hieuluc.nguyen@gmail.com"
-        };
-
-        // Augment employeeEmailMap and approverEmailMap with emails from companies_data
-        data.companies_data.forEach(company => {
-            if (company["Đại diện pháp luật"] && company["Email Đại diện pháp luật"]) {
-                employeeEmailMap[company["Đại diện pháp luật"]] = company["Email Đại diện pháp luật"];
-                approverEmailMap[company["Đại diện pháp luật"]] = company["Email Đại diện pháp luật"];
-            }
-            if (company["Kế toán trưởng"] && company["Email Kế toán trưởng"]) {
-                employeeEmailMap[company["Kế toán trưởng"]] = company["Email Kế toán trưởng"];
-                approverEmailMap[company["Kế toán trưởng"]] = company["Email Kế toán trưởng"];
-            }
-            if (company["Thủ quỹ"] && company["Email Thủ quỹ"]) {
-                employeeEmailMap[company["Thủ quỹ"]] = company["Email Thủ quỹ"];
-                // Thủ quỹ might not always be an approver, but including for completeness if they are in approver_names
-                approverEmailMap[company["Thủ quỹ"]] = company["Email Thủ quỹ"];
-            }
-        });
-
-        // Add employee departments (assuming this data exists or can be derived)
-        // For demonstration, creating a simple map. In a real app, this would come from backend.
+        // Initialize email mappings - will be populated from backend
+        let employeeEmailMap = {};
+        let approverEmailMap = {};
         data.employee_departments = {};
-        data.employee_names.forEach(name => {
-            if (name === "Lê Ngân Anh") data.employee_departments[name] = "Ban Giám đốc";
-            else if (name === "Nguyễn Văn Chinh") data.employee_departments[name] = "Phòng Kinh doanh";
-            else if (name === "Lê Thùy Linh") data.employee_departments[name] = "Phòng Kế toán";
-            else if (name === "Nguyễn Lực") data.employee_departments[name] = "Phòng Kỹ thuật";
-            else if (name === "Nguyễn Thị Nhanh") data.employee_departments[name] = "Phòng Kế toán";
-            else data.employee_departments[name] = "Phòng ban khác";
-        });
+        
+        /**
+         * Fetch employees from backend and build data structures
+         */
+        async function loadEmployeesFromBackend() {
+            try {
+                console.log('📥 Fetching employees from backend...');
+                const response = await fetch(`${GOOGLE_APPS_SCRIPT_WEB_APP_URL}?action=getEmployees`);
+                const responseText = await response.text();
+                
+                if (responseText.trim().startsWith('<!') || responseText.includes('<!DOCTYPE')) {
+                    throw new Error('Backend returned HTML error page instead of JSON');
+                }
+                
+                const result = JSON.parse(responseText);
+                
+                if (!result.success) {
+                    console.warn('⚠️ Failed to fetch employees:', result.message);
+                    console.warn('⚠️ Using hardcoded employee data as fallback');
+                    return false;
+                }
+                
+                const employees = result.data.employees || [];
+                console.log(`✅ Fetched ${employees.length} employees from backend`);
+                
+                // Build employee names list
+                data.employee_names = employees.map(emp => emp.name).filter(name => name);
+                
+                // Build employee email map
+                employeeEmailMap = {};
+                employees.forEach(emp => {
+                    if (emp.name && emp.email) {
+                        employeeEmailMap[emp.name] = emp.email;
+                    }
+                });
+                
+                // Build approver email map (same as employee map for now)
+                approverEmailMap = { ...employeeEmailMap };
+                
+                // Build employee departments map
+                data.employee_departments = {};
+                employees.forEach(emp => {
+                    if (emp.name && emp.department) {
+                        data.employee_departments[emp.name] = emp.department;
+                    }
+                });
+                
+                // Augment employeeEmailMap and approverEmailMap with emails from companies_data
+                data.companies_data.forEach(company => {
+                    if (company["Đại diện pháp luật"] && company["Email Đại diện pháp luật"]) {
+                        employeeEmailMap[company["Đại diện pháp luật"]] = company["Email Đại diện pháp luật"];
+                        approverEmailMap[company["Đại diện pháp luật"]] = company["Email Đại diện pháp luật"];
+                    }
+                    if (company["Kế toán trưởng"] && company["Email Kế toán trưởng"]) {
+                        employeeEmailMap[company["Kế toán trưởng"]] = company["Email Kế toán trưởng"];
+                        approverEmailMap[company["Kế toán trưởng"]] = company["Email Kế toán trưởng"];
+                    }
+                    if (company["Thủ quỹ"] && company["Email Thủ quỹ"]) {
+                        employeeEmailMap[company["Thủ quỹ"]] = company["Email Thủ quỹ"];
+                        approverEmailMap[company["Thủ quỹ"]] = company["Email Thủ quỹ"];
+                    }
+                });
+                
+                console.log('✅ Employee data loaded successfully');
+                return true;
+            } catch (error) {
+                console.error('❌ Error loading employees from backend:', error);
+                console.warn('⚠️ Using hardcoded employee data as fallback');
+                return false;
+            }
+        }
 
 
         let expenseItems = [];
@@ -2991,73 +3023,80 @@
             }
             // ==================== END AUTHENTICATION CHECK ====================
             
-            initializeForm();
-            generateVoucherNumber();
-            renderExpenseTable();
-
-            // Load saved data (but voucherDate will not be restored - always use current date)
-            loadFromLocalStorage();
-            
-            // Load saved signature from localStorage
-            loadSavedSignature();
-            
-            // Always set current date after loading saved data (to prevent back date)
-            setCurrentDate();
-            
-            // Update title based on initial voucher type value
-            updateVoucherTitle();
-            
-            // Initialize stepper
-            updateStepperProgress();
-
-            // Add event listeners for buttons
-            document.getElementById('export-pdf-btn').addEventListener('click', exportToPDF);
-            document.getElementById('export-excel-btn').addEventListener('click', exportToExcel);
-            document.getElementById('import-excel-btn').addEventListener('click', importFromExcelForm);
-            // sync-sheets-btn removed - files now upload during sendForApproval
-            document.getElementById('save-template-btn').addEventListener('click', saveTemplate);
-            document.getElementById('load-template-btn').addEventListener('click', loadTemplate);
-            document.getElementById('save-btn').addEventListener('click', saveVoucher);
-            document.getElementById('send-approval-btn').addEventListener('click', sendForApproval);
-            
-            // Initialize searchable dropdowns
-            initializeSearchableDropdowns();
-            
-            document.getElementById('add-row-btn').addEventListener('click', addExpenseRow);
-            document.getElementById('copy-excel-btn').addEventListener('click', copyFromExcelToTable);
-            document.getElementById('import-table-excel-btn').addEventListener('click', importExcelToTable);
-
-            // Add real-time validation listeners
-            const fieldsToValidate = ['company', 'voucher-type', 'employee', 'payee-name', 'currency', 'reason'];
-            fieldsToValidate.forEach(fieldId => {
-                const field = document.getElementById(fieldId);
-                if (field) {
-                    field.addEventListener('blur', function() {
-                        const fieldNames = {
-                            'company': 'Công ty',
-                            'voucher-type': 'Loại phiếu',
-                            'employee': 'Người đề nghị',
-                            'payee-name': 'Người nộp/nhận',
-                            'currency': 'Loại tiền',
-                            'reason': 'Lý do'
-                        };
-                        validateField(fieldId, this.value, fieldNames[fieldId]);
-                        debounceAutoSave();
-                    });
-                    
-                    field.addEventListener('input', function() {
-                        // Remove invalid class on input
-                        if (this.classList.contains('invalid')) {
-                            this.classList.remove('invalid');
-                            const errorEl = this.parentElement.querySelector('.error-message');
-                            if (errorEl) errorEl.classList.remove('show');
-                        }
-                        debounceAutoSave();
-                    });
+            // Load employees from backend before initializing form
+            loadEmployeesFromBackend().then(success => {
+                if (!success) {
+                    // Fallback: Use existing data.employee_names if backend fetch fails
+                    console.warn('⚠️ Using existing employee data from base64');
                 }
-            });
+                initializeForm();
+                generateVoucherNumber();
+                renderExpenseTable();
 
-            renderApprovalHistory();
+                // Load saved data (but voucherDate will not be restored - always use current date)
+                loadFromLocalStorage();
+                
+                // Load saved signature from localStorage
+                loadSavedSignature();
+                
+                // Always set current date after loading saved data (to prevent back date)
+                setCurrentDate();
+                
+                // Update title based on initial voucher type value
+                updateVoucherTitle();
+                
+                // Initialize stepper
+                updateStepperProgress();
+
+                // Add event listeners for buttons
+                document.getElementById('export-pdf-btn').addEventListener('click', exportToPDF);
+                document.getElementById('export-excel-btn').addEventListener('click', exportToExcel);
+                document.getElementById('import-excel-btn').addEventListener('click', importFromExcelForm);
+                // sync-sheets-btn removed - files now upload during sendForApproval
+                document.getElementById('save-template-btn').addEventListener('click', saveTemplate);
+                document.getElementById('load-template-btn').addEventListener('click', loadTemplate);
+                document.getElementById('save-btn').addEventListener('click', saveVoucher);
+                document.getElementById('send-approval-btn').addEventListener('click', sendForApproval);
+                
+                // Initialize searchable dropdowns
+                initializeSearchableDropdowns();
+                
+                document.getElementById('add-row-btn').addEventListener('click', addExpenseRow);
+                document.getElementById('copy-excel-btn').addEventListener('click', copyFromExcelToTable);
+                document.getElementById('import-table-excel-btn').addEventListener('click', importExcelToTable);
+
+                // Add real-time validation listeners
+                const fieldsToValidate = ['company', 'voucher-type', 'employee', 'payee-name', 'currency', 'reason'];
+                fieldsToValidate.forEach(fieldId => {
+                    const field = document.getElementById(fieldId);
+                    if (field) {
+                        field.addEventListener('blur', function() {
+                            const fieldNames = {
+                                'company': 'Công ty',
+                                'voucher-type': 'Loại phiếu',
+                                'employee': 'Người đề nghị',
+                                'payee-name': 'Người nộp/nhận',
+                                'currency': 'Loại tiền',
+                                'reason': 'Lý do'
+                            };
+                            validateField(fieldId, this.value, fieldNames[fieldId]);
+                            debounceAutoSave();
+                        });
+                        
+                        field.addEventListener('input', function() {
+                            // Remove invalid class on input
+                            if (this.classList.contains('invalid')) {
+                                this.classList.remove('invalid');
+                                const errorEl = this.parentElement.querySelector('.error-message');
+                                if (errorEl) errorEl.classList.remove('show');
+                            }
+                            debounceAutoSave();
+                        });
+                    }
+                });
+
+                renderApprovalHistory();
+            });
         });
         
         function initializeForm() {
