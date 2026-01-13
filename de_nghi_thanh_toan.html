@@ -2939,9 +2939,29 @@
         }
         
         function setCurrentDate() {
-            const today = new Date();
-            const formattedDate = today.toISOString().substr(0, 10);
-            document.getElementById('voucher-date').value = formattedDate;
+            const voucherDateInput = document.getElementById('voucher-date');
+            
+            function updateDateRestriction() {
+                const today = new Date();
+                const formattedDate = today.toISOString().substr(0, 10);
+                voucherDateInput.value = formattedDate;
+                // Restrict to current date only (prevent selecting past or future dates)
+                voucherDateInput.setAttribute('min', formattedDate);
+                voucherDateInput.setAttribute('max', formattedDate);
+            }
+            
+            // Set initial date restriction
+            updateDateRestriction();
+            
+            // Prevent manual changes - always reset to current date
+            voucherDateInput.addEventListener('change', function() {
+                const today = new Date();
+                const formattedDate = today.toISOString().substr(0, 10);
+                if (this.value !== formattedDate) {
+                    this.value = formattedDate;
+                    alert('Ngày lập đề nghị chỉ có thể là ngày hiện tại.');
+                }
+            });
         }
         
         function generateVoucherNumber() {
