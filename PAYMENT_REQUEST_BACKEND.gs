@@ -16,10 +16,13 @@
 
 // ==================== CONFIGURATION ====================
 
+const USERS_SHEET_ID = '1-1Q75iKeoRAGO4p7U-1IAOp9jqx77HrxF6WUxuUuT_c';
+
 const CONFIG = {
-  SPREADSHEET_ID: '1ujmPbtEdkGLgEshfhvV8gRB6R0GLI31jsZM5rDOJS0g', // TLCG_Master Data
+  SPREADSHEET_ID: '1ujmPbtEdkGLgEshfhvV8gRB6R0GLI31jsZM5rDOJS0g',
   SHEET_NAME: 'Payment_Request_History', // Main sheet for storing all payment requests
   SUPPLIERS_SHEET_NAME: 'Nhà cung cấp', // Existing suppliers sheet
+  EMPLOYEES_SHEET_NAME: 'Nhân viên',
   DRIVE_FOLDER_NAME: 'Payment Request Attachments',
   
   // Column indices for Payment_Request_History sheet
@@ -106,6 +109,8 @@ function doPost(e) {
         return handleGetSuppliers(data);
       case 'addSupplier':
         return handleAddSupplier(data);
+      case 'getEmployees':
+        return handleGetEmployees(data);
       default:
         return createResponse(false, 'Invalid action: ' + action);
     }
@@ -126,6 +131,8 @@ function doGet(e) {
     
     if (action === 'getPaymentRequestDetails' && requestId) {
       return handleGetPaymentRequestDetails({ requestId: requestId });
+    } else if (action === 'getEmployees') {
+      return handleGetEmployees(e.parameter);
     }
     
     return createResponse(false, 'Invalid GET request');
@@ -1000,5 +1007,69 @@ function handleAddSupplier(data) {
   } catch (error) {
     Logger.log('[Payment Request] Error adding supplier: ' + error.message);
     return createResponse(false, 'Error: ' + error.message);
+  }
+}
+
+// ==================== EMPLOYEE MANAGEMENT ====================
+
+/**
+ * Get all employees from "Nhân viên" sheet
+ */
+function handleGetEmployees(requestBody) {
+  try {
+    Logger.log('[Payment Request] === handleGetEmployees called ===');
+    
+    const ss = SpreadsheetApp.openById(USERS_SHEET_ID);
+    const sheet = ss.getSheetByName(CONFIG.EMPLOYEES_SHEET_NAME);
+    
+    if (!sheet) {
+      Logger.log('[Payment Request] ❌ Sheet "' + CONFIG.EMPLOYEES_SHEET_NAME + '" not found');
+      return createResponse(false, 'Sheet "' + CONFIG.EMPLOYEES_SHEET_NAME + '" không tồn tại');
+    }
+    
+    const data = sheet.getDataRange().getValues();
+    if (data.length < 2) {
+      Logger.log('[Payment Request] ⚠️ No employee data found (only header row)');
+      return createResponse(true, 'Thành công', { employees: [] });
+    }
+    
+    // Column mapping based on sheet structure:
+    // A: Họ và tên (Name) - index 0
+    // B: Chức vụ (Position) - index 1
+    // C: Phòng ban (Department) - index 2
+    // D: Công ty (Company) - index 3
+    // E: Email - index 4
+    // F: Điện thoại (Phone) - index 5
+    // G: Status - index 6
+    // H: EmployeeId - index 7
+    // I: Role - index 8
+    // J: isAdmin - index 9
+    
+    const employees = [];
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      // Only include active employees
+      if (row[6] === 'Active' || !row[6] || row[6] === '') {
+        employees.push({
+          name: row[0] || '',           // Họ và tên
+          position: row[1] || '',       // Chức vụ
+          department: row[2] || '',     // Phòng ban (Column C)
+          company: row[3] || '',        // Công ty
+          email: row[4] || '',          // Email
+          phone: row[5] || '',          // Điện thoại
+          status: row[6] || 'Active',   // Status
+          employeeId: row[7] || '',     // EmployeeId
+          role: row[8] || '',           // Role
+          isAdmin: row[9] === 'TRUE' || row[9] === true  // isAdmin
+        });
+      }
+    }
+    
+    Logger.log('[Payment Request] ✅ Found ' + employees.length + ' active employees');
+    return createResponse(true, 'Thành công', { employees: employees });
+  } catch (error) {
+    Logger.log('[Payment Request] ❌ ERROR in handleGetEmployees: ' + error.toString());
+    Logger.log('[Payment Request] ❌ Error stack: ' + error.stack);
+    return createResponse(false, 'Lỗi: ' + error.message);
   }
 }
