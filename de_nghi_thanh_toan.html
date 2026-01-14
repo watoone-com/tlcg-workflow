@@ -1405,8 +1405,7 @@
         
         <!-- Step 3: Bảng kê sản phẩm -->
         <div class="form-step" id="step-3">
-        <h2 class="step-headline">BẢNG KÊ CHI TIẾT HÀNG HÓA/DỊCH VỤ</h2>
-        <h2>
+        <h2 class="step-headline">BẢNG KÊ CHI TIẾT HÀNG HÓA/DỊCH VỤ
             <span class="tooltip-icon">
                 ℹ️
                 <span class="tooltip-text">
@@ -4036,7 +4035,7 @@
                     <td><input type="number" min="0" step="1" value="${item.quantity || 0}" 
                         onchange="updateProductItem(${index}, 'quantity', parseFloat(this.value) || 0)" 
                         style="width: 100%; min-width: 80px;"></td>
-                    <td><input type="number" min="0" step="1000" value="${item.unitPrice || 0}" 
+                    <td><input type="number" min="0" step="1" value="${item.unitPrice || 0}" 
                         onchange="updateProductItem(${index}, 'unitPrice', parseFloat(this.value) || 0)" 
                         onblur="updateGrandTotal()" 
                         style="width: 100%; min-width: 120px; text-align: right;"></td>
