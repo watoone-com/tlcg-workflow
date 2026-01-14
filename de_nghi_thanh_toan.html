@@ -2748,6 +2748,7 @@
                 }
                 
                 const result = JSON.parse(responseText);
+                console.log('📋 Purchase order types response:', result);
                 
                 const purchaseVoucherTypeSelect = document.getElementById('purchase-voucher-type');
                 if (!purchaseVoucherTypeSelect) {
@@ -2764,26 +2765,36 @@
                     return;
                 }
                 
-                // Check if data exists
+                // Check if data exists - handle different response structures
+                let types = null;
                 if (result.data && result.data.types && Array.isArray(result.data.types)) {
-                    const types = result.data.types;
+                    types = result.data.types;
+                } else if (result.types && Array.isArray(result.types)) {
+                    // Fallback: check if types is directly in result
+                    types = result.types;
+                } else if (Array.isArray(result.data)) {
+                    // Fallback: check if data is directly an array
+                    types = result.data;
+                }
+                
+                if (types && types.length > 0) {
                     console.log(`✅ Loaded ${types.length} purchase order types from backend`);
                     
                     // Populate dropdown with types from column B (Type)
                     types.forEach(item => {
-                        if (item.type && item.type.trim() !== '') {
+                        // Handle both object format {type: "..."} and string format
+                        const typeValue = typeof item === 'string' ? item : (item.type || item);
+                        if (typeValue && typeValue.toString().trim() !== '') {
                             const option = document.createElement('option');
-                            option.value = item.type;
-                            option.textContent = item.type;
+                            option.value = typeValue;
+                            option.textContent = typeValue;
                             purchaseVoucherTypeSelect.appendChild(option);
                         }
                     });
-                    
-                    if (types.length === 0) {
-                        console.warn('⚠️ No purchase order types found in the data');
-                    }
                 } else {
-                    console.warn('⚠️ Purchase order types data is missing or empty:', result.data);
+                    console.warn('⚠️ Purchase order types data is missing or empty. Response structure:', result);
+                    console.warn('⚠️ result.data:', result.data);
+                    console.warn('⚠️ result.types:', result.types);
                 }
             } catch (error) {
                 console.error('❌ Error loading purchase order types:', error);
