@@ -99,6 +99,7 @@ export default async function handler(req, res) {
     'getPaymentRequestDetails',
     'getSuppliers',                // Load suppliers from "Nhà cung cấp" sheet
     'addSupplier',                 // Add supplier to "Nhà cung cấp" sheet
+    'getEmployees',                // Load employees from "Nhân viên" sheet
     'getPurchaseOrderTypes'        // Load purchase order types from "Purchase Order" sheet
   ];
   
