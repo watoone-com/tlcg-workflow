@@ -2091,11 +2091,109 @@
         const totalSteps = 6;
         
         /**
+         * Validate required fields for a specific step
+         * @param {number} step - Step number (1-6)
+         * @returns {boolean} - True if step is valid, false otherwise
+         */
+        function validateStep(step) {
+            switch(step) {
+                case 1:
+                    // Step 1: Basic information
+                    const company = document.getElementById('company')?.value;
+                    const employee = document.getElementById('employee')?.value;
+                    if (!company || !employee) {
+                        alert('Vui lòng điền đầy đủ thông tin: Công ty và Người đề nghị');
+                        return false;
+                    }
+                    return true;
+                    
+                case 2:
+                    // Step 2: Purchase request
+                    const purchaseVoucherType = document.getElementById('purchase-voucher-type')?.value;
+                    const purchasePurposeReason = document.getElementById('purchase-purpose-reason')?.value;
+                    const recipientName = document.getElementById('recipient-name')?.value;
+                    const supplierDropdown = document.getElementById('supplier-dropdown')?.value;
+                    const implementationTimeFrom = document.getElementById('implementation-time-from')?.value;
+                    const implementationTimeTo = document.getElementById('implementation-time-to')?.value;
+                    if (!purchaseVoucherType || !purchasePurposeReason || !recipientName || !supplierDropdown || !implementationTimeFrom || !implementationTimeTo) {
+                        alert('Vui lòng điền đầy đủ thông tin: Loại đề nghị mua hàng, Mục đích và lý do, Người nhận hàng, Nhà cung cấp, Thời gian thực hiện (Từ và Đến)');
+                        return false;
+                    }
+                    return true;
+                    
+                case 3:
+                    // Step 3: Product items table
+                    if (productItems.length === 0) {
+                        alert('Vui lòng nhập ít nhất một dòng chi tiết sản phẩm');
+                        return false;
+                    }
+                    const hasInvalidItem = productItems.some(item => !item.description || item.quantity === 0 || item.unitPrice === 0);
+                    if (hasInvalidItem) {
+                        alert('Vui lòng điền đầy đủ Mô tả, Số lượng, và Đơn giá cho tất cả các dòng sản phẩm');
+                        return false;
+                    }
+                    return true;
+                    
+                case 4:
+                    // Step 4: Approval
+                    const budgetApprover = document.getElementById('budget-approver')?.value;
+                    const supplierApprover = document.getElementById('supplier-approver')?.value;
+                    const budgetApprovalDate = document.getElementById('budget-approval-date')?.value;
+                    const supplierApprovalDate = document.getElementById('supplier-approval-date')?.value;
+                    const legalApproverSelect = document.getElementById('legal-approver-select')?.value;
+                    const legalComment = document.getElementById('legal-comment')?.value;
+                    const accountingComment = document.getElementById('accounting-comment')?.value;
+                    const directorComment = document.getElementById('director-comment')?.value;
+                    if (!budgetApprover || !supplierApprover || !budgetApprovalDate || !supplierApprovalDate || !legalApproverSelect || !legalComment || !accountingComment || !directorComment) {
+                        alert('Vui lòng điền đầy đủ thông tin: Người phê duyệt ngân sách, Người phê duyệt nhà cung cấp, Ngày phê duyệt, Người phê duyệt pháp chế, và các ý kiến (Pháp chế, Kế toán, Giám đốc)');
+                        return false;
+                    }
+                    return true;
+                    
+                case 5:
+                    // Step 5: Payment request
+                    const paymentVoucherType = document.getElementById('payment-voucher-type')?.value;
+                    const paymentType = document.getElementById('payment-type')?.value;
+                    const poRequestNo = document.getElementById('po-request-no')?.value;
+                    const dueDate = document.getElementById('due-date')?.value;
+                    const currency = document.getElementById('currency')?.value;
+                    const paymentInfo = document.getElementById('payment-info')?.value;
+                    const finalApprover = document.getElementById('final-approver')?.value;
+                    if (!paymentVoucherType || !paymentType || !poRequestNo || !dueDate || !currency || !paymentInfo || !finalApprover) {
+                        alert('Vui lòng điền đầy đủ thông tin: Loại đề nghị thanh toán, Loại thanh toán, Số đơn hàng, Ngày đáo hạn, Loại tiền, Thông tin thanh toán, Người phê duyệt cuối cùng');
+                        return false;
+                    }
+                    if (paymentPhases.length === 0) {
+                        alert('Vui lòng nhập ít nhất một đợt thanh toán');
+                        return false;
+                    }
+                    const hasInvalidPhase = paymentPhases.some(phase => !phase.amount || phase.amount === 0);
+                    if (hasInvalidPhase) {
+                        alert('Vui lòng điền đầy đủ Số tiền cho tất cả các đợt thanh toán');
+                        return false;
+                    }
+                    return true;
+                    
+                case 6:
+                    // Step 6: Review (no validation needed)
+                    return true;
+                    
+                default:
+                    return false;
+            }
+        }
+        
+        /**
          * Navigate to a specific step
          * @param {number} step - Step number (1-6)
          */
         function goToStep(step) {
             if (step < 1 || step > totalSteps) return;
+            
+            // Validate current step before moving forward (allow backward navigation without validation)
+            if (step > currentStep && !validateStep(currentStep)) {
+                return; // Validation failed, error message shown by validateStep
+            }
             
             // Hide current step
             const currentStepEl = document.getElementById(`step-${currentStep}`);
