@@ -2404,11 +2404,21 @@
                 
                 // Build employee departments map from column C (Phòng ban)
                 data.employee_departments = {};
+                let departmentsPopulated = 0;
                 employees.forEach(emp => {
                     if (emp.name && emp.department) {
                         data.employee_departments[emp.name] = emp.department;
+                        departmentsPopulated++;
                     }
                 });
+                
+                console.log(`📊 Populated ${departmentsPopulated} employee departments from backend (out of ${employees.length} employees)`);
+                
+                // If no departments were populated, use fallback
+                if (departmentsPopulated === 0) {
+                    console.warn('⚠️ No employee departments found in backend response, using fallback mapping');
+                    createFallbackDepartmentMapping();
+                }
                 
                 // Augment employeeEmailMap and approverEmailMap with emails from companies_data
                 data.companies_data.forEach(company => {
@@ -2426,8 +2436,10 @@
                     }
                 });
                 
-                console.log('✅ Employee departments loaded from backend (column C - Phòng ban)');
-                console.log('Sample departments:', Object.keys(data.employee_departments).slice(0, 5).map(name => `${name}: ${data.employee_departments[name]}`));
+                if (departmentsPopulated > 0) {
+                    console.log('✅ Employee departments loaded from backend (column C - Phòng ban)');
+                    console.log('Sample departments:', Object.keys(data.employee_departments).slice(0, 5).map(name => `${name}: ${data.employee_departments[name]}`));
+                }
                 return true;
             } catch (error) {
                 console.error('❌ Error loading employees from backend:', error);
