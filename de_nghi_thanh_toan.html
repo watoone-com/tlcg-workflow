@@ -2376,7 +2376,9 @@
                     return false;
                 }
                 
-                const employees = result.data.employees || [];
+                // Backend returns { success: true, message: "...", employees: [...] }
+                // Note: createResponse spreads the data object, so employees is directly on result
+                const employees = result.employees || result.data?.employees || [];
                 console.log(`✅ Fetched ${employees.length} employees from backend`);
                 
                 if (employees.length === 0) {
