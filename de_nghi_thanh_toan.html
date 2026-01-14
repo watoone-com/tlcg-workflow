@@ -1405,7 +1405,7 @@
         
         <!-- Step 3: Bảng kê sản phẩm -->
         <div class="form-step" id="step-3">
-        <h2 class="step-headline">Bảng kê chi tiết hàng hóa/dịch vụ</h2>
+        <h2 class="step-headline">BẢNG KÊ CHI TIẾT HÀNG HÓA/DỊCH VỤ</h2>
         <h2>
             <span class="tooltip-icon">
                 ℹ️
@@ -1585,8 +1585,6 @@
         <!-- Step 5: Đề nghị thanh toán -->
         <div class="form-step" id="step-5">
         <h2 class="step-headline">THANH TOÁN</h2>
-        <!-- PHẦN 2: ĐỀ NGHỊ THANH TOÁN -->
-        <h2>PHẦN 2: ĐỀ NGHỊ THANH TOÁN</h2>
         <div class="form-row">
             <div class="form-group">
                 <label for="payment-voucher-type">Loại đề nghị thanh toán: <span class="required">*</span></label>
@@ -1606,8 +1604,8 @@
         </div>
         <div class="form-row">
             <div class="form-group">
-                <label for="po-request-no">Số đơn hàng (PO Request No): <span class="required">*</span></label>
-                <input type="text" id="po-request-no" name="po-request-no" required placeholder="Nếu có">
+                <label for="po-request-no">Số đơn hàng (PO Request No):</label>
+                <input type="text" id="po-request-no" name="po-request-no" placeholder="Nếu có">
             </div>
             <div class="form-group">
                 <label for="due-date">Ngày đáo hạn: <span class="required">*</span></label>
@@ -2180,13 +2178,12 @@
                     // Step 5: Payment request
                     const paymentVoucherType = document.getElementById('payment-voucher-type')?.value;
                     const paymentType = document.getElementById('payment-type')?.value;
-                    const poRequestNo = document.getElementById('po-request-no')?.value;
                     const dueDate = document.getElementById('due-date')?.value;
                     const currency = document.getElementById('currency')?.value;
                     const paymentInfo = document.getElementById('payment-info')?.value;
                     const finalApprover = document.getElementById('final-approver')?.value;
-                    if (!paymentVoucherType || !paymentType || !poRequestNo || !dueDate || !currency || !paymentInfo || !finalApprover) {
-                        alert('Vui lòng điền đầy đủ thông tin: Loại đề nghị thanh toán, Loại thanh toán, Số đơn hàng, Ngày đáo hạn, Loại tiền, Thông tin thanh toán, Người phê duyệt cuối cùng');
+                    if (!paymentVoucherType || !paymentType || !dueDate || !currency || !paymentInfo || !finalApprover) {
+                        alert('Vui lòng điền đầy đủ thông tin: Loại đề nghị thanh toán, Loại thanh toán, Ngày đáo hạn, Loại tiền, Thông tin thanh toán, Người phê duyệt cuối cùng');
                         return false;
                     }
                     if (paymentPhases.length === 0) {
@@ -4269,7 +4266,7 @@
                 const row = tableBody.insertRow();
                 row.innerHTML = `
                     <td>Đợt ${index + 1}</td>
-                    <td><input type="text" value="${formatCurrency(phase.amount || 0)}" oninput="updatePaymentPhase(${index}, 'amount', parseCurrency(this.value))" onblur="this.value = formatCurrency(parseCurrency(this.value))"></td>
+                    <td><input type="number" min="0" step="1000" value="${phase.amount || 0}" onchange="updatePaymentPhase(${index}, 'amount', parseFloat(this.value) || 0)" style="width: 100%; min-width: 120px; text-align: right;"></td>
                     <td><input type="text" value="${phase.percentage.toFixed(2)}%" readonly></td>
                     <td><input type="checkbox" ${phase.signedContract ? 'checked' : ''} onchange="updatePaymentPhase(${index}, 'signedContract', this.checked)"></td>
                     <td class="attachment-cell">
