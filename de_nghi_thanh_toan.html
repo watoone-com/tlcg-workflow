@@ -2968,9 +2968,12 @@
             const companySelect = document.getElementById('company');
             const selectedCompany = companySelect.value;
             const accountingApproverSignatureInput = document.getElementById('accounting-approver-signature');
-            const accountingSignatureInput = document.getElementById('accounting-signature');
             const directorApproverSignatureInput = document.getElementById('director-approver-signature');
-            const directorSignatureInput = document.getElementById('director-signature');
+
+            if (!accountingApproverSignatureInput || !directorApproverSignatureInput) {
+                console.warn('⚠️ Approver signature input elements not found');
+                return;
+            }
 
             if (selectedCompany) {
                 const companyData = data.companies_data.find(c => c["Tên công ty"] === selectedCompany);
@@ -2978,23 +2981,17 @@
                     // Accounting Approver
                     const chiefAccountant = companyData["Kế toán trưởng"] || '';
                     accountingApproverSignatureInput.value = chiefAccountant;
-                    accountingSignatureInput.value = chiefAccountant; // Auto-fill signature field
 
                     // Director Approver
                     const director = companyData["Đại diện pháp luật"] || ''; // Assuming "Đại diện pháp luật" is the Director
                     directorApproverSignatureInput.value = director;
-                    directorSignatureInput.value = director; // Auto-fill signature field
                 } else {
                     accountingApproverSignatureInput.value = '';
-                    accountingSignatureInput.value = '';
                     directorApproverSignatureInput.value = '';
-                    directorSignatureInput.value = '';
                 }
             } else {
                 accountingApproverSignatureInput.value = '';
-                accountingSignatureInput.value = '';
                 directorApproverSignatureInput.value = '';
-                directorSignatureInput.value = '';
             }
         }
 
