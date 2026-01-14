@@ -64,7 +64,7 @@ export default async function handler(req, res) {
   
   // PAYMENT_REQUEST_BACKEND - For payment request operations
   const PAYMENT_REQUEST_BACKEND = process.env.PAYMENT_REQUEST_BACKEND_URL || 
-    'YOUR_PAYMENT_REQUEST_BACKEND_URL_HERE'; // Update after deploying PAYMENT_REQUEST_BACKEND.gs
+    'https://script.google.com/macros/s/AKfycbxg_DlOgCCCq4393-OKdinqYt6Onni-YlkYiO6hbq9LuFiXC5oj1AiNgJbbJHih4g/exec';
   
   // Determine which backend to use based on action
   let GAS_URL = PHIEU_THU_CHI_BACKEND; // Default to Phieu Thu Chi Backend
@@ -97,8 +97,9 @@ export default async function handler(req, res) {
     'getPaymentRequestHistory',
     'getRecentPaymentRequests',    // Alias for getPaymentRequestHistory
     'getPaymentRequestDetails',
-    'getSuppliers',                // New: Load suppliers from "Nhà cung cấp" sheet
-    'addSupplier'                  // New: Add supplier to "Nhà cung cấp" sheet
+    'getSuppliers',                // Load suppliers from "Nhà cung cấp" sheet
+    'addSupplier',                 // Add supplier to "Nhà cung cấp" sheet
+    'getPurchaseOrderTypes'        // Load purchase order types from "Purchase Order" sheet
   ];
   
   if (paymentRequestActions.includes(action)) {
