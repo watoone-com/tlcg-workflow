@@ -1517,7 +1517,7 @@
             </div>
             <div class="form-group">
                 <label for="legal-comment">Ý kiến bộ phận pháp chế:</label>
-                <textarea id="legal-comment" name="legal-comment" placeholder="Nhập ý kiến của bộ phận pháp chế"></textarea>
+                <textarea id="legal-comment" name="legal-comment" required placeholder="Nhập ý kiến của bộ phận pháp chế"></textarea>
             </div>
             <div class="form-group">
                 <label for="legal-signature-upload">Chữ ký pháp chế (Upload):</label>
@@ -1530,7 +1530,7 @@
             </div>
             <div class="form-group">
                 <label for="accounting-comment">Ý kiến bộ phận kế toán:</label>
-                <textarea id="accounting-comment" name="accounting-comment" placeholder="Nhập ý kiến của bộ phận kế toán"></textarea>
+                <textarea id="accounting-comment" name="accounting-comment" required placeholder="Nhập ý kiến của bộ phận kế toán"></textarea>
             </div>
             <div class="form-group">
                 <label for="accounting-signature-upload">Chữ ký kế toán (Upload):</label>
@@ -1543,7 +1543,7 @@
             </div>
             <div class="form-group">
                 <label for="director-comment">Ý kiến giám đốc:</label>
-                <textarea id="director-comment" name="director-comment" placeholder="Nhập ý kiến của giám đốc"></textarea>
+                <textarea id="director-comment" name="director-comment" required placeholder="Nhập ý kiến của giám đốc"></textarea>
             </div>
             <div class="form-group">
                 <label for="director-signature-upload">Chữ ký giám đốc (Upload):</label>
@@ -1582,11 +1582,11 @@
         <div class="form-row">
             <div class="form-group">
                 <label for="po-request-no">Số đơn hàng (PO Request No):</label>
-                <input type="text" id="po-request-no" name="po-request-no" placeholder="Nếu có">
+                <input type="text" id="po-request-no" name="po-request-no" required placeholder="Nếu có">
             </div>
             <div class="form-group">
                 <label for="due-date">Ngày đáo hạn:</label>
-                <input type="date" id="due-date" name="due-date">
+                <input type="date" id="due-date" name="due-date" required>
             </div>
         </div>
         <div class="form-row">
@@ -1598,7 +1598,7 @@
             </div>
             <div class="form-group">
                 <label for="payment-info">Thông tin thanh toán:</label>
-                <textarea id="payment-info" name="payment-info" placeholder="Số tài khoản, tên ngân hàng, chi nhánh, v.v."></textarea>
+                <textarea id="payment-info" name="payment-info" required placeholder="Số tài khoản, tên ngân hàng, chi nhánh, v.v."></textarea>
             </div>
         </div>
         
@@ -3243,7 +3243,8 @@
         function saveVoucher() {
             const requiredFields = [
                 'company', 'purchase-voucher-type', 'employee', 'recipient-name', 'purchase-purpose-reason', 'supplier-dropdown',
-                'budget-approver', 'supplier-approver', 'payment-voucher-type', 'payment-type', 'currency', 'final-approver'
+                'budget-approver', 'supplier-approver', 'legal-approver-select', 'legal-comment', 'accounting-comment', 'director-comment',
+                'payment-voucher-type', 'payment-type', 'po-request-no', 'due-date', 'currency', 'payment-info', 'final-approver'
             ];
             let isValid = true;
             
@@ -3280,7 +3281,8 @@
                 // Validate required fields
                 const requiredFields = [
                     'company', 'purchase-voucher-type', 'employee', 'recipient-name', 'purchase-purpose-reason', 'supplier-dropdown',
-                    'budget-approver', 'supplier-approver', 'payment-voucher-type', 'payment-type', 'currency', 'final-approver'
+                    'budget-approver', 'supplier-approver', 'legal-approver-select', 'legal-comment', 'accounting-comment', 'director-comment',
+                    'payment-voucher-type', 'payment-type', 'po-request-no', 'due-date', 'currency', 'payment-info', 'final-approver'
                 ];
                 let isValid = true;
                 
