@@ -1405,9 +1405,8 @@
         
         <!-- Step 3: Bảng kê sản phẩm -->
         <div class="form-step" id="step-3">
-        <h2 class="step-headline">BẢNG KÊ SẢN PHẨM</h2>
+        <h2 class="step-headline">Bảng kê chi tiết hàng hóa/dịch vụ</h2>
         <h2>
-            Bảng kê chi tiết hàng hóa/dịch vụ
             <span class="tooltip-icon">
                 ℹ️
                 <span class="tooltip-text">
@@ -1467,9 +1466,7 @@
         
         <!-- Step 4: Phê duyệt ngân sách & NCC -->
         <div class="form-step" id="step-4">
-        <h2 class="step-headline">PHÊ DUYỆT</h2>
-        <!-- PHÊ DUYỆT NGÂN SÁCH -->
-        <h2>PHÊ DUYỆT NGÂN SÁCH</h2>
+        <h2 class="step-headline">PHÊ DUYỆT NGÂN SÁCH</h2>
         <div class="form-row">
             <div class="form-group">
                 <label for="budget-approver">Người phê duyệt ngân sách: <span class="required">*</span></label>
@@ -1487,7 +1484,7 @@
         <div class="form-row">
             <div class="form-group">
                 <label for="budget-approval-date">Ngày phê duyệt: <span class="required">*</span></label>
-                <input type="date" id="budget-approval-date" name="budget-approval-date" required>
+                <input type="date" id="budget-approval-date" name="budget-approval-date" required readonly>
             </div>
             <div class="form-group">
                 <label for="budget-approver-signature-upload">Chữ ký (Upload):</label>
@@ -1517,7 +1514,7 @@
         <div class="form-row">
             <div class="form-group">
                 <label for="supplier-approval-date">Ngày phê duyệt: <span class="required">*</span></label>
-                <input type="date" id="supplier-approval-date" name="supplier-approval-date" required>
+                <input type="date" id="supplier-approval-date" name="supplier-approval-date" required readonly>
             </div>
             <div class="form-group">
                 <label for="supplier-approver-signature-upload">Chữ ký (Upload):</label>
@@ -3187,6 +3184,20 @@
             // Also set min/max to current date as additional restriction
             voucherDateInput.setAttribute('min', formattedDate);
             voucherDateInput.setAttribute('max', formattedDate);
+            
+            // Set approval date fields to current date
+            const budgetApprovalDateInput = document.getElementById('budget-approval-date');
+            const supplierApprovalDateInput = document.getElementById('supplier-approval-date');
+            if (budgetApprovalDateInput) {
+                budgetApprovalDateInput.value = formattedDate;
+                budgetApprovalDateInput.setAttribute('min', formattedDate);
+                budgetApprovalDateInput.setAttribute('max', formattedDate);
+            }
+            if (supplierApprovalDateInput) {
+                supplierApprovalDateInput.value = formattedDate;
+                supplierApprovalDateInput.setAttribute('min', formattedDate);
+                supplierApprovalDateInput.setAttribute('max', formattedDate);
+            }
         }
         
         function generateVoucherNumber() {
