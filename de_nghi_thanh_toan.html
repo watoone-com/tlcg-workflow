@@ -428,6 +428,11 @@
             min-height: 100px;
         }
         
+        label .required {
+            color: red;
+            margin-left: 2px;
+        }
+        
         .button-row {
             display: flex;
             gap: 0.5rem;
@@ -1281,7 +1286,7 @@
         <div class="form-header">
             <div class="company-info">
                 <div class="form-group">
-                    <label for="company">Công ty:</label>
+                    <label for="company">Công ty: <span class="required">*</span></label>
                     <select id="company" name="company" required onchange="updateCompanyDetails(); generatePrRequestNo(); updateCompanyApprovers();">
                         <option value="">-- Chọn công ty --</option>
                     </select>
@@ -1292,11 +1297,11 @@
             </div>
             <div class="general-voucher-info">
                 <div class="form-group">
-                    <label for="voucher-number">Số đề nghị:</label>
+                    <label for="voucher-number">Số đề nghị: <span class="required">*</span></label>
                     <input type="text" id="voucher-number" name="voucher-number" value="" required readonly>
                 </div>
                 <div class="form-group">
-                    <label for="voucher-date">Ngày lập đề nghị:</label>
+                    <label for="voucher-date">Ngày lập đề nghị: <span class="required">*</span></label>
                     <input type="date" id="voucher-date" name="voucher-date" required readonly>
                 </div>
             </div>
@@ -1304,7 +1309,7 @@
         
         <div class="form-row">
             <div class="form-group">
-                <label for="employee">Người đề nghị:</label>
+                <label for="employee">Người đề nghị: <span class="required">*</span></label>
                 <select id="employee" name="employee" required onchange="updateEmployeeDepartment()">
                     <option value="">-- Chọn nhân viên --</option>
                 </select>
@@ -1325,7 +1330,7 @@
         <div class="form-step" id="step-2">
         <div class="form-row">
             <div class="form-group">
-                <label for="purchase-voucher-type">Loại đề nghị mua hàng:</label>
+                <label for="purchase-voucher-type">Loại đề nghị mua hàng: <span class="required">*</span></label>
                 <select id="purchase-voucher-type" name="purchase-voucher-type" required>
                     <option value="">-- Chọn loại đề nghị mua hàng --</option>
                 </select>
@@ -1337,11 +1342,11 @@
         </div>
         <div class="form-row">
             <div class="form-group">
-                <label for="purchase-purpose-reason">Mục đích và lý do mua hàng:</label>
+                <label for="purchase-purpose-reason">Mục đích và lý do mua hàng: <span class="required">*</span></label>
                 <textarea id="purchase-purpose-reason" name="purchase-purpose-reason" required placeholder="Mô tả chi tiết mục đích và lý do cần mua hàng"></textarea>
             </div>
             <div class="form-group">
-                <label for="recipient-name">Người nhận hàng:</label>
+                <label for="recipient-name">Người nhận hàng: <span class="required">*</span></label>
                 <select id="recipient-name" name="recipient-name" required>
                     <option value="">-- Chọn người nhận hàng --</option>
                 </select>
@@ -1350,7 +1355,7 @@
         <div class="form-row">
             <div class="form-group supplier-dropdown-group">
                 <div>
-                    <label for="supplier-dropdown">Nhà cung cấp:</label>
+                    <label for="supplier-dropdown">Nhà cung cấp: <span class="required">*</span></label>
                     <select id="supplier-dropdown" name="supplier-dropdown" required onchange="handleSupplierChange()">
                         <option value="">-- Chọn nhà cung cấp --</option>
                     </select>
@@ -1362,11 +1367,11 @@
             </div>
             <div class="form-group" style="display: flex; gap: 1rem; align-items: flex-end;">
                 <div style="flex: 1;">
-                    <label for="implementation-time-from">Thời gian thực hiện chung - Từ:</label>
+                    <label for="implementation-time-from">Thời gian thực hiện chung - Từ: <span class="required">*</span></label>
                     <input type="date" id="implementation-time-from" name="implementation-time-from" required>
                 </div>
                 <div style="flex: 1;">
-                    <label for="implementation-time-to">Đến:</label>
+                    <label for="implementation-time-to">Đến: <span class="required">*</span></label>
                     <input type="date" id="implementation-time-to" name="implementation-time-to" required>
                 </div>
             </div>
@@ -1445,7 +1450,7 @@
         <h2>PHÊ DUYỆT NGÂN SÁCH</h2>
         <div class="form-row">
             <div class="form-group">
-                <label for="budget-approver">Người phê duyệt ngân sách:</label>
+                <label for="budget-approver">Người phê duyệt ngân sách: <span class="required">*</span></label>
                 <select id="budget-approver" name="budget-approver" required>
                     <option value="">-- Chọn người phê duyệt --</option>
                 </select>
@@ -1459,7 +1464,7 @@
         </div>
         <div class="form-row">
             <div class="form-group">
-                <label for="budget-approval-date">Ngày phê duyệt: <span style="color: red;">*</span></label>
+                <label for="budget-approval-date">Ngày phê duyệt: <span class="required">*</span></label>
                 <input type="date" id="budget-approval-date" name="budget-approval-date" required>
             </div>
             <div class="form-group">
@@ -1475,7 +1480,7 @@
         <h2>PHÊ DUYỆT NHÀ CUNG CẤP</h2>
         <div class="form-row">
             <div class="form-group">
-                <label for="supplier-approver">Người phê duyệt nhà cung cấp:</label>
+                <label for="supplier-approver">Người phê duyệt nhà cung cấp: <span class="required">*</span></label>
                 <select id="supplier-approver" name="supplier-approver" required>
                     <option value="">-- Chọn người phê duyệt --</option>
                 </select>
@@ -1489,7 +1494,7 @@
         </div>
         <div class="form-row">
             <div class="form-group">
-                <label for="supplier-approval-date">Ngày phê duyệt: <span style="color: red;">*</span></label>
+                <label for="supplier-approval-date">Ngày phê duyệt: <span class="required">*</span></label>
                 <input type="date" id="supplier-approval-date" name="supplier-approval-date" required>
             </div>
             <div class="form-group">
@@ -1510,13 +1515,13 @@
                 </div>
             </div>
             <div class="form-group">
-                <label for="legal-approver-select">Người phê duyệt pháp chế:</label>
+                <label for="legal-approver-select">Người phê duyệt pháp chế: <span class="required">*</span></label>
                 <select id="legal-approver-select" name="legal-approver-select" required>
                     <option value="">-- Chọn người phê duyệt pháp chế --</option>
                 </select>
             </div>
             <div class="form-group">
-                <label for="legal-comment">Ý kiến bộ phận pháp chế:</label>
+                <label for="legal-comment">Ý kiến bộ phận pháp chế: <span class="required">*</span></label>
                 <textarea id="legal-comment" name="legal-comment" required placeholder="Nhập ý kiến của bộ phận pháp chế"></textarea>
             </div>
             <div class="form-group">
@@ -1529,7 +1534,7 @@
                 <input type="text" id="accounting-approver-signature" name="accounting-approver-signature" placeholder="Tên người phê duyệt kế toán" readonly>
             </div>
             <div class="form-group">
-                <label for="accounting-comment">Ý kiến bộ phận kế toán:</label>
+                <label for="accounting-comment">Ý kiến bộ phận kế toán: <span class="required">*</span></label>
                 <textarea id="accounting-comment" name="accounting-comment" required placeholder="Nhập ý kiến của bộ phận kế toán"></textarea>
             </div>
             <div class="form-group">
@@ -1542,7 +1547,7 @@
                 <input type="text" id="director-approver-signature" name="director-approver-signature" placeholder="Tên giám đốc" readonly>
             </div>
             <div class="form-group">
-                <label for="director-comment">Ý kiến giám đốc:</label>
+                <label for="director-comment">Ý kiến giám đốc: <span class="required">*</span></label>
                 <textarea id="director-comment" name="director-comment" required placeholder="Nhập ý kiến của giám đốc"></textarea>
             </div>
             <div class="form-group">
@@ -1564,13 +1569,13 @@
         <h2>PHẦN 2: ĐỀ NGHỊ THANH TOÁN</h2>
         <div class="form-row">
             <div class="form-group">
-                <label for="payment-voucher-type">Loại đề nghị thanh toán:</label>
+                <label for="payment-voucher-type">Loại đề nghị thanh toán: <span class="required">*</span></label>
                 <select id="payment-voucher-type" name="payment-voucher-type" required>
                     <option value="">-- Chọn loại đề nghị thanh toán --</option>
                 </select>
             </div>
             <div class="form-group">
-                <label for="payment-type">Loại thanh toán:</label>
+                <label for="payment-type">Loại thanh toán: <span class="required">*</span></label>
                 <select id="payment-type" name="payment-type" required>
                     <option value="">-- Chọn loại thanh toán --</option>
                     <option value="Chuyển khoản">Chuyển khoản</option>
@@ -1581,23 +1586,23 @@
         </div>
         <div class="form-row">
             <div class="form-group">
-                <label for="po-request-no">Số đơn hàng (PO Request No):</label>
+                <label for="po-request-no">Số đơn hàng (PO Request No): <span class="required">*</span></label>
                 <input type="text" id="po-request-no" name="po-request-no" required placeholder="Nếu có">
             </div>
             <div class="form-group">
-                <label for="due-date">Ngày đáo hạn:</label>
+                <label for="due-date">Ngày đáo hạn: <span class="required">*</span></label>
                 <input type="date" id="due-date" name="due-date" required>
             </div>
         </div>
         <div class="form-row">
             <div class="form-group">
-                <label for="currency">Loại tiền:</label>
+                <label for="currency">Loại tiền: <span class="required">*</span></label>
                 <select id="currency" name="currency" required>
                         <option value="">-- Chọn loại tiền --</option>
                 </select>
             </div>
             <div class="form-group">
-                <label for="payment-info">Thông tin thanh toán:</label>
+                <label for="payment-info">Thông tin thanh toán: <span class="required">*</span></label>
                 <textarea id="payment-info" name="payment-info" required placeholder="Số tài khoản, tên ngân hàng, chi nhánh, v.v."></textarea>
             </div>
         </div>
@@ -1645,7 +1650,7 @@
         <div class="approval-section">
             <div class="form-row">
                 <div class="form-group">
-                    <label for="final-approver">Người phê duyệt cuối cùng:</label>
+                    <label for="final-approver">Người phê duyệt cuối cùng: <span class="required">*</span></label>
                     <select id="final-approver" name="final-approver" required>
                         <option value="">-- Chọn người phê duyệt --</option>
                     </select>
