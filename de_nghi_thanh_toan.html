@@ -2647,7 +2647,8 @@
         });
         
         function initializeForm() {
-            document.getElementById('form-title').textContent = data.form_title;
+            // Title is already set correctly in HTML: "ĐỀ NGHỊ THANH TOÁN"
+            // Don't overwrite it with data.form_title (which contains voucher workflow title)
             
             const companySelect = document.getElementById('company');
             data.company_names.forEach(company => {
