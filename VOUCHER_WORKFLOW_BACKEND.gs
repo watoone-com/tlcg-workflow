@@ -9,7 +9,7 @@ const VOUCHER_HISTORY_SHEET_ID = TLCG_MASTER_DATA_SHEET_ID; // Same spreadsheet
 const VH_SHEET_NAME = 'Voucher_History';
 const EMPLOYEES_SHEET_NAME = 'Nhân viên';
 const COMPANY_SHEET_NAME = 'Công ty';
-
+ 
 function doGet(e) {
   try {
     Logger.log('=== doGet called ===');
@@ -30,6 +30,9 @@ function doGet(e) {
       const companyName = e.parameter ? (e.parameter.companyName || e.parameter.company) : null;
       Logger.log('Extracted companyName from e.parameter:', companyName);
       return handleGetCompanyApprovers(e.parameter, companyName);
+    } else if (action === 'getApprovalStatus') {
+      Logger.log('doGet: getApprovalStatus called');
+      return handleGetApprovalStatus(e.parameter);
     } else if (action === 'approveVoucher') {
       // Handle approve via GET (fallback, but POST is preferred for signature)
       Logger.log('⚠️ Handling approveVoucher via GET (signature may be missing)');
@@ -214,9 +217,12 @@ function doPost(e) {
         
         // Pass both requestBody and extracted companyName
         return handleGetCompanyApprovers(requestBody, companyNameParam);
+      case 'getApprovalStatus': 
+        Logger.log('✅ Matched getApprovalStatus case');
+        return handleGetApprovalStatus(requestBody);
       default: 
         Logger.log('⚠️ WARNING: Unknown action: "' + normalizedAction + '" (original: "' + action + '")');
-        Logger.log('⚠️ Available actions: login, sendApprovalEmail, approveVoucher, rejectVoucher, getVoucherSummary, getVoucherHistory, getEmployees, getCompanyApprovers');
+        Logger.log('⚠️ Available actions: login, sendApprovalEmail, approveVoucher, rejectVoucher, getVoucherSummary, getVoucherHistory, getEmployees, getCompanyApprovers, getApprovalStatus');
         return createResponse(false, 'Action không hợp lệ: ' + normalizedAction);
     }
   } catch (error) {
@@ -225,6 +231,126 @@ function doPost(e) {
     // Always return JSON, never HTML
     return createResponse(false, 'Lỗi Server: ' + error.message);
   }
+}
+
+/** HELPER FUNCTIONS FOR SEQUENTIAL APPROVAL */
+
+/**
+ * Initialize approvers meta structure with sequential approval order
+ * Order: accountant (1) → legalRep (2) → treasurer (3)
+ */
+function initializeApproversMeta(companyApprovers) {
+  if (!companyApprovers) {
+    Logger.log('⚠️ No company approvers provided');
+    return null;
+  }
+  
+  return {
+    approvers: {
+      accountant: {
+        email: companyApprovers.accountant ? companyApprovers.accountant.email : '',
+        name: companyApprovers.accountant ? companyApprovers.accountant.name : '',
+        status: 'pending',
+        signature: '',
+        approvedAt: null,
+        rejectedAt: null,
+        rejectReason: '',
+        order: 1  // First approver
+      },
+      legalRep: {
+        email: companyApprovers.legalRep ? companyApprovers.legalRep.email : '',
+        name: companyApprovers.legalRep ? companyApprovers.legalRep.name : '',
+        status: 'pending',
+        signature: '',
+        approvedAt: null,
+        rejectedAt: null,
+        rejectReason: '',
+        order: 2  // Second approver (after accountant)
+      },
+      treasurer: {
+        email: companyApprovers.treasurer ? companyApprovers.treasurer.email : '',
+        name: companyApprovers.treasurer ? companyApprovers.treasurer.name : '',
+        status: 'pending',
+        signature: '',
+        approvedAt: null,
+        rejectedAt: null,
+        rejectReason: '',
+        order: 3  // Third approver (after legalRep) - Final
+      }
+    },
+    overallStatus: 'Pending Approval',
+    approvalProgress: '0/3',
+    currentApprover: 'accountant',  // Who should approve next
+    approvalSequence: ['accountant', 'legalRep', 'treasurer'],  // Order of approval
+    displayStatus: 'Chờ duyệt',
+    fullyApprovedAt: null,
+    rejectedAt: null,
+    rejectedBy: null
+  };
+}
+
+/**
+ * Get latest voucher entry from history
+ */
+function getVoucherFromHistory(voucherNumber) {
+  try {
+    const sheet = SpreadsheetApp.openById(VOUCHER_HISTORY_SHEET_ID).getSheetByName(VH_SHEET_NAME);
+    if (!sheet) return null;
+    
+    const data = sheet.getDataRange().getValues();
+    
+    // Find latest entry for this voucher (search from bottom up)
+    for (let i = data.length - 1; i >= 1; i--) {
+      if (data[i][0] === voucherNumber) {
+        const note = data[i][7] || ''; // Column H = Note
+        const metaMatch = note.match(/Meta: (.+)/);
+        
+        return {
+          row: i + 1,
+          voucherNumber: data[i][0],
+          voucherType: data[i][1],
+          company: data[i][2],
+          employee: data[i][3],
+          amount: data[i][4],
+          status: data[i][5],
+          action: data[i][6],
+          note: note,
+          timestamp: data[i][8],
+          requestorEmail: data[i][9],
+          approverEmail: data[i][10],
+          meta: metaMatch ? metaMatch[1] : null
+        };
+      }
+    }
+    return null;
+  } catch (error) {
+    Logger.log('Error in getVoucherFromHistory: ' + error.toString());
+    return null;
+  }
+}
+
+/**
+ * Count how many approvers have approved
+ */
+function countApprovals(approvers) {
+  if (!approvers) return 0;
+  let count = 0;
+  if (approvers.accountant && approvers.accountant.status === 'approved') count++;
+  if (approvers.legalRep && approvers.legalRep.status === 'approved') count++;
+  if (approvers.treasurer && approvers.treasurer.status === 'approved') count++;
+  return count;
+}
+
+/**
+ * Get Vietnamese role name for approver
+ */
+function getApproverRoleName(role) {
+  const roleMap = {
+    'accountant': 'Kế toán trưởng',
+    'legalRep': 'Đại diện pháp luật',
+    'treasurer': 'Thủ quỹ'
+  };
+  return roleMap[role] || role;
 }
 
 /** 1. XỬ LÝ GỬI EMAIL & SUBMIT */
@@ -319,6 +445,43 @@ function handleSendEmail(requestBody) {
       }
     }
 
+    // ✅ SEQUENTIAL APPROVAL: Initialize approvers meta if companyApprovers provided
+    let approversMeta = null;
+    if (voucher.companyApprovers) {
+      approversMeta = initializeApproversMeta(voucher.companyApprovers);
+      Logger.log('✅ Initialized approvers meta: ' + JSON.stringify({
+        currentApprover: approversMeta.currentApprover,
+        sequence: approversMeta.approvalSequence
+      }));
+      
+      // ✅ SEQUENTIAL APPROVAL: Send email ONLY to first approver (Chief Accountant)
+      if (approversMeta && approversMeta.approvers.accountant && approversMeta.approvers.accountant.email) {
+        const firstApprover = approversMeta.approvers.accountant;
+        Logger.log('📧 Sending email to first approver (Chief Accountant): ' + firstApprover.email);
+        
+        // Update emailData.to to send only to first approver
+        emailData.to = firstApprover.email;
+        
+        // Update requester notification to mention sequential approval
+        if (requesterEmailData && requesterEmailData.body) {
+          requesterEmailData.body = requesterEmailData.body.replace(
+            /đã được gửi phê duyệt/g,
+            'đã được gửi phê duyệt. Đã gửi email đến Kế toán trưởng để bắt đầu phê duyệt.'
+          );
+          
+          // Add status review link
+          const statusLink = 'https://workflow.egg-ventures.com/phieu_thu_chi.html?viewStatus=' + voucherNo;
+          requesterEmailData.body += `
+            <p style="margin-top: 15px;">
+              <a href="${statusLink}" style="background: #4285f4; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
+                🔍 Xem trạng thái phê duyệt
+              </a>
+            </p>
+          `;
+        }
+      }
+    }
+
     // Gửi email bằng GmailApp - to approvers
     try {
       let options = { htmlBody: emailData.body };
@@ -366,6 +529,11 @@ function handleSendEmail(requestBody) {
       submittedAt: new Date().toISOString()
     };
     
+    // Include approvers meta in submit meta (for sequential approval)
+    if (approversMeta) {
+      submitMetaData.companyApprovers = approversMeta;
+    }
+    
     appendHistory_({
       voucherNumber: voucherNo,
       voucherType: voucher.voucherType || '',
@@ -375,7 +543,7 @@ function handleSendEmail(requestBody) {
       status: 'Pending',
       action: 'Submit',
       by: voucher.employee || 'User',
-      note: 'Gửi phê duyệt\nMeta: ' + JSON.stringify(submitMetaData), // Store all metadata including signature
+      note: 'Gửi phê duyệt\nMeta: ' + JSON.stringify(submitMetaData), // Store all metadata including signature and approvers meta
       requestorEmail: voucher.requestorEmail || '',
       approverEmail: emailData.to,
       attachments: fileLinks
@@ -387,124 +555,690 @@ function handleSendEmail(requestBody) {
   }
 }
 
-/** 2. PHÊ DUYỆT / TỪ CHỐI */
+/** 2. PHÊ DUYỆT / TỪ CHỐI - SEQUENTIAL APPROVAL */
+
+/**
+ * Handle voucher approval with sequential workflow
+ * Order: accountant → legalRep → treasurer
+ */
 function handleApproveVoucher(requestBody) {
   try {
     const v = requestBody.voucher || {};
     const voucherNumber = v.voucherNumber || '';
+    const approverEmail = v.approverEmail || '';
     
     if (!voucherNumber) {
       return createResponse(false, 'Thiếu số phiếu');
     }
     
-    // Check if voucher was already processed (prevent duplicate approval/rejection)
-    const sheet = SpreadsheetApp.openById(VOUCHER_HISTORY_SHEET_ID).getSheetByName(VH_SHEET_NAME);
-    const data = sheet.getDataRange().getValues();
-    const rows = data.slice(1); // Skip header
+    // Get existing voucher data from history
+    const existingVoucher = getVoucherFromHistory(voucherNumber);
+    if (!existingVoucher) {
+      return createResponse(false, 'Không tìm thấy phiếu: ' + voucherNumber);
+    }
     
-    // Find latest status for this voucher
-    let latestStatus = null;
-    let latestAction = null;
-    for (let i = rows.length - 1; i >= 0; i--) {
-      if (rows[i][0] === voucherNumber) {
-        latestStatus = rows[i][5] || ''; // Column F = Status
-        latestAction = rows[i][6] || ''; // Column G = Action
-        break;
+    // Parse meta from note field
+    let meta = {};
+    if (existingVoucher.meta) {
+      try {
+        meta = JSON.parse(existingVoucher.meta);
+      } catch (e) {
+        Logger.log('Error parsing meta: ' + e.toString());
+        // Fallback: try to parse from full note
+        const metaMatch = existingVoucher.note.match(/Meta: (.+)/);
+        if (metaMatch) {
+          try {
+            meta = JSON.parse(metaMatch[1]);
+          } catch (e2) {
+            Logger.log('Error parsing meta from note: ' + e2.toString());
+          }
+        }
       }
     }
     
-    // Check if already approved or rejected
-    if (latestStatus === 'Approved' || latestAction === 'Approved') {
-      Logger.log('⚠️ Voucher already approved: ' + voucherNumber);
-      return createResponse(false, 'Phiếu này đã được duyệt trước đó. Không thể duyệt lại.');
+    // Check if using sequential approval (has companyApprovers in meta)
+    const companyApprovers = meta.companyApprovers;
+    if (!companyApprovers || !companyApprovers.approvers) {
+      // Fallback to old single-approval workflow
+      Logger.log('⚠️ No companyApprovers found, using legacy single-approval workflow');
+      return handleApproveVoucherLegacy(requestBody, existingVoucher);
     }
     
-    if (latestStatus === 'Rejected' || latestAction === 'Rejected') {
-      Logger.log('⚠️ Voucher already rejected: ' + voucherNumber);
-      return createResponse(false, 'Phiếu này đã được từ chối trước đó. Không thể duyệt.');
+    // ✅ SEQUENTIAL APPROVAL WORKFLOW
+    
+    // 1. Identify which approver is approving
+    let approverRole = null;
+    if (companyApprovers.approvers.accountant && companyApprovers.approvers.accountant.email === approverEmail) {
+      approverRole = 'accountant';
+    } else if (companyApprovers.approvers.legalRep && companyApprovers.approvers.legalRep.email === approverEmail) {
+      approverRole = 'legalRep';
+    } else if (companyApprovers.approvers.treasurer && companyApprovers.approvers.treasurer.email === approverEmail) {
+      approverRole = 'treasurer';
     }
     
-    // Check if signature is provided
+    if (!approverRole) {
+      return createResponse(false, 'Không tìm thấy thông tin người phê duyệt.');
+    }
+    
+    // 2. Check if this approver already approved
+    if (companyApprovers.approvers[approverRole].status === 'approved') {
+      return createResponse(false, 'Bạn đã phê duyệt phiếu này rồi.');
+    }
+    
+    // 3. Check if voucher was already rejected
+    if (companyApprovers.overallStatus === 'Rejected') {
+      return createResponse(false, 'Phiếu này đã bị từ chối. Không thể phê duyệt.');
+    }
+    
+    // 4. ✅ VALIDATE APPROVAL ORDER - Check if this is the current approver
+    const currentApprover = companyApprovers.currentApprover || 'accountant';
+    if (approverRole !== currentApprover) {
+      const currentApproverName = companyApprovers.approvers[currentApprover] 
+        ? companyApprovers.approvers[currentApprover].name 
+        : getApproverRoleName(currentApprover);
+      return createResponse(false, 
+        `Vui lòng đợi ${currentApproverName} phê duyệt trước. ` +
+        `Thứ tự phê duyệt: Kế toán trưởng → Đại diện pháp luật → Thủ quỹ.`
+      );
+    }
+    
+    // 5. Check if signature provided
     if (!v.approverSignature || v.approverSignature.trim() === '') {
       return createResponse(false, 'Vui lòng tải lên chữ ký trước khi phê duyệt');
     }
     
-    // Store approver signature in meta field (JSON format)
-    const metaData = {
-      approverSignature: v.approverSignature || '',
-      approvedAt: new Date().toISOString(),
-      approvedBy: v.approvedBy || v.approverEmail || ''
-    };
+    // 6. Update this approver's status
+    companyApprovers.approvers[approverRole].status = 'approved';
+    companyApprovers.approvers[approverRole].signature = v.approverSignature;
+    companyApprovers.approvers[approverRole].approvedAt = new Date().toISOString();
     
-    // Append history entry
-    appendHistory_({ 
-      voucherNumber: voucherNumber,
-      voucherType: v.voucherType || '',
-      company: v.company || '',
-      employee: v.employee || '',
-      amount: v.amount || 0,
-      status: 'Approved', 
-      action: 'Approved', 
-      by: v.approvedBy || v.approverEmail || '', 
-      note: 'Duyệt qua Email\nMeta: ' + JSON.stringify(metaData), // Store signature in note field as JSON
-      requestorEmail: v.requestorEmail || '',
-      approverEmail: v.approverEmail || '',
-      attachments: "" 
-    });
+    // 7. Count approvals
+    const approvalCount = countApprovals(companyApprovers.approvers);
+    companyApprovers.approvalProgress = `${approvalCount}/3`;
     
-    // Send notification email to requester
-    if (v.requestorEmail) {
-      try {
-        const emailSubject = "[ĐÃ DUYỆT] " + (voucherNumber || '');
-        const emailBody = `
-          <p>Phiếu <strong>${voucherNumber}</strong> của bạn đã được duyệt.</p>
-          <p>Được duyệt bởi: ${v.approvedBy || v.approverEmail || 'Người phê duyệt'}</p>
-          <p>Thời gian: ${new Date().toLocaleString('vi-VN')}</p>
-        `;
-        GmailApp.sendEmail(v.requestorEmail, emailSubject, '', { htmlBody: emailBody });
-      } catch (emailError) {
-        Logger.log('Warning: Failed to send approval email: ' + emailError.toString());
-        // Don't fail the approval if email fails
-      }
+    // 8. Update display status (user-friendly Vietnamese)
+    if (approvalCount === 0) {
+      companyApprovers.displayStatus = 'Chờ duyệt';
+    } else if (approvalCount === 1) {
+      companyApprovers.displayStatus = 'Đang duyệt (1/3)';
+    } else if (approvalCount === 2) {
+      companyApprovers.displayStatus = 'Đang duyệt (2/3)';
+    } else if (approvalCount === 3) {
+      companyApprovers.displayStatus = 'Đã duyệt';
     }
     
-    Logger.log('✅ Voucher approved successfully: ' + voucherNumber);
-    return createResponse(true, 'Đã duyệt thành công');
+    // 9. Determine next approver in sequence
+    const sequence = companyApprovers.approvalSequence || ['accountant', 'legalRep', 'treasurer'];
+    const currentIndex = sequence.indexOf(approverRole);
+    const nextIndex = currentIndex + 1;
+    
+    // 10. Check if this is the final approver (Treasurer)
+    if (approverRole === 'treasurer' || approvalCount === 3) {
+      // Final approval - All 3 have approved
+      companyApprovers.overallStatus = 'Approved';
+      companyApprovers.displayStatus = 'Đã duyệt';
+      companyApprovers.currentApprover = null;
+      companyApprovers.fullyApprovedAt = new Date().toISOString();
+      
+      // Update meta
+      meta.companyApprovers = companyApprovers;
+      
+      // Append final approval entry
+      appendHistory_({
+        voucherNumber: voucherNumber,
+        voucherType: v.voucherType || existingVoucher.voucherType || '',
+        company: v.company || existingVoucher.company || '',
+        employee: v.employee || existingVoucher.employee || '',
+        amount: v.amount || existingVoucher.amount || 0,
+        status: 'Approved',
+        action: 'Fully Approved',
+        by: companyApprovers.approvers[approverRole].name,
+        note: 'Tất cả 3 người phê duyệt đã duyệt\nMeta: ' + JSON.stringify(meta),
+        requestorEmail: v.requestorEmail || existingVoucher.requestorEmail || '',
+        approverEmail: approverEmail,
+        attachments: ""
+      });
+      
+      // Send final approval email to requester
+      sendFinalApprovalEmail(v, companyApprovers, voucherNumber);
+      
+      Logger.log('✅ Voucher fully approved: ' + voucherNumber);
+      return createResponse(true, 'Đã phê duyệt thành công. Phiếu đã được duyệt hoàn toàn.');
+      
+    } else {
+      // Not final - Update current approver and send email to next
+      const nextApproverRole = sequence[nextIndex];
+      companyApprovers.currentApprover = nextApproverRole;
+      companyApprovers.overallStatus = 'Partially Approved';
+      
+      // Update meta
+      meta.companyApprovers = companyApprovers;
+      
+      // Append partial approval entry
+      appendHistory_({
+        voucherNumber: voucherNumber,
+        voucherType: v.voucherType || existingVoucher.voucherType || '',
+        company: v.company || existingVoucher.company || '',
+        employee: v.employee || existingVoucher.employee || '',
+        amount: v.amount || existingVoucher.amount || 0,
+        status: companyApprovers.displayStatus,
+        action: 'Approved by ' + companyApprovers.approvers[approverRole].name,
+        by: companyApprovers.approvers[approverRole].name,
+        note: `Đã duyệt bởi ${getApproverRoleName(approverRole)} (${approvalCount}/3)\nMeta: ` + JSON.stringify(meta),
+        requestorEmail: v.requestorEmail || existingVoucher.requestorEmail || '',
+        approverEmail: approverEmail,
+        attachments: ""
+      });
+      
+      // Send email to next approver in sequence
+      const nextApprover = companyApprovers.approvers[nextApproverRole];
+      sendApprovalEmailToNextApprover(v, nextApprover, nextApproverRole, companyApprovers, voucherNumber, existingVoucher);
+      
+      // Send progress email to requester
+      sendProgressEmail(v, approvalCount, companyApprovers, voucherNumber, existingVoucher);
+      
+      Logger.log('✅ Partial approval: ' + voucherNumber + ' - ' + approvalCount + '/3');
+      return createResponse(true, 
+        `Đã phê duyệt thành công. Đã gửi email đến ${nextApprover.name} để tiếp tục phê duyệt.`
+      );
+    }
+    
   } catch (error) {
     Logger.log('❌ Error approving voucher: ' + error.toString());
+    Logger.log('❌ Error stack: ' + error.stack);
     return createResponse(false, 'Lỗi: ' + error.message);
+  }
+}
+
+/**
+ * Legacy single-approval workflow (backward compatibility)
+ */
+function handleApproveVoucherLegacy(requestBody, existingVoucher) {
+  const v = requestBody.voucher || {};
+  const voucherNumber = v.voucherNumber || '';
+  
+  // Check if already approved or rejected
+  const sheet = SpreadsheetApp.openById(VOUCHER_HISTORY_SHEET_ID).getSheetByName(VH_SHEET_NAME);
+  const data = sheet.getDataRange().getValues();
+  const rows = data.slice(1);
+  
+  let latestStatus = null;
+  let latestAction = null;
+  for (let i = rows.length - 1; i >= 0; i--) {
+    if (rows[i][0] === voucherNumber) {
+      latestStatus = rows[i][5] || '';
+      latestAction = rows[i][6] || '';
+      break;
+    }
+  }
+  
+  if (latestStatus === 'Approved' || latestAction === 'Approved') {
+    return createResponse(false, 'Phiếu này đã được duyệt trước đó.');
+  }
+  
+  if (latestStatus === 'Rejected' || latestAction === 'Rejected') {
+    return createResponse(false, 'Phiếu này đã được từ chối trước đó.');
+  }
+  
+  if (!v.approverSignature || v.approverSignature.trim() === '') {
+    return createResponse(false, 'Vui lòng tải lên chữ ký trước khi phê duyệt');
+  }
+  
+  const metaData = {
+    approverSignature: v.approverSignature || '',
+    approvedAt: new Date().toISOString(),
+    approvedBy: v.approvedBy || v.approverEmail || ''
+  };
+  
+  appendHistory_({ 
+    voucherNumber: voucherNumber,
+    voucherType: v.voucherType || existingVoucher.voucherType || '',
+    company: v.company || existingVoucher.company || '',
+    employee: v.employee || existingVoucher.employee || '',
+    amount: v.amount || existingVoucher.amount || 0,
+    status: 'Approved', 
+    action: 'Approved', 
+    by: v.approvedBy || v.approverEmail || '', 
+    note: 'Duyệt qua Email\nMeta: ' + JSON.stringify(metaData),
+    requestorEmail: v.requestorEmail || existingVoucher.requestorEmail || '',
+    approverEmail: v.approverEmail || '',
+    attachments: "" 
+  });
+  
+  if (v.requestorEmail) {
+    try {
+      const emailSubject = "[ĐÃ DUYỆT] " + voucherNumber;
+      const emailBody = `
+        <p>Phiếu <strong>${voucherNumber}</strong> của bạn đã được duyệt.</p>
+        <p>Được duyệt bởi: ${v.approvedBy || v.approverEmail || 'Người phê duyệt'}</p>
+        <p>Thời gian: ${new Date().toLocaleString('vi-VN')}</p>
+      `;
+      GmailApp.sendEmail(v.requestorEmail, emailSubject, '', { htmlBody: emailBody });
+    } catch (emailError) {
+      Logger.log('Warning: Failed to send approval email: ' + emailError.toString());
+    }
+  }
+  
+  return createResponse(true, 'Đã duyệt thành công');
+}
+
+/**
+ * Send approval email to next approver in sequence
+ */
+function sendApprovalEmailToNextApprover(voucher, nextApprover, approverRole, meta, voucherNumber, existingVoucher) {
+  try {
+    const baseUrl = 'https://workflow.egg-ventures.com';
+    const approveUrl = `${baseUrl}/approve_voucher.html?` +
+      `voucherNumber=${voucherNumber}&` +
+      `approverEmail=${encodeURIComponent(nextApprover.email)}&` +
+      `approverRole=${approverRole}`;
+    
+    const rejectUrl = `${baseUrl}/reject_voucher.html?` +
+      `voucherNumber=${voucherNumber}&` +
+      `approverEmail=${encodeURIComponent(nextApprover.email)}&` +
+      `approverRole=${approverRole}`;
+    
+    const statusLink = `${baseUrl}/phieu_thu_chi.html?viewStatus=${voucherNumber}`;
+    const roleName = getApproverRoleName(approverRole);
+    
+    // Get previous approver info
+    const previousApprover = approverRole === 'legalRep' 
+      ? meta.approvers.accountant 
+      : meta.approvers.legalRep;
+    const previousRoleName = approverRole === 'legalRep' 
+      ? 'Kế toán trưởng' 
+      : 'Đại diện pháp luật';
+    
+    const emailSubject = `[PHÊ DUYỆT] Phiếu ${voucherNumber} - ${roleName}`;
+    const emailBody = `
+      <p>Kính gửi ${nextApprover.name},</p>
+      <p>Phiếu <strong>${voucherNumber}</strong> đã được phê duyệt bởi ${previousRoleName} ${previousApprover.name}.</p>
+      <p>Vui lòng xem xét và phê duyệt phiếu này.</p>
+      
+      <h3>Thông tin phiếu:</h3>
+      <ul>
+        <li><strong>Số phiếu:</strong> ${voucherNumber}</li>
+        <li><strong>Loại phiếu:</strong> ${voucher.voucherType || existingVoucher.voucherType || 'N/A'}</li>
+        <li><strong>Công ty:</strong> ${voucher.company || existingVoucher.company || 'N/A'}</li>
+        <li><strong>Người đề nghị:</strong> ${voucher.employee || existingVoucher.employee || 'N/A'}</li>
+        <li><strong>Số tiền:</strong> ${typeof voucher.amount === 'number' ? voucher.amount.toLocaleString('vi-VN') + ' ₫' : voucher.amount || existingVoucher.amount || '0 ₫'}</li>
+      </ul>
+      
+      <h3>Tiến độ phê duyệt:</h3>
+      <p>${meta.displayStatus} (${meta.approvalProgress})</p>
+      
+      <p>
+        <a href="${approveUrl}" style="background: #34A853; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block; margin-right: 10px;">
+          ✅ Phê duyệt
+        </a>
+        <a href="${rejectUrl}" style="background: #EA4335; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
+          ❌ Từ chối
+        </a>
+      </p>
+      
+      <p style="margin-top: 15px;">
+        <a href="${statusLink}" style="background: #4285f4; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
+          🔍 Xem trạng thái chi tiết
+        </a>
+      </p>
+      
+      <p>Trân trọng,<br>Hệ thống Workflow TLC Group</p>
+    `;
+    
+    GmailApp.sendEmail(nextApprover.email, emailSubject, '', { htmlBody: emailBody });
+    Logger.log('✅ Sent approval email to next approver: ' + nextApprover.email);
+  } catch (error) {
+    Logger.log('❌ Error sending email to next approver: ' + error.toString());
+  }
+}
+
+/**
+ * Send progress update email to requester
+ */
+function sendProgressEmail(voucher, approvalCount, meta, voucherNumber, existingVoucher) {
+  try {
+    const requesterEmail = voucher.requestorEmail || existingVoucher.requestorEmail;
+    if (!requesterEmail) {
+      Logger.log('⚠️ No requester email, skipping progress email');
+      return;
+    }
+    
+    const statusLink = `https://workflow.egg-ventures.com/phieu_thu_chi.html?viewStatus=${voucherNumber}`;
+    const roleName = meta.currentApprover ? getApproverRoleName(meta.currentApprover) : '';
+    
+    const emailSubject = `[TIẾN ĐỘ PHÊ DUYỆT] Phiếu ${voucherNumber} - Đã có ${approvalCount}/3 người duyệt`;
+    
+    // Build approvers status list
+    let approversListHtml = '';
+    if (meta.approvers.accountant) {
+      const acc = meta.approvers.accountant;
+      const accStatus = acc.status === 'approved' ? '✅' : (meta.currentApprover === 'accountant' ? '⏳' : '⏳');
+      const accText = acc.status === 'approved' 
+        ? `Đã duyệt lúc: ${new Date(acc.approvedAt).toLocaleString('vi-VN')}`
+        : (meta.currentApprover === 'accountant' ? 'Đang chờ phê duyệt...' : 'Chưa đến lượt');
+      approversListHtml += `<li>${accStatus} <strong>Kế toán trưởng:</strong> ${acc.name}<br>${accText}</li>`;
+    }
+    
+    if (meta.approvers.legalRep) {
+      const legal = meta.approvers.legalRep;
+      const legalStatus = legal.status === 'approved' ? '✅' : (meta.currentApprover === 'legalRep' ? '⏳' : '⏳');
+      const legalText = legal.status === 'approved' 
+        ? `Đã duyệt lúc: ${new Date(legal.approvedAt).toLocaleString('vi-VN')}`
+        : (meta.currentApprover === 'legalRep' ? 'Đang chờ phê duyệt...' : 'Chưa đến lượt');
+      approversListHtml += `<li>${legalStatus} <strong>Đại diện pháp luật:</strong> ${legal.name}<br>${legalText}</li>`;
+    }
+    
+    if (meta.approvers.treasurer) {
+      const treas = meta.approvers.treasurer;
+      const treasStatus = treas.status === 'approved' ? '✅' : (meta.currentApprover === 'treasurer' ? '⏳' : '⏳');
+      const treasText = treas.status === 'approved' 
+        ? `Đã duyệt lúc: ${new Date(treas.approvedAt).toLocaleString('vi-VN')}`
+        : (meta.currentApprover === 'treasurer' ? 'Đang chờ phê duyệt...' : 'Chưa đến lượt');
+      approversListHtml += `<li>${treasStatus} <strong>Thủ quỹ:</strong> ${treas.name}<br>${treasText}</li>`;
+    }
+    
+    const emailBody = `
+      <p>Kính gửi Anh/Chị,</p>
+      <p>Phiếu <strong>${voucherNumber}</strong> của Anh/Chị đang được xử lý:</p>
+      
+      <h3>📊 Tiến độ phê duyệt: ${approvalCount}/3 người đã duyệt</h3>
+      
+      <ul>
+        ${approversListHtml}
+      </ul>
+      
+      ${meta.currentApprover ? `
+        <p>⏳ <strong>Đang chờ:</strong> ${meta.approvers[meta.currentApprover].name} (${roleName}) phê duyệt</p>
+      ` : ''}
+      
+      <p>Thứ tự phê duyệt: Kế toán trưởng → Đại diện pháp luật → Thủ quỹ</p>
+      
+      <p style="margin-top: 15px;">
+        <a href="${statusLink}" style="background: #4285f4; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
+          🔍 Xem trạng thái chi tiết
+        </a>
+      </p>
+      
+      <p>Trân trọng,<br>Hệ thống Workflow TLC Group</p>
+    `;
+    
+    GmailApp.sendEmail(requesterEmail, emailSubject, '', { htmlBody: emailBody });
+    Logger.log('✅ Sent progress email to requester: ' + requesterEmail);
+  } catch (error) {
+    Logger.log('❌ Error sending progress email: ' + error.toString());
+  }
+}
+
+/**
+ * Send final approval email to requester
+ */
+function sendFinalApprovalEmail(voucher, meta, voucherNumber) {
+  try {
+    const requesterEmail = voucher.requestorEmail;
+    if (!requesterEmail) {
+      Logger.log('⚠️ No requester email, skipping final approval email');
+      return;
+    }
+    
+    const emailSubject = `[ĐÃ DUYỆT HOÀN TOÀN] Phiếu ${voucherNumber}`;
+    
+    let approversListHtml = '';
+    if (meta.approvers.accountant && meta.approvers.accountant.status === 'approved') {
+      approversListHtml += `<li>✅ <strong>Bước 1: Kế toán trưởng</strong> - ${meta.approvers.accountant.name}<br>Đã duyệt lúc: ${new Date(meta.approvers.accountant.approvedAt).toLocaleString('vi-VN')}</li>`;
+    }
+    if (meta.approvers.legalRep && meta.approvers.legalRep.status === 'approved') {
+      approversListHtml += `<li>✅ <strong>Bước 2: Đại diện pháp luật</strong> - ${meta.approvers.legalRep.name}<br>Đã duyệt lúc: ${new Date(meta.approvers.legalRep.approvedAt).toLocaleString('vi-VN')}</li>`;
+    }
+    if (meta.approvers.treasurer && meta.approvers.treasurer.status === 'approved') {
+      approversListHtml += `<li>✅ <strong>Bước 3: Thủ quỹ</strong> - ${meta.approvers.treasurer.name}<br>Đã duyệt lúc: ${new Date(meta.approvers.treasurer.approvedAt).toLocaleString('vi-VN')} (Duyệt cuối cùng)</li>`;
+    }
+    
+    const emailBody = `
+      <p>Kính gửi Anh/Chị,</p>
+      <p>Phiếu <strong>${voucherNumber}</strong> của Anh/Chị đã được tất cả 3 người phê duyệt theo thứ tự:</p>
+      
+      <ul>
+        ${approversListHtml}
+      </ul>
+      
+      <p><strong>Phiếu đã được duyệt hoàn toàn và sẵn sàng để xử lý.</strong></p>
+      
+      <p>Trân trọng,<br>Hệ thống Workflow TLC Group</p>
+    `;
+    
+    GmailApp.sendEmail(requesterEmail, emailSubject, '', { htmlBody: emailBody });
+    Logger.log('✅ Sent final approval email to requester: ' + requesterEmail);
+  } catch (error) {
+    Logger.log('❌ Error sending final approval email: ' + error.toString());
   }
 }
 
 function handleRejectVoucher(requestBody) {
   try {
     const v = requestBody.voucher || {};
-    appendHistory_({ 
-      voucherNumber: v.voucherNumber || '',
-      voucherType: v.voucherType || '',
-      company: v.company || '',
-      employee: v.employee || '',
-      amount: v.amount || 0,
-      status: 'Rejected', 
-      action: 'Rejected', 
-      by: v.rejectedBy || v.approverEmail || '', 
-      note: v.rejectReason || 'Từ chối', 
-      requestorEmail: v.requestorEmail || '',
-      approverEmail: v.approverEmail || '',
-      attachments: "" 
-    });
+    const voucherNumber = v.voucherNumber || '';
+    const approverEmail = v.approverEmail || '';
     
-    if (v.requestorEmail) {
-      GmailApp.sendEmail(v.requestorEmail, "[TỪ CHỐI] " + (v.voucherNumber || ''), "Lý do: " + (v.rejectReason || ''));
+    if (!voucherNumber) {
+      return createResponse(false, 'Thiếu số phiếu');
     }
     
-    return createResponse(true, 'Đã từ chối phiếu');
+    // Validate reject reason
+    const rejectReason = v.rejectReason || '';
+    if (!rejectReason || rejectReason.trim() === '') {
+      return createResponse(false, 'Vui lòng nhập lý do từ chối');
+    }
+    
+    // Get existing voucher data
+    const existingVoucher = getVoucherFromHistory(voucherNumber);
+    if (!existingVoucher) {
+      return createResponse(false, 'Không tìm thấy phiếu: ' + voucherNumber);
+    }
+    
+    // Parse meta
+    let meta = {};
+    if (existingVoucher.meta) {
+      try {
+        meta = JSON.parse(existingVoucher.meta);
+      } catch (e) {
+        const metaMatch = existingVoucher.note.match(/Meta: (.+)/);
+        if (metaMatch) {
+          try {
+            meta = JSON.parse(metaMatch[1]);
+          } catch (e2) {
+            Logger.log('Error parsing meta: ' + e2.toString());
+          }
+        }
+      }
+    }
+    
+    // Check if using sequential approval
+    const companyApprovers = meta.companyApprovers;
+    if (companyApprovers && companyApprovers.approvers) {
+      // ✅ SEQUENTIAL APPROVAL REJECTION
+      
+      // Identify which approver is rejecting
+      let approverRole = null;
+      if (companyApprovers.approvers.accountant && companyApprovers.approvers.accountant.email === approverEmail) {
+        approverRole = 'accountant';
+      } else if (companyApprovers.approvers.legalRep && companyApprovers.approvers.legalRep.email === approverEmail) {
+        approverRole = 'legalRep';
+      } else if (companyApprovers.approvers.treasurer && companyApprovers.approvers.treasurer.email === approverEmail) {
+        approverRole = 'treasurer';
+      }
+      
+      if (!approverRole) {
+        return createResponse(false, 'Không tìm thấy thông tin người từ chối.');
+      }
+      
+      // Check if already rejected
+      if (companyApprovers.overallStatus === 'Rejected') {
+        return createResponse(false, 'Phiếu này đã được từ chối trước đó.');
+      }
+      
+      // Update approver status to rejected
+      companyApprovers.approvers[approverRole].status = 'rejected';
+      companyApprovers.approvers[approverRole].rejectedAt = new Date().toISOString();
+      companyApprovers.approvers[approverRole].rejectReason = rejectReason;
+      
+      // Set overall status to Rejected (stops workflow)
+      companyApprovers.overallStatus = 'Rejected';
+      companyApprovers.displayStatus = 'Đã từ chối';
+      companyApprovers.rejectedAt = new Date().toISOString();
+      companyApprovers.rejectedBy = approverEmail;
+      companyApprovers.currentApprover = null; // Stop workflow
+      
+      // Update meta
+      meta.companyApprovers = companyApprovers;
+      
+      // Append rejection entry
+      appendHistory_({
+        voucherNumber: voucherNumber,
+        voucherType: v.voucherType || existingVoucher.voucherType || '',
+        company: v.company || existingVoucher.company || '',
+        employee: v.employee || existingVoucher.employee || '',
+        amount: v.amount || existingVoucher.amount || 0,
+        status: 'Rejected',
+        action: 'Rejected by ' + companyApprovers.approvers[approverRole].name,
+        by: companyApprovers.approvers[approverRole].name,
+        note: `Từ chối bởi ${getApproverRoleName(approverRole)}\nLý do: ${rejectReason}\nMeta: ` + JSON.stringify(meta),
+        requestorEmail: v.requestorEmail || existingVoucher.requestorEmail || '',
+        approverEmail: approverEmail,
+        attachments: ""
+      });
+      
+      // Send rejection email to requester
+      const requesterEmail = v.requestorEmail || existingVoucher.requestorEmail;
+      if (requesterEmail) {
+        try {
+          const statusLink = `https://workflow.egg-ventures.com/phieu_thu_chi.html?viewStatus=${voucherNumber}`;
+          const emailSubject = "[TỪ CHỐI] Phiếu " + voucherNumber;
+          const emailBody = `
+            <p>Kính gửi Anh/Chị,</p>
+            <p>Phiếu <strong>${voucherNumber}</strong> đã bị từ chối.</p>
+            <p><strong>Người từ chối:</strong> ${companyApprovers.approvers[approverRole].name} (${getApproverRoleName(approverRole)})</p>
+            <p><strong>Lý do:</strong> ${rejectReason}</p>
+            <p><strong>Thời gian:</strong> ${new Date().toLocaleString('vi-VN')}</p>
+            <p style="margin-top: 15px;">
+              <a href="${statusLink}" style="background: #4285f4; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
+                🔍 Xem trạng thái chi tiết
+              </a>
+            </p>
+            <p>Trân trọng,<br>Hệ thống Workflow TLC Group</p>
+          `;
+          GmailApp.sendEmail(requesterEmail, emailSubject, '', { htmlBody: emailBody });
+        } catch (emailError) {
+          Logger.log('Warning: Failed to send rejection email: ' + emailError.toString());
+        }
+      }
+      
+      Logger.log('✅ Voucher rejected successfully: ' + voucherNumber);
+      return createResponse(true, 'Đã từ chối phiếu');
+    } else {
+      // Legacy single-approval rejection
+      const sheet = SpreadsheetApp.openById(VOUCHER_HISTORY_SHEET_ID).getSheetByName(VH_SHEET_NAME);
+      const data = sheet.getDataRange().getValues();
+      const rows = data.slice(1);
+      
+      let latestStatus = null;
+      let latestAction = null;
+      for (let i = rows.length - 1; i >= 0; i--) {
+        if (rows[i][0] === voucherNumber) {
+          latestStatus = rows[i][5] || '';
+          latestAction = rows[i][6] || '';
+          break;
+        }
+      }
+      
+      if (latestStatus === 'Approved' || latestAction === 'Approved') {
+        return createResponse(false, 'Phiếu này đã được duyệt. Không thể từ chối.');
+      }
+      
+      if (latestStatus === 'Rejected' || latestAction === 'Rejected') {
+        return createResponse(false, 'Phiếu này đã được từ chối trước đó.');
+      }
+      
+      appendHistory_({ 
+        voucherNumber: v.voucherNumber || '',
+        voucherType: v.voucherType || '',
+        company: v.company || '',
+        employee: v.employee || '',
+        amount: v.amount || 0,
+        status: 'Rejected', 
+        action: 'Rejected', 
+        by: v.rejectedBy || v.approverEmail || '', 
+        note: v.rejectReason || 'Từ chối', 
+        requestorEmail: v.requestorEmail || '',
+        approverEmail: v.approverEmail || '',
+        attachments: "" 
+      });
+      
+      if (v.requestorEmail) {
+        GmailApp.sendEmail(v.requestorEmail, "[TỪ CHỐI] " + (v.voucherNumber || ''), "Lý do: " + (v.rejectReason || ''));
+      }
+      
+      return createResponse(true, 'Đã từ chối phiếu');
+    }
   } catch (error) {
+    Logger.log('❌ Error rejecting voucher: ' + error.toString());
     return createResponse(false, 'Lỗi: ' + error.message);
   }
 }
 
-/** 3. LOGIN & THỐNG KÊ */
+/** 3. STATUS REVIEW */
+function handleGetApprovalStatus(requestBody) {
+  try {
+    const voucherNumber = requestBody.voucherNumber || '';
+    
+    if (!voucherNumber) {
+      return createResponse(false, 'Thiếu số phiếu');
+    }
+    
+    // Get latest voucher entry from history
+    const existingVoucher = getVoucherFromHistory(voucherNumber);
+    if (!existingVoucher) {
+      return createResponse(false, 'Không tìm thấy phiếu: ' + voucherNumber);
+    }
+    
+    // Parse meta from note field
+    let meta = {};
+    if (existingVoucher.meta) {
+      try {
+        meta = JSON.parse(existingVoucher.meta);
+      } catch (e) {
+        Logger.log('Error parsing meta: ' + e.toString());
+      }
+    }
+    
+    // Get companyApprovers from meta
+    const companyApprovers = meta.companyApprovers || {};
+    
+    // Build status response
+    const statusData = {
+      voucherNumber: voucherNumber,
+      overallStatus: companyApprovers.overallStatus || existingVoucher.status || 'Pending Approval',
+      displayStatus: companyApprovers.displayStatus || 'Chờ duyệt',
+      approvalProgress: companyApprovers.approvalProgress || '0/3',
+      currentApprover: companyApprovers.currentApprover || null,
+      currentApproverName: companyApprovers.currentApprover && companyApprovers.approvers
+        ? (companyApprovers.approvers[companyApprovers.currentApprover] 
+          ? companyApprovers.approvers[companyApprovers.currentApprover].name 
+          : null)
+        : null,
+      approvers: companyApprovers.approvers || {},
+      requesterEmail: existingVoucher.requestorEmail || '',
+      submittedAt: existingVoucher.timestamp || '',
+      lastUpdatedAt: new Date().toISOString()
+    };
+    
+    return createResponse(true, 'Thành công', statusData);
+  } catch (error) {
+    Logger.log('❌ Error in handleGetApprovalStatus: ' + error.toString());
+    return createResponse(false, 'Lỗi: ' + error.message);
+  }
+}
+
+/** 4. LOGIN & THỐNG KÊ */
 function handleLogin_(requestBody) {
   try {
     const ss = SpreadsheetApp.openById(USERS_SHEET_ID);

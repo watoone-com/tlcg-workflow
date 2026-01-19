@@ -3111,6 +3111,15 @@
         }
 
         document.addEventListener('DOMContentLoaded', function() {
+            // ✅ PHASE 2: Check for viewStatus URL parameter (status review)
+            const urlParams = new URLSearchParams(window.location.search);
+            const viewStatusVoucher = urlParams.get('viewStatus');
+            
+            if (viewStatusVoucher) {
+                // Show status review modal
+                loadAndDisplayApprovalStatus(viewStatusVoucher);
+            }
+            
             // ==================== AUTHENTICATION CHECK ====================
             // Check if user is logged in before allowing access
             const currentUser = localStorage.getItem('tlc_current_user');
@@ -3897,7 +3906,10 @@
                             </div>
                         `;
                     } else {
-                        voucherList.innerHTML = vouchers.map(v => renderVoucherItem(v)).join('');
+                        // ✅ PHASE 2: renderVoucherItem is now async, so we need to handle promises
+                        Promise.all(vouchers.map(v => renderVoucherItem(v))).then(htmlItems => {
+                            voucherList.innerHTML = htmlItems.join('');
+                        });
                     }
                 } else {
                     console.error('❌ Backend returned unsuccessful response:', result);
@@ -3928,18 +3940,48 @@
         }
         
         // Render a single voucher item
-        function renderVoucherItem(voucher) {
+        async function renderVoucherItem(voucher) {
             const statusClass = (voucher.status || 'Pending').toLowerCase();
-            const statusText = {
+            
+            // ✅ PHASE 2: Load approval status if voucher is pending or partially approved
+            let displayStatus = '';
+            let statusBadgeHtml = '';
+            
+            if (statusClass === 'pending' || voucher.status === 'Partially Approved') {
+                // Try to load approval status
+                try {
+                    const statusResponse = await fetch('/api/voucher', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({
+                            action: 'getApprovalStatus',
+                            voucherNumber: voucher.voucherNumber
+                        })
+                    });
+                    const statusResult = await statusResponse.json();
+                    if (statusResult.success && statusResult.data) {
+                        displayStatus = statusResult.data.displayStatus || '';
+                        const progress = statusResult.data.approvalProgress || '0/3';
+                        statusBadgeHtml = `<span class="approval-progress-badge" style="font-size: 0.75rem; color: #64748b; margin-left: 0.5rem;">(${progress})</span>`;
+                    }
+                } catch (e) {
+                    // Ignore errors, use default status
+                    console.warn('Could not load approval status:', e);
+                }
+            }
+            
+            const statusText = displayStatus || {
                 'pending': 'Chờ duyệt',
                 'approved': 'Đã duyệt',
-                'rejected': 'Từ chối'
+                'rejected': 'Từ chối',
+                'partially approved': displayStatus || 'Đang duyệt'
             }[statusClass] || voucher.status;
             
             const statusIcon = {
                 'pending': '<i class="fas fa-clock"></i>',
                 'approved': '<i class="fas fa-check"></i>',
-                'rejected': '<i class="fas fa-times"></i>'
+                'rejected': '<i class="fas fa-times"></i>',
+                'partially approved': '<i class="fas fa-clock"></i>'
             }[statusClass] || '<i class="fas fa-file"></i>';
             
             const amount = typeof voucher.amount === 'number' 
@@ -3956,7 +3998,9 @@
                         <div class="voucher-meta">${voucher.employee || ''} • ${voucher.company || ''} • ${voucher.timestamp || ''}</div>
                     </div>
                     <div class="voucher-amount">${amount}</div>
-                    <span class="voucher-status ${statusClass}">${statusText}</span>
+                    <span class="voucher-status ${statusClass}">
+                        ${statusText}${statusBadgeHtml}
+                    </span>
                 </div>
             `;
         }
@@ -4161,7 +4205,50 @@
         
         // Render voucher details HTML
         // isRequester: boolean - if true, hide approver signature upload section
-        function renderVoucherDetails(voucher, historyList, isRequester = false) {
+        async function renderVoucherDetails(voucher, historyList, isRequester = false) {
+            // ✅ PHASE 2: Load approval status for sequential approval
+            let approvalStatusHtml = '';
+            try {
+                const statusResponse = await fetch('/api/voucher', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        action: 'getApprovalStatus',
+                        voucherNumber: voucher.voucherNumber
+                    })
+                });
+                const statusResult = await statusResponse.json();
+                if (statusResult.success && statusResult.data && statusResult.data.approvers) {
+                    const statusData = statusResult.data;
+                    const progress = statusData.approvalProgress || '0/3';
+                    const progressNum = parseInt(progress.split('/')[0]);
+                    
+                    approvalStatusHtml = `
+                        <div class="approval-progress-section" style="background: #f8fafc; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid #e2e8f0;">
+                            <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
+                                <h4 style="font-size: 0.9375rem; font-weight: 600; color: #0f172a; margin: 0;">📊 Tiến độ phê duyệt</h4>
+                                <button onclick="loadAndDisplayApprovalStatus('${voucher.voucherNumber}')" style="padding: 0.375rem 0.75rem; background: #6366f1; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.75rem; font-weight: 500;">
+                                    Xem chi tiết
+                                </button>
+                            </div>
+                            <div class="progress-bar-container" style="margin-bottom: 0.75rem;">
+                                <div class="progress-label" style="font-size: 0.8125rem; color: #64748b; margin-bottom: 0.5rem;">${statusData.displayStatus || 'Chờ duyệt'} (${progress})</div>
+                                <div class="progress-bar" style="background: #e2e8f0; height: 20px; border-radius: 10px; overflow: hidden; position: relative;">
+                                    <div class="progress-fill" style="background: ${progressNum === 3 ? '#10b981' : progressNum > 0 ? '#3b82f6' : '#f59e0b'}; height: 100%; width: ${(progressNum / 3) * 100}%; transition: width 0.3s ease; border-radius: 10px;"></div>
+                                </div>
+                            </div>
+                            ${statusData.currentApproverName ? `
+                                <div style="font-size: 0.8125rem; color: #1e40af;">
+                                    ⏳ Đang chờ: <strong>${statusData.currentApproverName}</strong>
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+                }
+            } catch (e) {
+                console.warn('Could not load approval status:', e);
+            }
+            
             const statusClass = (voucher.status || 'Pending').toLowerCase();
             const statusText = {
                 'pending': 'Chờ duyệt',
@@ -5162,6 +5249,9 @@
                                 </span>
                             </span>
                         </div>
+                        
+                        <!-- Approval Progress Section (Phase 2) -->
+                        ${approvalStatusHtml}
                         
                         <!-- Signatures Section -->
                         <div class="signatures-section">
@@ -7509,6 +7599,282 @@
             input.click();
         }
 
+        // ============ PHASE 2: STATUS REVIEW FUNCTIONS ============
+        
+        /**
+         * Load and display approval status for a voucher
+         */
+        async function loadAndDisplayApprovalStatus(voucherNumber) {
+            try {
+                showToast('Đang tải trạng thái phê duyệt...', 'info');
+                
+                const response = await fetch('/api/voucher', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        action: 'getApprovalStatus',
+                        voucherNumber: voucherNumber
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success && result.data) {
+                    displayApprovalStatusModal(result.data);
+                } else {
+                    showToast('Không thể tải trạng thái: ' + (result.message || ''), 'error');
+                }
+            } catch (error) {
+                console.error('Error loading approval status:', error);
+                showToast('Lỗi khi tải trạng thái: ' + error.message, 'error');
+            }
+        }
+        
+        /**
+         * Display approval status in modal
+         */
+        function displayApprovalStatusModal(statusData) {
+            const statusHtml = renderApprovalStatusReview(statusData);
+            showStatusReviewModal(statusHtml, statusData.voucherNumber);
+        }
+        
+        /**
+         * Render approval status review HTML
+         */
+        function renderApprovalStatusReview(statusData) {
+            const approvers = statusData.approvers || {};
+            const progress = statusData.approvalProgress || '0/3';
+            const progressNum = parseInt(progress.split('/')[0]);
+            const progressPercent = (progressNum / 3) * 100;
+            
+            // Build approver list HTML
+            const approversList = [];
+            
+            // Accountant (Step 1)
+            const accountant = approvers.accountant || {};
+            approversList.push(renderApproverStatusItem(
+                accountant,
+                'Kế toán trưởng',
+                1,
+                statusData.currentApprover === 'accountant'
+            ));
+            
+            // Legal Rep (Step 2)
+            const legalRep = approvers.legalRep || {};
+            approversList.push(renderApproverStatusItem(
+                legalRep,
+                'Đại diện pháp luật',
+                2,
+                statusData.currentApprover === 'legalRep'
+            ));
+            
+            // Treasurer (Step 3)
+            const treasurer = approvers.treasurer || {};
+            approversList.push(renderApproverStatusItem(
+                treasurer,
+                'Thủ quỹ',
+                3,
+                statusData.currentApprover === 'treasurer'
+            ));
+            
+            return `
+                <div class="approval-status-review-container" style="padding: 1.5rem;">
+                    <div class="status-header" style="margin-bottom: 1.5rem;">
+                        <h3 style="font-size: 1.5rem; font-weight: 600; color: #0f172a; margin-bottom: 0.5rem;">📊 Trạng thái phê duyệt</h3>
+                        <p class="voucher-number" style="color: #64748b; font-size: 0.875rem;">Phiếu: <strong>${statusData.voucherNumber}</strong></p>
+                    </div>
+                    
+                    <div class="status-summary" style="background: #f8fafc; padding: 1.25rem; border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid #e2e8f0;">
+                        <div class="status-badge status-${getStatusClassForProgress(progressNum)}" style="display: inline-block; padding: 0.5rem 1rem; border-radius: 6px; font-weight: 500; margin-bottom: 1rem; ${getStatusBadgeStyle(progressNum)}">
+                            ${statusData.displayStatus || 'Chờ duyệt'}
+                        </div>
+                        <div class="progress-bar-container" style="margin-top: 1rem;">
+                            <div class="progress-label" style="font-size: 0.875rem; color: #64748b; margin-bottom: 0.5rem;">Tiến độ: ${progress}</div>
+                            <div class="progress-bar" style="background: #e2e8f0; height: 24px; border-radius: 12px; overflow: hidden; position: relative;">
+                                <div class="progress-fill" style="background: ${progressNum === 3 ? '#10b981' : progressNum > 0 ? '#3b82f6' : '#f59e0b'}; height: 100%; width: ${progressPercent}%; transition: width 0.3s ease; border-radius: 12px;"></div>
+                                <span class="progress-text" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-size: 0.75rem; font-weight: 600; color: ${progressNum === 3 ? '#fff' : '#64748b'};">${progressPercent.toFixed(0)}%</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="approval-sequence" style="margin-bottom: 1.5rem;">
+                        <h4 style="font-size: 1rem; font-weight: 600; color: #0f172a; margin-bottom: 1rem;">Thứ tự phê duyệt:</h4>
+                        <div class="approvers-status-list" style="display: flex; flex-direction: column; gap: 1rem;">
+                            ${approversList.join('')}
+                        </div>
+                    </div>
+                    
+                    ${statusData.currentApprover ? `
+                        <div class="current-approver-notice" style="background: #dbeafe; padding: 1rem; border-radius: 8px; border-left: 4px solid #3b82f6; margin-bottom: 1.5rem;">
+                            <p style="color: #1e40af; font-weight: 500;">⏳ <strong>Đang chờ:</strong> ${statusData.currentApproverName} phê duyệt</p>
+                        </div>
+                    ` : ''}
+                    
+                    <div class="status-actions" style="display: flex; gap: 0.75rem; justify-content: flex-end; margin-top: 1.5rem;">
+                        <button onclick="refreshApprovalStatus('${statusData.voucherNumber}')" class="btn-refresh" style="padding: 0.5rem 1rem; background: #6366f1; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500;">
+                            🔄 Làm mới trạng thái
+                        </button>
+                        <button onclick="closeStatusModal()" class="btn-close" style="padding: 0.5rem 1rem; background: #e2e8f0; color: #0f172a; border: none; border-radius: 6px; cursor: pointer; font-size: 0.875rem; font-weight: 500;">
+                            Đóng
+                        </button>
+                    </div>
+                </div>
+            `;
+        }
+        
+        /**
+         * Render individual approver status item
+         */
+        function renderApproverStatusItem(approver, roleName, stepNumber, isCurrent) {
+            let statusIcon = '⏳';
+            let statusText = 'Chờ duyệt';
+            let statusClass = 'pending';
+            let timestamp = '';
+            let itemStyle = 'background: #f8fafc; padding: 1rem; border-radius: 8px; border: 1px solid #e2e8f0;';
+            
+            if (approver.status === 'approved') {
+                statusIcon = '✅';
+                statusText = 'Đã duyệt';
+                statusClass = 'approved';
+                itemStyle = 'background: #ecfdf5; padding: 1rem; border-radius: 8px; border: 1px solid #10b981; border-left: 4px solid #10b981;';
+                timestamp = approver.approvedAt 
+                    ? formatDateTimeForDisplay(approver.approvedAt) 
+                    : '';
+            } else if (approver.status === 'rejected') {
+                statusIcon = '❌';
+                statusText = 'Đã từ chối';
+                statusClass = 'rejected';
+                itemStyle = 'background: #fef2f2; padding: 1rem; border-radius: 8px; border: 1px solid #ef4444; border-left: 4px solid #ef4444;';
+                timestamp = approver.rejectedAt 
+                    ? formatDateTimeForDisplay(approver.rejectedAt) 
+                    : '';
+            } else if (isCurrent) {
+                statusIcon = '📧';
+                statusText = 'Đang chờ phê duyệt';
+                statusClass = 'current';
+                itemStyle = 'background: #eff6ff; padding: 1rem; border-radius: 8px; border: 1px solid #3b82f6; border-left: 4px solid #3b82f6;';
+            }
+            
+            return `
+                <div class="approver-status-item ${statusClass} ${isCurrent ? 'current-approver' : ''}" style="${itemStyle}">
+                    <div style="display: flex; align-items: flex-start; gap: 1rem;">
+                        <div class="step-number" style="background: ${isCurrent ? '#3b82f6' : statusClass === 'approved' ? '#10b981' : statusClass === 'rejected' ? '#ef4444' : '#94a3b8'}; color: white; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.875rem; flex-shrink: 0;">
+                            ${stepNumber}
+                        </div>
+                        <div class="approver-icon" style="font-size: 1.5rem; flex-shrink: 0; margin-top: 0.25rem;">${statusIcon}</div>
+                        <div class="approver-info" style="flex: 1;">
+                            <div class="approver-role" style="font-weight: 600; color: #0f172a; margin-bottom: 0.25rem;">${roleName}</div>
+                            <div class="approver-name" style="color: #475569; margin-bottom: 0.5rem;">${approver.name || approver.email || 'N/A'}</div>
+                            ${timestamp ? `
+                                <div class="approver-time" style="font-size: 0.75rem; color: #64748b;">${statusText} lúc: ${timestamp}</div>
+                            ` : `
+                                <div class="approver-time" style="font-size: 0.75rem; color: #64748b;">${statusText}</div>
+                            `}
+                            ${approver.rejectReason ? `
+                                <div class="reject-reason" style="margin-top: 0.5rem; padding: 0.5rem; background: #fef2f2; border-radius: 4px; font-size: 0.75rem; color: #991b1b;">
+                                    <strong>Lý do từ chối:</strong> ${approver.rejectReason}
+                                </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                    ${isCurrent ? `
+                        <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid #bfdbfe; color: #1e40af; font-size: 0.875rem; font-weight: 500;">
+                            ⬅️ HIỆN TẠI
+                        </div>
+                    ` : ''}
+                </div>
+            `;
+        }
+        
+        /**
+         * Get status class for CSS styling
+         */
+        function getStatusClassForProgress(progressNum) {
+            if (progressNum === 0) return 'pending';
+            if (progressNum === 3) return 'approved';
+            return 'partial';
+        }
+        
+        /**
+         * Get status badge style
+         */
+        function getStatusBadgeStyle(progressNum) {
+            if (progressNum === 0) return 'background: #fef3c7; color: #92400e;';
+            if (progressNum === 3) return 'background: #d1fae5; color: #065f46;';
+            return 'background: #dbeafe; color: #1e40af;';
+        }
+        
+        /**
+         * Format datetime for display
+         */
+        function formatDateTimeForDisplay(isoString) {
+            try {
+                const date = new Date(isoString);
+                return date.toLocaleString('vi-VN', {
+                    day: '2-digit',
+                    month: '2-digit',
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            } catch (e) {
+                return isoString;
+            }
+        }
+        
+        /**
+         * Show status review modal
+         */
+        function showStatusReviewModal(htmlContent, voucherNumber) {
+            // Create modal if it doesn't exist
+            let modal = document.getElementById('status-review-modal');
+            if (!modal) {
+                modal = document.createElement('div');
+                modal.id = 'status-review-modal';
+                modal.className = 'modal-overlay';
+                modal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); z-index: 10000; display: none; align-items: center; justify-content: center; padding: 1rem;';
+                modal.innerHTML = `
+                    <div class="modal-content" style="background: white; border-radius: 12px; max-width: 600px; width: 100%; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1); position: relative;">
+                        <div id="status-review-modal-content"></div>
+                    </div>
+                `;
+                document.body.appendChild(modal);
+            }
+            
+            document.getElementById('status-review-modal-content').innerHTML = htmlContent;
+            modal.style.display = 'flex';
+            
+            // Close on outside click
+            modal.addEventListener('click', function(e) {
+                if (e.target === modal) {
+                    closeStatusModal();
+                }
+            });
+        }
+        
+        /**
+         * Close status review modal
+         */
+        function closeStatusModal() {
+            const modal = document.getElementById('status-review-modal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+            // Remove viewStatus from URL
+            const url = new URL(window.location);
+            url.searchParams.delete('viewStatus');
+            window.history.replaceState({}, '', url);
+        }
+        
+        /**
+         * Refresh approval status
+         */
+        function refreshApprovalStatus(voucherNumber) {
+            loadAndDisplayApprovalStatus(voucherNumber);
+        }
+        
+        // ============ END STATUS REVIEW FUNCTIONS ============
+        
         /*
          * Google Apps Script (Code.gs) for sending emails:
          *
