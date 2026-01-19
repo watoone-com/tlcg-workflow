@@ -2378,6 +2378,15 @@
                 }
                 
                 console.log('Parsed result:', result);
+                console.log('Result structure:', {
+                    hasSuccess: 'success' in result,
+                    success: result.success,
+                    hasData: 'data' in result,
+                    dataType: typeof result.data,
+                    dataKeys: result.data ? Object.keys(result.data) : 'N/A',
+                    hasEmployees: result.employees ? 'yes' : 'no',
+                    hasDataEmployees: result.data && result.data.employees ? 'yes' : 'no'
+                });
                 
                 if (!result.success) {
                     console.warn('⚠️ Backend returned error:', result.message);
@@ -2386,7 +2395,17 @@
                     return false;
                 }
                 
-                const employees = result.data.employees || [];
+                // Check if result.data exists - backend returns { success, message, data: { employees: [...] } }
+                if (!result.data) {
+                    console.error('❌ Backend response missing data property');
+                    console.error('❌ Full result object:', JSON.stringify(result, null, 2));
+                    console.warn('⚠️ Using fallback department mapping');
+                    createFallbackDepartmentMapping();
+                    return false;
+                }
+                
+                // Handle different response structures (defensive coding)
+                const employees = result.data?.employees || result.data?.data?.employees || result.employees || [];
                 console.log(`✅ Fetched ${employees.length} employees from backend`);
                 
                 if (employees.length === 0) {
