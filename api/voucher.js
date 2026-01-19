@@ -9,6 +9,8 @@ export const config = {
       sizeLimit: '10mb',
     },
   },
+  // For Vercel serverless functions, we might need to handle raw body
+  // But bodyParser is enabled by default for Next.js API routes
 };
 
 import busboy from 'busboy';
@@ -217,9 +219,20 @@ export default async function handler(req, res) {
       console.log('[Proxy POST] Parsed body keys:', parsedBody && typeof parsedBody === 'object' ? Object.keys(parsedBody) : 'N/A');
       
       // Update action from parsedBody if we found it there and action is still null
+      // This is critical for URL-encoded requests where Vercel auto-parses the body
       if (!action && parsedBody && typeof parsedBody === 'object' && parsedBody.action) {
         action = parsedBody.action;
         console.log('[Proxy POST] Extracted action from parsedBody:', action);
+        
+        // Re-route based on action if needed
+        if (action === 'getMasterData' && GAS_URL !== TLCGROUP_BACKEND) {
+          GAS_URL = TLCGROUP_BACKEND;
+          console.log('[Proxy POST] Re-routing to TLCGroup Backend based on parsedBody action');
+        }
+        // getCompanyApprovers defaults to PHIEU_THU_CHI_BACKEND (already set)
+        if (action === 'getCompanyApprovers') {
+          console.log('[Proxy POST] getCompanyApprovers will use PHIEU_THU_CHI_BACKEND (default)');
+        }
       }
       
       // Check if we have a 'data' field with a JSON string (from phieu_thu_chi.html)
@@ -283,8 +296,14 @@ export default async function handler(req, res) {
         formData.append('data', dataFieldValue); // Forward the raw JSON string as-is
         bodyToSend = formData;
         console.log('[Proxy POST] Forwarding large payload as FormData (data field preserved)');
+      } else if (req.headers['content-type']?.includes('application/x-www-form-urlencoded') && typeof req.body === 'string') {
+        // If original request was URL-encoded string, forward it as-is
+        // This preserves the exact format that Google Apps Script expects
+        contentType = 'application/x-www-form-urlencoded';
+        bodyToSend = req.body; // Forward the raw URL-encoded string directly
+        console.log('[Proxy POST] Forwarding URL-encoded string directly to preserve format');
       } else if (parsedBody && typeof parsedBody === 'object' && Object.keys(parsedBody).length > 0) {
-        // For small requests, use URL-encoded form data
+        // For parsed objects, convert to URL-encoded form data
         contentType = 'application/x-www-form-urlencoded';
         const params = new URLSearchParams();
         Object.keys(parsedBody).forEach(key => {
@@ -294,6 +313,7 @@ export default async function handler(req, res) {
           }
         });
         bodyToSend = params.toString();
+        console.log('[Proxy POST] Converted parsed body to URL-encoded format');
       } else {
         // Fallback: send as JSON in 'data' field
         contentType = 'application/x-www-form-urlencoded';
