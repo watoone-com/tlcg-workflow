@@ -33,6 +33,9 @@ function doGet(e) {
     } else if (action === 'getApprovalStatus') {
       Logger.log('doGet: getApprovalStatus called');
       return handleGetApprovalStatus(e.parameter);
+    } else if (action === 'getApprovalStatus') {
+      Logger.log('doGet: getApprovalStatus called');
+      return handleGetApprovalStatus(e.parameter);
     } else if (action === 'approveVoucher') {
       // Handle approve via GET (fallback, but POST is preferred for signature)
       Logger.log('⚠️ Handling approveVoucher via GET (signature may be missing)');

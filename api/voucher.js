@@ -77,12 +77,32 @@ export default async function handler(req, res) {
     action = req.query.action;
   } else if (req.method === 'POST') {
     // Try to get action from body (if parsed)
-    if (req.body && req.body.action) {
-      action = req.body.action;
-    } else if (req.query && req.query.action) {
+    // Vercel may parse URL-encoded bodies automatically
+    if (req.body) {
+      if (typeof req.body === 'object' && req.body.action) {
+        action = req.body.action;
+        console.log('[Proxy] Extracted action from req.body:', action);
+      } else if (typeof req.body === 'string') {
+        // If body is still a string, try to parse action from it
+        try {
+          const params = new URLSearchParams(req.body);
+          action = params.get('action');
+          if (action) {
+            console.log('[Proxy] Extracted action from URL-encoded string:', action);
+          }
+        } catch (e) {
+          console.log('[Proxy] Could not parse action from string body:', e.message);
+        }
+      }
+    }
+    // Fallback to query parameter
+    if (!action && req.query && req.query.action) {
       action = req.query.action;
+      console.log('[Proxy] Using action from query:', action);
     }
   }
+  
+  console.log('[Proxy] Final extracted action:', action);
   
   // Route getMasterData to TLCGroup Backend
   if (action === 'getMasterData') {
