@@ -2396,53 +2396,39 @@
                     return false;
                 }
                 
-                // Check if result.data exists - backend returns { success, message, data: { employees: [...] } }
-                // Use loose check (== null) to catch both null and undefined, but also check if it's an object
-                const hasData = result.data != null && typeof result.data === 'object';
-                
-                if (!hasData) {
-                    console.error('❌ Backend response missing data property or data is not an object');
-                    console.error('❌ result.data value:', result.data);
-                    console.error('❌ result.data type:', typeof result.data);
-                    console.error('❌ Full result object:', JSON.stringify(result, null, 2));
-                    console.error('❌ Result keys:', Object.keys(result));
-                    console.warn('⚠️ Using fallback department mapping');
-                    createFallbackDepartmentMapping();
-                    return false;
-                }
-                
-                // Handle different response structures (defensive coding)
-                // Try multiple possible locations for employees array
+                // Handle different response structures - backend may return:
+                // Option 1: { success, message, data: { employees: [...] } }
+                // Option 2: { success, message, employees: [...] } (top-level)
                 let employees = [];
                 
-                // Primary: result.data.employees (expected structure)
-                if (Array.isArray(result.data.employees)) {
+                // Try result.data.employees first (nested structure)
+                if (result.data && Array.isArray(result.data.employees)) {
                     employees = result.data.employees;
                     console.log('✅ Found employees in result.data.employees');
                 } 
-                // Fallback: nested structure
-                else if (result.data.data && Array.isArray(result.data.data.employees)) {
-                    employees = result.data.data.employees;
-                    console.log('✅ Found employees in result.data.data.employees');
-                } 
-                // Fallback: direct employees property
+                // Try result.employees (top-level structure - actual backend response)
                 else if (Array.isArray(result.employees)) {
                     employees = result.employees;
-                    console.log('✅ Found employees in result.employees');
-                } 
-                // Last resort: check if data itself is an array or has employees property
-                else if (Array.isArray(result.data)) {
+                    console.log('✅ Found employees in result.employees (top-level)');
+                }
+                // Fallback: try nested data.data
+                else if (result.data && result.data.data && Array.isArray(result.data.data.employees)) {
+                    employees = result.data.data.employees;
+                    console.log('✅ Found employees in result.data.data.employees');
+                }
+                // Last resort: check if data itself is an array
+                else if (result.data && Array.isArray(result.data)) {
                     employees = result.data;
                     console.log('✅ Using result.data as employees array');
-                } 
-                // Check if data has employees but it's not an array
-                else if (result.data.employees) {
-                    console.warn('⚠️ result.data.employees exists but is not an array:', typeof result.data.employees);
-                    employees = Array.isArray(result.data.employees) ? result.data.employees : [];
                 }
                 else {
-                    console.warn('⚠️ Could not find employees array in any expected location');
-                    console.warn('⚠️ result.data structure:', JSON.stringify(result.data, null, 2));
+                    console.error('❌ Could not find employees array in response');
+                    console.error('❌ Available keys in result:', Object.keys(result));
+                    console.error('❌ result.data:', result.data);
+                    console.error('❌ result.employees:', result.employees);
+                    console.warn('⚠️ Using fallback department mapping');
+                    createFallbackDepartmentMapping();
+                    return false;
                 }
                 
                 console.log(`✅ Fetched ${employees.length} employees from backend`);
