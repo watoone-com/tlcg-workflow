@@ -160,9 +160,14 @@ function doPost(e) {
     Logger.log('Processing action: ' + action);
     Logger.log('Action type: ' + typeof action);
     Logger.log('Action trimmed: "' + (action ? action.trim() : 'null') + '"');
+    Logger.log('Action length: ' + (action ? action.length : 'null'));
+    Logger.log('Action exact value: [' + action + ']');
     
     // Normalize action (trim whitespace)
     const normalizedAction = action ? String(action).trim() : '';
+    
+    Logger.log('Normalized action: [' + normalizedAction + ']');
+    Logger.log('Will match getCompanyApprovers? ' + (normalizedAction === 'getCompanyApprovers'));
     
     switch (normalizedAction) {
       case 'login': return handleLogin_(requestBody);
@@ -173,7 +178,7 @@ function doPost(e) {
       case 'getVoucherHistory': return handleGetVoucherHistory(requestBody);
       case 'getEmployees': return handleGetEmployees(requestBody);
       case 'getCompanyApprovers': 
-        Logger.log('✅ Matched getCompanyApprovers case');
+        Logger.log('✅✅✅ MATCHED getCompanyApprovers case ✅✅✅');
         Logger.log('RequestBody for getCompanyApprovers type:', typeof requestBody);
         Logger.log('RequestBody for getCompanyApprovers is null/undefined:', requestBody == null);
         
@@ -667,8 +672,34 @@ function handleGetCompanyApprovers(requestBody, directCompanyName) {
     
     Logger.log('Looking for company: ' + companyName);
     
-    const ss = SpreadsheetApp.openById(TLCG_MASTER_DATA_SHEET_ID);
-    const sheet = ss.getSheetByName(COMPANY_SHEET_NAME);
+    // Try to open spreadsheet with better error handling
+    let ss;
+    try {
+      ss = SpreadsheetApp.openById(TLCG_MASTER_DATA_SHEET_ID);
+      Logger.log('✅ Spreadsheet opened successfully');
+    } catch (error) {
+      Logger.log('❌ ERROR opening spreadsheet: ' + error.toString());
+      Logger.log('❌ Error message: ' + error.message);
+      
+      // Check if it's a permissions error
+      if (error.toString().includes('openById') || error.toString().includes('method or property')) {
+        return createResponse(false, 
+          'Lỗi quyền truy cập: Apps Script chưa được cấp quyền truy cập spreadsheet. ' +
+          'Vui lòng chạy function "testSpreadsheetAccess" trong Apps Script để cấp quyền. ' +
+          'Xem file FIX_SPREADSHEET_PERMISSIONS.md để biết chi tiết.'
+        );
+      }
+      
+      return createResponse(false, 'Không thể mở spreadsheet. Vui lòng kiểm tra TLCG_MASTER_DATA_SHEET_ID và quyền truy cập. Lỗi: ' + error.message);
+    }
+    
+    let sheet;
+    try {
+      sheet = ss.getSheetByName(COMPANY_SHEET_NAME);
+    } catch (error) {
+      Logger.log('❌ ERROR getting sheet: ' + error.toString());
+      return createResponse(false, 'Lỗi khi truy cập sheet "' + COMPANY_SHEET_NAME + '": ' + error.message);
+    }
     
     if (!sheet) {
       Logger.log('❌ Sheet "' + COMPANY_SHEET_NAME + '" not found');
