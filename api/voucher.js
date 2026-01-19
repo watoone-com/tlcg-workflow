@@ -216,6 +216,12 @@ export default async function handler(req, res) {
       console.log('[Proxy POST] Parsed body type:', typeof parsedBody);
       console.log('[Proxy POST] Parsed body keys:', parsedBody && typeof parsedBody === 'object' ? Object.keys(parsedBody) : 'N/A');
       
+      // Update action from parsedBody if we found it there and action is still null
+      if (!action && parsedBody && typeof parsedBody === 'object' && parsedBody.action) {
+        action = parsedBody.action;
+        console.log('[Proxy POST] Extracted action from parsedBody:', action);
+      }
+      
       // Check if we have a 'data' field with a JSON string (from phieu_thu_chi.html)
       // This is used for large payloads with file attachments
       let hasDataField = false;
