@@ -8,6 +8,7 @@ const USERS_SHEET_ID = TLCG_MASTER_DATA_SHEET_ID; // Same spreadsheet
 const VOUCHER_HISTORY_SHEET_ID = TLCG_MASTER_DATA_SHEET_ID; // Same spreadsheet
 const VH_SHEET_NAME = 'Voucher_History';
 const EMPLOYEES_SHEET_NAME = 'Nhân viên';
+const COMPANY_SHEET_NAME = 'Công ty';
 
 function doGet(e) {
   try {
@@ -23,6 +24,8 @@ function doGet(e) {
       return handleGetVoucherHistory(e.parameter);
     } else if (action === 'getEmployees') {
       return handleGetEmployees(e.parameter);
+    } else if (action === 'getCompanyApprovers') {
+      return handleGetCompanyApprovers(e.parameter);
     } else if (action === 'approveVoucher') {
       // Handle approve via GET (fallback, but POST is preferred for signature)
       Logger.log('⚠️ Handling approveVoucher via GET (signature may be missing)');
@@ -158,6 +161,7 @@ function doPost(e) {
       case 'getVoucherSummary': return handleGetVoucherSummary(requestBody);
       case 'getVoucherHistory': return handleGetVoucherHistory(requestBody);
       case 'getEmployees': return handleGetEmployees(requestBody);
+      case 'getCompanyApprovers': return handleGetCompanyApprovers(requestBody);
       default: 
         Logger.log('⚠️ WARNING: Unknown action: ' + action);
         return createResponse(false, 'Action không hợp lệ: ' + action);
@@ -521,6 +525,112 @@ function handleGetEmployees(requestBody) {
     return createResponse(true, 'Thành công', { employees: employees });
   } catch (error) {
     Logger.log('❌ ERROR in handleGetEmployees: ' + error.toString());
+    Logger.log('❌ Error stack: ' + error.stack);
+    return createResponse(false, 'Lỗi: ' + error.message);
+  }
+}
+
+/**
+ * Get company approvers from "Công ty" sheet
+ * Returns the 3 approvers (Đại diện pháp luật, Kế toán trưởng, Thủ quỹ) for a given company
+ */
+function handleGetCompanyApprovers(requestBody) {
+  try {
+    Logger.log('=== handleGetCompanyApprovers called ===');
+    
+    // Get company name from request (from parameter object or requestBody)
+    const companyName = (requestBody && requestBody.companyName) || 
+                       (requestBody && requestBody.company) || '';
+    
+    if (!companyName || companyName.trim() === '') {
+      Logger.log('❌ Company name is missing');
+      return createResponse(false, 'Tên công ty là bắt buộc');
+    }
+    
+    Logger.log('Looking for company: ' + companyName);
+    
+    const ss = SpreadsheetApp.openById(TLCG_MASTER_DATA_SHEET_ID);
+    const sheet = ss.getSheetByName(COMPANY_SHEET_NAME);
+    
+    if (!sheet) {
+      Logger.log('❌ Sheet "' + COMPANY_SHEET_NAME + '" not found');
+      return createResponse(false, 'Sheet "' + COMPANY_SHEET_NAME + '" không tồn tại');
+    }
+    
+    const data = sheet.getDataRange().getValues();
+    if (data.length < 2) {
+      Logger.log('⚠️ No company data found (only header row)');
+      return createResponse(false, 'Không tìm thấy dữ liệu công ty');
+    }
+    
+    // Column mapping based on "Công ty" sheet structure:
+    // A: Tên công ty viết tắt - index 0
+    // B: Tên công ty - index 1 (match this)
+    // C: Địa chỉ - index 2
+    // D: Mã số thuế - index 3
+    // E: Email Đại diện pháp luật - index 4
+    // F: Đại diện pháp luật (name) - index 5
+    // G: Chữ ký Đại diện pháp luật (signature URL) - index 6
+    // H: Email Kế toán trưởng - index 7
+    // I: Kế toán trưởng (name) - index 8
+    // J: Chữ ký Kế toán trưởng (signature URL) - index 9
+    // K: Email Thủ quỹ - index 10
+    // L: Thủ quỹ (name) - index 11
+    // M: Chữ ký Thủ quỹ (signature URL) - index 12
+    
+    // Find the company row (skip header row at index 0)
+    let companyRow = null;
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+      const rowCompanyName = (row[1] || '').toString().trim(); // Column B: Tên công ty
+      
+      // Exact match or case-insensitive match
+      if (rowCompanyName === companyName.trim() || 
+          rowCompanyName.toLowerCase() === companyName.trim().toLowerCase()) {
+        companyRow = row;
+        Logger.log('✅ Found company at row ' + (i + 1));
+        break;
+      }
+    }
+    
+    if (!companyRow) {
+      Logger.log('❌ Company not found: ' + companyName);
+      return createResponse(false, 'Không tìm thấy công ty: ' + companyName);
+    }
+    
+    // Extract approver data
+    const approvers = {
+      legalRep: {
+        name: (companyRow[5] || '').toString().trim(),        // Column F: Đại diện pháp luật
+        email: (companyRow[4] || '').toString().trim(),       // Column E: Email Đại diện pháp luật
+        signature: (companyRow[6] || '').toString().trim(),   // Column G: Chữ ký (URL)
+        role: 'Đại diện pháp luật'
+      },
+      accountant: {
+        name: (companyRow[8] || '').toString().trim(),        // Column I: Kế toán trưởng
+        email: (companyRow[7] || '').toString().trim(),       // Column H: Email Kế toán trưởng
+        signature: (companyRow[9] || '').toString().trim(),   // Column J: Chữ ký (URL)
+        role: 'Kế toán trưởng'
+      },
+      treasurer: {
+        name: (companyRow[11] || '').toString().trim(),       // Column L: Thủ quỹ
+        email: (companyRow[10] || '').toString().trim(),      // Column K: Email Thủ quỹ
+        signature: (companyRow[12] || '').toString().trim(),  // Column M: Chữ ký (URL)
+        role: 'Thủ quỹ'
+      }
+    };
+    
+    Logger.log('✅ Approvers found for company: ' + companyName);
+    Logger.log('   - Legal Rep: ' + approvers.legalRep.name + ' (' + approvers.legalRep.email + ')');
+    Logger.log('   - Accountant: ' + approvers.accountant.name + ' (' + approvers.accountant.email + ')');
+    Logger.log('   - Treasurer: ' + approvers.treasurer.name + ' (' + approvers.treasurer.email + ')');
+    
+    return createResponse(true, 'Thành công', {
+      companyName: companyName,
+      approvers: approvers
+    });
+  } catch (error) {
+    Logger.log('❌ ERROR in handleGetCompanyApprovers: ' + error.toString());
     Logger.log('❌ Error stack: ' + error.stack);
     return createResponse(false, 'Lỗi: ' + error.message);
   }

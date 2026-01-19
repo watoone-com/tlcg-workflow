@@ -2937,10 +2937,27 @@
                                   (amountInWordsDisplay ? amountInWordsDisplay.textContent : '');
             safeSetText('review-amount-words', amountInWords);
             
-            const approverValue = document.getElementById('approver').value || '-';
+            // Update approver display - show company approvers if available
             const reviewApproverDisplay = document.getElementById('review-approver-display');
             if (reviewApproverDisplay) {
-                reviewApproverDisplay.textContent = approverValue;
+                if (data.selectedCompanyApprovers) {
+                    const approvers = data.selectedCompanyApprovers;
+                    const approverList = [];
+                    if (approvers.legalRep && approvers.legalRep.name) {
+                        approverList.push(`${approvers.legalRep.role}: ${approvers.legalRep.name}`);
+                    }
+                    if (approvers.accountant && approvers.accountant.name) {
+                        approverList.push(`${approvers.accountant.role}: ${approvers.accountant.name}`);
+                    }
+                    if (approvers.treasurer && approvers.treasurer.name) {
+                        approverList.push(`${approvers.treasurer.role}: ${approvers.treasurer.name}`);
+                    }
+                    reviewApproverDisplay.textContent = approverList.length > 0 ? approverList.join('; ') : '-';
+                } else {
+                    // Fallback to old method
+                    const approverValue = document.getElementById('approver').value || '-';
+                    reviewApproverDisplay.textContent = approverValue;
+                }
             }
             // Note: review-approver element doesn't exist, only review-approver-display exists
             
@@ -3221,6 +3238,44 @@
             });
         }
         
+        // Store selected company approvers
+        data.selectedCompanyApprovers = null;
+        
+        async function loadCompanyApprovers(companyName) {
+            try {
+                console.log('📧 Loading approvers for company:', companyName);
+                
+                const response = await fetch('/api/voucher', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: new URLSearchParams({
+                        action: 'getCompanyApprovers',
+                        companyName: companyName
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.success && result.data && result.data.approvers) {
+                    data.selectedCompanyApprovers = result.data.approvers;
+                    console.log('✅ Company approvers loaded:', data.selectedCompanyApprovers);
+                    
+                    // Show toast notification
+                    showToast(`Đã tải thông tin người phê duyệt cho công ty "${companyName}"`, 'success', 'Thành công');
+                } else {
+                    console.error('❌ Failed to load company approvers:', result.message);
+                    data.selectedCompanyApprovers = null;
+                    showToast('Không thể tải thông tin người phê duyệt. ' + (result.message || ''), 'warning', 'Cảnh báo');
+                }
+            } catch (error) {
+                console.error('❌ Error loading company approvers:', error);
+                data.selectedCompanyApprovers = null;
+                showToast('Lỗi khi tải thông tin người phê duyệt: ' + error.message, 'error', 'Lỗi');
+            }
+        }
+        
         function updateCompanyDetails() {
             const companySelect = document.getElementById('company');
             const companyDetails = document.getElementById('company-details');
@@ -3234,8 +3289,12 @@
                     companyAddress.textContent = `Địa chỉ: ${companyData["Địa chỉ"]}`;
                     companyDetails.classList.add('show');
                 }
+                
+                // Load company approvers when company is selected
+                loadCompanyApprovers(selectedCompany);
             } else {
                 companyDetails.classList.remove('show');
+                data.selectedCompanyApprovers = null;
             }
         }
 
@@ -4736,6 +4795,9 @@
             const voucher = currentModalVoucher;
             let meta = currentModalMeta || voucher.meta || {}; // Use merged meta
             
+            // Get company approvers from voucher data (stored when submitted)
+            const companyApprovers = voucher.companyApprovers || meta.companyApprovers || null;
+            
             // DO NOT use localStorage for signatures in print view
             // Signatures should ONLY come from the backend (meta) to ensure we show
             // the correct signature of the person who created/approved the voucher,
@@ -4743,6 +4805,7 @@
             console.log('Print voucher meta:', meta);
             console.log('Requester signature available:', !!meta.requesterSignature);
             console.log('Approver signature available:', !!meta.approverSignature);
+            console.log('Company approvers:', companyApprovers);
             
             // Determine voucher type title
             const voucherTypeUpper = (voucher.voucherType || '').toUpperCase();
@@ -5070,6 +5133,20 @@
                                     <div class="signature-name">${voucher.employee || ''}</div>
                                 </div>
                                 
+                                ${companyApprovers && companyApprovers.accountant ? `
+                                <div class="signature-box">
+                                    <div class="signature-title">${companyApprovers.accountant.role || 'Kế toán trưởng'} <span class="signature-required">*</span></div>
+                                    <div class="signature-image-container">
+                                        ${companyApprovers.accountant.signature 
+                                            ? `<img src="${companyApprovers.accountant.signature}" alt="Chữ ký" class="signature-img">`
+                                            : (voucher.status === 'Approved' && meta.approverSignature) 
+                                                ? `<img src="${meta.approverSignature}" alt="Chữ ký" class="signature-img">`
+                                                : ''
+                                        }
+                                    </div>
+                                    <div class="signature-name">${companyApprovers.accountant.name || (voucher.status === 'Approved' ? (voucher.approvedBy || '') : '')}</div>
+                                </div>
+                                ` : `
                                 <div class="signature-box">
                                     <div class="signature-title">Kế toán trưởng <span class="signature-required">*</span></div>
                                     <div class="signature-image-container">
@@ -5080,7 +5157,20 @@
                                     </div>
                                     <div class="signature-name">${voucher.status === 'Approved' ? (voucher.approvedBy || '') : ''}</div>
                                 </div>
+                                `}
                                 
+                                ${companyApprovers && companyApprovers.legalRep ? `
+                                <div class="signature-box">
+                                    <div class="signature-title">${companyApprovers.legalRep.role || 'Đại diện pháp luật'} <span class="signature-required">*</span></div>
+                                    <div class="signature-image-container">
+                                        ${companyApprovers.legalRep.signature 
+                                            ? `<img src="${companyApprovers.legalRep.signature}" alt="Chữ ký" class="signature-img">`
+                                            : ''
+                                        }
+                                    </div>
+                                    <div class="signature-name">${companyApprovers.legalRep.name || ''}</div>
+                                </div>
+                                ` : `
                                 <div class="signature-box">
                                     <div class="signature-title">Giám đốc <span class="signature-required">*</span></div>
                                     <div class="signature-image-container">
@@ -5091,13 +5181,27 @@
                                     </div>
                                     <div class="signature-name">${voucher.status === 'Approved' ? (voucher.approvedBy || '') : ''}</div>
                                 </div>
+                                `}
                                 
+                                ${companyApprovers && companyApprovers.treasurer ? `
+                                <div class="signature-box">
+                                    <div class="signature-title">${companyApprovers.treasurer.role || 'Thủ quỹ'} <span class="signature-required">*</span></div>
+                                    <div class="signature-image-container">
+                                        ${companyApprovers.treasurer.signature 
+                                            ? `<img src="${companyApprovers.treasurer.signature}" alt="Chữ ký" class="signature-img">`
+                                            : ''
+                                        }
+                                    </div>
+                                    <div class="signature-name">${companyApprovers.treasurer.name || ''}</div>
+                                </div>
+                                ` : `
                                 <div class="signature-box">
                                     <div class="signature-title">Thủ quỹ <span class="signature-required">*</span></div>
                                     <div class="signature-image-container">
                                     </div>
                                     <div class="signature-name"></div>
                                 </div>
+                                `}
                                 
                                 <div class="signature-box">
                                     <div class="signature-title">Người nộp/nhận tiền <span class="signature-required">*</span></div>
@@ -6208,19 +6312,61 @@
             console.log('Chief Accountant Email:', chiefAccountantEmail);
             console.log('Requestor Email:', requestorEmail);
 
-            // Tạo danh sách recipients - Fixed list of 3 emails
-            const recipients = [
-                'linh.le@tl-c.com.vn',
-                'anh.le@mediainsider.vn',
-                'nhanh.nguyen@tl-c.com.vn'
-            ];
+            // Get approvers from selected company (from "Công ty" sheet)
+            let recipients = [];
+            let approverDetails = {};
+            
+            if (data.selectedCompanyApprovers) {
+                // Use company-specific approvers from sheet
+                const approvers = data.selectedCompanyApprovers;
+                
+                // Collect all valid approver emails
+                if (approvers.legalRep && approvers.legalRep.email) {
+                    recipients.push(approvers.legalRep.email);
+                    approverDetails[approvers.legalRep.email] = {
+                        name: approvers.legalRep.name,
+                        role: approvers.legalRep.role,
+                        signature: approvers.legalRep.signature
+                    };
+                }
+                if (approvers.accountant && approvers.accountant.email) {
+                    recipients.push(approvers.accountant.email);
+                    approverDetails[approvers.accountant.email] = {
+                        name: approvers.accountant.name,
+                        role: approvers.accountant.role,
+                        signature: approvers.accountant.signature
+                    };
+                }
+                if (approvers.treasurer && approvers.treasurer.email) {
+                    recipients.push(approvers.treasurer.email);
+                    approverDetails[approvers.treasurer.email] = {
+                        name: approvers.treasurer.name,
+                        role: approvers.treasurer.role,
+                        signature: approvers.treasurer.signature
+                    };
+                }
+                
+                console.log('✅ Using company-specific approvers:', recipients);
+                console.log('Approver details:', approverDetails);
+            } else {
+                // Fallback to fixed list if company approvers not loaded
+                console.warn('⚠️ Company approvers not loaded, using fallback list');
+                recipients = [
+                    'linh.le@tl-c.com.vn',
+                    'anh.le@mediainsider.vn',
+                    'nhanh.nguyen@tl-c.com.vn'
+                ];
+            }
+            
+            // Filter out empty emails
+            recipients = recipients.filter(email => email && email.trim() !== '');
             
             const ccRecipients = [];
             if (requestorEmail && !recipients.includes(requestorEmail)) ccRecipients.push(requestorEmail);
-
+            
             console.log('Final Recipients:', recipients);
             console.log('Final CC Recipients:', ccRecipients);
-
+            
             if (recipients.length === 0) {
                 // Hiển thị thông tin debug chi tiết
                 let errorMsg = 'Không tìm thấy địa chỉ email người nhận.\n\n';
@@ -6863,6 +7009,8 @@
                     amountInWords: amountInWords || '',
                     expenseItems: expenseItems || [], // Include expense items for backend to save in meta
                     files: filesToUpload,  // Files (Drive URLs if using API, base64 if legacy)
+                    // Company approvers from "Công ty" sheet
+                    companyApprovers: data.selectedCompanyApprovers || null,
                     useDriveAPI: true, // Force Drive API path when configured
                     requesterSignature: finalRequesterSignature || '' // Requester signature for history (compressed if needed)
                 }
@@ -7007,11 +7155,24 @@
 
                 const now = new Date();
                 const timestamp = now.toLocaleString('vi-VN');
+                // Build approver list for history
+                let approverList = [];
+                if (data.selectedCompanyApprovers) {
+                    const approvers = data.selectedCompanyApprovers;
+                    if (approvers.legalRep && approvers.legalRep.name) approverList.push(approvers.legalRep.name);
+                    if (approvers.accountant && approvers.accountant.name) approverList.push(approvers.accountant.name);
+                    if (approvers.treasurer && approvers.treasurer.name) approverList.push(approvers.treasurer.name);
+                }
+                // Fallback to old method if no company approvers
+                if (approverList.length === 0) {
+                    approverList = [selectedApproverName, selectedCompanyData ? selectedCompanyData["Đại diện pháp luật"] : '', selectedCompanyData ? selectedCompanyData["Kế toán trưởng"] : ''].filter(Boolean);
+                }
+                
                 approvalHistory.push({
                     timestamp: timestamp,
                     action: 'Đã gửi thông tin',
                     by: requestorName,
-                    to: [selectedApproverName, selectedCompanyData ? selectedCompanyData["Đại diện pháp luật"] : '', selectedCompanyData ? selectedCompanyData["Kế toán trưởng"] : ''].filter(Boolean).join(', ')
+                    to: approverList.join(', ')
                 });
                 renderApprovalHistory();
 
