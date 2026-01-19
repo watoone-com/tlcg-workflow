@@ -130,6 +130,8 @@ function doPost(e) {
       action = e.parameter.action;
       requestBody = e.parameter;
       Logger.log('Using e.parameter directly, action: ' + action);
+      Logger.log('e.parameter keys: ' + Object.keys(e.parameter).join(', '));
+      Logger.log('e.parameter.companyName: ' + (e.parameter.companyName || 'not found'));
     } else if (e.postData && e.postData.contents) {
       try {
         requestBody = JSON.parse(e.postData.contents);
@@ -152,8 +154,13 @@ function doPost(e) {
     }
 
     Logger.log('Processing action: ' + action);
+    Logger.log('Action type: ' + typeof action);
+    Logger.log('Action trimmed: "' + (action ? action.trim() : 'null') + '"');
     
-    switch (action) {
+    // Normalize action (trim whitespace)
+    const normalizedAction = action ? String(action).trim() : '';
+    
+    switch (normalizedAction) {
       case 'login': return handleLogin_(requestBody);
       case 'sendApprovalEmail': return handleSendEmail(requestBody);
       case 'approveVoucher': return handleApproveVoucher(requestBody);
@@ -161,10 +168,14 @@ function doPost(e) {
       case 'getVoucherSummary': return handleGetVoucherSummary(requestBody);
       case 'getVoucherHistory': return handleGetVoucherHistory(requestBody);
       case 'getEmployees': return handleGetEmployees(requestBody);
-      case 'getCompanyApprovers': return handleGetCompanyApprovers(requestBody);
+      case 'getCompanyApprovers': 
+        Logger.log('✅ Matched getCompanyApprovers case');
+        Logger.log('RequestBody for getCompanyApprovers:', JSON.stringify(requestBody));
+        return handleGetCompanyApprovers(requestBody);
       default: 
-        Logger.log('⚠️ WARNING: Unknown action: ' + action);
-        return createResponse(false, 'Action không hợp lệ: ' + action);
+        Logger.log('⚠️ WARNING: Unknown action: "' + normalizedAction + '" (original: "' + action + '")');
+        Logger.log('⚠️ Available actions: login, sendApprovalEmail, approveVoucher, rejectVoucher, getVoucherSummary, getVoucherHistory, getEmployees, getCompanyApprovers');
+        return createResponse(false, 'Action không hợp lệ: ' + normalizedAction);
     }
   } catch (error) {
     Logger.log('❌ CRITICAL ERROR in doPost: ' + error.toString());
@@ -537,10 +548,34 @@ function handleGetEmployees(requestBody) {
 function handleGetCompanyApprovers(requestBody) {
   try {
     Logger.log('=== handleGetCompanyApprovers called ===');
+    Logger.log('Request body type:', typeof requestBody);
+    Logger.log('Request body:', JSON.stringify(requestBody));
     
-    // Get company name from request (from parameter object or requestBody)
-    const companyName = (requestBody && requestBody.companyName) || 
-                       (requestBody && requestBody.company) || '';
+    // Get company name from request (handle both e.parameter object and parsed requestBody)
+    // When called from doGet: e.parameter.companyName
+    // When called from doPost: requestBody.companyName or e.parameter.companyName (if FormData)
+    let companyName = '';
+    if (requestBody) {
+      if (typeof requestBody === 'object') {
+        companyName = requestBody.companyName || requestBody.company || '';
+      } else if (typeof requestBody === 'string') {
+        // If it's a string, try to parse it
+        try {
+          const parsed = JSON.parse(requestBody);
+          companyName = parsed.companyName || parsed.company || '';
+        } catch (e) {
+          // Not JSON, treat as company name directly
+          companyName = requestBody;
+        }
+      }
+    }
+    
+    // Also check if companyName came as a direct parameter (from URL params)
+    if (!companyName || companyName.trim() === '') {
+      // Try to get from global parameter if this was called from doGet/doPost
+      const param = requestBody || {};
+      companyName = param.companyName || param.company || '';
+    }
     
     if (!companyName || companyName.trim() === '') {
       Logger.log('❌ Company name is missing');
