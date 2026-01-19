@@ -717,15 +717,21 @@ function handleGetCompanyApprovers(requestBody, directCompanyName) {
     // B: Tên công ty - index 1 (THIS IS WHERE WE MATCH - Column B)
     // C: Địa chỉ - index 2
     // D: Mã số thuế - index 3
-    // E: Email Đại diện pháp luật - index 4
-    // F: Đại diện pháp luật (name) - index 5
-    // G: Chữ ký Đại diện pháp luật (signature URL) - index 6
-    // H: Email Kế toán trưởng - index 7
-    // I: Kế toán trưởng (name) - index 8
-    // J: Chữ ký Kế toán trưởng (signature URL) - index 9
-    // K: Email Thủ quỹ - index 10
-    // L: Thủ quỹ (name) - index 11
-    // M: Chữ ký Thủ quỹ (signature URL) - index 12
+    // 
+    // Legal Representative (Đại diện pháp luật):
+    //   E: Email - index 4
+    //   F: Name - index 5
+    //   G: Signature URL - index 6
+    // 
+    // Chief Accountant (Kế toán trưởng):
+    //   H: Email - index 7
+    //   I: Name - index 8
+    //   J: Signature URL - index 9
+    // 
+    // Treasurer (Thủ quỹ):
+    //   K: Email - index 10
+    //   L: Name - index 11
+    //   M: Signature URL - index 12
     
     Logger.log('Searching for company: "' + companyName + '" in column B (index 1)');
     
