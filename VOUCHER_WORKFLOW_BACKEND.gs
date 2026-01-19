@@ -25,7 +25,11 @@ function doGet(e) {
     } else if (action === 'getEmployees') {
       return handleGetEmployees(e.parameter);
     } else if (action === 'getCompanyApprovers') {
-      return handleGetCompanyApprovers(e.parameter);
+      Logger.log('doGet: getCompanyApprovers called');
+      Logger.log('e.parameter:', JSON.stringify(e.parameter));
+      const companyName = e.parameter ? (e.parameter.companyName || e.parameter.company) : null;
+      Logger.log('Extracted companyName from e.parameter:', companyName);
+      return handleGetCompanyApprovers(e.parameter, companyName);
     } else if (action === 'approveVoucher') {
       // Handle approve via GET (fallback, but POST is preferred for signature)
       Logger.log('⚠️ Handling approveVoucher via GET (signature may be missing)');
@@ -170,8 +174,41 @@ function doPost(e) {
       case 'getEmployees': return handleGetEmployees(requestBody);
       case 'getCompanyApprovers': 
         Logger.log('✅ Matched getCompanyApprovers case');
-        Logger.log('RequestBody for getCompanyApprovers:', JSON.stringify(requestBody));
-        return handleGetCompanyApprovers(requestBody);
+        Logger.log('RequestBody for getCompanyApprovers type:', typeof requestBody);
+        Logger.log('RequestBody for getCompanyApprovers is null/undefined:', requestBody == null);
+        
+        // Try to extract companyName before passing to function
+        let companyNameParam = null;
+        if (requestBody) {
+          companyNameParam = requestBody.companyName || requestBody.company || null;
+          Logger.log('Extracted companyName from requestBody:', companyNameParam || 'not found');
+          
+          // If requestBody is e.parameter, try to access it directly
+          // e.parameter might not serialize with JSON.stringify but properties should be accessible
+          if (!companyNameParam && typeof requestBody === 'object') {
+            try {
+              // Try accessing as if it's e.parameter directly
+              companyNameParam = requestBody['companyName'] || requestBody['company'] || null;
+            } catch (e) {
+              Logger.log('Error accessing companyName with bracket notation');
+            }
+          }
+        }
+        
+        try {
+          Logger.log('RequestBody for getCompanyApprovers (JSON):', JSON.stringify(requestBody));
+        } catch (e) {
+          Logger.log('RequestBody for getCompanyApprovers (cannot stringify):', e.toString());
+          // Try to access properties directly
+          if (requestBody) {
+            Logger.log('requestBody.action:', requestBody.action);
+            Logger.log('requestBody.companyName:', requestBody.companyName);
+            Logger.log('requestBody.company:', requestBody.company);
+          }
+        }
+        
+        // Pass both requestBody and extracted companyName
+        return handleGetCompanyApprovers(requestBody, companyNameParam);
       default: 
         Logger.log('⚠️ WARNING: Unknown action: "' + normalizedAction + '" (original: "' + action + '")');
         Logger.log('⚠️ Available actions: login, sendApprovalEmail, approveVoucher, rejectVoucher, getVoucherSummary, getVoucherHistory, getEmployees, getCompanyApprovers');
@@ -544,42 +581,88 @@ function handleGetEmployees(requestBody) {
 /**
  * Get company approvers from "Công ty" sheet
  * Returns the 3 approvers (Đại diện pháp luật, Kế toán trưởng, Thủ quỹ) for a given company
+ * Can also be called with direct parameters: handleGetCompanyApprovers(companyName)
  */
-function handleGetCompanyApprovers(requestBody) {
+function handleGetCompanyApprovers(requestBody, directCompanyName) {
   try {
     Logger.log('=== handleGetCompanyApprovers called ===');
     Logger.log('Request body type:', typeof requestBody);
-    Logger.log('Request body:', JSON.stringify(requestBody));
     
-    // Get company name from request (handle both e.parameter object and parsed requestBody)
+    // Try to serialize requestBody safely
+    try {
+      Logger.log('Request body (JSON):', JSON.stringify(requestBody));
+    } catch (e) {
+      Logger.log('Request body (cannot stringify):', requestBody);
+    }
+    
+    // Get company name from request
+    // When called from doPost with URL-encoded form: e.parameter.companyName
     // When called from doGet: e.parameter.companyName
-    // When called from doPost: requestBody.companyName or e.parameter.companyName (if FormData)
+    // requestBody should be e.parameter object directly (but might not serialize well)
     let companyName = '';
+    
     if (requestBody) {
       if (typeof requestBody === 'object') {
-        companyName = requestBody.companyName || requestBody.company || '';
+        // Google Apps Script e.parameter is a special object
+        // Access properties directly - might not show up in Object.keys()
+        companyName = requestBody.companyName || 
+                     requestBody.company || 
+                     (requestBody.hasOwnProperty ? (requestBody.hasOwnProperty('companyName') ? requestBody.companyName : '') : '') ||
+                     '';
+        
+        // Try accessing as dictionary-style
+        if (!companyName) {
+          try {
+            companyName = requestBody['companyName'] || requestBody['company'] || '';
+          } catch (e) {
+            Logger.log('Error accessing companyName with bracket notation:', e);
+          }
+        }
+        
+        Logger.log('Extracted companyName from object:', companyName || '(empty)');
+        
+        // Log all keys for debugging (might not work for e.parameter)
+        try {
+          const keys = Object.keys(requestBody || {});
+          Logger.log('Available keys in requestBody:', keys.length > 0 ? keys.join(', ') : 'none (might be e.parameter special object)');
+        } catch (e) {
+          Logger.log('Cannot get keys from requestBody:', e.toString());
+        }
+        
+        // Try to access specific properties directly
+        Logger.log('requestBody.companyName direct access:', requestBody.companyName || 'undefined');
+        Logger.log('requestBody.company direct access:', requestBody.company || 'undefined');
+        Logger.log('requestBody.action:', requestBody.action || 'undefined');
+        
       } else if (typeof requestBody === 'string') {
-        // If it's a string, try to parse it
+        // If it's a string, try to parse it as JSON
         try {
           const parsed = JSON.parse(requestBody);
           companyName = parsed.companyName || parsed.company || '';
+          Logger.log('Parsed companyName from JSON string:', companyName);
         } catch (e) {
           // Not JSON, treat as company name directly
           companyName = requestBody;
+          Logger.log('Treated requestBody as company name directly:', companyName);
         }
       }
+    } else {
+      Logger.log('⚠️ requestBody is null/undefined/empty');
     }
     
-    // Also check if companyName came as a direct parameter (from URL params)
-    if (!companyName || companyName.trim() === '') {
-      // Try to get from global parameter if this was called from doGet/doPost
-      const param = requestBody || {};
-      companyName = param.companyName || param.company || '';
+    // Allow direct companyName parameter as fallback
+    if ((!companyName || companyName.trim() === '') && directCompanyName) {
+      companyName = directCompanyName;
+      Logger.log('Using directCompanyName parameter:', companyName);
     }
+    
+    Logger.log('Final companyName value:', companyName || '(empty - will fail validation)');
     
     if (!companyName || companyName.trim() === '') {
       Logger.log('❌ Company name is missing');
-      return createResponse(false, 'Tên công ty là bắt buộc');
+      Logger.log('Debug info - requestBody:', requestBody);
+      Logger.log('Debug info - directCompanyName:', directCompanyName);
+      return createResponse(false, 'Tên công ty là bắt buộc. Received requestBody: ' + (requestBody ? 'exists' : 'null/undefined'));
     }
     
     Logger.log('Looking for company: ' + companyName);
@@ -600,7 +683,7 @@ function handleGetCompanyApprovers(requestBody) {
     
     // Column mapping based on "Công ty" sheet structure:
     // A: Tên công ty viết tắt - index 0
-    // B: Tên công ty - index 1 (match this)
+    // B: Tên công ty - index 1 (THIS IS WHERE WE MATCH - Column B)
     // C: Địa chỉ - index 2
     // D: Mã số thuế - index 3
     // E: Email Đại diện pháp luật - index 4
@@ -613,17 +696,24 @@ function handleGetCompanyApprovers(requestBody) {
     // L: Thủ quỹ (name) - index 11
     // M: Chữ ký Thủ quỹ (signature URL) - index 12
     
+    Logger.log('Searching for company: "' + companyName + '" in column B (index 1)');
+    
     // Find the company row (skip header row at index 0)
     let companyRow = null;
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
-      const rowCompanyName = (row[1] || '').toString().trim(); // Column B: Tên công ty
+      const rowCompanyName = (row[1] || '').toString().trim(); // Column B (index 1): Tên công ty
+      
+      Logger.log('Row ' + (i + 1) + ' - Column B value: "' + rowCompanyName + '"');
       
       // Exact match or case-insensitive match
-      if (rowCompanyName === companyName.trim() || 
-          rowCompanyName.toLowerCase() === companyName.trim().toLowerCase()) {
+      const searchName = companyName.trim();
+      const searchNameLower = searchName.toLowerCase();
+      const rowNameLower = rowCompanyName.toLowerCase();
+      
+      if (rowCompanyName === searchName || rowNameLower === searchNameLower) {
         companyRow = row;
-        Logger.log('✅ Found company at row ' + (i + 1));
+        Logger.log('✅ Found company match at row ' + (i + 1) + ': "' + rowCompanyName + '"');
         break;
       }
     }
