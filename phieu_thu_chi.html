@@ -6451,18 +6451,10 @@
             let approverDetails = {};
             
             if (data.selectedCompanyApprovers) {
-                // Use company-specific approvers from sheet
+                // ✅ SEQUENTIAL APPROVAL: Send email ONLY to first approver (Chief Accountant)
                 const approvers = data.selectedCompanyApprovers;
                 
-                // Collect all valid approver emails
-                if (approvers.legalRep && approvers.legalRep.email) {
-                    recipients.push(approvers.legalRep.email);
-                    approverDetails[approvers.legalRep.email] = {
-                        name: approvers.legalRep.name,
-                        role: approvers.legalRep.role,
-                        signature: approvers.legalRep.signature
-                    };
-                }
+                // Only send to Chief Accountant (first in sequence)
                 if (approvers.accountant && approvers.accountant.email) {
                     recipients.push(approvers.accountant.email);
                     approverDetails[approvers.accountant.email] = {
@@ -6470,9 +6462,20 @@
                         role: approvers.accountant.role,
                         signature: approvers.accountant.signature
                     };
+                    console.log('✅ SEQUENTIAL APPROVAL: Sending email ONLY to first approver (Chief Accountant):', approvers.accountant.email);
+                } else {
+                    console.warn('⚠️ Chief Accountant email not found in company approvers');
+                }
+                
+                // Store all approver details for reference (but only send to first)
+                if (approvers.legalRep && approvers.legalRep.email) {
+                    approverDetails[approvers.legalRep.email] = {
+                        name: approvers.legalRep.name,
+                        role: approvers.legalRep.role,
+                        signature: approvers.legalRep.signature
+                    };
                 }
                 if (approvers.treasurer && approvers.treasurer.email) {
-                    recipients.push(approvers.treasurer.email);
                     approverDetails[approvers.treasurer.email] = {
                         name: approvers.treasurer.name,
                         role: approvers.treasurer.role,
@@ -6480,7 +6483,7 @@
                     };
                 }
                 
-                console.log('✅ Using company-specific approvers:', recipients);
+                console.log('✅ Using company-specific approvers (sequential approval enabled)');
                 console.log('Approver details:', approverDetails);
             } else {
                 // Fallback to fixed list if company approvers not loaded

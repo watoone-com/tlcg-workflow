@@ -474,28 +474,50 @@ function handleSendEmail(requestBody) {
         // Update emailData.to to send only to first approver
         emailData.to = firstApprover.email;
         
-        // Update requester notification to mention sequential approval
-        if (requesterEmailData && requesterEmailData.body) {
-          requesterEmailData.body = requesterEmailData.body.replace(
-            /đã được gửi phê duyệt/g,
-            'đã được gửi phê duyệt. Đã gửi email đến Kế toán trưởng để bắt đầu phê duyệt.'
-          );
-          
-          // Add status review link
-          const statusLink = 'https://workflow.egg-ventures.com/phieu_thu_chi.html?viewStatus=' + voucherNo;
-          requesterEmailData.body += `
-            <p style="margin-top: 15px;">
-              <a href="${statusLink}" style="background: #4285f4; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
-                🔍 Xem trạng thái phê duyệt
-              </a>
-            </p>
-          `;
+        Logger.log('✅ Updated emailData.to to first approver: ' + emailData.to);
+      } else {
+        Logger.log('⚠️ WARNING: Sequential approval enabled but Chief Accountant email not found!');
+        Logger.log('approversMeta:', approversMeta ? 'exists' : 'null');
+        if (approversMeta && approversMeta.approvers) {
+          Logger.log('accountant exists:', approversMeta.approvers.accountant ? 'yes' : 'no');
+          if (approversMeta.approvers.accountant) {
+            Logger.log('accountant.email:', approversMeta.approvers.accountant.email || 'MISSING');
+          }
         }
+        // Don't fail - let it use original emailData.to as fallback
       }
+      
+      // Update requester notification to mention sequential approval (if approversMeta was created)
+      if (requesterEmailData && requesterEmailData.body && approversMeta) {
+        requesterEmailData.body = requesterEmailData.body.replace(
+          /đã được gửi phê duyệt/g,
+          'đã được gửi phê duyệt. Đã gửi email đến Kế toán trưởng để bắt đầu phê duyệt.'
+        );
+        
+        // Add status review link
+        const statusLink = 'https://workflow.egg-ventures.com/phieu_thu_chi.html?viewStatus=' + voucherNo;
+        requesterEmailData.body += `
+          <p style="margin-top: 15px;">
+            <a href="${statusLink}" style="background: #4285f4; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
+              🔍 Xem trạng thái phê duyệt
+            </a>
+          </p>
+        `;
+      }
+    }
+
+    // Validate emailData.to before sending
+    if (!emailData.to || emailData.to.trim() === '') {
+      Logger.log('❌ ERROR: emailData.to is empty or invalid');
+      Logger.log('emailData:', emailData);
+      return createResponse(false, 'Thiếu địa chỉ email người nhận. Vui lòng kiểm tra thông tin công ty và người phê duyệt.');
     }
 
     // Gửi email bằng GmailApp - to approvers
     try {
+      Logger.log('📧 Preparing to send email to: ' + emailData.to);
+      Logger.log('📧 Email subject: ' + emailData.subject);
+      
       let options = { htmlBody: emailData.body };
       if (emailData.cc && emailData.cc.trim() !== "") options.cc = emailData.cc.trim();
       // Use logged-in user's email as reply-to (instead of script owner's email)
@@ -503,8 +525,15 @@ function handleSendEmail(requestBody) {
         options.replyTo = emailData.replyTo.trim();
         Logger.log('Setting reply-to to logged-in user email: ' + options.replyTo);
       }
+      
       GmailApp.sendEmail(emailData.to, emailData.subject, '', options);
+      Logger.log('✅ Email sent successfully to: ' + emailData.to);
     } catch (emailError) {
+      Logger.log('❌ ERROR sending email: ' + emailError.toString());
+      Logger.log('❌ Error details: ' + JSON.stringify({
+        message: emailError.message,
+        stack: emailError.stack
+      }));
       return createResponse(false, 'Lỗi gửi email đến người phê duyệt: ' + emailError.message);
     }
 
