@@ -3298,18 +3298,29 @@
             try {
                 console.log('📧 Loading approvers for company:', companyName);
                 
+                // Build URL-encoded body
+                const params = new URLSearchParams({
+                    action: 'getCompanyApprovers',
+                    companyName: companyName
+                });
+                const bodyString = params.toString();
+                console.log('📧 Request body:', bodyString);
+                console.log('📧 Action value:', 'getCompanyApprovers');
+                console.log('📧 CompanyName value:', companyName);
+                
                 const response = await fetch('/api/voucher', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/x-www-form-urlencoded',
                     },
-                    body: new URLSearchParams({
-                        action: 'getCompanyApprovers',
-                        companyName: companyName
-                    })
+                    body: bodyString
                 });
                 
+                console.log('📧 Response status:', response.status);
+                console.log('📧 Response ok:', response.ok);
+                
                 const result = await response.json();
+                console.log('📧 Response result:', result);
                 
                 if (result.success && result.data && result.data.approvers) {
                     data.selectedCompanyApprovers = result.data.approvers;
@@ -3319,11 +3330,13 @@
                     showToast(`Đã tải thông tin người phê duyệt cho công ty "${companyName}"`, 'success', 'Thành công');
                 } else {
                     console.error('❌ Failed to load company approvers:', result.message);
+                    console.error('❌ Full result:', JSON.stringify(result, null, 2));
                     data.selectedCompanyApprovers = null;
                     showToast('Không thể tải thông tin người phê duyệt. ' + (result.message || ''), 'warning', 'Cảnh báo');
                 }
             } catch (error) {
                 console.error('❌ Error loading company approvers:', error);
+                console.error('❌ Error stack:', error.stack);
                 data.selectedCompanyApprovers = null;
                 showToast('Lỗi khi tải thông tin người phê duyệt: ' + error.message, 'error', 'Lỗi');
             }

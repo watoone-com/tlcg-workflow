@@ -134,11 +134,15 @@ function doPost(e) {
         return createResponse(false, 'Lỗi parse dữ liệu: ' + parseError.message + '. Payload size: ' + (e.parameter.data ? Math.round(e.parameter.data.length / 1024) : 'unknown') + 'KB. Có thể payload quá lớn hoặc bị cắt.');
       }
     } else if (e.parameter && e.parameter.action) {
-      action = e.parameter.action;
+      // Extract action and ensure it's a clean string
+      action = String(e.parameter.action).trim();
       requestBody = e.parameter;
-      Logger.log('Using e.parameter directly, action: ' + action);
+      Logger.log('Using e.parameter directly, action: [' + action + ']');
+      Logger.log('Action type: ' + typeof action);
+      Logger.log('Action length: ' + action.length);
       Logger.log('e.parameter keys: ' + Object.keys(e.parameter).join(', '));
       Logger.log('e.parameter.companyName: ' + (e.parameter.companyName || 'not found'));
+      Logger.log('e.parameter.companyName type: ' + (typeof e.parameter.companyName));
     } else if (e.postData && e.postData.contents) {
       try {
         requestBody = JSON.parse(e.postData.contents);
@@ -173,6 +177,8 @@ function doPost(e) {
     Logger.log('Normalized action length: ' + normalizedAction.length);
     Logger.log('Will match getCompanyApprovers? ' + (normalizedAction === 'getCompanyApprovers'));
     Logger.log('Expected "getCompanyApprovers" length: ' + 'getCompanyApprovers'.length);
+    Logger.log('Normalized action charCodeAt(0): ' + (normalizedAction.length > 0 ? normalizedAction.charCodeAt(0) : 'N/A'));
+    Logger.log('Expected "getCompanyApprovers" charCodeAt(0): ' + 'getCompanyApprovers'.charCodeAt(0));
     
     // Debug: Check character by character if length matches
     if (normalizedAction.length === 'getCompanyApprovers'.length && normalizedAction !== 'getCompanyApprovers') {
@@ -182,6 +188,13 @@ function doPost(e) {
           Logger.log('Mismatch at position ' + i + ': got "' + normalizedAction[i] + '" (charCode: ' + normalizedAction.charCodeAt(i) + ') expected "' + 'getCompanyApprovers'[i] + '" (charCode: ' + 'getCompanyApprovers'.charCodeAt(i) + ')');
         }
       }
+    }
+    
+    // Pre-check for getCompanyApprovers before switch (for debugging)
+    if (normalizedAction === 'getCompanyApprovers' || normalizedAction.toLowerCase() === 'getcompanyapprovers') {
+      Logger.log('✅✅✅ PRE-CHECK: getCompanyApprovers detected before switch ✅✅✅');
+      Logger.log('✅ Normalized action matches: ' + (normalizedAction === 'getCompanyApprovers'));
+      Logger.log('✅ Case-insensitive matches: ' + (normalizedAction.toLowerCase() === 'getcompanyapprovers'));
     }
     
     switch (normalizedAction) {
@@ -234,8 +247,24 @@ function doPost(e) {
         return handleGetApprovalStatus(requestBody);
       default: 
         Logger.log('⚠️ WARNING: Unknown action: "' + normalizedAction + '" (original: "' + action + '")');
+        Logger.log('⚠️ Normalized action length: ' + normalizedAction.length);
+        Logger.log('⚠️ Expected "getCompanyApprovers" length: ' + 'getCompanyApprovers'.length);
+        Logger.log('⚠️ Are they equal? ' + (normalizedAction === 'getCompanyApprovers'));
+        Logger.log('⚠️ Case-insensitive equal? ' + (normalizedAction.toLowerCase() === 'getcompanyapprovers'));
+        
+        // Fallback: Try case-insensitive match for getCompanyApprovers
+        if (normalizedAction && normalizedAction.toLowerCase() === 'getcompanyapprovers') {
+          Logger.log('⚠️ FALLBACK: Matched getCompanyApprovers case-insensitively, handling...');
+          // Extract companyName
+          let companyNameParam = null;
+          if (requestBody) {
+            companyNameParam = requestBody.companyName || requestBody.company || null;
+          }
+          return handleGetCompanyApprovers(requestBody, companyNameParam);
+        }
+        
         Logger.log('⚠️ Available actions: login, sendApprovalEmail, approveVoucher, rejectVoucher, getVoucherSummary, getVoucherHistory, getEmployees, getCompanyApprovers, getApprovalStatus');
-        return createResponse(false, 'Action không hợp lệ: ' + normalizedAction);
+        return createResponse(false, 'Action không hợp lệ: ' + normalizedAction + ' (length: ' + normalizedAction.length + ', expected: ' + 'getCompanyApprovers'.length + ')');
     }
   } catch (error) {
     Logger.log('❌ CRITICAL ERROR in doPost: ' + error.toString());

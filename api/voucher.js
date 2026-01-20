@@ -240,9 +240,21 @@ export default async function handler(req, res) {
       
       // Update action from parsedBody if we found it there and action is still null
       // This is critical for URL-encoded requests where Vercel auto-parses the body
-      if (!action && parsedBody && typeof parsedBody === 'object' && parsedBody.action) {
-        action = parsedBody.action;
-        console.log('[Proxy POST] Extracted action from parsedBody:', action);
+      if (parsedBody && typeof parsedBody === 'object') {
+        // Check for action in parsedBody
+        if (parsedBody.action) {
+          // Always update action from parsedBody if it exists (even if action was already set from earlier extraction)
+          action = String(parsedBody.action).trim();
+          console.log('[Proxy POST] Extracted/Updated action from parsedBody:', action);
+          console.log('[Proxy POST] Action type:', typeof action);
+          console.log('[Proxy POST] Action length:', action.length);
+        }
+        
+        // Log all keys in parsedBody for debugging
+        console.log('[Proxy POST] parsedBody keys:', Object.keys(parsedBody).join(', '));
+        if (parsedBody.companyName) {
+          console.log('[Proxy POST] parsedBody.companyName:', parsedBody.companyName);
+        }
         
         // Re-route based on action if needed
         if (action === 'getMasterData' && GAS_URL !== TLCGROUP_BACKEND) {
@@ -251,7 +263,8 @@ export default async function handler(req, res) {
         }
         // getCompanyApprovers defaults to PHIEU_THU_CHI_BACKEND (already set)
         if (action === 'getCompanyApprovers') {
-          console.log('[Proxy POST] getCompanyApprovers will use PHIEU_THU_CHI_BACKEND (default)');
+          console.log('[Proxy POST] ✅ getCompanyApprovers detected - will use PHIEU_THU_CHI_BACKEND (default)');
+          console.log('[Proxy POST] Target URL:', GAS_URL.substring(0, 60) + '...');
         }
       }
       
@@ -324,16 +337,22 @@ export default async function handler(req, res) {
         console.log('[Proxy POST] Forwarding URL-encoded string directly to preserve format');
       } else if (parsedBody && typeof parsedBody === 'object' && Object.keys(parsedBody).length > 0) {
         // For parsed objects, convert to URL-encoded form data
+        // This ensures Google Apps Script receives data in e.parameter format
         contentType = 'application/x-www-form-urlencoded';
         const params = new URLSearchParams();
         Object.keys(parsedBody).forEach(key => {
           const value = parsedBody[key];
           if (value !== undefined && value !== null) {
-            params.append(key, String(value));
+            // Convert to string and trim to ensure clean values
+            const stringValue = String(value).trim();
+            params.append(key, stringValue);
+            console.log(`[Proxy POST] Adding to URL-encoded: ${key}=${stringValue.substring(0, 50)}${stringValue.length > 50 ? '...' : ''}`);
           }
         });
         bodyToSend = params.toString();
-        console.log('[Proxy POST] Converted parsed body to URL-encoded format');
+        console.log('[Proxy POST] ✅ Converted parsed body to URL-encoded format');
+        console.log('[Proxy POST] URL-encoded body:', bodyToSend.substring(0, 200)); // Log first 200 chars
+        console.log('[Proxy POST] URL-encoded body length:', bodyToSend.length);
       } else {
         // Fallback: send as JSON in 'data' field
         contentType = 'application/x-www-form-urlencoded';
