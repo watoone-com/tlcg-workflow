@@ -33,9 +33,6 @@ function doGet(e) {
     } else if (action === 'getApprovalStatus') {
       Logger.log('doGet: getApprovalStatus called');
       return handleGetApprovalStatus(e.parameter);
-    } else if (action === 'getApprovalStatus') {
-      Logger.log('doGet: getApprovalStatus called');
-      return handleGetApprovalStatus(e.parameter);
     } else if (action === 'approveVoucher') {
       // Handle approve via GET (fallback, but POST is preferred for signature)
       Logger.log('⚠️ Handling approveVoucher via GET (signature may be missing)');
@@ -169,11 +166,23 @@ function doPost(e) {
     Logger.log('Action length: ' + (action ? action.length : 'null'));
     Logger.log('Action exact value: [' + action + ']');
     
-    // Normalize action (trim whitespace)
-    const normalizedAction = action ? String(action).trim() : '';
+    // Normalize action (trim whitespace and remove any invisible characters)
+    const normalizedAction = action ? String(action).trim().replace(/[\u200B-\u200D\uFEFF]/g, '') : '';
     
     Logger.log('Normalized action: [' + normalizedAction + ']');
+    Logger.log('Normalized action length: ' + normalizedAction.length);
     Logger.log('Will match getCompanyApprovers? ' + (normalizedAction === 'getCompanyApprovers'));
+    Logger.log('Expected "getCompanyApprovers" length: ' + 'getCompanyApprovers'.length);
+    
+    // Debug: Check character by character if length matches
+    if (normalizedAction.length === 'getCompanyApprovers'.length && normalizedAction !== 'getCompanyApprovers') {
+      Logger.log('⚠️ Length matches but strings differ! Checking character by character...');
+      for (let i = 0; i < normalizedAction.length; i++) {
+        if (normalizedAction[i] !== 'getCompanyApprovers'[i]) {
+          Logger.log('Mismatch at position ' + i + ': got "' + normalizedAction[i] + '" (charCode: ' + normalizedAction.charCodeAt(i) + ') expected "' + 'getCompanyApprovers'[i] + '" (charCode: ' + 'getCompanyApprovers'.charCodeAt(i) + ')');
+        }
+      }
+    }
     
     switch (normalizedAction) {
       case 'login': return handleLogin_(requestBody);
