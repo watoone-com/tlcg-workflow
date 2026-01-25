@@ -3308,6 +3308,10 @@
                 console.log('📧 Action value:', 'getCompanyApprovers');
                 console.log('📧 CompanyName value:', companyName);
                 
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'phieu_thu_chi.html:3310',message:'FRONTEND_PRE_FETCH',data:{bodyString:bodyString,companyName:companyName,actionValue:'getCompanyApprovers'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B,C,E'})}).catch(()=>{});
+                // #endregion
+                
                 const response = await fetch('/api/voucher', {
                     method: 'POST',
                     headers: {
@@ -3321,6 +3325,10 @@
                 
                 const result = await response.json();
                 console.log('📧 Response result:', result);
+                
+                // #region agent log
+                fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'phieu_thu_chi.html:3330',message:'FRONTEND_RESPONSE',data:{success:result.success,message:result.message,hasData:!!result.data,hasApprovers:!!(result.data&&result.data.approvers)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,B'})}).catch(()=>{});
+                // #endregion
                 
                 if (result.success && result.data && result.data.approvers) {
                     data.selectedCompanyApprovers = result.data.approvers;

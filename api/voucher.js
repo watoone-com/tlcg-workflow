@@ -58,7 +58,7 @@ export default async function handler(req, res) {
   // Smart routing: Route to appropriate backend based on action
   // PHIEU_THU_CHI_BACKEND - For voucher operations
   const PHIEU_THU_CHI_BACKEND = process.env.GOOGLE_APPS_SCRIPT_URL || 
-    'https://script.google.com/macros/s/AKfycbyltkunEjTHhFSRH6evpwDAxZk74QouLTG-FSlCOQtLJGts8guLhFYuBq9n1h0fJvyd/exec';
+    'https://script.google.com/macros/s/AKfycbwcz8QPzcb7fCeTc7f7xjBHNamLq44bh-TTTH_1MCCOOwtw2bI9U_8yACfAr6SV_V3K/exec';
   
   // TLCGROUP_BACKEND - For intranet operations (getMasterData, etc.)
   const TLCGROUP_BACKEND = process.env.TLCGROUP_BACKEND_URL || 
@@ -366,6 +366,10 @@ export default async function handler(req, res) {
       console.log(`[Proxy POST] ${GAS_URL.substring(0, 60)}... action: ${finalAction}`);
       console.log(`[Proxy POST] Sending as: ${contentType}`);
       
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/voucher.js:367',message:'PRE_FETCH_TO_BACKEND',data:{hypothesisA_backendUrl:GAS_URL,hypothesisB_bodyToSend:typeof bodyToSend==='string'?bodyToSend.substring(0,500):String(bodyToSend),hypothesisC_finalAction:finalAction,hypothesisD_contentType:contentType,hypothesisE_parsedBodyKeys:parsedBody?Object.keys(parsedBody):null,hypothesisE_companyName:parsedBody?.companyName||'NOT_FOUND'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,B,C,D,E'})}).catch(()=>{});
+      // #endregion
+      
       // Build headers - don't set Content-Type for FormData (browser/Node will set boundary)
       const headers = {
         'User-Agent': 'TLCG-Workflow-Proxy/1.0'
@@ -384,6 +388,10 @@ export default async function handler(req, res) {
       
       // Read response text first (can only be read once)
       const responseText = await response.text();
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/voucher.js:390',message:'POST_FETCH_RESPONSE',data:{responseStatus:response.status,responseOk:response.ok,responseTextPreview:responseText.substring(0,500),finalUrl:GAS_URL},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,B'})}).catch(()=>{});
+      // #endregion
       
       if (!response.ok) {
         console.error(`[Proxy POST Error] ${response.status}: ${responseText.substring(0, 200)}`);
