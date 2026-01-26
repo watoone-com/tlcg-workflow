@@ -60,9 +60,9 @@ export default async function handler(req, res) {
   const PHIEU_THU_CHI_BACKEND = process.env.GOOGLE_APPS_SCRIPT_URL || 
     'https://script.google.com/macros/s/AKfycbwcz8QPzcb7fCeTc7f7xjBHNamLq44bh-TTTH_1MCCOOwtw2bI9U_8yACfAr6SV_V3K/exec';
   
-  // TLCGROUP_BACKEND - For intranet operations (getMasterData, etc.)
-  const TLCGROUP_BACKEND = process.env.TLCGROUP_BACKEND_URL || 
-    'https://script.google.com/macros/s/AKfycbwQ9lisLCr2iATBF2NGOqdNlG_f8ygDKrIEYkiZYsaVbm_7gFI4P_EC0FC5Wq-TJdMYKw/exec';
+  // TLCGROUP_BACKEND - For intranet operations (login, getMasterData, etc.)
+  const TLCGROUP_BACKEND = process.env.TLCGROUP_BACKEND_URL ||
+    'https://script.google.com/macros/s/AKfycbw05Cr7-Mm2TtgQgxVaVoobvdSUHtX2Y8vjTi0Fd-_UmL0ojojyLDOwXwyaMWDwGW06Iw/exec';
   
   // PAYMENT_REQUEST_BACKEND - For payment request operations
   const PAYMENT_REQUEST_BACKEND = process.env.PAYMENT_REQUEST_BACKEND_URL || 
@@ -104,10 +104,10 @@ export default async function handler(req, res) {
   
   console.log('[Proxy] Final extracted action:', action);
   
-  // Route getMasterData to TLCGroup Backend
-  if (action === 'getMasterData') {
+  // Route login and getMasterData to TLCGroup Backend (TLCG_INTRANET_BACKEND_COMPLETE.gs)
+  if (action === 'login' || action === 'getMasterData') {
     GAS_URL = TLCGROUP_BACKEND;
-    console.log('[Proxy] Routing getMasterData to TLCGroup Backend');
+    console.log('[Proxy] Routing ' + action + ' to TLCGroup Backend');
   }
   
   // Route payment request actions to Payment Request Backend
