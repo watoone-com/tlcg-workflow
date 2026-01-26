@@ -57,7 +57,7 @@ async function parseFormData(req) {
 export default async function handler(req, res) {
   // Smart routing: Route to appropriate backend based on action
   // PHIEU_THU_CHI_BACKEND - For voucher operations
-  const PHIEU_THU_CHI_BACKEND = process.env.GOOGLE_APPS_SCRIPT_URL || 
+  const PHIEU_THU_CHI_BACKEND = process.env.PHIEU_THU_CHI_BACKEND_URL || 
     'https://script.google.com/macros/s/AKfycbwcz8QPzcb7fCeTc7f7xjBHNamLq44bh-TTTH_1MCCOOwtw2bI9U_8yACfAr6SV_V3K/exec';
   
   // TLCGROUP_BACKEND - For intranet operations (login, getMasterData, etc.)
