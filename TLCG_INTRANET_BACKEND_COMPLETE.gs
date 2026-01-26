@@ -38,17 +38,147 @@ const USERS_SHEET_NAME = 'Nhân viên'; // Sheet name: Nhân viên
  */
 function safeOpenSpreadsheet(spreadsheetId, context) {
   try {
+    // #region agent log
+    try {
+      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        payload: JSON.stringify({
+          location: 'TLCG_INTRANET_BACKEND_COMPLETE.gs:39',
+          message: 'safeOpenSpreadsheet entry',
+          data: { context, spreadsheetId, spreadsheetIdType: typeof spreadsheetId, spreadsheetIdLength: spreadsheetId ? spreadsheetId.length : 0 },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'run1',
+          hypothesisId: 'A'
+        })
+      });
+    } catch (e) {}
+    // #endregion
     Logger.log('[' + context + '] Attempting to open spreadsheet: ' + spreadsheetId);
 
+    // #region agent log
+    try {
+      const spreadSheetAppDefined = typeof SpreadsheetApp !== 'undefined';
+      const openByIdExists = spreadSheetAppDefined && typeof SpreadsheetApp.openById === 'function';
+      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        payload: JSON.stringify({
+          location: 'TLCG_INTRANET_BACKEND_COMPLETE.gs:47',
+          message: 'Before openById - checking SpreadsheetApp',
+          data: { spreadSheetAppDefined, openByIdExists, spreadSheetAppType: typeof SpreadsheetApp, availableMethods: spreadSheetAppDefined ? Object.keys(SpreadsheetApp).slice(0, 10) : [] },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'run1',
+          hypothesisId: 'B'
+        })
+      });
+    } catch (e) {}
+    // #endregion
+
+    // Check if SpreadsheetApp is available
+    if (typeof SpreadsheetApp === 'undefined') {
+      Logger.log('[' + context + '] ❌ ERROR: SpreadsheetApp is undefined');
+      throw new Error('SpreadsheetApp không khả dụng. Script có thể chưa được cấp quyền hoặc đang chạy trong môi trường không hỗ trợ Google Sheets.');
+    }
+
+    // Check if openById method exists (authorization check)
+    if (typeof SpreadsheetApp.openById !== 'function') {
+      Logger.log('[' + context + '] ❌ ERROR: SpreadsheetApp.openById is not a function');
+      Logger.log('[' + context + '] Available SpreadsheetApp methods: ' + Object.keys(SpreadsheetApp).join(', '));
+      throw new Error('Script chưa được cấp quyền truy cập Google Sheets. SpreadsheetApp.openById không khả dụng.\n\nGiải pháp:\n1. Mở Apps Script editor (script.google.com)\n2. Chạy function testSpreadsheetAccess một lần\n3. Cấp quyền khi được yêu cầu\n4. Deploy lại web app: Deploy > Manage deployments > Edit\n5. Đặt "Execute as: Me (your-email@gmail.com)" và "Who has access: Anyone"\n6. Click "Deploy" và copy URL mới\n\nSpreadsheet ID: ' + spreadsheetId);
+    }
+
     if (!spreadsheetId || spreadsheetId === '') {
+      // #region agent log
+      try {
+        UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          payload: JSON.stringify({
+            location: 'TLCG_INTRANET_BACKEND_COMPLETE.gs:43',
+            message: 'Spreadsheet ID validation failed',
+            data: { spreadsheetId, isNull: spreadsheetId === null, isUndefined: spreadsheetId === undefined, isEmpty: spreadsheetId === '' },
+            timestamp: Date.now(),
+            sessionId: 'debug-session',
+            runId: 'run1',
+            hypothesisId: 'C'
+          })
+        });
+      } catch (e) {}
+      // #endregion
       throw new Error('Spreadsheet ID không được định nghĩa hoặc rỗng');
     }
 
+    // #region agent log
+    try {
+      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        payload: JSON.stringify({
+          location: 'TLCG_INTRANET_BACKEND_COMPLETE.gs:47',
+          message: 'About to call openById',
+          data: { spreadsheetId, context },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'run1',
+          hypothesisId: 'D'
+        })
+      });
+    } catch (e) {}
+    // #endregion
+
     const ss = SpreadsheetApp.openById(spreadsheetId);
+    
+    // #region agent log
+    try {
+      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        payload: JSON.stringify({
+          location: 'TLCG_INTRANET_BACKEND_COMPLETE.gs:48',
+          message: 'openById succeeded',
+          data: { spreadsheetId, spreadsheetName: ss ? ss.getName() : 'null' },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'run1',
+          hypothesisId: 'E'
+        })
+      });
+    } catch (e) {}
+    // #endregion
+    
     Logger.log('[' + context + '] ✅ Successfully opened spreadsheet');
     return ss;
 
   } catch (error) {
+    // #region agent log
+    try {
+      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        payload: JSON.stringify({
+          location: 'TLCG_INTRANET_BACKEND_COMPLETE.gs:51',
+          message: 'openById error caught',
+          data: { 
+            errorMessage: error.message, 
+            errorToString: error.toString(), 
+            errorName: error.name,
+            spreadsheetId,
+            context,
+            hasOpenByIdInMessage: error.message.includes('openById'),
+            hasUnexpectedError: error.message.includes('Unexpected error')
+          },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'run1',
+          hypothesisId: 'F'
+        })
+      });
+    } catch (e) {}
+    // #endregion
+    
     Logger.log('[' + context + '] ❌ ERROR opening spreadsheet: ' + error.toString());
     Logger.log('[' + context + '] Error details: ' + error.message);
 
@@ -94,6 +224,24 @@ function safeGetSheet(spreadsheet, sheetName, context) {
  */
 function doPost(e) {
   try {
+    // #region agent log
+    try {
+      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        payload: JSON.stringify({
+          location: 'TLCG_INTRANET_BACKEND_COMPLETE.gs:95',
+          message: 'doPost entry',
+          data: { hasPostData: !!(e && e.postData), hasParameter: !!(e && e.parameter), action: e && e.parameter ? e.parameter.action : null },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'run1',
+          hypothesisId: 'I'
+        })
+      });
+    } catch (e) {}
+    // #endregion
+    
     Logger.log('=== doPost called ===');
     Logger.log('e.postData: ' + JSON.stringify(e.postData));
     Logger.log('e.parameter: ' + JSON.stringify(e.parameter));
@@ -161,6 +309,25 @@ function doPost(e) {
     Logger.log('Request body parsed successfully: ' + JSON.stringify(requestBody));
     
     const action = requestBody.action;
+    
+    // #region agent log
+    try {
+      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        payload: JSON.stringify({
+          location: 'TLCG_INTRANET_BACKEND_COMPLETE.gs:163',
+          message: 'Action determined, routing to handler',
+          data: { action, isLogin: action === 'login' },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'run1',
+          hypothesisId: 'J'
+        })
+      });
+    } catch (e) {}
+    // #endregion
+    
     let result;
 
     switch (action) {
@@ -188,6 +355,16 @@ function doPost(e) {
         result = handleGetMasterData(requestBody);
         break;
       
+      case 'diagnose':
+        // Diagnostic endpoint - returns diagnostic information
+        try {
+          const diagnosticResult = diagnoseSpreadsheetAccess();
+          result = createResponse(diagnosticResult.success, diagnosticResult.error || diagnosticResult.message, diagnosticResult);
+        } catch (diagError) {
+          result = createResponse(false, 'Diagnostic failed: ' + diagError.message);
+        }
+        break;
+      
       default:
         result = createResponse(false, 'Invalid action: ' + action);
     }
@@ -196,9 +373,25 @@ function doPost(e) {
     output.setMimeType(ContentService.MimeType.JSON);
     return result;
   } catch (error) {
-    Logger.log('Error in doPost: ' + error.toString());
-    Logger.log('Error stack: ' + error.stack);
-    return createResponse(false, 'Server error: ' + error.message);
+    Logger.log('========================================');
+    Logger.log('❌ ERROR IN doPost ❌');
+    Logger.log('========================================');
+    Logger.log('Error name: ' + error.name);
+    Logger.log('Error message: ' + error.message);
+    Logger.log('Error toString: ' + error.toString());
+    if (error.stack) {
+      Logger.log('Error stack: ' + error.stack);
+    }
+    Logger.log('Full error object keys: ' + Object.keys(error).join(', '));
+    
+    // Check if it's the openById error
+    if (error.message && (error.message.includes('openById') || error.message.includes('Unexpected error'))) {
+      Logger.log('\n⚠️ DETECTED: openById authorization error');
+      Logger.log('Solution: Run diagnoseSpreadsheetAccess() or testSpreadsheetAccess() function');
+      Logger.log('Then re-deploy with "Execute as: Me"');
+    }
+    
+    return createResponse(false, 'Server error: ' + error.message + (error.stack ? '\nStack: ' + error.stack.substring(0, 200) : ''));
   }
 }
 
@@ -272,6 +465,24 @@ function doGet(e) {
  */
 function authenticateUser(email, password) {
   try {
+    // #region agent log
+    try {
+      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        payload: JSON.stringify({
+          location: 'TLCG_INTRANET_BACKEND_COMPLETE.gs:273',
+          message: 'authenticateUser entry',
+          data: { email, hasPassword: !!password, USERS_SHEET_ID, USERS_SHEET_IDType: typeof USERS_SHEET_ID, USERS_SHEET_IDLength: USERS_SHEET_ID ? USERS_SHEET_ID.length : 0 },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'run1',
+          hypothesisId: 'H'
+        })
+      });
+    } catch (e) {}
+    // #endregion
+    
     Logger.log('=== AUTHENTICATE USER ===');
     Logger.log('Email: ' + email);
     Logger.log('USERS_SHEET_ID: ' + USERS_SHEET_ID);
@@ -307,14 +518,14 @@ function authenticateUser(email, password) {
     // B: Chức vụ (Position/Role)
     // C: Phòng ban (Department) - Note: Some rows have Company here
     // D: Công ty (Company)
-    // E: Email
+    // E: Email - USED FOR AUTHENTICATION (find user by email)
     // F: Điện thoại (Phone)
-    // G: Status
+    // G: Status - USED FOR AUTHENTICATION (must be "Active")
     // H: EmployeeId
     // I: Role
     // J: isAdmin
-    // K: (other data)
-    // L: Password - SHA-256 hash (DO NOT RETURN)
+    // K: Login_password - NOT USED FOR AUTHENTICATION (contains display names like "Manager 1")
+    // L: Password - SHA-256 hash - USED FOR AUTHENTICATION (compare hashed password)
     
     const headers = data[0];
     
@@ -327,23 +538,21 @@ function authenticateUser(email, password) {
     if (emailCol === -1) emailCol = headers.indexOf('email');
     if (emailCol === -1) emailCol = 4; // Column E (0-indexed = 4)
     
-    // Find password column - try multiple methods
+    // Find password column - explicitly use Column L (index 11) for hashed password
+    // Column K (index 10) contains "Login_password" which is NOT the password field
+    // Column L (index 11) contains "Password" which is the SHA-256 hashed password
     let passwordCol = headers.indexOf('Password');
     if (passwordCol === -1) passwordCol = headers.indexOf('password');
-    if (passwordCol === -1) passwordCol = headers.indexOf('Password'); // Case sensitive check
-    // If still not found, try Column L (index 11) where password hash is stored
+    // Always default to Column L (index 11) where password hash is stored
     if (passwordCol === -1) {
-      // Check if Column L (index 11) exists and has data in row 2
-      if (headers.length > 11 && data.length > 1 && data[1][11]) {
-        passwordCol = 11; // Column L
-        Logger.log('Using Column L (index 11) for password');
-      } else if (headers.length > 10 && data.length > 1 && data[1][10]) {
-        passwordCol = 10; // Column K (fallback)
-        Logger.log('Using Column K (index 10) for password');
-      } else {
-        passwordCol = 11; // Default to Column L
-        Logger.log('Defaulting to Column L (index 11) for password');
-      }
+      passwordCol = 11; // Column L - this is where the hashed password is stored
+      Logger.log('Using Column L (index 11) for password hash');
+    }
+    
+    // Verify we're using Column L
+    if (passwordCol !== 11) {
+      Logger.log('WARNING: Password column is not Column L (index 11). Current: ' + passwordCol + '. Forcing to Column L.');
+      passwordCol = 11; // Force to Column L
     }
     
     let nameCol = headers.indexOf('Họ và tên');
@@ -570,6 +779,24 @@ function hashPassword(password) {
  */
 function handleLogin(requestBody) {
   try {
+    // #region agent log
+    try {
+      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        payload: JSON.stringify({
+          location: 'TLCG_INTRANET_BACKEND_COMPLETE.gs:571',
+          message: 'handleLogin entry',
+          data: { action: requestBody ? requestBody.action : 'null', hasEmail: !!(requestBody && requestBody.email), hasPassword: !!(requestBody && requestBody.password) },
+          timestamp: Date.now(),
+          sessionId: 'debug-session',
+          runId: 'run1',
+          hypothesisId: 'G'
+        })
+      });
+    } catch (e) {}
+    // #endregion
+    
     Logger.log('=== HANDLE LOGIN ===');
     Logger.log('Request body: ' + JSON.stringify(requestBody));
     Logger.log('Request body type: ' + typeof requestBody);
@@ -1283,6 +1510,135 @@ function testLoginHandler() {
   const result = handleLogin(requestBody);
   Logger.log('Result: ' + JSON.stringify(result, null, 2));
   return result;
+}
+
+/**
+ * Diagnostic function - Check all prerequisites for spreadsheet access
+ * Chạy function này để kiểm tra tất cả điều kiện cần thiết
+ */
+function diagnoseSpreadsheetAccess() {
+  try {
+    Logger.log('========================================');
+    Logger.log('=== DIAGNOSTIC CHECK ===');
+    Logger.log('========================================\n');
+
+    // Test 1: Check SpreadsheetApp availability
+    Logger.log('Test 1: Checking SpreadsheetApp availability...');
+    if (typeof SpreadsheetApp === 'undefined') {
+      Logger.log('❌ FAILED: SpreadsheetApp is undefined');
+      return { success: false, error: 'SpreadsheetApp is undefined' };
+    }
+    Logger.log('✅ PASSED: SpreadsheetApp is available');
+    Logger.log('   Type: ' + typeof SpreadsheetApp);
+    Logger.log('   Available methods: ' + Object.keys(SpreadsheetApp).slice(0, 10).join(', ') + '...\n');
+
+    // Test 2: Check openById method
+    Logger.log('Test 2: Checking openById method...');
+    if (typeof SpreadsheetApp.openById !== 'function') {
+      Logger.log('❌ FAILED: SpreadsheetApp.openById is not a function');
+      Logger.log('   Type: ' + typeof SpreadsheetApp.openById);
+      Logger.log('   This usually means the script needs authorization');
+      return { 
+        success: false, 
+        error: 'openById method not available - authorization required',
+        solution: 'Run testSpreadsheetAccess() function to authorize'
+      };
+    }
+    Logger.log('✅ PASSED: SpreadsheetApp.openById is available\n');
+
+    // Test 3: Check spreadsheet ID
+    Logger.log('Test 3: Checking spreadsheet ID...');
+    Logger.log('   USERS_SHEET_ID: ' + USERS_SHEET_ID);
+    Logger.log('   Type: ' + typeof USERS_SHEET_ID);
+    Logger.log('   Length: ' + (USERS_SHEET_ID ? USERS_SHEET_ID.length : 0));
+    if (!USERS_SHEET_ID || USERS_SHEET_ID === '') {
+      Logger.log('❌ FAILED: USERS_SHEET_ID is empty or undefined');
+      return { success: false, error: 'USERS_SHEET_ID is not defined' };
+    }
+    Logger.log('✅ PASSED: Spreadsheet ID is defined\n');
+
+    // Test 4: Try to open spreadsheet
+    Logger.log('Test 4: Attempting to open spreadsheet...');
+    Logger.log('   Spreadsheet ID: ' + USERS_SHEET_ID);
+    let ss;
+    try {
+      ss = SpreadsheetApp.openById(USERS_SHEET_ID);
+      Logger.log('✅ PASSED: Spreadsheet opened successfully!');
+      Logger.log('   Spreadsheet name: ' + ss.getName());
+      Logger.log('   Spreadsheet URL: ' + ss.getUrl());
+    } catch (openError) {
+      Logger.log('❌ FAILED: Could not open spreadsheet');
+      Logger.log('   Error name: ' + openError.name);
+      Logger.log('   Error message: ' + openError.message);
+      Logger.log('   Error toString: ' + openError.toString());
+      
+      if (openError.message.includes('openById') || openError.message.includes('Unexpected error')) {
+        Logger.log('\n   ⚠️ AUTHORIZATION ERROR DETECTED');
+        Logger.log('   Solution: Run testSpreadsheetAccess() to authorize');
+      } else if (openError.message.includes('not found') || openError.message.includes('does not exist')) {
+        Logger.log('\n   ⚠️ SPREADSHEET NOT FOUND');
+        Logger.log('   Check spreadsheet ID: ' + USERS_SHEET_ID);
+        Logger.log('   URL: https://docs.google.com/spreadsheets/d/' + USERS_SHEET_ID + '/edit');
+      }
+      
+      return { 
+        success: false, 
+        error: openError.message,
+        errorName: openError.name,
+        errorToString: openError.toString()
+      };
+    }
+
+    // Test 5: Check sheet access
+    Logger.log('\nTest 5: Checking sheet access...');
+    Logger.log('   Sheet name: ' + USERS_SHEET_NAME);
+    let sheet;
+    try {
+      sheet = ss.getSheetByName(USERS_SHEET_NAME);
+      if (!sheet) {
+        Logger.log('⚠️ WARNING: Sheet "' + USERS_SHEET_NAME + '" not found');
+        const allSheets = ss.getSheets();
+        Logger.log('   Available sheets: ' + allSheets.map(s => s.getName()).join(', '));
+        sheet = allSheets[0];
+        Logger.log('   Using first sheet: ' + sheet.getName());
+      } else {
+        Logger.log('✅ PASSED: Sheet found');
+      }
+    } catch (sheetError) {
+      Logger.log('❌ FAILED: Could not access sheet');
+      Logger.log('   Error: ' + sheetError.message);
+      return { success: false, error: 'Sheet access failed: ' + sheetError.message };
+    }
+
+    // Test 6: Read data
+    Logger.log('\nTest 6: Reading data from sheet...');
+    try {
+      const data = sheet.getDataRange().getValues();
+      Logger.log('✅ PASSED: Data read successfully');
+      Logger.log('   Total rows: ' + data.length);
+      Logger.log('   Total columns: ' + (data[0] ? data[0].length : 0));
+      if (data.length > 0) {
+        Logger.log('   Headers: ' + JSON.stringify(data[0].slice(0, 5)) + '...');
+      }
+    } catch (readError) {
+      Logger.log('❌ FAILED: Could not read data');
+      Logger.log('   Error: ' + readError.message);
+      return { success: false, error: 'Data read failed: ' + readError.message };
+    }
+
+    Logger.log('\n========================================');
+    Logger.log('✅✅✅ ALL DIAGNOSTIC TESTS PASSED! ✅✅✅');
+    Logger.log('========================================');
+    return { success: true, message: 'All tests passed' };
+
+  } catch (error) {
+    Logger.log('\n========================================');
+    Logger.log('❌❌❌ DIAGNOSTIC TEST FAILED ❌❌❌');
+    Logger.log('========================================');
+    Logger.log('Error: ' + error.message);
+    Logger.log('Stack: ' + error.stack);
+    return { success: false, error: error.message, stack: error.stack };
+  }
 }
 
 /**
