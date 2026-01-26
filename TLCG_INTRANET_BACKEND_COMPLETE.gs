@@ -245,7 +245,8 @@ function authenticateUser(email, password) {
     // H: EmployeeId
     // I: Role
     // J: isAdmin
-    // K: Password (DO NOT RETURN)
+    // K: (other data)
+    // L: Password - SHA-256 hash (DO NOT RETURN)
     
     const headers = data[0];
     
@@ -262,18 +263,18 @@ function authenticateUser(email, password) {
     let passwordCol = headers.indexOf('Password');
     if (passwordCol === -1) passwordCol = headers.indexOf('password');
     if (passwordCol === -1) passwordCol = headers.indexOf('Password'); // Case sensitive check
-    // If still not found, try Column K (index 10) or Column J (index 9)
+    // If still not found, try Column L (index 11) where password hash is stored
     if (passwordCol === -1) {
-      // Check if Column K (index 10) exists and has data in row 2
-      if (headers.length > 10 && data.length > 1 && data[1][10]) {
-        passwordCol = 10; // Column K
+      // Check if Column L (index 11) exists and has data in row 2
+      if (headers.length > 11 && data.length > 1 && data[1][11]) {
+        passwordCol = 11; // Column L
+        Logger.log('Using Column L (index 11) for password');
+      } else if (headers.length > 10 && data.length > 1 && data[1][10]) {
+        passwordCol = 10; // Column K (fallback)
         Logger.log('Using Column K (index 10) for password');
-      } else if (headers.length > 9 && data.length > 1 && data[1][9]) {
-        passwordCol = 9; // Column J
-        Logger.log('Using Column J (index 9) for password');
       } else {
-        passwordCol = 10; // Default to Column K
-        Logger.log('Defaulting to Column K (index 10) for password');
+        passwordCol = 11; // Default to Column L
+        Logger.log('Defaulting to Column L (index 11) for password');
       }
     }
     
