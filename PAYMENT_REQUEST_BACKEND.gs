@@ -16,7 +16,7 @@
 
 // ==================== CONFIGURATION ====================
 
-const USERS_SHEET_ID = '1-1Q75iKeoRAGO4p7U-1IAOp9jqx77HrxF6WUxuUuT_c';
+const USERS_SHEET_ID = '1ujmPbtEdkGLgEshfhvV8gRB6R0GLI31jsZM5rDOJS0g';
 
 const CONFIG = {
   SPREADSHEET_ID: '1ujmPbtEdkGLgEshfhvV8gRB6R0GLI31jsZM5rDOJS0g',

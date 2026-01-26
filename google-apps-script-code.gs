@@ -625,7 +625,7 @@ function createResponse(success, message, data) {
 function testSyncToSheets() {
   const testData = {
     action: 'syncToSheets',
-    spreadsheetId: 'YOUR_SPREADSHEET_ID_HERE', // Thay bằng ID thực tế
+    spreadsheetId: '1ujmPbtEdkGLgEshfhvV8gRB6R0GLI31jsZM5rDOJS0g', // Master Sheet ID
     sheetName: 'Phiếu Thu Chi',
     data: {
       timestamp: new Date().toISOString(),
