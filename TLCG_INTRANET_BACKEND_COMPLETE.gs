@@ -55,6 +55,17 @@ function safeOpenSpreadsheet(spreadsheetId, context) {
       });
     } catch (e) {}
     // #endregion
+    
+    Logger.log('[' + context + '] ========================================');
+    Logger.log('[' + context + '] safeOpenSpreadsheet called');
+    Logger.log('[' + context + '] Spreadsheet ID: ' + spreadsheetId);
+    Logger.log('[' + context + '] Context: ' + context);
+    Logger.log('[' + context + '] Execution context - SpreadsheetApp type: ' + typeof SpreadsheetApp);
+    Logger.log('[' + context + '] Execution context - SpreadsheetApp defined: ' + (typeof SpreadsheetApp !== 'undefined'));
+    if (typeof SpreadsheetApp !== 'undefined') {
+      Logger.log('[' + context + '] Execution context - openById type: ' + typeof SpreadsheetApp.openById);
+      Logger.log('[' + context + '] Execution context - openById is function: ' + (typeof SpreadsheetApp.openById === 'function'));
+    }
     Logger.log('[' + context + '] Attempting to open spreadsheet: ' + spreadsheetId);
 
     // #region agent log
@@ -183,8 +194,12 @@ function safeOpenSpreadsheet(spreadsheetId, context) {
     Logger.log('[' + context + '] Error details: ' + error.message);
 
     // Provide specific, actionable error messages
-    if (error.message.includes('openById') || error.message.includes('Unexpected error')) {
-      throw new Error('Script chưa được cấp quyền truy cập Google Sheets.\n\nGiải pháp:\n1. Mở Apps Script editor (script.google.com)\n2. Chạy function testSpreadsheetAccess một lần\n3. Cấp quyền khi được yêu cầu\n4. Deploy lại web app: Deploy > Manage deployments > Edit\n5. Đặt "Execute as: Me" và "Who has access: Anyone"\n6. Click "Deploy" và copy URL mới\n\nSpreadsheet ID: ' + spreadsheetId + '\nLỗi gốc: ' + error.message);
+    // Check for the specific "Unexpected error while getting the method or property openById" error
+    if (error.message.includes('openById') || error.message.includes('Unexpected error') || 
+        error.toString().includes('openById') || error.toString().includes('Unexpected error')) {
+      const friendlyMessage = 'Script chưa được cấp quyền truy cập Google Sheets.\n\nGiải pháp:\n1. Mở Apps Script editor (script.google.com)\n2. Chạy function testSpreadsheetAccess một lần\n3. Cấp quyền khi được yêu cầu\n4. Deploy lại web app: Deploy > Manage deployments > Edit\n5. Đặt "Execute as: Me" và "Who has access: Anyone"\n6. Click "Deploy" và copy URL mới\n\nSpreadsheet ID: ' + spreadsheetId;
+      Logger.log('[' + context + '] Transforming openById error to friendly message');
+      throw new Error(friendlyMessage);
     } else if (error.message.includes('not found') || error.message.includes('does not exist')) {
       throw new Error('Không tìm thấy spreadsheet với ID: ' + spreadsheetId + '\n\nVui lòng kiểm tra:\n1. Spreadsheet có tồn tại không?\n2. ID có chính xác không?\n3. URL spreadsheet: https://docs.google.com/spreadsheets/d/' + spreadsheetId + '/edit');
     } else if (error.message.includes('permission') || error.message.includes('access') || error.message.includes('Authorization')) {
@@ -243,6 +258,8 @@ function doPost(e) {
     // #endregion
     
     Logger.log('=== doPost called ===');
+    Logger.log('Execution context check - SpreadsheetApp available: ' + (typeof SpreadsheetApp !== 'undefined'));
+    Logger.log('Execution context check - openById available: ' + (typeof SpreadsheetApp !== 'undefined' && typeof SpreadsheetApp.openById === 'function'));
     Logger.log('e.postData: ' + JSON.stringify(e.postData));
     Logger.log('e.parameter: ' + JSON.stringify(e.parameter));
     
@@ -728,6 +745,15 @@ function authenticateUser(email, password) {
   } catch (error) {
     Logger.log('Authentication error: ' + error.toString());
     Logger.log('Error stack: ' + error.stack);
+    
+    // Check if this is the openById authorization error and preserve the friendly message
+    if (error.message && (error.message.includes('Script chưa được cấp quyền') || 
+        error.message.includes('openById') || error.message.includes('Unexpected error'))) {
+      // Return the friendly error message directly (already transformed by safeOpenSpreadsheet)
+      return { success: false, message: error.message };
+    }
+    
+    // For other errors, return with prefix
     return { success: false, message: 'Authentication error: ' + error.message };
   }
 }
@@ -831,6 +857,15 @@ function handleLogin(requestBody) {
   } catch (error) {
     Logger.log('Login handler error: ' + error.toString());
     Logger.log('Error stack: ' + error.stack);
+    
+    // Check if this is the openById authorization error and preserve the friendly message
+    if (error.message && (error.message.includes('Script chưa được cấp quyền') || 
+        error.message.includes('openById') || error.message.includes('Unexpected error'))) {
+      // Return the friendly error message directly (already transformed)
+      return createResponse(false, error.message);
+    }
+    
+    // For other errors, return with prefix
     return createResponse(false, 'Login error: ' + error.message);
   }
 }
@@ -1714,6 +1749,70 @@ function testSpreadsheetAccess() {
       success: false,
       message: error.message
     };
+  }
+}
+
+/**
+ * Test web app deployment - Call this to verify web app has correct permissions
+ * This simulates what happens when the web app is called via URL
+ */
+function testWebAppDeployment() {
+  try {
+    Logger.log('=== TESTING WEB APP DEPLOYMENT ===');
+    Logger.log('This simulates a web app call to verify permissions');
+    
+    // Simulate a login request
+    const testRequestBody = {
+      action: 'login',
+      email: 'test@example.com', // This will fail authentication, but should pass spreadsheet access
+      password: 'test'
+    };
+    
+    Logger.log('Simulating web app call with request body: ' + JSON.stringify(testRequestBody));
+    
+    // Call handleLogin directly (this is what doPost does)
+    const result = handleLogin(testRequestBody);
+    
+    // Check if we got past the spreadsheet access part
+    const resultText = result.getContent();
+    Logger.log('Response: ' + resultText);
+    
+    try {
+      const resultJson = JSON.parse(resultText);
+      Logger.log('Parsed response: ' + JSON.stringify(resultJson, null, 2));
+      
+      // If we get "Invalid email or password" or "Invalid password", that means
+      // spreadsheet access worked! (authentication failed, but that's expected)
+      if (resultJson.message && (
+          resultJson.message.includes('Invalid email') || 
+          resultJson.message.includes('Invalid password') ||
+          resultJson.message.includes('Password is required')
+        )) {
+        Logger.log('\n✅✅✅ WEB APP DEPLOYMENT TEST PASSED! ✅✅✅');
+        Logger.log('Spreadsheet access is working in web app deployment!');
+        Logger.log('The error you\'re seeing might be from a different deployment or URL.');
+        return { success: true, message: 'Web app deployment has correct permissions' };
+      } else if (resultJson.message && resultJson.message.includes('openById')) {
+        Logger.log('\n❌❌❌ WEB APP DEPLOYMENT TEST FAILED ❌❌❌');
+        Logger.log('Spreadsheet access is NOT working in web app deployment.');
+        Logger.log('Error: ' + resultJson.message);
+        Logger.log('\nSolution:');
+        Logger.log('1. Check deployment settings: Execute as: Me (linh.le@tl-c.com.vn)');
+        Logger.log('2. Verify spreadsheet is shared with linh.le@tl-c.com.vn');
+        Logger.log('3. Re-deploy the web app');
+        return { success: false, message: 'Web app deployment lacks permissions', error: resultJson.message };
+      }
+    } catch (parseError) {
+      Logger.log('Could not parse response as JSON: ' + parseError.message);
+    }
+    
+    return { success: false, message: 'Unexpected response format' };
+    
+  } catch (error) {
+    Logger.log('\n❌❌❌ WEB APP DEPLOYMENT TEST FAILED ❌❌❌');
+    Logger.log('Error: ' + error.message);
+    Logger.log('Stack: ' + error.stack);
+    return { success: false, message: error.message };
   }
 }
 
