@@ -26,6 +26,66 @@ const USERS_SHEET_NAME = 'Nhân viên'; // Sheet name: Nhân viên
 // Alternative: Use gid=2018642708 if sheet name doesn't work
 
 // ============================================================================
+// HELPER FUNCTIONS FOR ERROR HANDLING
+// ============================================================================
+
+/**
+ * Helper function to safely open a spreadsheet with detailed error handling
+ * @param {string} spreadsheetId - The ID of the spreadsheet to open
+ * @param {string} context - Context description for logging (e.g., "handleLogin")
+ * @returns {Spreadsheet} - The spreadsheet object
+ * @throws {Error} - Throws detailed error if spreadsheet cannot be opened
+ */
+function safeOpenSpreadsheet(spreadsheetId, context) {
+  try {
+    Logger.log('[' + context + '] Attempting to open spreadsheet: ' + spreadsheetId);
+
+    if (!spreadsheetId || spreadsheetId === '') {
+      throw new Error('Spreadsheet ID không được định nghĩa hoặc rỗng');
+    }
+
+    const ss = SpreadsheetApp.openById(spreadsheetId);
+    Logger.log('[' + context + '] ✅ Successfully opened spreadsheet');
+    return ss;
+
+  } catch (error) {
+    Logger.log('[' + context + '] ❌ ERROR opening spreadsheet: ' + error.toString());
+    Logger.log('[' + context + '] Error details: ' + error.message);
+
+    // Provide specific, actionable error messages
+    if (error.message.includes('openById') || error.message.includes('Unexpected error')) {
+      throw new Error('Script chưa được cấp quyền truy cập Google Sheets.\n\nGiải pháp:\n1. Mở Apps Script editor (script.google.com)\n2. Chạy function testSpreadsheetAccess một lần\n3. Cấp quyền khi được yêu cầu\n4. Deploy lại web app: Deploy > Manage deployments > Edit\n5. Đặt "Execute as: Me" và "Who has access: Anyone"\n6. Click "Deploy" và copy URL mới\n\nSpreadsheet ID: ' + spreadsheetId + '\nLỗi gốc: ' + error.message);
+    } else if (error.message.includes('not found') || error.message.includes('does not exist')) {
+      throw new Error('Không tìm thấy spreadsheet với ID: ' + spreadsheetId + '\n\nVui lòng kiểm tra:\n1. Spreadsheet có tồn tại không?\n2. ID có chính xác không?\n3. URL spreadsheet: https://docs.google.com/spreadsheets/d/' + spreadsheetId + '/edit');
+    } else if (error.message.includes('permission') || error.message.includes('access') || error.message.includes('Authorization')) {
+      throw new Error('Không có quyền truy cập spreadsheet.\n\nGiải pháp:\n1. Share spreadsheet với email account đang chạy script\n2. Hoặc đặt spreadsheet thành "Anyone with link can view/edit"\n3. Kiểm tra lại quyền trong spreadsheet settings\n\nSpreadsheet ID: ' + spreadsheetId);
+    }
+
+    throw new Error('Lỗi mở spreadsheet: ' + error.message + '\nSpreadsheet ID: ' + spreadsheetId);
+  }
+}
+
+/**
+ * Helper function to safely get a sheet by name with error handling
+ * @param {Spreadsheet} spreadsheet - The spreadsheet object
+ * @param {string} sheetName - Name of the sheet to get
+ * @param {string} context - Context for logging
+ * @returns {Sheet} - The sheet object
+ * @throws {Error} - Throws error if sheet not found
+ */
+function safeGetSheet(spreadsheet, sheetName, context) {
+  const sheet = spreadsheet.getSheetByName(sheetName);
+  if (!sheet) {
+    const availableSheets = spreadsheet.getSheets().map(function(s) { return s.getName(); }).join(', ');
+    Logger.log('[' + context + '] ❌ Sheet "' + sheetName + '" not found');
+    Logger.log('[' + context + '] Available sheets: ' + availableSheets);
+    throw new Error('Không tìm thấy sheet "' + sheetName + '" trong spreadsheet.\n\nCác sheet có sẵn: ' + availableSheets + '\n\nVui lòng kiểm tra tên sheet có chính xác không.');
+  }
+  Logger.log('[' + context + '] ✅ Successfully got sheet: ' + sheetName);
+  return sheet;
+}
+
+// ============================================================================
 // MAIN REQUEST HANDLERS
 // ============================================================================
 
@@ -214,18 +274,26 @@ function authenticateUser(email, password) {
   try {
     Logger.log('=== AUTHENTICATE USER ===');
     Logger.log('Email: ' + email);
-    
-    // Open the users spreadsheet
-    const spreadsheet = SpreadsheetApp.openById(USERS_SHEET_ID);
-    
-    // Try to get sheet by name first, then by gid if needed
-    let sheet = spreadsheet.getSheetByName(USERS_SHEET_NAME);
-    if (!sheet) {
-      // Try using gid (sheet index)
+    Logger.log('USERS_SHEET_ID: ' + USERS_SHEET_ID);
+    Logger.log('USERS_SHEET_NAME: ' + USERS_SHEET_NAME);
+
+    // Open the users spreadsheet with error handling
+    const spreadsheet = safeOpenSpreadsheet(USERS_SHEET_ID, 'authenticateUser');
+
+    // Try to get sheet by name first
+    let sheet;
+    try {
+      sheet = safeGetSheet(spreadsheet, USERS_SHEET_NAME, 'authenticateUser');
+    } catch (sheetError) {
+      // If sheet name not found, try using first sheet as fallback
+      Logger.log('Sheet name not found, trying first sheet as fallback');
       const sheets = spreadsheet.getSheets();
-      // gid=2018642708 - you may need to find the correct sheet index
-      sheet = sheets[0]; // Default to first sheet if name not found
-      Logger.log('Sheet name not found, using first sheet');
+      if (sheets && sheets.length > 0) {
+        sheet = sheets[0];
+        Logger.log('Using first sheet: ' + sheet.getName());
+      } else {
+        throw new Error('Không tìm thấy sheet nào trong spreadsheet');
+      }
     }
     
     const data = sheet.getDataRange().getValues();
@@ -545,8 +613,14 @@ function handleLogin(requestBody) {
  */
 function createUser(email, password, name, role, isAdmin, employeeId, department) {
   try {
-    const spreadsheet = SpreadsheetApp.openById(USERS_SHEET_ID);
-    const sheet = spreadsheet.getSheetByName(USERS_SHEET_NAME) || spreadsheet.getSheets()[0];
+    const spreadsheet = safeOpenSpreadsheet(USERS_SHEET_ID, 'createUser');
+    let sheet;
+    try {
+      sheet = safeGetSheet(spreadsheet, USERS_SHEET_NAME, 'createUser');
+    } catch (e) {
+      sheet = spreadsheet.getSheets()[0];
+      Logger.log('Using first sheet as fallback');
+    }
     
     // Check if user exists
     const data = sheet.getDataRange().getValues();
@@ -592,9 +666,15 @@ function updateUserPassword(email, oldPassword, newPassword) {
     if (!authResult.success) {
       return { success: false, message: 'Current password is incorrect' };
     }
-    
-    const spreadsheet = SpreadsheetApp.openById(USERS_SHEET_ID);
-    const sheet = spreadsheet.getSheetByName(USERS_SHEET_NAME) || spreadsheet.getSheets()[0];
+
+    const spreadsheet = safeOpenSpreadsheet(USERS_SHEET_ID, 'updateUserPassword');
+    let sheet;
+    try {
+      sheet = safeGetSheet(spreadsheet, USERS_SHEET_NAME, 'updateUserPassword');
+    } catch (e) {
+      sheet = spreadsheet.getSheets()[0];
+      Logger.log('Using first sheet as fallback');
+    }
     
     const data = sheet.getDataRange().getValues();
     const headers = data[0];
@@ -863,9 +943,9 @@ function handleSyncToSheets(requestBody) {
     // Mở spreadsheet
     let spreadsheet;
     try {
-      spreadsheet = SpreadsheetApp.openById(spreadsheetId);
+      spreadsheet = safeOpenSpreadsheet(spreadsheetId, 'syncToGoogleSheets');
     } catch (error) {
-      return createResponse(false, 'Cannot access spreadsheet. Please check ID and sharing permissions.');
+      return createResponse(false, 'Không thể truy cập spreadsheet: ' + error.message);
     }
 
     // Lấy hoặc tạo sheet
@@ -1106,8 +1186,8 @@ function testHashPassword() {
 function handleGetMasterData(requestBody) {
   try {
     Logger.log('=== handleGetMasterData called ===');
-    
-    const ss = SpreadsheetApp.openById(USERS_SHEET_ID);
+
+    const ss = safeOpenSpreadsheet(USERS_SHEET_ID, 'handleGetMasterData');
     
     // Fetch Nhân viên (Employees)
     const employeesSheet = ss.getSheetByName('Nhân viên');
@@ -1199,9 +1279,85 @@ function testLoginHandler() {
     email: 'anh.le@mediainsider.vn', // Thay bằng email trong sheet
     password: 'yourpassword' // Thay bằng password
   };
-  
+
   const result = handleLogin(requestBody);
   Logger.log('Result: ' + JSON.stringify(result, null, 2));
   return result;
+}
+
+/**
+ * Test spreadsheet access - RUN THIS FIRST to authorize the script
+ * Chạy function này trước tiên để cấp quyền cho script
+ */
+function testSpreadsheetAccess() {
+  try {
+    Logger.log('=== TESTING SPREADSHEET ACCESS ===');
+    Logger.log('USERS_SHEET_ID: ' + USERS_SHEET_ID);
+    Logger.log('USERS_SHEET_NAME: ' + USERS_SHEET_NAME);
+
+    // Test opening spreadsheet
+    Logger.log('Attempting to open spreadsheet...');
+    const ss = safeOpenSpreadsheet(USERS_SHEET_ID, 'testSpreadsheetAccess');
+    Logger.log('✅ Spreadsheet opened successfully!');
+    Logger.log('Spreadsheet name: ' + ss.getName());
+
+    // Test getting sheet
+    Logger.log('Attempting to get sheet: ' + USERS_SHEET_NAME);
+    let sheet;
+    try {
+      sheet = safeGetSheet(ss, USERS_SHEET_NAME, 'testSpreadsheetAccess');
+    } catch (e) {
+      Logger.log('Sheet "' + USERS_SHEET_NAME + '" not found, using first sheet');
+      sheet = ss.getSheets()[0];
+    }
+    Logger.log('✅ Sheet accessed successfully!');
+    Logger.log('Sheet name: ' + sheet.getName());
+
+    // Test reading data
+    const data = sheet.getDataRange().getValues();
+    Logger.log('✅ Data read successfully!');
+    Logger.log('Total rows: ' + data.length);
+    Logger.log('Total columns: ' + (data[0] ? data[0].length : 0));
+    if (data.length > 0) {
+      Logger.log('Headers: ' + JSON.stringify(data[0]));
+    }
+
+    Logger.log('\n========================================');
+    Logger.log('✅✅✅ ALL TESTS PASSED! ✅✅✅');
+    Logger.log('========================================');
+    Logger.log('Script has been authorized successfully!');
+    Logger.log('You can now deploy this as a web app.');
+    Logger.log('\nNext steps:');
+    Logger.log('1. Click Deploy > New deployment (or Manage deployments)');
+    Logger.log('2. Set "Execute as: Me"');
+    Logger.log('3. Set "Who has access: Anyone"');
+    Logger.log('4. Click Deploy');
+    Logger.log('5. Copy the Web App URL to your index.html');
+
+    return {
+      success: true,
+      message: 'Spreadsheet access test passed!',
+      spreadsheetName: ss.getName(),
+      sheetName: sheet.getName(),
+      rowCount: data.length
+    };
+
+  } catch (error) {
+    Logger.log('\n========================================');
+    Logger.log('❌❌❌ TEST FAILED ❌❌❌');
+    Logger.log('========================================');
+    Logger.log('Error: ' + error.message);
+    Logger.log('Stack: ' + error.stack);
+    Logger.log('\nTroubleshooting:');
+    Logger.log('1. Make sure you authorized the script when prompted');
+    Logger.log('2. Check that spreadsheet ID is correct: ' + USERS_SHEET_ID);
+    Logger.log('3. Verify spreadsheet exists: https://docs.google.com/spreadsheets/d/' + USERS_SHEET_ID + '/edit');
+    Logger.log('4. Ensure your account has access to the spreadsheet');
+
+    return {
+      success: false,
+      message: error.message
+    };
+  }
 }
 
