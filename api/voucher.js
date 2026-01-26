@@ -62,7 +62,7 @@ export default async function handler(req, res) {
   
   // TLCGROUP_BACKEND - For intranet operations (login, getMasterData, etc.)
   const TLCGROUP_BACKEND = process.env.TLCGROUP_BACKEND_URL ||
-    'https://script.google.com/macros/s/AKfycbw05Cr7-Mm2TtgQgxVaVoobvdSUHtX2Y8vjTi0Fd-_UmL0ojojyLDOwXwyaMWDwGW06Iw/exec';
+    'https://script.google.com/macros/s/AKfycbzPRHqtSW6JSef5A4tiDJbHnIhm2jhK9c8RH6lOBFPEMLR-EjF0iVJO2ndinMZRwbJ4Xw/exec';
   
   // PAYMENT_REQUEST_BACKEND - For payment request operations
   const PAYMENT_REQUEST_BACKEND = process.env.PAYMENT_REQUEST_BACKEND_URL || 
