@@ -25,9 +25,12 @@ You can also call the diagnostic endpoint via your web app:
 
 ```javascript
 // In browser console or test script
+const formData = new FormData();
+formData.append('action', 'diagnose');
+
 const response = await fetch('YOUR_WEB_APP_URL', {
   method: 'POST',
-  body: new FormData().append('action', 'diagnose')
+  body: formData
 });
 const result = await response.json();
 console.log(result);
