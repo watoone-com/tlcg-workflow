@@ -257,11 +257,18 @@ function doPost(e) {
     } catch (e) {}
     // #endregion
     
+    Logger.log('========================================');
     Logger.log('=== doPost called ===');
+    Logger.log('========================================');
     Logger.log('Execution context check - SpreadsheetApp available: ' + (typeof SpreadsheetApp !== 'undefined'));
     Logger.log('Execution context check - openById available: ' + (typeof SpreadsheetApp !== 'undefined' && typeof SpreadsheetApp.openById === 'function'));
+    if (typeof SpreadsheetApp !== 'undefined') {
+      Logger.log('Execution context - SpreadsheetApp type: ' + typeof SpreadsheetApp);
+      Logger.log('Execution context - openById type: ' + typeof SpreadsheetApp.openById);
+    }
     Logger.log('e.postData: ' + JSON.stringify(e.postData));
     Logger.log('e.parameter: ' + JSON.stringify(e.parameter));
+    Logger.log('e object keys: ' + Object.keys(e || {}).join(', '));
     
     // Enable CORS
     const output = ContentService.createTextOutput();
@@ -347,9 +354,16 @@ function doPost(e) {
     
     let result;
 
+    Logger.log('Routing to handler for action: ' + action);
+    
     switch (action) {
       case 'login':
+        Logger.log('========================================');
+        Logger.log('Calling handleLogin from doPost');
+        Logger.log('Request body being passed: ' + JSON.stringify(requestBody));
+        Logger.log('========================================');
         result = handleLogin(requestBody);
+        Logger.log('handleLogin returned, result type: ' + typeof result);
         break;
       
       case 'sendApprovalEmail':
@@ -855,17 +869,29 @@ function handleLogin(requestBody) {
       return createResponse(false, authResult.message || 'Invalid credentials');
     }
   } catch (error) {
-    Logger.log('Login handler error: ' + error.toString());
-    Logger.log('Error stack: ' + error.stack);
+    Logger.log('========================================');
+    Logger.log('❌ ERROR IN handleLogin ❌');
+    Logger.log('========================================');
+    Logger.log('Error name: ' + error.name);
+    Logger.log('Error message: ' + error.message);
+    Logger.log('Error toString: ' + error.toString());
+    if (error.stack) {
+      Logger.log('Error stack: ' + error.stack);
+    }
+    Logger.log('Error object keys: ' + Object.keys(error).join(', '));
     
     // Check if this is the openById authorization error and preserve the friendly message
     if (error.message && (error.message.includes('Script chưa được cấp quyền') || 
-        error.message.includes('openById') || error.message.includes('Unexpected error'))) {
+        error.message.includes('openById') || error.message.includes('Unexpected error') ||
+        error.toString().includes('openById') || error.toString().includes('Unexpected error'))) {
+      Logger.log('⚠️ DETECTED: openById authorization error in handleLogin');
+      Logger.log('Returning friendly error message: ' + error.message);
       // Return the friendly error message directly (already transformed)
       return createResponse(false, error.message);
     }
     
     // For other errors, return with prefix
+    Logger.log('Returning generic error message');
     return createResponse(false, 'Login error: ' + error.message);
   }
 }
@@ -1749,6 +1775,63 @@ function testSpreadsheetAccess() {
       success: false,
       message: error.message
     };
+  }
+}
+
+/**
+ * Test handleLogin directly with a test request
+ * This helps verify if handleLogin works correctly
+ */
+function testHandleLoginDirect() {
+  try {
+    Logger.log('=== TESTING handleLogin DIRECTLY ===');
+    
+    const testRequestBody = {
+      action: 'login',
+      email: 'test@example.com', // This will fail authentication, but should pass spreadsheet access
+      password: 'test'
+    };
+    
+    Logger.log('Test request body: ' + JSON.stringify(testRequestBody));
+    
+    const result = handleLogin(testRequestBody);
+    const resultText = result.getContent();
+    Logger.log('Response: ' + resultText);
+    
+    try {
+      const resultJson = JSON.parse(resultText);
+      Logger.log('Parsed response: ' + JSON.stringify(resultJson, null, 2));
+      
+      if (resultJson.message && resultJson.message.includes('openById')) {
+        Logger.log('\n❌❌❌ handleLogin TEST FAILED ❌❌❌');
+        Logger.log('Spreadsheet access error detected in handleLogin');
+        Logger.log('Error: ' + resultJson.message);
+        return { success: false, message: 'handleLogin has spreadsheet access issue', error: resultJson.message };
+      } else if (resultJson.message && (
+          resultJson.message.includes('Invalid email') || 
+          resultJson.message.includes('Invalid password') ||
+          resultJson.message.includes('Password is required')
+        )) {
+        Logger.log('\n✅✅✅ handleLogin TEST PASSED! ✅✅✅');
+        Logger.log('handleLogin can access spreadsheet!');
+        Logger.log('Authentication failed as expected (test credentials).');
+        return { success: true, message: 'handleLogin works correctly' };
+      } else {
+        Logger.log('\n⚠️ Unexpected response from handleLogin');
+        Logger.log('Response: ' + resultText);
+        return { success: false, message: 'Unexpected response', response: resultJson };
+      }
+    } catch (parseError) {
+      Logger.log('Could not parse response as JSON: ' + parseError.message);
+      Logger.log('Raw response: ' + resultText);
+      return { success: false, message: 'Invalid response format', rawResponse: resultText };
+    }
+    
+  } catch (error) {
+    Logger.log('\n❌❌❌ handleLogin TEST FAILED ❌❌❌');
+    Logger.log('Error: ' + error.message);
+    Logger.log('Stack: ' + error.stack);
+    return { success: false, message: error.message };
   }
 }
 
