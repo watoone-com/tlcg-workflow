@@ -1690,9 +1690,13 @@
             event.preventDefault();
             const email = document.getElementById('login-email').value;
             const password = document.getElementById('login-pass').value;
-            
+
             // Show loading with spinner
             const submitBtn = event.target.querySelector('button[type="submit"]');
+            if (!submitBtn) {
+                console.error('Submit button not found in login form');
+                return;
+            }
             const originalText = submitBtn.innerHTML;
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<div class="spinner inline-block mr-2"></div> Signing in...';
@@ -2339,7 +2343,7 @@
             sortDirection[tableBodyId + columnIndex] = newDir;
             
             // Update header classes
-            const headers = document.querySelectorAll(`#${tableBodyId}`).closest('table')?.querySelectorAll('th');
+            const headers = document.getElementById(tableBodyId)?.closest('table')?.querySelectorAll('th');
             if (headers) {
                 headers.forEach((h, i) => {
                     h.classList.remove('sort-asc', 'sort-desc');
@@ -2375,14 +2379,14 @@
         }
         
         // Filter Table Function
-        function filterTable(tableBodyId, filterType) {
+        function filterTable(tableBodyId, filterType, clickedButton) {
             const tbody = document.getElementById(tableBodyId);
             if (!tbody) return;
-            
+
             const rows = tbody.querySelectorAll('tr');
             rows.forEach(row => {
                 let show = true;
-                
+
                 if (filterType === 'debit') {
                     const debit = row.cells[3]?.textContent.trim();
                     show = debit && debit !== '-';
@@ -2390,15 +2394,17 @@
                     const credit = row.cells[4]?.textContent.trim();
                     show = credit && credit !== '-';
                 }
-                
+
                 row.style.display = show ? '' : 'none';
             });
-            
+
             // Update active filter button
-            document.querySelectorAll('.filter-btn').forEach(btn => {
-                btn.classList.remove('active');
-            });
-            event?.target?.closest('.filter-btn')?.classList.add('active');
+            if (clickedButton) {
+                document.querySelectorAll('.filter-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                clickedButton.classList.add('active');
+            }
         }
         
         // Search Table Function
@@ -2617,12 +2623,16 @@
                 btn.addEventListener('click', function(e) {
                     const filterType = e.target.textContent.trim().toLowerCase();
                     const tableBodyId = e.target.closest('.table-container')?.querySelector('tbody')?.id;
+                    const clickedBtn = e.target.closest('.filter-btn');
                     if (tableBodyId && filterType !== 'all') {
-                        filterTable(tableBodyId, filterType);
+                        filterTable(tableBodyId, filterType, clickedBtn);
                     } else if (tableBodyId) {
                         // Show all
                         const rows = document.getElementById(tableBodyId)?.querySelectorAll('tr');
                         rows?.forEach(row => row.style.display = '');
+                        // Update active state for "all" button
+                        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                        if (clickedBtn) clickedBtn.classList.add('active');
                     }
                 });
             });
