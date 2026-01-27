@@ -4038,15 +4038,33 @@
                         // Show current approver (who needs to approve next)
                         approverName = statusData.currentApproverName;
                         console.log('✅ Found current approver:', approverName);
+                    } else if (statusData.currentApprover && statusData.approvers) {
+                        // If currentApprover is set but currentApproverName is missing, get it from approvers
+                        const approver = statusData.approvers[statusData.currentApprover];
+                        if (approver && approver.name) {
+                            approverName = approver.name;
+                            console.log('✅ Found approver from currentApprover role:', approverName);
+                        }
                     } else if (statusData.approvers) {
-                        // If no current approver, find the last approved approver
+                        // If no current approver, check progress to determine which approver to show
                         const approvers = statusData.approvers;
-                        const sequence = ['treasurer', 'legalRep', 'accountant']; // Check in reverse order
-                        for (const role of sequence) {
-                            if (approvers[role] && approvers[role].status === 'approved' && approvers[role].name) {
-                                approverName = approvers[role].name;
-                                console.log('✅ Found last approved approver:', approverName, 'from role:', role);
-                                break;
+                        const progressNum = parseInt(progress.split('/')[0]) || 0;
+                        
+                        if (progressNum === 0) {
+                            // No one has approved yet, show first approver (accountant)
+                            if (approvers.accountant && approvers.accountant.name) {
+                                approverName = approvers.accountant.name;
+                                console.log('✅ Found first approver (accountant):', approverName);
+                            }
+                        } else {
+                            // Some have approved, find the last approved approver
+                            const sequence = ['treasurer', 'legalRep', 'accountant']; // Check in reverse order
+                            for (const role of sequence) {
+                                if (approvers[role] && approvers[role].status === 'approved' && approvers[role].name) {
+                                    approverName = approvers[role].name;
+                                    console.log('✅ Found last approved approver:', approverName, 'from role:', role);
+                                    break;
+                                }
                             }
                         }
                     }
