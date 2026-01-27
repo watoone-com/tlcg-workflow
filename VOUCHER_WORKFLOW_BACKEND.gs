@@ -3,7 +3,7 @@
  */
 
 // TLCG Master Data spreadsheet - contains both "Nhân viên" and "Voucher_History" sheets
-const TLCG_MASTER_DATA_SHEET_ID = '1ujmPbtEdkGLgEshfhV8gRB6R0GLI31jsZM5rDOJS0g';
+const TLCG_MASTER_DATA_SHEET_ID = '1ujmPbtEdkGLgEshfhvV8gRB6R0GLI31jsZM5rDOJS0g';
 const USERS_SHEET_ID = TLCG_MASTER_DATA_SHEET_ID; // Same spreadsheet
 const VOUCHER_HISTORY_SHEET_ID = TLCG_MASTER_DATA_SHEET_ID; // Same spreadsheet
 const VH_SHEET_NAME = 'Voucher_History';

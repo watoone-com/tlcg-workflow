@@ -4,7 +4,7 @@
  */
 
 // ⚠️ IMPORTANT: Google Sheet ID for TLCG Master Data
-const USERS_SHEET_ID = '1-1Q75iKeoRAGO4p7U-1IAOp9jqx77HrxF6WUxuUuT_c'; // TLCG Master Data
+const USERS_SHEET_ID = '1ujmPbtEdkGLgEshfhvV8gRB6R0GLI31jsZM5rDOJS0g'; // TLCG Master Data
 const USERS_SHEET_NAME = 'Nhân viên'; // Sheet name: Nhân viên
 // Alternative: Use gid=2018642708 if sheet name doesn't work
 
