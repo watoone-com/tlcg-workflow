@@ -4154,6 +4154,22 @@
                 ? voucher.amount.toLocaleString('vi-VN') + ' ₫'
                 : voucher.amount || '0 ₫';
             
+            // Format timestamp: "2026-01-27 (18:22)"
+            let formattedTimestamp = '';
+            if (voucher.timestamp) {
+                try {
+                    const date = new Date(voucher.timestamp);
+                    const year = date.getFullYear();
+                    const month = String(date.getMonth() + 1).padStart(2, '0');
+                    const day = String(date.getDate()).padStart(2, '0');
+                    const hours = String(date.getHours()).padStart(2, '0');
+                    const minutes = String(date.getMinutes()).padStart(2, '0');
+                    formattedTimestamp = `${year}-${month}-${day} (${hours}:${minutes})`;
+                } catch (e) {
+                    formattedTimestamp = voucher.timestamp; // Fallback to original if parsing fails
+                }
+            }
+            
             return `
                 <div class="voucher-item" onclick="openVoucherDetail('${voucher.voucherNumber}')">
                     <div class="voucher-icon ${statusClass}">
@@ -4161,7 +4177,7 @@
                     </div>
                     <div class="voucher-info">
                         <div class="voucher-title">${voucher.voucherNumber || 'N/A'} - ${voucher.voucherType || ''}</div>
-                        <div class="voucher-meta">${voucher.employee || ''} • ${voucher.company || ''} • ${voucher.timestamp || ''}</div>
+                        <div class="voucher-meta">${voucher.employee || ''} • ${voucher.company || ''} • ${formattedTimestamp}</div>
                     </div>
                     <div class="voucher-amount">${amount}</div>
                     <span class="voucher-status ${statusClass}">
