@@ -2068,7 +2068,7 @@
         function approveStep(processId, stepNumber) {
             const comment = document.getElementById(`${processId}-comment-${stepNumber}`)?.value || '';
             const approver = currentUser ? currentUser.name : 'Unknown';
-            const timestamp = new Date().toLocaleString('vi-VN');
+            const timestamp = formatTimestamp(new Date().toISOString());
             
             // Update step status
             const stepElement = document.querySelector(`#${processId} .approval-step:nth-child(${stepNumber})`);
@@ -2126,7 +2126,7 @@
             }
             
             const approver = currentUser ? currentUser.name : 'Unknown';
-            const timestamp = new Date().toLocaleString('vi-VN');
+            const timestamp = formatTimestamp(new Date().toISOString());
             
             // Update step status
             const stepElement = document.querySelector(`#${processId} .approval-step:nth-child(${stepNumber})`);
@@ -2169,7 +2169,7 @@
             }
             
             const approver = currentUser ? currentUser.name : 'Unknown';
-            const timestamp = new Date().toLocaleString('vi-VN');
+            const timestamp = formatTimestamp(new Date().toISOString());
             
             // Add to history
             if (!approvalHistory[processId]) approvalHistory[processId] = [];
@@ -2191,7 +2191,7 @@
             const commentId = `o2c-${role}-comment`;
             const comment = document.getElementById(commentId)?.value || '';
             const approver = currentUser ? currentUser.name : 'Unknown';
-            const timestamp = new Date().toLocaleString('vi-VN');
+            const timestamp = formatTimestamp(new Date().toISOString());
             
             // Update card status
             const card = document.getElementById(`o2c-app-${role}`)?.closest('.approval-card');
@@ -2232,7 +2232,7 @@
             }
             
             const approver = currentUser ? currentUser.name : 'Unknown';
-            const timestamp = new Date().toLocaleString('vi-VN');
+            const timestamp = formatTimestamp(new Date().toISOString());
             
             // Update card status
             const card = document.getElementById(`o2c-app-${role}`)?.closest('.approval-card');
@@ -2297,7 +2297,7 @@
                                 <i class="fas ${actionIcon} mr-1"></i>
                                 ${actionText} by ${item.approver}
                             </span>
-                            <span class="text-xs text-slate-500">${item.timestamp}</span>
+                            <span class="text-xs text-slate-500">${formatTimestamp(item.timestamp)}</span>
                         </div>
                         ${item.comment ? `<p class="text-xs text-slate-600 mt-1">${item.comment}</p>` : ''}
                     </div>
@@ -2550,7 +2550,7 @@
                                         </div>
                                     </div>
                                     <div class="text-right">
-                                        <p class="text-xs text-slate-500">${voucher.timestamp || ''}</p>
+                                        <p class="text-xs text-slate-500">${formatTimestamp(voucher.timestamp || '')}</p>
                                     </div>
                                 </div>
                             `;
@@ -2585,6 +2585,22 @@
         }
 
         // Format currency helper
+        // Format timestamp: "2026-01-27 (18:22)"
+        function formatTimestamp(timestamp) {
+            if (!timestamp) return '';
+            try {
+                const date = new Date(timestamp);
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                return `${year}-${month}-${day} (${hours}:${minutes})`;
+            } catch (e) {
+                return timestamp; // Fallback to original if parsing fails
+            }
+        }
+        
         function formatCurrency(amount) {
             // Handle null, undefined, or empty
             if (amount === null || amount === undefined || amount === '') return '0 ₫';
