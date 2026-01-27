@@ -1688,8 +1688,17 @@
 
         async function handleLogin(event) {
             event.preventDefault();
-            const email = document.getElementById('login-email').value;
+            const email = (document.getElementById('login-email').value || '').trim();
             const password = document.getElementById('login-pass').value;
+
+            if (!email) {
+                showToast('Please enter your email address.', 'error');
+                return;
+            }
+            if (!password) {
+                showToast('Please enter your password.', 'error');
+                return;
+            }
 
             // Show loading with spinner
             const submitBtn = event.target.querySelector('button[type="submit"]');
@@ -1727,60 +1736,56 @@
                 console.log('Sending login request to:', GOOGLE_APPS_SCRIPT_WEB_APP_URL);
                 console.log('Request payload:', { action: 'login', email: email, password: '***' });
                 
-                // Use FormData to avoid CORS preflight (Google Apps Script works better with form data)
-                // FormData doesn't trigger preflight OPTIONS request
-                const formData = new FormData();
-                formData.append('action', 'login');
-                formData.append('email', email);
-                formData.append('password', password);
-                
-                console.log('Using FormData to avoid CORS preflight');
+                // Use URL-encoded form (same as getMasterData) so proxy parses reliably and forwards to GAS
+                const params = new URLSearchParams();
+                params.append('action', 'login');
+                params.append('email', email);
+                params.append('password', password);
                 
                 const response = await fetch(GOOGLE_APPS_SCRIPT_WEB_APP_URL, {
                     method: 'POST',
-                    body: formData
-                    // Don't set Content-Type header - browser will set it automatically for FormData
-                    // This avoids CORS preflight OPTIONS request
+                    mode: 'cors',
+                    redirect: 'follow',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: params.toString()
                 });
                 
                 console.log('Response status:', response.status);
                 console.log('Response ok:', response.ok);
-                console.log('Response headers:', response.headers);
+                
+                const responseText = await response.text();
+                console.log('Response text length:', responseText.length);
                 
                 // Check if response is ok
                 if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('Response not OK:', response.status, errorText);
-                    showToast('Login failed: Server returned error ' + response.status + '. Please check Apps Script logs.', 'error');
+                    console.error('Response not OK:', response.status, responseText);
+                    let errMsg = 'Login failed: Server error ' + response.status;
+                    try {
+                        const errJson = JSON.parse(responseText);
+                        if (errJson && errJson.message) errMsg = 'Login failed: ' + errJson.message;
+                    } catch (_) {}
+                    showToast(errMsg, 'error');
                     return;
                 }
                 
-                // Try to parse as JSON
-                let result;
-                const responseText = await response.text();
-                console.log('Response text:', responseText);
-                console.log('Response text length:', responseText.length);
-                
-                // Check if response is empty
                 if (!responseText || responseText.trim() === '') {
                     console.error('Response is empty');
-                    showToast('Login error: Empty response from server. Please check Apps Script deployment and logs.', 'error');
+                    showToast('Login error: Empty response from server. Check Apps Script deployment and logs.', 'error');
                     return;
                 }
                 
+                let result;
                 try {
                     result = JSON.parse(responseText);
                 } catch (parseError) {
                     console.error('Failed to parse JSON:', parseError);
                     console.error('Response text:', responseText);
-                    console.error('Response text type:', typeof responseText);
                     showToast('Login error: Invalid response from server. Check console for details.', 'error');
                     return;
                 }
                 
                 console.log('Login response:', result);
                 console.log('Result data:', result.data);
-                console.log('Result data type:', typeof result.data);
                 console.log('Result data keys:', result.data ? Object.keys(result.data) : 'N/A');
                 
                 if (result.success && result.data) {

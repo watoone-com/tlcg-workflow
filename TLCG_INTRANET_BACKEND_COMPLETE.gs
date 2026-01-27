@@ -330,7 +330,21 @@ function doPost(e) {
       return createResponse(false, 'Could not parse request body. Check logs for details.');
     }
     
-    Logger.log('Request body parsed successfully: ' + JSON.stringify(requestBody));
+    Logger.log('========================================');
+    Logger.log('✅ Request body parsed successfully');
+    Logger.log('========================================');
+    Logger.log('Request body: ' + JSON.stringify(requestBody));
+    Logger.log('Request body type: ' + typeof requestBody);
+    Logger.log('Request body keys: ' + Object.keys(requestBody || {}).join(', '));
+    if (requestBody.action) {
+      Logger.log('Action found: ' + requestBody.action);
+    }
+    if (requestBody.email) {
+      Logger.log('Email found: ' + requestBody.email);
+    }
+    if (requestBody.password) {
+      Logger.log('Password found: ' + (requestBody.password ? '***' : 'NULL'));
+    }
     
     const action = requestBody.action;
     
@@ -389,10 +403,60 @@ function doPost(e) {
       case 'diagnose':
         // Diagnostic endpoint - returns diagnostic information
         try {
+          Logger.log('=== DIAGNOSE ACTION CALLED VIA WEB APP ===');
+          Logger.log('This tests execution context in web app deployment');
           const diagnosticResult = diagnoseSpreadsheetAccess();
           result = createResponse(diagnosticResult.success, diagnosticResult.error || diagnosticResult.message, diagnosticResult);
         } catch (diagError) {
+          Logger.log('Diagnostic failed: ' + diagError.message);
           result = createResponse(false, 'Diagnostic failed: ' + diagError.message);
+        }
+        break;
+      
+      case 'testLoginContext':
+        // Test login execution context - simulates login without actual authentication
+        try {
+          Logger.log('=== TEST LOGIN CONTEXT VIA WEB APP ===');
+          Logger.log('Testing execution context for login flow');
+          
+          // Check execution context
+          const contextInfo = {
+            spreadSheetAppDefined: typeof SpreadsheetApp !== 'undefined',
+            openByIdExists: typeof SpreadsheetApp !== 'undefined' && typeof SpreadsheetApp.openById === 'function',
+            spreadSheetAppType: typeof SpreadsheetApp,
+            openByIdType: typeof SpreadsheetApp !== 'undefined' ? typeof SpreadsheetApp.openById : 'N/A'
+          };
+          
+          Logger.log('Execution context: ' + JSON.stringify(contextInfo));
+          
+          // Try to open spreadsheet (this is where the error occurs)
+          try {
+            const testSS = SpreadsheetApp.openById(USERS_SHEET_ID);
+            Logger.log('✅ Spreadsheet opened successfully in web app context!');
+            Logger.log('Spreadsheet name: ' + testSS.getName());
+            
+            result = createResponse(true, 'Web app execution context test passed', {
+              context: contextInfo,
+              spreadsheetName: testSS.getName(),
+              message: 'Spreadsheet access works in web app deployment'
+            });
+          } catch (openError) {
+            Logger.log('❌ Failed to open spreadsheet in web app context');
+            Logger.log('Error: ' + openError.message);
+            Logger.log('Error toString: ' + openError.toString());
+            
+            result = createResponse(false, 'Web app execution context test failed: ' + openError.message, {
+              context: contextInfo,
+              error: {
+                message: openError.message,
+                toString: openError.toString(),
+                name: openError.name
+              }
+            });
+          }
+        } catch (testError) {
+          Logger.log('Test login context failed: ' + testError.message);
+          result = createResponse(false, 'Test failed: ' + testError.message);
         }
         break;
       
@@ -1844,14 +1908,18 @@ function testWebAppDeployment() {
     Logger.log('=== TESTING WEB APP DEPLOYMENT ===');
     Logger.log('This simulates a web app call to verify permissions');
     
-    // Simulate a login request
+    // Test with real credentials (chinh.nguyen@mediainsider.vn / Manager 4)
     const testRequestBody = {
       action: 'login',
-      email: 'test@example.com', // This will fail authentication, but should pass spreadsheet access
-      password: 'test'
+      email: 'chinh.nguyen@mediainsider.vn',
+      password: 'Manager 4'
     };
     
-    Logger.log('Simulating web app call with request body: ' + JSON.stringify(testRequestBody));
+    Logger.log('Simulating web app call with request body: ' + JSON.stringify({
+      action: testRequestBody.action,
+      email: testRequestBody.email,
+      password: '***'
+    }));
     
     // Call handleLogin directly (this is what doPost does)
     const result = handleLogin(testRequestBody);
@@ -1864,18 +1932,26 @@ function testWebAppDeployment() {
       const resultJson = JSON.parse(resultText);
       Logger.log('Parsed response: ' + JSON.stringify(resultJson, null, 2));
       
-      // If we get "Invalid email or password" or "Invalid password", that means
-      // spreadsheet access worked! (authentication failed, but that's expected)
+      // Login success = spreadsheet access AND auth both worked
+      if (resultJson.success === true) {
+        Logger.log('\n✅✅✅ WEB APP DEPLOYMENT TEST PASSED! ✅✅✅');
+        Logger.log('Login succeeded! Spreadsheet access and authentication both working.');
+        return { success: true, message: 'Web app deployment OK – login with chinh.nguyen@mediainsider.vn succeeded' };
+      }
+      
+      // "Invalid email or password" etc. = spreadsheet access worked, auth failed (wrong credentials)
       if (resultJson.message && (
           resultJson.message.includes('Invalid email') || 
           resultJson.message.includes('Invalid password') ||
           resultJson.message.includes('Password is required')
         )) {
         Logger.log('\n✅✅✅ WEB APP DEPLOYMENT TEST PASSED! ✅✅✅');
-        Logger.log('Spreadsheet access is working in web app deployment!');
-        Logger.log('The error you\'re seeing might be from a different deployment or URL.');
+        Logger.log('Spreadsheet access is working. Auth failed (check email/password in sheet).');
         return { success: true, message: 'Web app deployment has correct permissions' };
-      } else if (resultJson.message && resultJson.message.includes('openById')) {
+      }
+      
+      // openById or similar = spreadsheet access failed
+      if (resultJson.message && resultJson.message.includes('openById')) {
         Logger.log('\n❌❌❌ WEB APP DEPLOYMENT TEST FAILED ❌❌❌');
         Logger.log('Spreadsheet access is NOT working in web app deployment.');
         Logger.log('Error: ' + resultJson.message);
