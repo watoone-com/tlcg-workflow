@@ -4026,6 +4026,8 @@
                     })
                 });
                 const statusResult = await statusResponse.json();
+                console.log('📊 Approval status for', voucher.voucherNumber, ':', statusResult);
+                
                 if (statusResult.success && statusResult.data) {
                     const statusData = statusResult.data;
                     displayStatus = statusData.displayStatus || '';
@@ -4035,6 +4037,7 @@
                     if (statusData.currentApproverName) {
                         // Show current approver (who needs to approve next)
                         approverName = statusData.currentApproverName;
+                        console.log('✅ Found current approver:', approverName);
                     } else if (statusData.approvers) {
                         // If no current approver, find the last approved approver
                         const approvers = statusData.approvers;
@@ -4042,6 +4045,7 @@
                         for (const role of sequence) {
                             if (approvers[role] && approvers[role].status === 'approved' && approvers[role].name) {
                                 approverName = approvers[role].name;
+                                console.log('✅ Found last approved approver:', approverName, 'from role:', role);
                                 break;
                             }
                         }
@@ -4055,14 +4059,18 @@
                         baseStatus = baseStatus.replace(/\s*\(\d+\/3\)/g, '');
                         // Format: "Chờ duyệt: [Name] (X/3)"
                         displayStatus = `${baseStatus}: ${approverName} (${progress})`;
+                        console.log('✅ Formatted status with approver:', displayStatus);
                     } else {
                         // No approver name available, just show progress
                         statusBadgeHtml = `<span class="approval-progress-badge" style="font-size: 0.75rem; color: #64748b; margin-left: 0.5rem;">(${progress})</span>`;
+                        console.log('⚠️ No approver name found, showing progress only:', progress);
                     }
+                } else {
+                    console.warn('⚠️ Approval status API returned unsuccessful or no data:', statusResult);
                 }
             } catch (e) {
-                // Ignore errors, use default status
-                console.warn('Could not load approval status:', e);
+                // Log error for debugging
+                console.warn('❌ Could not load approval status for', voucher.voucherNumber, ':', e);
             }
             
             const statusText = displayStatus || {
