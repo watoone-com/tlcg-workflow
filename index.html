@@ -2495,55 +2495,11 @@
                     
                     // Update recent vouchers list
                     if (data.recent && data.recent.length > 0) {
-                        recentList.innerHTML = data.recent.map(voucher => {
-                            // Map status to display text based on action
-                            let statusText = voucher.status;
-                            let statusClass = 'bg-slate-100 text-slate-700';
-                            let statusIcon = 'fa-circle';
-                            
-                            // Determine display based on action type
-                            const action = (voucher.action || '').toLowerCase();
-                            const status = (voucher.status || '').toLowerCase();
-                            const statusOriginal = (voucher.status || ''); // Keep original for exact match
-                            
-                            if (action === 'submit' || status === 'pending') {
-                                statusText = 'Chờ duyệt';
-                                statusClass = 'bg-amber-100 text-amber-700';
-                                statusIcon = 'fa-paper-plane';
-                            } else if (action.includes('fully approved') || (statusOriginal === 'Approved' && !action.includes('approved by'))) {
-                                // Only show "Đã duyệt" if fully approved (3/3) 
-                                // Check: action contains "fully approved" OR status is exactly "Approved" (not "Partially Approved")
-                                // AND action is NOT "Approved by [Name]"
-                                statusText = 'Đã duyệt';
-                                statusClass = 'bg-emerald-100 text-emerald-700';
-                                statusIcon = 'fa-check-circle';
-                            } else if (action.includes('approved by') || statusOriginal === 'Partially Approved' || status.includes('partially approved')) {
-                                // Partial approval - show progress
-                                // Extract progress from status if available (e.g., "Đang duyệt (1/3)")
-                                const statusOriginalUpper = statusOriginal.toUpperCase();
-                                if (statusOriginalUpper.includes('ĐANG DUYỆT') || statusOriginalUpper.includes('(1/3)') || statusOriginalUpper.includes('(2/3)')) {
-                                    statusText = statusOriginal; // Use original status which has progress
-                                } else {
-                                    statusText = 'Đang duyệt';
-                                }
-                                statusClass = 'bg-blue-100 text-blue-700';
-                                statusIcon = 'fa-clock';
-                            } else if (action === 'rejected' || status === 'rejected') {
-                                statusText = 'Từ chối';
-                                statusClass = 'bg-red-100 text-red-700';
-                                statusIcon = 'fa-times-circle';
-                            } else if (action === 'resubmit') {
-                                statusText = 'Gửi lại';
-                                statusClass = 'bg-blue-100 text-blue-700';
-                                statusIcon = 'fa-redo';
-                            } else if (action === 'cancelled' || status === 'cancelled') {
-                                statusText = 'Đã hủy';
-                                statusClass = 'bg-slate-100 text-slate-700';
-                                statusIcon = 'fa-ban';
-                            }
-                            
+                        // Render vouchers initially with basic info, then load detailed status
+                        recentList.innerHTML = data.recent.map((voucher, index) => {
+                            const voucherId = `voucher-${voucher.voucherNumber || index}`;
                             return `
-                                <div class="flex items-center justify-between p-4 bg-white border border-slate-200 rounded-lg hover:shadow-md transition">
+                                <div id="${voucherId}" class="flex items-center justify-between p-4 bg-white border border-slate-200 rounded-lg hover:shadow-md transition">
                                     <div class="flex items-center gap-4 flex-1">
                                         <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
                                             <i class="fas fa-file-invoice text-purple-600"></i>
@@ -2551,9 +2507,9 @@
                                         <div class="flex-1">
                                             <div class="flex items-center gap-3 mb-1">
                                                 <h4 class="font-bold text-slate-800">${voucher.voucherNumber || 'N/A'}</h4>
-                                                <span class="status-badge ${statusClass}">
-                                                    <i class="fas ${statusIcon} mr-1"></i>
-                                                    ${statusText}
+                                                <span class="status-badge bg-slate-100 text-slate-700">
+                                                    <i class="fas fa-circle mr-1"></i>
+                                                    <span class="status-text">Đang tải...</span>
                                                 </span>
                                             </div>
                                             <div class="flex items-center gap-4 text-sm text-slate-600">
@@ -2561,7 +2517,7 @@
                                                 <span><i class="fas fa-user mr-1"></i> ${voucher.employee || 'N/A'}</span>
                                                 <span><i class="fas fa-money-bill-wave mr-1"></i> ${formatCurrency(voucher.amount || 0)}</span>
                                             </div>
-                                            ${voucher.by ? `<p class="text-xs text-slate-500 mt-1">Bởi: ${voucher.by}</p>` : ''}
+                                            <p class="text-xs text-slate-500 mt-1 approval-status-detail">Đang tải thông tin...</p>
                                         </div>
                                     </div>
                                     <div class="text-right">
@@ -2570,6 +2526,11 @@
                                 </div>
                             `;
                         }).join('');
+                        
+                        // Load detailed approval status for each voucher
+                        data.recent.forEach((voucher, index) => {
+                            loadVoucherApprovalStatus(voucher, `voucher-${voucher.voucherNumber || index}`);
+                        });
                     } else {
                         recentList.innerHTML = `
                             <div class="text-center py-8 text-slate-400">
@@ -2640,6 +2601,207 @@
                 currency: 'VND',
                 minimumFractionDigits: 0
             }).format(numAmount).replace('₫', '₫');
+        }
+        
+        /**
+         * Format approval status text with approver names
+         * Format theo yêu cầu:
+         * 1. Nếu người đầu tiên chưa duyệt (0/3): "Chờ Duyệt. Bởi: [tên accountant] (0/3)"
+         * 2. Nếu người đầu tiên đã duyệt (1/3): "Đang Duyệt (1/3). Duyệt Bởi: [tên accountant] (1/3)"
+         * 3. Nếu người thứ 2 chưa duyệt (1/3): "Đang Duyệt. Bởi: [tên legalRep] (1/3)"
+         * 4. Nếu người thứ 2 đã duyệt (2/3): "Đang Duyệt (2/3). Duyệt Bởi: [tên legalRep] (2/3)"
+         * 5. Nếu người thứ 3 chưa duyệt (2/3): "Đang Duyệt. Bởi: [tên treasurer] (2/3)"
+         * 6. Nếu người thứ 3 đã duyệt (3/3): "Đã Duyệt (3/3). Duyệt Bởi: [tên treasurer] (3/3)"
+         */
+        function formatApprovalStatusText(statusData) {
+            if (!statusData || !statusData.approvers) {
+                // Fallback: If no approvers data, show basic status with progress if available
+                const progress = statusData?.approvalProgress || '0/3';
+                const baseStatus = statusData?.displayStatus || 'Chờ duyệt';
+                // If displayStatus already has progress, return as is, otherwise add it
+                if (baseStatus.includes('(') && baseStatus.includes('/3')) {
+                    return baseStatus;
+                }
+                return `${baseStatus} (${progress})`;
+            }
+            
+            const approvers = statusData.approvers;
+            const progress = statusData.approvalProgress || '0/3';
+            const progressNum = parseInt(progress.split('/')[0]) || 0;
+            
+            let statusText = '';
+            let statusLabel = '';
+            let approverInfo = '';
+            
+            const accountant = approvers.accountant;
+            const legalRep = approvers.legalRep;
+            const treasurer = approvers.treasurer;
+            
+            // Case 1: Người đầu tiên chưa duyệt (0/3)
+            if (progressNum === 0) {
+                if (accountant && accountant.name) {
+                    statusLabel = 'Chờ Duyệt';
+                    approverInfo = `Bởi: ${accountant.name} (0/3)`;
+                    statusText = `${statusLabel}. ${approverInfo}`;
+                } else {
+                    statusText = 'Chờ Duyệt (0/3)';
+                }
+            }
+            // Case 2 & 3: Đã có 1 người duyệt (1/3)
+            else if (progressNum === 1) {
+                if (accountant && accountant.status === 'approved' && accountant.name) {
+                    // Case 2: Người đầu tiên đã duyệt
+                    statusLabel = 'Đang Duyệt (1/3)';
+                    approverInfo = `Duyệt Bởi: ${accountant.name} (1/3)`;
+                    statusText = `${statusLabel}. ${approverInfo}`;
+                } else if (legalRep && legalRep.status === 'pending' && legalRep.name) {
+                    // Case 3: Người thứ 2 chưa duyệt (sau khi người 1 đã duyệt)
+                    statusLabel = 'Đang Duyệt';
+                    approverInfo = `Bởi: ${legalRep.name} (1/3)`;
+                    statusText = `${statusLabel}. ${approverInfo}`;
+                } else {
+                    // Fallback
+                    statusLabel = 'Đang Duyệt (1/3)';
+                    statusText = statusLabel;
+                }
+            }
+            // Case 4 & 5: Đã có 2 người duyệt (2/3)
+            else if (progressNum === 2) {
+                if (legalRep && legalRep.status === 'approved' && legalRep.name) {
+                    // Case 4: Người thứ 2 đã duyệt
+                    statusLabel = 'Đang Duyệt (2/3)';
+                    approverInfo = `Duyệt Bởi: ${legalRep.name} (2/3)`;
+                    statusText = `${statusLabel}. ${approverInfo}`;
+                } else if (treasurer && treasurer.status === 'pending' && treasurer.name) {
+                    // Case 5: Người thứ 3 chưa duyệt (sau khi người 2 đã duyệt)
+                    statusLabel = 'Đang Duyệt';
+                    approverInfo = `Bởi: ${treasurer.name} (2/3)`;
+                    statusText = `${statusLabel}. ${approverInfo}`;
+                } else {
+                    // Fallback
+                    statusLabel = 'Đang Duyệt (2/3)';
+                    statusText = statusLabel;
+                }
+            }
+            // Case 6: Đã duyệt xong (3/3)
+            else if (progressNum === 3) {
+                if (treasurer && treasurer.status === 'approved' && treasurer.name) {
+                    statusLabel = 'Đã Duyệt (3/3)';
+                    approverInfo = `Duyệt Bởi: ${treasurer.name} (3/3)`;
+                    statusText = `${statusLabel}. ${approverInfo}`;
+                } else {
+                    statusLabel = 'Đã Duyệt (3/3)';
+                    statusText = statusLabel;
+                }
+            }
+            // Fallback
+            else {
+                statusText = statusData.displayStatus || 'Chờ duyệt';
+                if (progress && !statusText.includes('(')) {
+                    statusText += ` (${progress})`;
+                }
+            }
+            
+            return statusText;
+        }
+        
+        /**
+         * Load and display approval status for a voucher
+         */
+        async function loadVoucherApprovalStatus(voucher, voucherElementId) {
+            try {
+                const statusResponse = await fetch('/api/voucher', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        action: 'getApprovalStatus',
+                        voucherNumber: voucher.voucherNumber
+                    })
+                });
+                const statusResult = await statusResponse.json();
+                
+                const voucherElement = document.getElementById(voucherElementId);
+                if (!voucherElement) return;
+                
+                const statusBadge = voucherElement.querySelector('.status-badge');
+                const statusTextSpan = voucherElement.querySelector('.status-text');
+                const approvalDetail = voucherElement.querySelector('.approval-status-detail');
+                
+                if (statusResult.success && statusResult.data) {
+                    const statusData = statusResult.data;
+                    const formattedStatus = formatApprovalStatusText(statusData);
+                    const progress = statusData.approvalProgress || '0/3';
+                    const progressNum = parseInt(progress.split('/')[0]) || 0;
+                    
+                    // Determine status badge style
+                    let statusClass = 'bg-slate-100 text-slate-700';
+                    let statusIcon = 'fa-circle';
+                    let badgeText = '';
+                    
+                    if (progressNum === 0) {
+                        statusClass = 'bg-amber-100 text-amber-700';
+                        statusIcon = 'fa-paper-plane';
+                        badgeText = 'Chờ duyệt';
+                    } else if (progressNum === 3) {
+                        statusClass = 'bg-emerald-100 text-emerald-700';
+                        statusIcon = 'fa-check-circle';
+                        badgeText = 'Đã duyệt';
+                    } else {
+                        statusClass = 'bg-blue-100 text-blue-700';
+                        statusIcon = 'fa-clock';
+                        badgeText = 'Đang duyệt';
+                    }
+                    
+                    // Update status badge
+                    if (statusBadge) {
+                        statusBadge.className = `status-badge ${statusClass}`;
+                        if (statusTextSpan) {
+                            statusTextSpan.innerHTML = `<i class="fas ${statusIcon} mr-1"></i>${badgeText}`;
+                        }
+                    }
+                    
+                    // Update approval detail
+                    if (approvalDetail) {
+                        approvalDetail.textContent = formattedStatus;
+                    }
+                } else {
+                    // Fallback: Use basic status from voucher data
+                    const action = (voucher.action || '').toLowerCase();
+                    const status = (voucher.status || '').toLowerCase();
+                    
+                    let statusClass = 'bg-slate-100 text-slate-700';
+                    let statusIcon = 'fa-circle';
+                    let badgeText = 'Chờ duyệt';
+                    
+                    if (action === 'submit' || status === 'pending') {
+                        statusClass = 'bg-amber-100 text-amber-700';
+                        statusIcon = 'fa-paper-plane';
+                        badgeText = 'Chờ duyệt';
+                    } else if (status === 'approved' || action.includes('fully approved')) {
+                        statusClass = 'bg-emerald-100 text-emerald-700';
+                        statusIcon = 'fa-check-circle';
+                        badgeText = 'Đã duyệt';
+                    } else if (status === 'partially approved' || action.includes('approved by')) {
+                        statusClass = 'bg-blue-100 text-blue-700';
+                        statusIcon = 'fa-clock';
+                        badgeText = 'Đang duyệt';
+                    }
+                    
+                    if (statusBadge) {
+                        statusBadge.className = `status-badge ${statusClass}`;
+                        if (statusTextSpan) {
+                            statusTextSpan.innerHTML = `<i class="fas ${statusIcon} mr-1"></i>${badgeText}`;
+                        }
+                    }
+                    
+                    if (approvalDetail) {
+                        approvalDetail.textContent = badgeText;
+                    }
+                }
+            } catch (error) {
+                console.warn('Could not load approval status for', voucher.voucherNumber, ':', error);
+                // Keep default "Đang tải..." state or show fallback
+            }
         }
         
         // Initialize table search
