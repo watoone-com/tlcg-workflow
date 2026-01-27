@@ -1964,12 +1964,25 @@
         <div class="form-step" id="step-4">
         <div class="approval-section">
             <div class="form-row">
-                <div class="form-group">
-                    <label for="approver">Người phê duyệt:</label>
-                    <select id="approver" name="approver" required>
-                        <option value="">-- Chọn người phê duyệt --</option>
-                    </select>
-                    <div class="error-message"></div>
+                <div class="form-group" style="grid-column: 1 / -1;">
+                    <label>Người phê duyệt (theo thứ tự):</label>
+                    <div id="approvers-display" class="approvers-list" style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 1rem; margin-top: 0.5rem;">
+                        <div class="approver-item" style="padding: 1rem; background: #f8fafc; border-radius: 8px; border-left: 4px solid #3b82f6;">
+                            <div style="font-size: 0.75rem; color: #64748b; font-weight: 600; margin-bottom: 0.25rem;">Bước 1</div>
+                            <div style="font-weight: 600; color: #1e293b; margin-bottom: 0.25rem;">Kế toán trưởng</div>
+                            <div style="font-size: 0.875rem; color: #475569;" id="approver-accountant-name">-</div>
+                        </div>
+                        <div class="approver-item" style="padding: 1rem; background: #f8fafc; border-radius: 8px; border-left: 4px solid #8b5cf6;">
+                            <div style="font-size: 0.75rem; color: #64748b; font-weight: 600; margin-bottom: 0.25rem;">Bước 2</div>
+                            <div style="font-weight: 600; color: #1e293b; margin-bottom: 0.25rem;">Đại diện pháp luật</div>
+                            <div style="font-size: 0.875rem; color: #475569;" id="approver-legalrep-name">-</div>
+                        </div>
+                        <div class="approver-item" style="padding: 1rem; background: #f8fafc; border-radius: 8px; border-left: 4px solid #10b981;">
+                            <div style="font-size: 0.75rem; color: #64748b; font-weight: 600; margin-bottom: 0.25rem;">Bước 3</div>
+                            <div style="font-weight: 600; color: #1e293b; margin-bottom: 0.25rem;">Thủ quỹ</div>
+                            <div style="font-size: 0.875rem; color: #475569;" id="approver-treasurer-name">-</div>
+                        </div>
+                    </div>
                 </div>
                 <div class="form-group">
                     <label for="approval-status-display">Trạng thái phê duyệt:</label>
@@ -2634,7 +2647,7 @@
                     reason: document.getElementById('reason').value,
                     voucherDate: getCurrentVoucherDate(), // Always use current system date
                     voucherNumber: document.getElementById('voucher-number').value,
-                    approver: document.getElementById('approver').value,
+                    approver: '', // No longer user-selectable - uses company approvers from approval matrix
                     expenseItems: expenseItems.map(item => ({
                         content: item.content,
                         amount: item.amount,
@@ -2702,7 +2715,7 @@
                     // This prevents back date submission
                     // if (formData.voucherDate) document.getElementById('voucher-date').value = formData.voucherDate;
                     if (formData.voucherNumber) document.getElementById('voucher-number').value = formData.voucherNumber;
-                    if (formData.approver) document.getElementById('approver').value = formData.approver;
+                    // Approver no longer user-selectable - loaded from company approvers
                     
                     // Restore expense items (without file objects)
                     if (formData.expenseItems && formData.expenseItems.length > 0) {
@@ -2794,8 +2807,8 @@
                     return currency && expenseItems.length > 0 && 
                            expenseItems.every(item => item.content && item.amount > 0);
                 case 4:
-                    const approver = document.getElementById('approver').value;
-                    return approver;
+                    // Approver no longer user-selectable - uses company approvers from approval matrix
+                    return true;
                 case 5:
                     return true; // Review step, no validation needed
                 default:
@@ -2998,9 +3011,17 @@
                     }
                     reviewApproverDisplay.textContent = approverList.length > 0 ? approverList.join('; ') : '-';
                 } else {
-                    // Fallback to old method
-                    const approverValue = document.getElementById('approver').value || '-';
-                    reviewApproverDisplay.textContent = approverValue;
+                    // Fallback - show company approvers if available
+                    if (data.selectedCompanyApprovers) {
+                        const approvers = data.selectedCompanyApprovers;
+                        const approverList = [];
+                        if (approvers.accountant && approvers.accountant.name) approverList.push(`Kế toán trưởng: ${approvers.accountant.name}`);
+                        if (approvers.legalRep && approvers.legalRep.name) approverList.push(`Đại diện pháp luật: ${approvers.legalRep.name}`);
+                        if (approvers.treasurer && approvers.treasurer.name) approverList.push(`Thủ quỹ: ${approvers.treasurer.name}`);
+                        reviewApproverDisplay.textContent = approverList.length > 0 ? approverList.join(', ') : '-';
+                    } else {
+                        reviewApproverDisplay.textContent = '-';
+                    }
                 }
             }
             // Note: review-approver element doesn't exist, only review-approver-display exists
@@ -3281,14 +3302,6 @@
                 option.textContent = currency;
                 currencySelect.appendChild(option);
             });
-            
-            const approverSelect = document.getElementById('approver');
-            data.approver_names.forEach(approver => {
-                const option = document.createElement('option');
-                option.value = approver;
-                option.textContent = approver;
-                approverSelect.appendChild(option);
-            });
         }
         
         // Store selected company approvers
@@ -3334,6 +3347,9 @@
                     data.selectedCompanyApprovers = result.data.approvers;
                     console.log('✅ Company approvers loaded:', data.selectedCompanyApprovers);
                     
+                    // Update approvers display
+                    updateApproversDisplay(result.data.approvers);
+                    
                     // Show toast notification
                     showToast(`Đã tải thông tin người phê duyệt cho công ty "${companyName}"`, 'success', 'Thành công');
                 } else {
@@ -3347,6 +3363,36 @@
                 console.error('❌ Error stack:', error.stack);
                 data.selectedCompanyApprovers = null;
                 showToast('Lỗi khi tải thông tin người phê duyệt: ' + error.message, 'error', 'Lỗi');
+            }
+        }
+        
+        function updateApproversDisplay(approvers) {
+            const accountantNameEl = document.getElementById('approver-accountant-name');
+            const legalRepNameEl = document.getElementById('approver-legalrep-name');
+            const treasurerNameEl = document.getElementById('approver-treasurer-name');
+            
+            if (approvers && approvers.accountant && approvers.accountant.name) {
+                accountantNameEl.textContent = approvers.accountant.name;
+                accountantNameEl.style.color = '#475569';
+            } else {
+                accountantNameEl.textContent = 'Chưa có';
+                accountantNameEl.style.color = '#ef4444';
+            }
+            
+            if (approvers && approvers.legalRep && approvers.legalRep.name) {
+                legalRepNameEl.textContent = approvers.legalRep.name;
+                legalRepNameEl.style.color = '#475569';
+            } else {
+                legalRepNameEl.textContent = 'Chưa có';
+                legalRepNameEl.style.color = '#ef4444';
+            }
+            
+            if (approvers && approvers.treasurer && approvers.treasurer.name) {
+                treasurerNameEl.textContent = approvers.treasurer.name;
+                treasurerNameEl.style.color = '#475569';
+            } else {
+                treasurerNameEl.textContent = 'Chưa có';
+                treasurerNameEl.style.color = '#ef4444';
             }
         }
         
@@ -5682,7 +5728,7 @@
                     ['Tổng số tiền', document.getElementById('amount').value],
                     ['Số tiền bằng chữ', document.getElementById('amount-in-words').value],
                     ['Lý do', document.getElementById('reason').value],
-                    ['Người phê duyệt', document.getElementById('approver').value],
+                    ['Người phê duyệt', data.selectedCompanyApprovers ? 'Theo ma trận phê duyệt công ty' : 'Chưa chọn công ty'],
                     ['Trạng thái', document.getElementById('approval-status-display').textContent]
                 ];
                 
@@ -5779,7 +5825,7 @@
                         if (row.employee) document.getElementById('employee').value = row.employee;
                         if (row.payeeName) document.getElementById('payee-name').value = row.payeeName;
                         if (row.reason) document.getElementById('reason').value = row.reason;
-                        if (row.approver) document.getElementById('approver').value = row.approver;
+                        // Approver no longer user-selectable - loaded from company approvers
                         
                         updateCompanyDetails();
                         updateEmployeeDepartment();
@@ -5901,7 +5947,7 @@
                     totalAmount: document.getElementById('amount').value,
                     amountInWords: document.getElementById('amount-in-words').value,
                     reason: document.getElementById('reason').value,
-                    approver: document.getElementById('approver').value,
+                    approver: '', // No longer user-selectable - uses company approvers from approval matrix
                     status: document.getElementById('approval-status-display').textContent,
                     expenseItems: expenseItems.map((item, index) => ({
                         stt: index + 1,
@@ -6075,7 +6121,7 @@
                 payeeName: document.getElementById('payee-name').value,
                 currency: document.getElementById('currency').value,
                 reason: document.getElementById('reason').value,
-                approver: document.getElementById('approver').value,
+                approver: '', // No longer user-selectable - uses company approvers from approval matrix
                 expenseItems: expenseItems.map(item => ({
                     content: item.content,
                     amount: item.amount
@@ -6114,7 +6160,7 @@
             document.getElementById('payee-name').value = template.payeeName || '';
             document.getElementById('currency').value = template.currency || '';
             document.getElementById('reason').value = template.reason || '';
-            document.getElementById('approver').value = template.approver || '';
+            // Approver no longer user-selectable - loaded from company approvers
             
             if (template.expenseItems && template.expenseItems.length > 0) {
                 expenseItems = template.expenseItems.map(item => ({
@@ -6132,7 +6178,7 @@
 
         // Searchable Dropdown Functions
         function initializeSearchableDropdowns() {
-            const searchableSelects = ['company', 'employee', 'approver', 'payee-dropdown'];
+            const searchableSelects = ['company', 'employee', 'payee-dropdown'];
             searchableSelects.forEach(selectId => {
                 const select = document.getElementById(selectId);
                 if (select) {
@@ -6289,14 +6335,8 @@
             submitBtn.disabled = true;
             submitBtn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="animate-spin"><line x1="12" y1="2" x2="12" y2="6"></line><line x1="12" y1="18" x2="12" y2="22"></line><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"></line><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"></line><line x1="2" y1="12" x2="6" y2="12"></line><line x1="18" y1="12" x2="22" y2="12"></line><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"></line><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"></line></svg> Đang xử lý...';
             
-            // Validate approver field specifically
-            const approverField = document.getElementById('approver');
-            if (!approverField.value) {
-                validateField('approver', '', 'Người phê duyệt');
-            }
-            
-            // Validate all fields including approver
-            const requiredFields = ['company', 'voucher-type', 'employee', 'payee-name', 'currency', 'reason', 'approver'];
+            // Validate all fields (approver removed - now displayed, not selected)
+            const requiredFields = ['company', 'voucher-type', 'employee', 'payee-name', 'currency', 'reason'];
             let isValid = true;
             
             requiredFields.forEach(field => {
@@ -6307,8 +6347,7 @@
                     'employee': 'Người đề nghị',
                     'payee-name': 'Người nộp/nhận',
                     'currency': 'Loại tiền',
-                    'reason': 'Lý do',
-                    'approver': 'Người phê duyệt'
+                    'reason': 'Lý do'
                 };
                 if (!validateField(field, element ? element.value : '', fieldNames[field])) {
                     isValid = false;
@@ -6405,34 +6444,44 @@
             
             const department = document.getElementById('department').value;
 
-            const selectedApproverName = document.getElementById('approver').value;
             const selectedCompanyData = data.companies_data.find(c => c["Tên công ty"] === companyName);
 
             // Debug: Log để kiểm tra
             console.log('=== DEBUG EMAIL ===');
-            console.log('Selected Approver:', selectedApproverName);
             console.log('Company Name:', companyName);
             console.log('Company Data:', selectedCompanyData);
-            console.log('Approver Email Map:', approverEmailMap);
+            console.log('Company Approvers:', data.selectedCompanyApprovers);
             console.log('Employee Email Map:', employeeEmailMap);
 
-            // Tìm email người phê duyệt - thử nhiều cách
-            let approverEmail = approverEmailMap[selectedApproverName];
-            if (!approverEmail) {
-                // Thử tìm theo partial match
-                const approverKey = Object.keys(approverEmailMap).find(key => 
-                    key.includes(selectedApproverName) || selectedApproverName.includes(key)
-                );
-                if (approverKey) {
-                    approverEmail = approverEmailMap[approverKey];
-                    console.log('Found approver email by partial match:', approverEmail);
-                }
+            // Get approver email from company approvers (sequential approval uses first approver - accountant)
+            let approverEmail = '';
+            let selectedApproverName = '';
+            
+            if (data.selectedCompanyApprovers && data.selectedCompanyApprovers.accountant && data.selectedCompanyApprovers.accountant.email) {
+                approverEmail = data.selectedCompanyApprovers.accountant.email;
+                selectedApproverName = data.selectedCompanyApprovers.accountant.name;
+                console.log('Using Chief Accountant from company approvers:', selectedApproverName, approverEmail);
+            } else {
+                // Fallback to company data if approvers not loaded
+                const directorEmail = selectedCompanyData ? (selectedCompanyData["Email Đại diện pháp luật"] || '') : '';
+                const chiefAccountantEmail = selectedCompanyData ? (selectedCompanyData["Email Kế toán trưởng"] || '') : '';
+                approverEmail = chiefAccountantEmail || directorEmail;
+                selectedApproverName = selectedCompanyData ? (selectedCompanyData["Kế toán trưởng"] || selectedCompanyData["Đại diện pháp luật"] || '') : '';
+                console.log('Fallback: Using approver from company data:', selectedApproverName, approverEmail);
             }
-
-            // Lấy email từ company data
-            const directorEmail = selectedCompanyData ? (selectedCompanyData["Email Đại diện pháp luật"] || '') : '';
-            const chiefAccountantEmail = selectedCompanyData ? (selectedCompanyData["Email Kế toán trưởng"] || '') : '';
+            
             const requestorEmail = employeeEmailMap[requestorName] || '';
+            
+            // Build approver display string for email templates
+            let approverDisplayText = selectedApproverName || 'Chưa chọn';
+            if (data.selectedCompanyApprovers) {
+                const approvers = data.selectedCompanyApprovers;
+                const approverList = [];
+                if (approvers.accountant && approvers.accountant.name) approverList.push(`Kế toán trưởng: ${approvers.accountant.name}`);
+                if (approvers.legalRep && approvers.legalRep.name) approverList.push(`Đại diện pháp luật: ${approvers.legalRep.name}`);
+                if (approvers.treasurer && approvers.treasurer.name) approverList.push(`Thủ quỹ: ${approvers.treasurer.name}`);
+                if (approverList.length > 0) approverDisplayText = approverList.join(', ');
+            }
             
             // Get logged-in user's email from localStorage (set after login from index.html)
             let loggedInUserEmail = '';
@@ -6727,7 +6776,7 @@
                     <li><b>Tổng số tiền:</b> ${totalAmount}</li>
                     <li><b>Số tiền bằng chữ:</b> ${amountInWords}</li>
                     <li><b>Lý do:</b> ${reason}</li>
-                    <li><b>Người phê duyệt:</b> ${selectedApproverName}</li>
+                    <li><b>Người phê duyệt:</b> ${approverDisplayText}</li>
                 </ul>
                 <p><b>Chi tiết các khoản mục:</b></p>
                 <table style="width:100%; border-collapse: collapse; border: 1px solid #ddd;">
@@ -7082,7 +7131,7 @@
                     <li><b>Tổng số tiền:</b> ${totalAmount}</li>
                     <li><b>Số tiền bằng chữ:</b> ${amountInWords}</li>
                     <li><b>Lý do:</b> ${reason}</li>
-                    <li><b>Người phê duyệt:</b> ${selectedApproverName}</li>
+                    <li><b>Người phê duyệt:</b> ${approverDisplayText}</li>
                 </ul>
                 <p><b>Chi tiết các khoản mục:</b></p>
                 <table style="width:100%; border-collapse: collapse; border: 1px solid #ddd;">
