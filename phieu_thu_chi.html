@@ -4084,6 +4084,36 @@
                         console.log('⚠️ No approvers object in statusData');
                     }
                     
+                    // Fallback: If no approver name found and approvers object is empty, try to get from company
+                    if (!approverName && (!statusData.approvers || Object.keys(statusData.approvers).length === 0)) {
+                        const progressNum = parseInt(progress.split('/')[0]) || 0;
+                        if (progressNum === 0 && voucher.company) {
+                            // Try to get company approvers as fallback
+                            try {
+                                console.log('🔄 Fetching company approvers for:', voucher.company);
+                                const companyResponse = await fetch('/api/voucher', {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                                    body: new URLSearchParams({
+                                        action: 'getCompanyApprovers',
+                                        companyName: voucher.company
+                                    })
+                                });
+                                const companyResult = await companyResponse.json();
+                                if (companyResult.success && companyResult.data && companyResult.data.approvers) {
+                                    const companyApprovers = companyResult.data.approvers;
+                                    // Get first approver (accountant)
+                                    if (companyApprovers.accountant && companyApprovers.accountant.name) {
+                                        approverName = companyApprovers.accountant.name;
+                                        console.log('✅ Found approver from company data (accountant):', approverName);
+                                    }
+                                }
+                            } catch (e) {
+                                console.warn('⚠️ Could not fetch company approvers:', e);
+                            }
+                        }
+                    }
+                    
                     // Format status text with approver name
                     if (approverName) {
                         // Extract base status text (remove progress if present)
