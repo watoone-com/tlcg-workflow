@@ -4119,18 +4119,45 @@
                     console.log('✅ Formatted status:', displayStatus);
                 } else {
                     console.warn('⚠️ Approval status API returned unsuccessful or no data:', statusResult);
+                    // Create fallback statusData for formatting
+                    const fallbackStatusData = {
+                        displayStatus: statusClass === 'pending' ? 'Chờ duyệt' : (voucher.status || 'Chờ duyệt'),
+                        approvalProgress: '0/3',
+                        approvers: {},
+                        currentApprover: null
+                    };
+                    displayStatus = formatApprovalStatusText(fallbackStatusData);
                 }
             } catch (e) {
                 // Log error for debugging
                 console.warn('❌ Could not load approval status for', voucher.voucherNumber, ':', e);
+                // Create fallback statusData for formatting
+                const fallbackStatusData = {
+                    displayStatus: statusClass === 'pending' ? 'Chờ duyệt' : (voucher.status || 'Chờ duyệt'),
+                    approvalProgress: '0/3',
+                    approvers: {},
+                    currentApprover: null
+                };
+                displayStatus = formatApprovalStatusText(fallbackStatusData);
             }
             
-            const statusText = displayStatus || {
-                'pending': 'Chờ duyệt',
-                'approved': 'Đã duyệt',
-                'rejected': 'Từ chối',
-                'partially approved': displayStatus || 'Đang duyệt'
-            }[statusClass] || voucher.status;
+            // Final fallback if displayStatus is still empty
+            let statusText = displayStatus;
+            if (!statusText || statusText.trim() === '') {
+                const fallbackStatus = {
+                    'pending': 'Chờ duyệt',
+                    'approved': 'Đã duyệt',
+                    'rejected': 'Từ chối',
+                    'partially approved': 'Đang duyệt'
+                }[statusClass] || voucher.status;
+                
+                // For pending status, always add (0/3) if not already present
+                if (statusClass === 'pending' && !fallbackStatus.includes('(')) {
+                    statusText = `${fallbackStatus} (0/3)`;
+                } else {
+                    statusText = fallbackStatus;
+                }
+            }
             
             const statusIcon = {
                 'pending': '<i class="fas fa-clock"></i>',
@@ -8003,7 +8030,14 @@
          */
         function formatApprovalStatusText(statusData) {
             if (!statusData || !statusData.approvers) {
-                return statusData?.displayStatus || 'Chờ duyệt';
+                // Fallback: If no approvers data, show basic status with progress if available
+                const progress = statusData?.approvalProgress || '0/3';
+                const baseStatus = statusData?.displayStatus || 'Chờ duyệt';
+                // If displayStatus already has progress, return as is, otherwise add it
+                if (baseStatus.includes('(') && baseStatus.includes('/3')) {
+                    return baseStatus;
+                }
+                return `${baseStatus} (${progress})`;
             }
             
             const approvers = statusData.approvers;

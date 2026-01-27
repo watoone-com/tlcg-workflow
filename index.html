@@ -2504,15 +2504,30 @@
                             // Determine display based on action type
                             const action = (voucher.action || '').toLowerCase();
                             const status = (voucher.status || '').toLowerCase();
+                            const statusOriginal = (voucher.status || ''); // Keep original for exact match
                             
                             if (action === 'submit' || status === 'pending') {
                                 statusText = 'Chờ duyệt';
                                 statusClass = 'bg-amber-100 text-amber-700';
                                 statusIcon = 'fa-paper-plane';
-                            } else if (action === 'approved' || status === 'approved') {
+                            } else if (action.includes('fully approved') || (statusOriginal === 'Approved' && !action.includes('approved by'))) {
+                                // Only show "Đã duyệt" if fully approved (3/3) 
+                                // Check: action contains "fully approved" OR status is exactly "Approved" (not "Partially Approved")
+                                // AND action is NOT "Approved by [Name]"
                                 statusText = 'Đã duyệt';
                                 statusClass = 'bg-emerald-100 text-emerald-700';
                                 statusIcon = 'fa-check-circle';
+                            } else if (action.includes('approved by') || statusOriginal === 'Partially Approved' || status.includes('partially approved')) {
+                                // Partial approval - show progress
+                                // Extract progress from status if available (e.g., "Đang duyệt (1/3)")
+                                const statusOriginalUpper = statusOriginal.toUpperCase();
+                                if (statusOriginalUpper.includes('ĐANG DUYỆT') || statusOriginalUpper.includes('(1/3)') || statusOriginalUpper.includes('(2/3)')) {
+                                    statusText = statusOriginal; // Use original status which has progress
+                                } else {
+                                    statusText = 'Đang duyệt';
+                                }
+                                statusClass = 'bg-blue-100 text-blue-700';
+                                statusIcon = 'fa-clock';
                             } else if (action === 'rejected' || status === 'rejected') {
                                 statusText = 'Từ chối';
                                 statusClass = 'bg-red-100 text-red-700';
