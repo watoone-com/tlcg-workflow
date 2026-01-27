@@ -6457,14 +6457,25 @@
             let approverEmail = '';
             let selectedApproverName = '';
             
+            // Declare directorEmail and chiefAccountantEmail at function scope
+            let directorEmail = '';
+            let chiefAccountantEmail = '';
+            
             if (data.selectedCompanyApprovers && data.selectedCompanyApprovers.accountant && data.selectedCompanyApprovers.accountant.email) {
                 approverEmail = data.selectedCompanyApprovers.accountant.email;
                 selectedApproverName = data.selectedCompanyApprovers.accountant.name;
+                // Extract emails from company approvers
+                if (data.selectedCompanyApprovers.legalRep && data.selectedCompanyApprovers.legalRep.email) {
+                    directorEmail = data.selectedCompanyApprovers.legalRep.email;
+                }
+                if (data.selectedCompanyApprovers.accountant && data.selectedCompanyApprovers.accountant.email) {
+                    chiefAccountantEmail = data.selectedCompanyApprovers.accountant.email;
+                }
                 console.log('Using Chief Accountant from company approvers:', selectedApproverName, approverEmail);
             } else {
                 // Fallback to company data if approvers not loaded
-                const directorEmail = selectedCompanyData ? (selectedCompanyData["Email Đại diện pháp luật"] || '') : '';
-                const chiefAccountantEmail = selectedCompanyData ? (selectedCompanyData["Email Kế toán trưởng"] || '') : '';
+                directorEmail = selectedCompanyData ? (selectedCompanyData["Email Đại diện pháp luật"] || '') : '';
+                chiefAccountantEmail = selectedCompanyData ? (selectedCompanyData["Email Kế toán trưởng"] || '') : '';
                 approverEmail = chiefAccountantEmail || directorEmail;
                 selectedApproverName = selectedCompanyData ? (selectedCompanyData["Kế toán trưởng"] || selectedCompanyData["Đại diện pháp luật"] || '') : '';
                 console.log('Fallback: Using approver from company data:', selectedApproverName, approverEmail);
