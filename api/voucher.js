@@ -322,13 +322,13 @@ export default async function handler(req, res) {
       let contentType;
       
       if (hasDataField && dataFieldValue) {
-        // For requests with 'data' field, forward as FormData to preserve large JSON strings
-        // This avoids URL encoding issues with large payloads
-        contentType = 'multipart/form-data';
-        const formData = new FormData();
-        formData.append('data', dataFieldValue); // Forward the raw JSON string as-is
-        bodyToSend = formData;
-        console.log('[Proxy POST] Forwarding large payload as FormData (data field preserved)');
+        // For requests with 'data' field, forward as URL-encoded to preserve large JSON strings
+        // URLSearchParams is more reliable in Node.js/Vercel than FormData
+        contentType = 'application/x-www-form-urlencoded';
+        const params = new URLSearchParams();
+        params.append('data', dataFieldValue); // Forward the raw JSON string as-is
+        bodyToSend = params.toString();
+        console.log('[Proxy POST] Forwarding large payload as URL-encoded (data field preserved)');
       } else if (req.headers['content-type']?.includes('application/x-www-form-urlencoded') && typeof req.body === 'string') {
         // If original request was URL-encoded string, forward it as-is
         // This preserves the exact format that Google Apps Script expects
@@ -380,11 +380,25 @@ export default async function handler(req, res) {
         headers['Content-Type'] = contentType;
       }
       
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/voucher.js:383',message:'BEFORE_FETCH_TO_BACKEND',data:{gasUrl:GAS_URL,bodyType:typeof bodyToSend,bodyLength:typeof bodyToSend==='string'?bodyToSend.length:'N/A',contentType:contentType,finalAction:finalAction},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
+      
+      console.log('[Proxy POST] Sending request to backend...');
+      const fetchStartTime = Date.now();
+      
       const response = await fetch(GAS_URL, {
         method: 'POST',
         body: bodyToSend,
         headers: headers
       });
+      
+      const fetchDuration = Date.now() - fetchStartTime;
+      console.log(`[Proxy POST] Backend responded in ${fetchDuration}ms`);
+      
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/voucher.js:390',message:'AFTER_FETCH_TO_BACKEND',data:{responseStatus:response.status,responseOk:response.ok,fetchDuration:fetchDuration},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
       
       // Read response text first (can only be read once)
       const responseText = await response.text();

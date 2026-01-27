@@ -147,6 +147,11 @@ function doGet(e) {
 }
 
 function doPost(e) {
+  // #region agent log
+  try {
+    UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:149', message: 'doPost entry', data: {hasParameter: !!e.parameter, hasPostData: !!e.postData}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A'})}).catch(() => {});
+  } catch (e) {}
+  // #endregion
   try {
     Logger.log('=== doPost called ===');
     Logger.log('e.parameter keys: ' + (e.parameter ? Object.keys(e.parameter).join(', ') : 'none'));
@@ -255,7 +260,13 @@ function doPost(e) {
     
     switch (normalizedAction) {
       case 'login': return handleLogin_(requestBody);
-      case 'sendApprovalEmail': return handleSendEmail(requestBody);
+      case 'sendApprovalEmail': 
+        // #region agent log
+        try {
+          UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:258', message: 'Routing to handleSendEmail', data: {action: normalizedAction}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A'})}).catch(() => {});
+        } catch (e) {}
+        // #endregion
+        return handleSendEmail(requestBody);
       case 'approveVoucher': return handleApproveVoucher(requestBody);
       case 'rejectVoucher': return handleRejectVoucher(requestBody);
       case 'getVoucherSummary': return handleGetVoucherSummary(requestBody);
@@ -323,6 +334,11 @@ function doPost(e) {
         return createResponse(false, 'Action không hợp lệ: ' + normalizedAction + ' (length: ' + normalizedAction.length + ', expected: ' + 'getCompanyApprovers'.length + ')');
     }
   } catch (error) {
+    // #region agent log
+    try {
+      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:325', message: 'Error in doPost', data: {error: error.toString(), message: error.message}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'G'})}).catch(() => {});
+    } catch (e) {}
+    // #endregion
     Logger.log('❌ CRITICAL ERROR in doPost: ' + error.toString());
     Logger.log('❌ Error stack: ' + error.stack);
     // Always return JSON, never HTML
@@ -452,6 +468,11 @@ function getApproverRoleName(role) {
 
 /** 1. XỬ LÝ GỬI EMAIL & SUBMIT */
 function handleSendEmail(requestBody) {
+  // #region agent log
+  try {
+    UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:454', message: 'handleSendEmail entry', data: {hasEmail: !!requestBody.email, hasVoucher: !!requestBody.voucher, voucherNo: requestBody.voucher?.voucherNumber || 'N/A'}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A'})}).catch(() => {});
+  } catch (e) {}
+  // #endregion
   try {
     const emailData = requestBody.email;
     const requesterEmailData = requestBody.requesterEmail || null;
@@ -462,13 +483,28 @@ function handleSendEmail(requestBody) {
     
     // ✅ CRITICAL FIX: Check for duplicate submission BEFORE processing
     Logger.log('🔍 Checking for duplicate submission: ' + voucherNo);
+    // #region agent log
+    try {
+      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:465', message: 'Before sheet access', data: {voucherNo: voucherNo, sheetId: VOUCHER_HISTORY_SHEET_ID, sheetName: VH_SHEET_NAME}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'B'})}).catch(() => {});
+    } catch (e) {}
+    // #endregion
     const sheet = SpreadsheetApp.openById(VOUCHER_HISTORY_SHEET_ID).getSheetByName(VH_SHEET_NAME);
     
     if (!sheet) {
       Logger.log('❌ ERROR: Sheet "' + VH_SHEET_NAME + '" not found');
+      // #region agent log
+      try {
+        UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:467', message: 'Sheet not found error', data: {sheetName: VH_SHEET_NAME}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'B'})}).catch(() => {});
+      } catch (e) {}
+      // #endregion
       return createResponse(false, 'Lỗi: Không tìm thấy sheet lịch sử. Vui lòng kiểm tra cấu hình.');
     }
     
+    // #region agent log
+    try {
+      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:472', message: 'After sheet access, before getDataRange', data: {sheetFound: true}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'B'})}).catch(() => {});
+    } catch (e) {}
+    // #endregion
     const data = sheet.getDataRange().getValues();
     const rows = data.slice(1); // Skip header
     
@@ -485,6 +521,12 @@ function handleSendEmail(requestBody) {
     }
     
     Logger.log('✅ No duplicate found, proceeding with submission: ' + voucherNo);
+    
+    // #region agent log
+    try {
+      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:487', message: 'After duplicate check, before file handling', data: {voucherNo: voucherNo, hasFiles: !!(voucher.files && voucher.files.length > 0)}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'C'})}).catch(() => {});
+    } catch (e) {}
+    // #endregion
     
     let fileLinks = "";
 
@@ -541,6 +583,12 @@ function handleSendEmail(requestBody) {
         }
       }
     }
+
+    // #region agent log
+    try {
+      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:543', message: 'After file handling, before approvers init', data: {fileLinksLength: fileLinks.length, hasCompanyApprovers: !!voucher.companyApprovers}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'C'})}).catch(() => {});
+    } catch (e) {}
+    // #endregion
 
     // ✅ SEQUENTIAL APPROVAL: Initialize approvers meta if companyApprovers provided
     let approversMeta = null;
@@ -603,6 +651,12 @@ function handleSendEmail(requestBody) {
       Logger.log('📧 Preparing to send email to: ' + emailData.to);
       Logger.log('📧 Email subject: ' + emailData.subject);
       
+      // #region agent log
+      try {
+        UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:601', message: 'Before GmailApp.sendEmail', data: {to: emailData.to, subject: emailData.subject?.substring(0, 50) || 'N/A', bodyLength: emailData.body?.length || 0}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'D'})}).catch(() => {});
+      } catch (e) {}
+      // #endregion
+      
       let options = { htmlBody: emailData.body };
       if (emailData.cc && emailData.cc.trim() !== "") options.cc = emailData.cc.trim();
       // Use logged-in user's email as reply-to (instead of script owner's email)
@@ -613,6 +667,12 @@ function handleSendEmail(requestBody) {
       
       GmailApp.sendEmail(emailData.to, emailData.subject, '', options);
       Logger.log('✅ Email sent successfully to: ' + emailData.to);
+      
+      // #region agent log
+      try {
+        UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:614', message: 'After GmailApp.sendEmail', data: {success: true}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'D'})}).catch(() => {});
+      } catch (e) {}
+      // #endregion
     } catch (emailError) {
       Logger.log('❌ ERROR sending email: ' + emailError.toString());
       Logger.log('❌ Error details: ' + JSON.stringify({
@@ -625,6 +685,11 @@ function handleSendEmail(requestBody) {
     // Gửi email thông báo cho requester
     if (requesterEmailData && requesterEmailData.to && requesterEmailData.to.trim() !== '') {
       try {
+        // #region agent log
+        try {
+          UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:625', message: 'Before requester email send', data: {to: requesterEmailData.to}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'D'})}).catch(() => {});
+        } catch (e) {}
+        // #endregion
         let requesterOptions = { htmlBody: requesterEmailData.body || '' };
         // Use logged-in user's email as reply-to for requester email too
         if (emailData.replyTo && emailData.replyTo.trim() !== "") {
@@ -637,9 +702,19 @@ function handleSendEmail(requestBody) {
           '',
           requesterOptions
         );
+        // #region agent log
+        try {
+          UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:634', message: 'After requester email send', data: {success: true}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'D'})}).catch(() => {});
+        } catch (e) {}
+        // #endregion
       } catch (requesterEmailError) {
         // Log but don't fail - requester email is secondary
         Logger.log('Warning: Failed to send requester email: ' + requesterEmailError.toString());
+        // #region agent log
+        try {
+          UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:640', message: 'Requester email send error', data: {error: requesterEmailError.toString()}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'D'})}).catch(() => {});
+        } catch (e) {}
+        // #endregion
       }
     }
 
@@ -660,6 +735,12 @@ function handleSendEmail(requestBody) {
       submitMetaData.companyApprovers = approversMeta;
     }
     
+    // #region agent log
+    try {
+      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:662', message: 'Before appendHistory_', data: {voucherNo: voucherNo, action: 'Submit'}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'E'})}).catch(() => {});
+    } catch (e) {}
+    // #endregion
+    
     appendHistory_({
       voucherNumber: voucherNo,
       voucherType: voucher.voucherType || '',
@@ -675,8 +756,25 @@ function handleSendEmail(requestBody) {
       attachments: fileLinks
     });
 
+    // #region agent log
+    try {
+      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:676', message: 'After appendHistory_, before return', data: {voucherNo: voucherNo}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'E'})}).catch(() => {});
+    } catch (e) {}
+    // #endregion
+
+    // #region agent log
+    try {
+      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:678', message: 'Returning success response', data: {voucherNo: voucherNo}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'F'})}).catch(() => {});
+    } catch (e) {}
+    // #endregion
+    
     return createResponse(true, 'Đã gửi yêu cầu phê duyệt thành công');
   } catch (error) {
+    // #region agent log
+    try {
+      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:679', message: 'Error caught in handleSendEmail', data: {error: error.toString(), message: error.message}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'G'})}).catch(() => {});
+    } catch (e) {}
+    // #endregion
     return createResponse(false, 'Lỗi gửi mail: ' + error.message);
   }
 }
@@ -1923,8 +2021,19 @@ function uploadFilesToDrive_(files, folderName) {
 }
 
 function appendHistory_(entry) {
+  // #region agent log
+  try {
+    UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:1925', message: 'appendHistory_ entry', data: {voucherNumber: entry.voucherNumber, action: entry.action}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'E'})}).catch(() => {});
+  } catch (e) {}
+  // #endregion
   try {
     Logger.log('📝 Attempting to append history for voucher: ' + entry.voucherNumber);
+    
+    // #region agent log
+    try {
+      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:1929', message: 'Before sheet access in appendHistory_', data: {sheetId: VOUCHER_HISTORY_SHEET_ID, sheetName: VH_SHEET_NAME}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'E'})}).catch(() => {});
+    } catch (e) {}
+    // #endregion
     
     const sheet = SpreadsheetApp.openById(VOUCHER_HISTORY_SHEET_ID).getSheetByName(VH_SHEET_NAME);
     
@@ -1938,6 +2047,12 @@ function appendHistory_(entry) {
     if (!entry.voucherNumber) {
       Logger.log('⚠️ WARNING: Voucher number is missing in entry');
     }
+    
+    // #region agent log
+    try {
+      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:1942', message: 'Before appendRow', data: {voucherNumber: entry.voucherNumber}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'E'})}).catch(() => {});
+    } catch (e) {}
+    // #endregion
     
     sheet.appendRow([
       entry.voucherNumber || '',
@@ -1955,6 +2070,12 @@ function appendHistory_(entry) {
       new Date()
     ]);
     
+    // #region agent log
+    try {
+      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:1957', message: 'After appendRow', data: {voucherNumber: entry.voucherNumber, success: true}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'E'})}).catch(() => {});
+    } catch (e) {}
+    // #endregion
+    
     Logger.log('✅ History appended successfully for voucher: ' + entry.voucherNumber);
     Logger.log('   - Action: ' + entry.action);
     Logger.log('   - Status: ' + entry.status);
@@ -1962,6 +2083,11 @@ function appendHistory_(entry) {
     
     return true;
   } catch (error) {
+    // #region agent log
+    try {
+      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:1964', message: 'Error in appendHistory_', data: {error: error.toString(), message: error.message, voucherNumber: entry.voucherNumber}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'E'})}).catch(() => {});
+    } catch (e) {}
+    // #endregion
     Logger.log('❌ CRITICAL ERROR in appendHistory_: ' + error.toString());
     Logger.log('❌ Error stack: ' + error.stack);
     Logger.log('❌ Entry data: ' + JSON.stringify({
