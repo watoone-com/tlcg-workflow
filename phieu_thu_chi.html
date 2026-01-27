@@ -4010,31 +4010,59 @@
         async function renderVoucherItem(voucher) {
             const statusClass = (voucher.status || 'Pending').toLowerCase();
             
-            // ✅ PHASE 2: Load approval status if voucher is pending or partially approved
+            // ✅ PHASE 2: Load approval status to get approver information
             let displayStatus = '';
             let statusBadgeHtml = '';
+            let approverName = '';
             
-            if (statusClass === 'pending' || voucher.status === 'Partially Approved') {
-                // Try to load approval status
-                try {
-                    const statusResponse = await fetch('/api/voucher', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                        body: new URLSearchParams({
-                            action: 'getApprovalStatus',
-                            voucherNumber: voucher.voucherNumber
-                        })
-                    });
-                    const statusResult = await statusResponse.json();
-                    if (statusResult.success && statusResult.data) {
-                        displayStatus = statusResult.data.displayStatus || '';
-                        const progress = statusResult.data.approvalProgress || '0/3';
+            // Load approval status for all statuses to get approver information
+            try {
+                const statusResponse = await fetch('/api/voucher', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: new URLSearchParams({
+                        action: 'getApprovalStatus',
+                        voucherNumber: voucher.voucherNumber
+                    })
+                });
+                const statusResult = await statusResponse.json();
+                if (statusResult.success && statusResult.data) {
+                    const statusData = statusResult.data;
+                    displayStatus = statusData.displayStatus || '';
+                    const progress = statusData.approvalProgress || '0/3';
+                    
+                    // Get approver name: current approver (if pending) or last approved approver
+                    if (statusData.currentApproverName) {
+                        // Show current approver (who needs to approve next)
+                        approverName = statusData.currentApproverName;
+                    } else if (statusData.approvers) {
+                        // If no current approver, find the last approved approver
+                        const approvers = statusData.approvers;
+                        const sequence = ['treasurer', 'legalRep', 'accountant']; // Check in reverse order
+                        for (const role of sequence) {
+                            if (approvers[role] && approvers[role].status === 'approved' && approvers[role].name) {
+                                approverName = approvers[role].name;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // Format status text with approver name
+                    if (approverName) {
+                        // Extract base status text (remove progress if present)
+                        let baseStatus = displayStatus || 'Chờ duyệt';
+                        // Remove existing progress text like "(1/3)" if present
+                        baseStatus = baseStatus.replace(/\s*\(\d+\/3\)/g, '');
+                        // Format: "Chờ duyệt: [Name] (X/3)"
+                        displayStatus = `${baseStatus}: ${approverName} (${progress})`;
+                    } else {
+                        // No approver name available, just show progress
                         statusBadgeHtml = `<span class="approval-progress-badge" style="font-size: 0.75rem; color: #64748b; margin-left: 0.5rem;">(${progress})</span>`;
                     }
-                } catch (e) {
-                    // Ignore errors, use default status
-                    console.warn('Could not load approval status:', e);
                 }
+            } catch (e) {
+                // Ignore errors, use default status
+                console.warn('Could not load approval status:', e);
             }
             
             const statusText = displayStatus || {
