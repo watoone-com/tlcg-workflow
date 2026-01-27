@@ -4050,11 +4050,24 @@
                         const approvers = statusData.approvers;
                         const progressNum = parseInt(progress.split('/')[0]) || 0;
                         
+                        console.log('🔍 Checking approvers object:', approvers);
+                        console.log('🔍 Progress:', progressNum);
+                        
                         if (progressNum === 0) {
                             // No one has approved yet, show first approver (accountant)
                             if (approvers.accountant && approvers.accountant.name) {
                                 approverName = approvers.accountant.name;
                                 console.log('✅ Found first approver (accountant):', approverName);
+                            } else {
+                                // Try to get any approver name if accountant is missing
+                                const sequence = ['accountant', 'legalRep', 'treasurer'];
+                                for (const role of sequence) {
+                                    if (approvers[role] && approvers[role].name) {
+                                        approverName = approvers[role].name;
+                                        console.log('✅ Found approver from', role, ':', approverName);
+                                        break;
+                                    }
+                                }
                             }
                         } else {
                             // Some have approved, find the last approved approver
@@ -4067,6 +4080,8 @@
                                 }
                             }
                         }
+                    } else {
+                        console.log('⚠️ No approvers object in statusData');
                     }
                     
                     // Format status text with approver name
