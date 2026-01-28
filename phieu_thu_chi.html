@@ -4311,9 +4311,9 @@
                     console.log('Is current user the requester:', isRequester);
                     
                     document.getElementById('modal-title').textContent = `Phiếu ${voucher.voucherNumber}`;
-                    
+
                     // Render voucher details (pass isRequester to hide approver signature section)
-                    modalContent.innerHTML = renderVoucherDetails(voucher, historyData, isRequester);
+                    modalContent.innerHTML = await renderVoucherDetails(voucher, historyData, isRequester);
                     
                     // Add action buttons based on voucher status AND user role
                     if (voucher.status === 'Pending') {
