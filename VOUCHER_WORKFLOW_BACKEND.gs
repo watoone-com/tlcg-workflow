@@ -1438,17 +1438,28 @@ function handleGetApprovalStatus(requestBody) {
     let companyApprovers = meta.companyApprovers || {};
 
     // ✅ NEW: If approvers data is missing or empty, fetch from company master data
-    if (!companyApprovers.approvers || Object.keys(companyApprovers.approvers).length === 0) {
+    const hasApprovers = companyApprovers.approvers &&
+                        typeof companyApprovers.approvers === 'object' &&
+                        Object.keys(companyApprovers.approvers).length > 0;
+
+    if (!hasApprovers) {
       Logger.log('⚠️ Approvers data missing in voucher meta, fetching from company master data');
+      Logger.log('🔍 Debug - companyApprovers:', JSON.stringify(companyApprovers));
+      Logger.log('🔍 Debug - meta:', JSON.stringify(meta));
 
       const companyName = existingVoucher.company;
+      Logger.log('🔍 Company name from voucher:', companyName);
+
       if (companyName) {
         try {
+          Logger.log('🔄 Attempting to fetch company approvers...');
           // Fetch company approvers using existing function
           const companyResult = handleGetCompanyApprovers({ companyName: companyName }, companyName);
+          Logger.log('🔍 Company approvers fetch result:', JSON.stringify(companyResult));
 
           if (companyResult.success && companyResult.data && companyResult.data.approvers) {
             Logger.log('✅ Successfully fetched company approvers for: ' + companyName);
+            Logger.log('🔍 Fetched approvers:', JSON.stringify(companyResult.data.approvers));
 
             // Initialize approvers structure with fetched data
             const fetchedApprovers = companyResult.data.approvers;
@@ -1486,16 +1497,26 @@ function handleGetApprovalStatus(requestBody) {
             };
 
             Logger.log('✅ Initialized approvers structure with company data');
+            Logger.log('🔍 Final companyApprovers:', JSON.stringify(companyApprovers));
           } else {
             Logger.log('⚠️ Could not fetch company approvers: ' + (companyResult.message || 'Unknown error'));
+            Logger.log('⚠️ companyResult.success:', companyResult.success);
+            Logger.log('⚠️ companyResult.data:', companyResult.data ? 'exists' : 'null');
+            if (companyResult.data) {
+              Logger.log('⚠️ companyResult.data.approvers:', companyResult.data.approvers ? 'exists' : 'null');
+            }
           }
         } catch (fetchError) {
-          Logger.log('⚠️ Error fetching company approvers: ' + fetchError.toString());
+          Logger.log('❌ Error fetching company approvers: ' + fetchError.toString());
+          Logger.log('❌ Error stack:', fetchError.stack);
           // Continue with empty approvers - will show fallback status
         }
       } else {
         Logger.log('⚠️ No company name in voucher, cannot fetch approvers');
       }
+    } else {
+      Logger.log('✅ Approvers data already exists in voucher meta');
+      Logger.log('🔍 Existing approvers:', JSON.stringify(companyApprovers.approvers));
     }
 
     // Build status response
