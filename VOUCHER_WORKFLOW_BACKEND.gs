@@ -1561,33 +1561,86 @@ function handleGetApprovalStatus(requestBody) {
             Logger.log('⚠️ companyResult.data:', companyResult.data ? 'exists' : 'null');
             if (companyResult.data) {
               Logger.log('⚠️ companyResult.data.approvers:', companyResult.data.approvers ? 'exists' : 'null');
+              // Even if fetch failed, try to extract accountant name if available
+              if (companyResult.data.approvers && companyResult.data.approvers.accountant) {
+                const fetchedAccountant = companyResult.data.approvers.accountant;
+                if (fetchedAccountant.name) {
+                  // Set minimal approvers structure with just accountant name
+                  companyApprovers.approvers = {
+                    accountant: {
+                      name: fetchedAccountant.name,
+                      email: fetchedAccountant.email || '',
+                      status: 'pending',
+                      signature: '',
+                      approvedAt: null,
+                      order: 1
+                    }
+                  };
+                  companyApprovers.currentApprover = 'accountant';
+                  Logger.log('✅ Extracted accountant name from failed fetch: ' + fetchedAccountant.name);
+                }
+              }
+            }
+            // If still no approvers, set currentApprover to 'accountant' for 0/3 status
+            if (!companyApprovers.approvers || Object.keys(companyApprovers.approvers).length === 0) {
+              const progress = companyApprovers.approvalProgress || '0/3';
+              const progressNum = parseInt(progress.split('/')[0]) || 0;
+              if (progressNum === 0) {
+                companyApprovers.currentApprover = 'accountant';
+                Logger.log('✅ Set currentApprover to accountant for 0/3 status');
+              }
             }
           }
         } catch (fetchError) {
           Logger.log('❌ Error fetching company approvers: ' + fetchError.toString());
           Logger.log('❌ Error stack:', fetchError.stack);
-          // Continue with empty approvers - will show fallback status
+          // Set currentApprover to 'accountant' for 0/3 status even on error
+          const progress = companyApprovers.approvalProgress || '0/3';
+          const progressNum = parseInt(progress.split('/')[0]) || 0;
+          if (progressNum === 0) {
+            companyApprovers.currentApprover = 'accountant';
+            Logger.log('✅ Set currentApprover to accountant for 0/3 status (after error)');
+          }
         }
       } else {
         Logger.log('⚠️ No company name in voucher, cannot fetch approvers');
+        // Set currentApprover to 'accountant' for 0/3 status
+        const progress = companyApprovers.approvalProgress || '0/3';
+        const progressNum = parseInt(progress.split('/')[0]) || 0;
+        if (progressNum === 0) {
+          companyApprovers.currentApprover = 'accountant';
+        }
       }
     } else {
       Logger.log('✅ Approvers data already exists in voucher meta');
       Logger.log('🔍 Existing approvers:', JSON.stringify(companyApprovers.approvers));
+      // Ensure currentApprover is set for 0/3 status
+      if (!companyApprovers.currentApprover) {
+        const progress = companyApprovers.approvalProgress || '0/3';
+        const progressNum = parseInt(progress.split('/')[0]) || 0;
+        if (progressNum === 0) {
+          companyApprovers.currentApprover = 'accountant';
+        }
+      }
     }
 
     // Build status response
+    // Try to get currentApproverName even if approvers is partially populated
+    let currentApproverName = null;
+    if (companyApprovers.currentApprover && companyApprovers.approvers) {
+      const currentApproverData = companyApprovers.approvers[companyApprovers.currentApprover];
+      if (currentApproverData && currentApproverData.name) {
+        currentApproverName = currentApproverData.name;
+      }
+    }
+    
     const statusData = {
       voucherNumber: voucherNumber,
       overallStatus: companyApprovers.overallStatus || existingVoucher.status || 'Pending Approval',
       displayStatus: companyApprovers.displayStatus || 'Chờ duyệt',
       approvalProgress: companyApprovers.approvalProgress || '0/3',
       currentApprover: companyApprovers.currentApprover || null,
-      currentApproverName: companyApprovers.currentApprover && companyApprovers.approvers
-        ? (companyApprovers.approvers[companyApprovers.currentApprover]
-          ? companyApprovers.approvers[companyApprovers.currentApprover].name
-          : null)
-        : null,
+      currentApproverName: currentApproverName,
       approvers: companyApprovers.approvers || {},
       requesterEmail: existingVoucher.requestorEmail || '',
       submittedAt: existingVoucher.timestamp || '',
