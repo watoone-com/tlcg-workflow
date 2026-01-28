@@ -1413,17 +1413,17 @@ function handleRejectVoucher(requestBody) {
 function handleGetApprovalStatus(requestBody) {
   try {
     const voucherNumber = requestBody.voucherNumber || '';
-    
+
     if (!voucherNumber) {
       return createResponse(false, 'Thiếu số phiếu');
     }
-    
+
     // Get latest voucher entry from history
     const existingVoucher = getVoucherFromHistory(voucherNumber);
     if (!existingVoucher) {
       return createResponse(false, 'Không tìm thấy phiếu: ' + voucherNumber);
     }
-    
+
     // Parse meta from note field
     let meta = {};
     if (existingVoucher.meta) {
@@ -1433,10 +1433,71 @@ function handleGetApprovalStatus(requestBody) {
         Logger.log('Error parsing meta: ' + e.toString());
       }
     }
-    
+
     // Get companyApprovers from meta
-    const companyApprovers = meta.companyApprovers || {};
-    
+    let companyApprovers = meta.companyApprovers || {};
+
+    // ✅ NEW: If approvers data is missing or empty, fetch from company master data
+    if (!companyApprovers.approvers || Object.keys(companyApprovers.approvers).length === 0) {
+      Logger.log('⚠️ Approvers data missing in voucher meta, fetching from company master data');
+
+      const companyName = existingVoucher.company;
+      if (companyName) {
+        try {
+          // Fetch company approvers using existing function
+          const companyResult = handleGetCompanyApprovers({ companyName: companyName }, companyName);
+
+          if (companyResult.success && companyResult.data && companyResult.data.approvers) {
+            Logger.log('✅ Successfully fetched company approvers for: ' + companyName);
+
+            // Initialize approvers structure with fetched data
+            const fetchedApprovers = companyResult.data.approvers;
+            companyApprovers = {
+              approvers: {
+                accountant: {
+                  email: fetchedApprovers.accountant ? fetchedApprovers.accountant.email : '',
+                  name: fetchedApprovers.accountant ? fetchedApprovers.accountant.name : '',
+                  status: 'pending',
+                  signature: '',
+                  approvedAt: null,
+                  order: 1
+                },
+                legalRep: {
+                  email: fetchedApprovers.legalRep ? fetchedApprovers.legalRep.email : '',
+                  name: fetchedApprovers.legalRep ? fetchedApprovers.legalRep.name : '',
+                  status: 'pending',
+                  signature: '',
+                  approvedAt: null,
+                  order: 2
+                },
+                treasurer: {
+                  email: fetchedApprovers.treasurer ? fetchedApprovers.treasurer.email : '',
+                  name: fetchedApprovers.treasurer ? fetchedApprovers.treasurer.name : '',
+                  status: 'pending',
+                  signature: '',
+                  approvedAt: null,
+                  order: 3
+                }
+              },
+              overallStatus: existingVoucher.status || 'Pending Approval',
+              approvalProgress: '0/3',
+              currentApprover: 'accountant',
+              displayStatus: 'Chờ duyệt'
+            };
+
+            Logger.log('✅ Initialized approvers structure with company data');
+          } else {
+            Logger.log('⚠️ Could not fetch company approvers: ' + (companyResult.message || 'Unknown error'));
+          }
+        } catch (fetchError) {
+          Logger.log('⚠️ Error fetching company approvers: ' + fetchError.toString());
+          // Continue with empty approvers - will show fallback status
+        }
+      } else {
+        Logger.log('⚠️ No company name in voucher, cannot fetch approvers');
+      }
+    }
+
     // Build status response
     const statusData = {
       voucherNumber: voucherNumber,
@@ -1445,8 +1506,8 @@ function handleGetApprovalStatus(requestBody) {
       approvalProgress: companyApprovers.approvalProgress || '0/3',
       currentApprover: companyApprovers.currentApprover || null,
       currentApproverName: companyApprovers.currentApprover && companyApprovers.approvers
-        ? (companyApprovers.approvers[companyApprovers.currentApprover] 
-          ? companyApprovers.approvers[companyApprovers.currentApprover].name 
+        ? (companyApprovers.approvers[companyApprovers.currentApprover]
+          ? companyApprovers.approvers[companyApprovers.currentApprover].name
           : null)
         : null,
       approvers: companyApprovers.approvers || {},
@@ -1454,7 +1515,7 @@ function handleGetApprovalStatus(requestBody) {
       submittedAt: existingVoucher.timestamp || '',
       lastUpdatedAt: new Date().toISOString()
     };
-    
+
     return createResponse(true, 'Thành công', statusData);
   } catch (error) {
     Logger.log('❌ Error in handleGetApprovalStatus: ' + error.toString());
