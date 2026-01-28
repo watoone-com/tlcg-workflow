@@ -8062,8 +8062,8 @@
             if (progressNum === 0) {
                 if (accountant && accountant.name) {
                     statusLabel = 'Chờ Duyệt';
-                    approverInfo = `Bởi: ${accountant.name} (0/3)`;
-                    statusText = `${statusLabel}. ${approverInfo}`;
+                    approverInfo = `${accountant.name} (0/3)`;
+                    statusText = `${statusLabel} - ${approverInfo}`;
                 } else {
                     statusText = 'Chờ Duyệt (0/3)';
                 }

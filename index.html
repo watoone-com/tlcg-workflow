@@ -2641,8 +2641,8 @@
             if (progressNum === 0) {
                 if (accountant && accountant.name) {
                     statusLabel = 'Chờ Duyệt';
-                    approverInfo = `Bởi: ${accountant.name} (0/3)`;
-                    statusText = `${statusLabel}. ${approverInfo}`;
+                    approverInfo = `${accountant.name} (0/3)`;
+                    statusText = `${statusLabel} - ${approverInfo}`;
                 } else {
                     statusText = 'Chờ Duyệt (0/3)';
                 }
@@ -2741,7 +2741,7 @@
                     if (progressNum === 0) {
                         statusClass = 'bg-amber-100 text-amber-700';
                         statusIcon = 'fa-paper-plane';
-                        badgeText = 'Chờ duyệt';
+                        badgeText = 'Đang Duyệt (0/3)';
                     } else if (progressNum === 3) {
                         statusClass = 'bg-emerald-100 text-emerald-700';
                         statusIcon = 'fa-check-circle';
