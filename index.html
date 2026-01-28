@@ -2724,10 +2724,60 @@
 
                 if (statusResult.success && statusResult.data) {
                     const statusData = statusResult.data;
-                    const formattedStatus = formatApprovalStatusText(statusData);
-                    console.log('✅ Formatted Status for', voucher.voucherNumber, ':', formattedStatus);
                     const progress = statusData.approvalProgress || '0/3';
                     const progressNum = parseInt(progress.split('/')[0]) || 0;
+                    
+                    // ✅ If approvers is empty and progress is 0/3, try to fetch from company data
+                    if ((!statusData.approvers || Object.keys(statusData.approvers).length === 0) && progressNum === 0 && voucher.company) {
+                        try {
+                            console.log('🔄 Fetching company approvers for:', voucher.company);
+                            const companyResponse = await fetch('/api/voucher', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                                body: new URLSearchParams({
+                                    action: 'getCompanyApprovers',
+                                    companyName: voucher.company
+                                })
+                            });
+                            const companyResult = await companyResponse.json();
+                            if (companyResult.success && companyResult.data && companyResult.data.approvers) {
+                                const companyApprovers = companyResult.data.approvers;
+                                // Get first approver (accountant)
+                                if (companyApprovers.accountant && companyApprovers.accountant.name) {
+                                    const approverName = companyApprovers.accountant.name;
+                                    console.log('✅ Found approver from company data (accountant):', approverName);
+                                    
+                                    // ✅ IMPORTANT: Update statusData with the found accountant name
+                                    // so formatApprovalStatusText can use it
+                                    if (!statusData.approvers) {
+                                        statusData.approvers = {};
+                                    }
+                                    if (!statusData.approvers.accountant) {
+                                        statusData.approvers.accountant = {};
+                                    }
+                                    statusData.approvers.accountant.name = approverName;
+                                    statusData.approvers.accountant.email = companyApprovers.accountant.email || '';
+                                    statusData.approvers.accountant.status = 'pending';
+                                    
+                                    // Also update currentApproverName as fallback
+                                    if (!statusData.currentApproverName) {
+                                        statusData.currentApproverName = approverName;
+                                    }
+                                    // Ensure currentApprover is set to 'accountant' for 0/3
+                                    if (!statusData.currentApprover && statusData.approvalProgress === '0/3') {
+                                        statusData.currentApprover = 'accountant';
+                                    }
+                                    
+                                    console.log('✅ Updated statusData with accountant name:', approverName);
+                                }
+                            }
+                        } catch (e) {
+                            console.warn('⚠️ Could not fetch company approvers:', e);
+                        }
+                    }
+                    
+                    const formattedStatus = formatApprovalStatusText(statusData);
+                    console.log('✅ Formatted Status for', voucher.voucherNumber, ':', formattedStatus);
 
                     // Extract badge text from formatted status (first part before " - ")
                     const badgeText = formattedStatus.includes(' - ')
