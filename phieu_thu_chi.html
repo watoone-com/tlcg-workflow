@@ -4106,6 +4106,29 @@
                                     if (companyApprovers.accountant && companyApprovers.accountant.name) {
                                         approverName = companyApprovers.accountant.name;
                                         console.log('✅ Found approver from company data (accountant):', approverName);
+                                        
+                                        // ✅ IMPORTANT: Update statusData with the found accountant name
+                                        // so formatApprovalStatusText can use it
+                                        if (!statusData.approvers) {
+                                            statusData.approvers = {};
+                                        }
+                                        if (!statusData.approvers.accountant) {
+                                            statusData.approvers.accountant = {};
+                                        }
+                                        statusData.approvers.accountant.name = approverName;
+                                        statusData.approvers.accountant.email = companyApprovers.accountant.email || '';
+                                        statusData.approvers.accountant.status = 'pending';
+                                        
+                                        // Also update currentApproverName as fallback
+                                        if (!statusData.currentApproverName) {
+                                            statusData.currentApproverName = approverName;
+                                        }
+                                        // Ensure currentApprover is set to 'accountant' for 0/3
+                                        if (!statusData.currentApprover && statusData.approvalProgress === '0/3') {
+                                            statusData.currentApprover = 'accountant';
+                                        }
+                                        
+                                        console.log('✅ Updated statusData with accountant name:', approverName);
                                     }
                                 }
                             } catch (e) {
@@ -4117,6 +4140,7 @@
                     // Format status text with approver names (approved + next)
                     displayStatus = formatApprovalStatusText(statusData);
                     console.log('✅ Formatted status:', displayStatus);
+                    console.log('🔍 statusData.approvers:', statusData.approvers);
                 } else {
                     console.warn('⚠️ Approval status API returned unsuccessful or no data:', statusResult);
                     // Create fallback statusData for formatting
