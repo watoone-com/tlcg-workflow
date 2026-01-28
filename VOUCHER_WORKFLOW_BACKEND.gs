@@ -1634,6 +1634,46 @@ function handleGetApprovalStatus(requestBody) {
       }
     }
     
+    // ✅ If currentApproverName is still null but we have currentApprover='accountant' for 0/3,
+    // try to fetch company approvers one more time to get just the accountant name
+    if (!currentApproverName && companyApprovers.currentApprover === 'accountant') {
+      const progress = companyApprovers.approvalProgress || '0/3';
+      const progressNum = parseInt(progress.split('/')[0]) || 0;
+      if (progressNum === 0) {
+        const companyName = existingVoucher.company;
+        if (companyName) {
+          try {
+            Logger.log('🔄 Retrying to fetch accountant name for currentApproverName...');
+            const companyResult = handleGetCompanyApprovers({ companyName: companyName }, companyName);
+            if (companyResult.success && companyResult.data && companyResult.data.approvers) {
+              const accountant = companyResult.data.approvers.accountant;
+              if (accountant && accountant.name) {
+                currentApproverName = accountant.name;
+                Logger.log('✅ Successfully fetched accountant name for currentApproverName: ' + accountant.name);
+                
+                // Also update approvers if it's empty
+                if (!companyApprovers.approvers || Object.keys(companyApprovers.approvers).length === 0) {
+                  companyApprovers.approvers = {
+                    accountant: {
+                      name: accountant.name,
+                      email: accountant.email || '',
+                      status: 'pending',
+                      signature: '',
+                      approvedAt: null,
+                      order: 1
+                    }
+                  };
+                  Logger.log('✅ Updated approvers with accountant data');
+                }
+              }
+            }
+          } catch (retryError) {
+            Logger.log('⚠️ Retry fetch failed: ' + retryError.toString());
+          }
+        }
+      }
+    }
+    
     const statusData = {
       voucherNumber: voucherNumber,
       overallStatus: companyApprovers.overallStatus || existingVoucher.status || 'Pending Approval',
