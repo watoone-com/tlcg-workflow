@@ -1073,10 +1073,31 @@ function sendApprovalEmailToNextApprover(voucher, nextApprover, approverRole, me
       ? 'Kế toán trưởng' 
       : 'Đại diện pháp luật';
     
+    // Get previous approver details (date/time, email)
+    const previousApprovedAt = previousApprover && previousApprover.approvedAt 
+      ? new Date(previousApprover.approvedAt).toLocaleString('vi-VN') 
+      : 'N/A';
+    const previousApproverEmail = previousApprover && previousApprover.email 
+      ? previousApprover.email 
+      : 'N/A';
+    
     const emailSubject = `[PHÊ DUYỆT] Phiếu ${voucherNumber} - ${roleName}`;
     const emailBody = `
       <p>Kính gửi ${nextApprover.name},</p>
       <p>Phiếu <strong>${voucherNumber}</strong> đã được phê duyệt bởi ${previousRoleName} ${previousApprover.name}.</p>
+      
+      ${previousApprover ? `
+        <div style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 15px; margin: 15px 0; border-radius: 4px;">
+          <h4 style="margin-top: 0; color: #1e40af;">Thông tin người đã duyệt:</h4>
+          <ul style="margin: 10px 0; padding-left: 20px;">
+            <li><strong>Tên:</strong> ${previousApprover.name}</li>
+            <li><strong>Email:</strong> ${previousApproverEmail}</li>
+            <li><strong>Vai trò:</strong> ${previousRoleName}</li>
+            <li><strong>Ngày giờ duyệt:</strong> ${previousApprovedAt}</li>
+          </ul>
+        </div>
+      ` : ''}
+      
       <p>Vui lòng xem xét và phê duyệt phiếu này.</p>
       
       <h3>Thông tin phiếu:</h3>
@@ -1130,7 +1151,21 @@ function sendProgressEmail(voucher, approvalCount, meta, voucherNumber, existing
     const statusLink = `https://workflow.egg-ventures.com/phieu_thu_chi.html?viewStatus=${voucherNumber}`;
     const roleName = meta.currentApprover ? getApproverRoleName(meta.currentApprover) : '';
     
-    const emailSubject = `[TIẾN ĐỘ PHÊ DUYỆT] Phiếu ${voucherNumber} - Đã có ${approvalCount}/3 người duyệt`;
+    // Update subject format: [ĐANG DUYỆT (X/3)] instead of [TIẾN ĐỘ PHÊ DUYỆT]
+    const emailSubject = `[ĐANG DUYỆT (${approvalCount}/3)] Phiếu ${voucherNumber}`;
+    
+    // Tìm người đã duyệt gần nhất
+    let lastApprover = null;
+    let lastApproverRole = null;
+    const sequence = ['accountant', 'legalRep', 'treasurer'];
+    for (let i = sequence.length - 1; i >= 0; i--) {
+      const role = sequence[i];
+      if (meta.approvers[role] && meta.approvers[role].status === 'approved') {
+        lastApprover = meta.approvers[role];
+        lastApproverRole = role;
+        break;
+      }
+    }
     
     // Build approvers status list
     let approversListHtml = '';
@@ -1161,12 +1196,34 @@ function sendProgressEmail(voucher, approvalCount, meta, voucherNumber, existing
       approversListHtml += `<li>${treasStatus} <strong>Thủ quỹ:</strong> ${treas.name}<br>${treasText}</li>`;
     }
     
+    // Build last approver details section
+    let lastApproverDetailsHtml = '';
+    if (lastApprover && lastApproverRole) {
+      const lastApproverRoleName = getApproverRoleName(lastApproverRole);
+      const approvedAt = lastApprover.approvedAt ? new Date(lastApprover.approvedAt).toLocaleString('vi-VN') : 'N/A';
+      lastApproverDetailsHtml = `
+        <div style="background: #f0f9ff; border-left: 4px solid #3b82f6; padding: 15px; margin: 20px 0; border-radius: 4px;">
+          <h3 style="margin-top: 0; color: #1e40af;">✅ Người đã duyệt gần nhất:</h3>
+          <ul style="margin: 10px 0; padding-left: 20px;">
+            <li><strong>Tên:</strong> ${lastApprover.name}</li>
+            <li><strong>Email:</strong> ${lastApprover.email || 'N/A'}</li>
+            <li><strong>Vai trò:</strong> ${lastApproverRoleName}</li>
+            <li><strong>Ngày giờ duyệt:</strong> ${approvedAt}</li>
+            <li><strong>Số phiếu:</strong> ${voucherNumber}</li>
+          </ul>
+        </div>
+      `;
+    }
+    
     const emailBody = `
       <p>Kính gửi Anh/Chị,</p>
       <p>Phiếu <strong>${voucherNumber}</strong> của Anh/Chị đang được xử lý:</p>
       
       <h3>📊 Tiến độ phê duyệt: ${approvalCount}/3 người đã duyệt</h3>
       
+      ${lastApproverDetailsHtml}
+      
+      <h4>Danh sách người phê duyệt:</h4>
       <ul>
         ${approversListHtml}
       </ul>
