@@ -2709,17 +2709,28 @@
                     })
                 });
                 const statusResult = await statusResponse.json();
-                
+
+                // DEBUG: Log the API response
+                console.log('🔍 Approval Status API Response for', voucher.voucherNumber, ':', statusResult);
+                if (statusResult.data) {
+                    console.log('📊 Status Data:', {
+                        approvalProgress: statusResult.data.approvalProgress,
+                        approvers: statusResult.data.approvers,
+                        currentApprover: statusResult.data.currentApprover
+                    });
+                }
+
                 const voucherElement = document.getElementById(voucherElementId);
                 if (!voucherElement) return;
-                
+
                 const statusBadge = voucherElement.querySelector('.status-badge');
                 const statusTextSpan = voucherElement.querySelector('.status-text');
                 const approvalDetail = voucherElement.querySelector('.approval-status-detail');
-                
+
                 if (statusResult.success && statusResult.data) {
                     const statusData = statusResult.data;
                     const formattedStatus = formatApprovalStatusText(statusData);
+                    console.log('✅ Formatted Status for', voucher.voucherNumber, ':', formattedStatus);
                     const progress = statusData.approvalProgress || '0/3';
                     const progressNum = parseInt(progress.split('/')[0]) || 0;
 
