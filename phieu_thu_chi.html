@@ -4008,7 +4008,7 @@
         
         // Render a single voucher item
         async function renderVoucherItem(voucher) {
-            const statusClass = (voucher.status || 'Pending').toLowerCase();
+            let statusClass = (voucher.status || 'Pending').toLowerCase();
             
             // ✅ PHASE 2: Load approval status to get approver information
             let displayStatus = '';
@@ -4150,13 +4150,22 @@
                     'rejected': 'Từ chối',
                     'partially approved': 'Đang duyệt'
                 }[statusClass] || voucher.status;
-                
+
                 // For pending status, always add (0/3) if not already present
                 if (statusClass === 'pending' && !fallbackStatus.includes('(')) {
                     statusText = `${fallbackStatus} (0/3)`;
                 } else {
                     statusText = fallbackStatus;
                 }
+            }
+
+            // Update statusClass based on formatted status text
+            if (statusText.includes('Đã Duyệt')) {
+                statusClass = 'approved';
+            } else if (statusText.includes('Chờ Duyệt')) {
+                statusClass = 'pending';
+            } else if (statusText.includes('Từ chối')) {
+                statusClass = 'rejected';
             }
             
             const statusIcon = {
@@ -8058,58 +8067,48 @@
             const legalRep = approvers.legalRep;
             const treasurer = approvers.treasurer;
             
-            // Case 1: Người đầu tiên chưa duyệt (0/3)
+            // Case 0: 1st approver not approved yet (0/3)
             if (progressNum === 0) {
                 if (accountant && accountant.name) {
-                    statusLabel = 'Chờ Duyệt';
-                    approverInfo = `${accountant.name} (0/3)`;
-                    statusText = `${statusLabel} - ${approverInfo}`;
+                    statusLabel = 'Chờ Duyệt (0/3)';
+                    statusText = `Chờ Duyệt - ${accountant.name} (0/3)`;
                 } else {
                     statusText = 'Chờ Duyệt (0/3)';
                 }
             }
-            // Case 2 & 3: Đã có 1 người duyệt (1/3)
+            // Case 1: 1st approver approved (1/3)
             else if (progressNum === 1) {
                 if (accountant && accountant.status === 'approved' && accountant.name) {
-                    // Case 2: Người đầu tiên đã duyệt
-                    statusLabel = 'Đang Duyệt (1/3)';
-                    approverInfo = `Duyệt Bởi: ${accountant.name} (1/3)`;
-                    statusText = `${statusLabel}. ${approverInfo}`;
-                } else if (legalRep && legalRep.status === 'pending' && legalRep.name) {
-                    // Case 3: Người thứ 2 chưa duyệt (sau khi người 1 đã duyệt)
-                    statusLabel = 'Đang Duyệt';
-                    approverInfo = `Bởi: ${legalRep.name} (1/3)`;
-                    statusText = `${statusLabel}. ${approverInfo}`;
+                    statusLabel = 'Đã Duyệt (1/3)';
+                    statusText = `Đã Duyệt - ${accountant.name} (1/3)`;
+                } else if (legalRep && legalRep.name) {
+                    // Waiting for 2nd approver
+                    statusLabel = 'Chờ Duyệt (1/3)';
+                    statusText = `Chờ Duyệt - ${legalRep.name} (1/3)`;
                 } else {
-                    // Fallback
-                    statusLabel = 'Đang Duyệt (1/3)';
+                    statusLabel = 'Chờ Duyệt (1/3)';
                     statusText = statusLabel;
                 }
             }
-            // Case 4 & 5: Đã có 2 người duyệt (2/3)
+            // Case 2: 2nd approver approved (2/3)
             else if (progressNum === 2) {
                 if (legalRep && legalRep.status === 'approved' && legalRep.name) {
-                    // Case 4: Người thứ 2 đã duyệt
-                    statusLabel = 'Đang Duyệt (2/3)';
-                    approverInfo = `Duyệt Bởi: ${legalRep.name} (2/3)`;
-                    statusText = `${statusLabel}. ${approverInfo}`;
-                } else if (treasurer && treasurer.status === 'pending' && treasurer.name) {
-                    // Case 5: Người thứ 3 chưa duyệt (sau khi người 2 đã duyệt)
-                    statusLabel = 'Đang Duyệt';
-                    approverInfo = `Bởi: ${treasurer.name} (2/3)`;
-                    statusText = `${statusLabel}. ${approverInfo}`;
+                    statusLabel = 'Đã Duyệt (2/3)';
+                    statusText = `Đã Duyệt - ${legalRep.name} (2/3)`;
+                } else if (treasurer && treasurer.name) {
+                    // Waiting for 3rd approver
+                    statusLabel = 'Chờ Duyệt (2/3)';
+                    statusText = `Chờ Duyệt - ${treasurer.name} (2/3)`;
                 } else {
-                    // Fallback
-                    statusLabel = 'Đang Duyệt (2/3)';
+                    statusLabel = 'Chờ Duyệt (2/3)';
                     statusText = statusLabel;
                 }
             }
-            // Case 6: Đã duyệt xong (3/3)
+            // Case 3: 3rd approver approved (3/3)
             else if (progressNum === 3) {
                 if (treasurer && treasurer.status === 'approved' && treasurer.name) {
                     statusLabel = 'Đã Duyệt (3/3)';
-                    approverInfo = `Duyệt Bởi: ${treasurer.name} (3/3)`;
-                    statusText = `${statusLabel}. ${approverInfo}`;
+                    statusText = `Đã Duyệt - ${treasurer.name} (3/3)`;
                 } else {
                     statusLabel = 'Đã Duyệt (3/3)';
                     statusText = statusLabel;
