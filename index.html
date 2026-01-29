@@ -1623,11 +1623,11 @@
             <!-- Main Content Area (shifts right on iPad) -->
             <div class="ipad-main">
             <!-- iOS Navigation Bar (visible on mobile, simpler on iPad) -->
-            <nav style="position: sticky; top: 0; z-index: 100; background: rgba(249, 249, 249, 0.94); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); border-bottom: 0.5px solid rgba(60,60,67,0.29); padding: 12px 16px;">
+            <nav style="position: sticky; top: 0; z-index: 100; background: rgba(249, 249, 249, 0.94); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); border-bottom: 0.5px solid rgba(60,60,67,0.29); padding: clamp(12px, 2vw, 18px) clamp(12px, 2vw, 16px);">
                 <div style="display: flex; align-items: center; justify-content: space-between; max-width: 1200px; margin: 0 auto;">
                     <!-- Left: Logo (hidden on iPad since sidebar has it) -->
                     <div style="display: flex; align-items: center; gap: 12px; cursor: pointer;" onclick="showPage('home')" class="md:hidden">
-                        <img src="tlc logo.jpg" alt="TLC Logo" style="height: 44px; width: auto; object-fit: contain;">
+                        <img src="tlc logo.jpg" alt="TLC Logo" style="height: clamp(60px, 8vw, 100px); width: auto; object-fit: contain;">
                         <span style="font-weight: 600; font-size: 18px; color: #000000;" class="hidden sm:inline">TLCGroup</span>
                     </div>
                     <!-- Page Title (shown on iPad) -->
