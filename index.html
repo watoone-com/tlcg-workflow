@@ -2656,6 +2656,7 @@
                 }
             }
             // Case 1: 1st approver approved (1/3)
+            // Hiển thị tên người đã duyệt gần nhất (accountant)
             else if (progressNum === 1) {
                 if (accountant && accountant.status === 'approved' && accountant.name) {
                     statusText = `Đang Duyệt (1/3). Duyệt Bởi: ${accountant.name} (1/3)`;
@@ -2664,6 +2665,7 @@
                 }
             }
             // Case 2: 2nd approver approved (2/3)
+            // Hiển thị tên người đã duyệt gần nhất (legalRep)
             else if (progressNum === 2) {
                 if (legalRep && legalRep.status === 'approved' && legalRep.name) {
                     statusText = `Đang Duyệt (2/3). Duyệt Bởi: ${legalRep.name} (2/3)`;
@@ -2672,6 +2674,7 @@
                 }
             }
             // Case 3: 3rd approver approved (3/3)
+            // Hiển thị tên người đã duyệt gần nhất (treasurer)
             else if (progressNum === 3) {
                 if (treasurer && treasurer.status === 'approved' && treasurer.name) {
                     statusText = `Đã Duyệt (3/3). Duyệt Bởi: ${treasurer.name} (3/3)`;
@@ -2777,7 +2780,8 @@
                     }
                     
                     const formattedStatus = formatApprovalStatusText(statusData);
-                    console.log('✅ Formatted Status for', voucher.voucherNumber, ':', formattedStatus);
+                    console.log('✅ Formatted status:', formattedStatus);
+                    console.log('🔍 statusData.approvers:', statusData.approvers);
 
                     // Extract badge text from formatted status (first part before " - ")
                     const badgeText = formattedStatus.includes(' - ')

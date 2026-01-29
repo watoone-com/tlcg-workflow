@@ -416,7 +416,9 @@ function getVoucherFromHistory(voucherNumber) {
     for (let i = data.length - 1; i >= 1; i--) {
       if (data[i][0] === voucherNumber) {
         const note = data[i][7] || ''; // Column H = Note
-        const metaMatch = note.match(/Meta: (.+)/);
+        // Capture full JSON after "Meta: " (use [\s\S]+ to include newlines)
+        const metaIdx = note.indexOf('Meta: ');
+        const metaStr = metaIdx >= 0 ? note.substring(metaIdx + 6).trim() : null;
         
         return {
           row: i + 1,
@@ -431,7 +433,7 @@ function getVoucherFromHistory(voucherNumber) {
           timestamp: data[i][8],
           requestorEmail: data[i][9],
           approverEmail: data[i][10],
-          meta: metaMatch ? metaMatch[1] : null
+          meta: metaStr || null
         };
       }
     }
@@ -801,18 +803,19 @@ function handleApproveVoucher(requestBody) {
       return createResponse(false, 'Không tìm thấy phiếu: ' + voucherNumber);
     }
     
-    // Parse meta from note field
+    // Parse meta from note field (getVoucherFromHistory now uses substring for full JSON)
     let meta = {};
     if (existingVoucher.meta) {
       try {
         meta = JSON.parse(existingVoucher.meta);
       } catch (e) {
         Logger.log('Error parsing meta: ' + e.toString());
-        // Fallback: try to parse from full note
-        const metaMatch = existingVoucher.note.match(/Meta: (.+)/);
-        if (metaMatch) {
+        // Fallback: extract from note after "Meta: " (capture full string including newlines)
+        const note = existingVoucher.note || '';
+        const metaIdx = note.indexOf('Meta: ');
+        if (metaIdx >= 0) {
           try {
-            meta = JSON.parse(metaMatch[1]);
+            meta = JSON.parse(note.substring(metaIdx + 6).trim());
           } catch (e2) {
             Logger.log('Error parsing meta from note: ' + e2.toString());
           }
@@ -1316,18 +1319,19 @@ function handleRejectVoucher(requestBody) {
       return createResponse(false, 'Không tìm thấy phiếu: ' + voucherNumber);
     }
     
-    // Parse meta
+    // Parse meta (full JSON after "Meta: " from getVoucherFromHistory)
     let meta = {};
     if (existingVoucher.meta) {
       try {
         meta = JSON.parse(existingVoucher.meta);
       } catch (e) {
-        const metaMatch = existingVoucher.note.match(/Meta: (.+)/);
-        if (metaMatch) {
+        const note = existingVoucher.note || '';
+        const metaIdx = note.indexOf('Meta: ');
+        if (metaIdx >= 0) {
           try {
-            meta = JSON.parse(metaMatch[1]);
+            meta = JSON.parse(note.substring(metaIdx + 6).trim());
           } catch (e2) {
-            Logger.log('Error parsing meta: ' + e2.toString());
+            Logger.log('Error parsing meta from note: ' + e2.toString());
           }
         }
       }
@@ -1481,13 +1485,23 @@ function handleGetApprovalStatus(requestBody) {
       return createResponse(false, 'Không tìm thấy phiếu: ' + voucherNumber);
     }
 
-    // Parse meta from note field
+    // Parse meta from note field (full JSON after "Meta: " from getVoucherFromHistory)
     let meta = {};
     if (existingVoucher.meta) {
       try {
         meta = JSON.parse(existingVoucher.meta);
       } catch (e) {
         Logger.log('Error parsing meta: ' + e.toString());
+        // Fallback: extract from note after "Meta: "
+        const note = existingVoucher.note || '';
+        const metaIdx = note.indexOf('Meta: ');
+        if (metaIdx >= 0) {
+          try {
+            meta = JSON.parse(note.substring(metaIdx + 6).trim());
+          } catch (e2) {
+            Logger.log('Error parsing meta from note: ' + e2.toString());
+          }
+        }
       }
     }
 
