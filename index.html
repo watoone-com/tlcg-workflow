@@ -2,61 +2,680 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="theme-color" content="#F2F2F7">
     <title>TLCGroup - Global Intranet</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        body { 
-            font-family: 'Inter', sans-serif; 
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            background-attachment: fixed;
-            color: #1e293b; 
-            display: flex; 
-            flex-direction: column; 
-            min-height: 100vh; 
+        /* ============================================
+           iOS Design System - Apple Human Interface
+           ============================================ */
+
+        :root {
+            /* iOS System Colors */
+            --ios-blue: #007AFF;
+            --ios-green: #34C759;
+            --ios-indigo: #5856D6;
+            --ios-orange: #FF9500;
+            --ios-pink: #FF2D55;
+            --ios-purple: #AF52DE;
+            --ios-red: #FF3B30;
+            --ios-teal: #5AC8FA;
+            --ios-yellow: #FFCC00;
+
+            /* iOS Gray Palette */
+            --ios-gray: #8E8E93;
+            --ios-gray-2: #AEAEB2;
+            --ios-gray-3: #C7C7CC;
+            --ios-gray-4: #D1D1D6;
+            --ios-gray-5: #E5E5EA;
+            --ios-gray-6: #F2F2F7;
+
+            /* iOS Semantic Colors */
+            --ios-label: #000000;
+            --ios-label-secondary: #3C3C43;
+            --ios-label-tertiary: rgba(60, 60, 67, 0.6);
+            --ios-label-quaternary: rgba(60, 60, 67, 0.18);
+            --ios-fill: rgba(120, 120, 128, 0.2);
+            --ios-fill-secondary: rgba(120, 120, 128, 0.16);
+            --ios-fill-tertiary: rgba(118, 118, 128, 0.12);
+            --ios-background: #FFFFFF;
+            --ios-background-secondary: #F2F2F7;
+            --ios-background-grouped: #F2F2F7;
+            --ios-separator: rgba(60, 60, 67, 0.29);
+            --ios-separator-opaque: #C6C6C8;
+
+            /* iOS Spacing */
+            --ios-spacing-xs: 4px;
+            --ios-spacing-sm: 8px;
+            --ios-spacing-md: 16px;
+            --ios-spacing-lg: 20px;
+            --ios-spacing-xl: 24px;
+
+            /* iOS Typography */
+            --ios-font: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+
+            /* iOS Corner Radius */
+            --ios-radius-sm: 8px;
+            --ios-radius-md: 12px;
+            --ios-radius-lg: 16px;
+            --ios-radius-xl: 20px;
+
+            /* Safe Areas */
+            --safe-area-top: env(safe-area-inset-top, 0px);
+            --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+            --safe-area-left: env(safe-area-inset-left, 0px);
+            --safe-area-right: env(safe-area-inset-right, 0px);
+
+            /* Tab Bar Height */
+            --tab-bar-height: 83px;
+        }
+
+        /* Base iOS Styling */
+        * {
+            -webkit-tap-highlight-color: transparent;
+            -webkit-touch-callout: none;
+        }
+
+        body {
+            font-family: var(--ios-font);
+            background: var(--ios-background-grouped);
+            color: var(--ios-label);
+            display: flex;
+            flex-direction: column;
+            min-height: 100vh;
+            min-height: -webkit-fill-available;
             margin: 0;
             padding: 0;
+            padding-bottom: var(--tab-bar-height);
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
-        /* Kissflow-style Modern Design */
-        .kissflow-gradient {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+
+        /* iOS Large Title */
+        .ios-large-title {
+            font-size: 34px;
+            font-weight: 700;
+            letter-spacing: 0.37px;
+            line-height: 41px;
+            color: var(--ios-label);
         }
-        .kissflow-card {
-            background: white;
-            border-radius: 16px;
-            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+
+        .ios-title-1 {
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: 0.36px;
+            line-height: 34px;
         }
-        .kissflow-card:hover {
-            transform: translateY(-6px);
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.15);
+
+        .ios-title-2 {
+            font-size: 22px;
+            font-weight: 700;
+            letter-spacing: 0.35px;
+            line-height: 28px;
         }
-        .kissflow-icon {
-            width: 56px;
-            height: 56px;
-            border-radius: 14px;
+
+        .ios-title-3 {
+            font-size: 20px;
+            font-weight: 600;
+            letter-spacing: 0.38px;
+            line-height: 25px;
+        }
+
+        .ios-headline {
+            font-size: 17px;
+            font-weight: 600;
+            letter-spacing: -0.41px;
+            line-height: 22px;
+        }
+
+        .ios-body {
+            font-size: 17px;
+            font-weight: 400;
+            letter-spacing: -0.41px;
+            line-height: 22px;
+        }
+
+        .ios-callout {
+            font-size: 16px;
+            font-weight: 400;
+            letter-spacing: -0.32px;
+            line-height: 21px;
+        }
+
+        .ios-subheadline {
+            font-size: 15px;
+            font-weight: 400;
+            letter-spacing: -0.24px;
+            line-height: 20px;
+        }
+
+        .ios-footnote {
+            font-size: 13px;
+            font-weight: 400;
+            letter-spacing: -0.08px;
+            line-height: 18px;
+        }
+
+        .ios-caption-1 {
+            font-size: 12px;
+            font-weight: 400;
+            letter-spacing: 0px;
+            line-height: 16px;
+        }
+
+        .ios-caption-2 {
+            font-size: 11px;
+            font-weight: 400;
+            letter-spacing: 0.07px;
+            line-height: 13px;
+        }
+
+        /* iOS Navigation Bar */
+        .ios-nav-bar {
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            background: rgba(249, 249, 249, 0.94);
+            backdrop-filter: saturate(180%) blur(20px);
+            -webkit-backdrop-filter: saturate(180%) blur(20px);
+            border-bottom: 0.5px solid var(--ios-separator);
+            padding: var(--safe-area-top) var(--ios-spacing-md) 0;
+            min-height: 44px;
+        }
+
+        .ios-nav-bar-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 44px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .ios-nav-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--ios-label);
+            position: absolute;
+            left: 50%;
+            transform: translateX(-50%);
+        }
+
+        /* iOS Tab Bar */
+        .ios-tab-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: rgba(249, 249, 249, 0.94);
+            backdrop-filter: saturate(180%) blur(20px);
+            -webkit-backdrop-filter: saturate(180%) blur(20px);
+            border-top: 0.5px solid var(--ios-separator);
+            padding-bottom: var(--safe-area-bottom);
+            height: var(--tab-bar-height);
+        }
+
+        .ios-tab-bar-content {
+            display: flex;
+            justify-content: space-around;
+            align-items: flex-start;
+            padding-top: 6px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .ios-tab-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            padding: 4px 12px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.1s ease;
+            min-width: 64px;
+        }
+
+        .ios-tab-item:active {
+            transform: scale(0.92);
+        }
+
+        .ios-tab-item i {
+            font-size: 24px;
+            color: var(--ios-gray);
+            transition: color 0.2s;
+        }
+
+        .ios-tab-item span {
+            font-size: 10px;
+            font-weight: 500;
+            color: var(--ios-gray);
+            transition: color 0.2s;
+        }
+
+        .ios-tab-item.active i,
+        .ios-tab-item.active span {
+            color: var(--ios-blue);
+        }
+
+        /* iOS Cards - Grouped Style */
+        .ios-card {
+            background: var(--ios-background);
+            border-radius: var(--ios-radius-md);
+            margin: 0 var(--ios-spacing-md) var(--ios-spacing-sm);
+            overflow: hidden;
+            box-shadow: none;
+        }
+
+        .ios-card-inset {
+            background: var(--ios-background);
+            border-radius: var(--ios-radius-md);
+            overflow: hidden;
+        }
+
+        /* iOS List/Table Style */
+        .ios-list {
+            background: var(--ios-background);
+            border-radius: var(--ios-radius-md);
+            margin: 0 var(--ios-spacing-md);
+            overflow: hidden;
+        }
+
+        .ios-list-item {
+            display: flex;
+            align-items: center;
+            padding: 11px var(--ios-spacing-md);
+            background: var(--ios-background);
+            min-height: 44px;
+            position: relative;
+            transition: background 0.15s;
+        }
+
+        .ios-list-item:active {
+            background: var(--ios-gray-5);
+        }
+
+        .ios-list-item:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: var(--ios-spacing-md);
+            right: 0;
+            height: 0.5px;
+            background: var(--ios-separator);
+        }
+
+        .ios-list-item-icon {
+            width: 29px;
+            height: 29px;
+            border-radius: 6px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 24px;
-            margin-bottom: 16px;
-            transition: all 0.3s;
+            margin-right: 12px;
+            font-size: 15px;
+            color: white;
         }
-        .kissflow-card:hover .kissflow-icon {
-            transform: scale(1.1) rotate(5deg);
+
+        .ios-list-item-content {
+            flex: 1;
+            min-width: 0;
         }
-        .stats-card {
+
+        .ios-list-item-title {
+            font-size: 17px;
+            color: var(--ios-label);
+            line-height: 22px;
+        }
+
+        .ios-list-item-subtitle {
+            font-size: 15px;
+            color: var(--ios-label-secondary);
+            line-height: 20px;
+        }
+
+        .ios-list-item-chevron {
+            color: var(--ios-gray-3);
+            font-size: 14px;
+            margin-left: 8px;
+        }
+
+        .ios-list-item-value {
+            color: var(--ios-label-secondary);
+            font-size: 17px;
+            margin-left: auto;
+        }
+
+        /* iOS Section Header */
+        .ios-section-header {
+            font-size: 13px;
+            font-weight: 400;
+            color: var(--ios-label-secondary);
+            text-transform: uppercase;
+            letter-spacing: -0.08px;
+            padding: 16px 20px 8px;
+        }
+
+        .ios-section-footer {
+            font-size: 13px;
+            color: var(--ios-label-secondary);
+            padding: 8px 20px 16px;
+            line-height: 18px;
+        }
+
+        /* iOS Buttons */
+        .ios-button {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 14px 20px;
+            border-radius: var(--ios-radius-md);
+            font-size: 17px;
+            font-weight: 600;
+            border: none;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            min-height: 50px;
+        }
+
+        .ios-button:active {
+            transform: scale(0.98);
+            opacity: 0.8;
+        }
+
+        .ios-button-primary {
+            background: var(--ios-blue);
+            color: white;
+        }
+
+        .ios-button-secondary {
+            background: var(--ios-fill);
+            color: var(--ios-blue);
+        }
+
+        .ios-button-destructive {
+            background: var(--ios-red);
+            color: white;
+        }
+
+        .ios-button-text {
+            background: transparent;
+            color: var(--ios-blue);
+            padding: 8px 12px;
+            min-height: auto;
+        }
+
+        .ios-button-full {
+            width: 100%;
+        }
+
+        /* iOS Form Elements */
+        .ios-input {
+            width: 100%;
+            padding: 12px 16px;
+            font-size: 17px;
+            font-family: var(--ios-font);
+            border: none;
+            border-radius: var(--ios-radius-sm);
+            background: var(--ios-fill-tertiary);
+            color: var(--ios-label);
+            outline: none;
+            transition: background 0.15s;
+        }
+
+        .ios-input:focus {
+            background: var(--ios-fill-secondary);
+        }
+
+        .ios-input::placeholder {
+            color: var(--ios-label-tertiary);
+        }
+
+        .ios-input-group {
+            background: var(--ios-background);
+            border-radius: var(--ios-radius-md);
+            overflow: hidden;
+        }
+
+        .ios-input-row {
+            display: flex;
+            align-items: center;
+            padding: 11px var(--ios-spacing-md);
+            min-height: 44px;
+            position: relative;
+        }
+
+        .ios-input-row:not(:last-child)::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: var(--ios-spacing-md);
+            right: 0;
+            height: 0.5px;
+            background: var(--ios-separator);
+        }
+
+        .ios-input-label {
+            font-size: 17px;
+            color: var(--ios-label);
+            min-width: 100px;
+        }
+
+        .ios-input-field {
+            flex: 1;
+            border: none;
+            background: transparent;
+            font-size: 17px;
+            font-family: var(--ios-font);
+            color: var(--ios-label);
+            text-align: right;
+            outline: none;
+        }
+
+        .ios-input-field::placeholder {
+            color: var(--ios-label-tertiary);
+        }
+
+        /* iOS Select */
+        .ios-select {
+            appearance: none;
+            -webkit-appearance: none;
+            width: 100%;
+            padding: 12px 40px 12px 16px;
+            font-size: 17px;
+            font-family: var(--ios-font);
+            border: none;
+            border-radius: var(--ios-radius-sm);
+            background: var(--ios-fill-tertiary) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238E8E93' d='M6 8L1 3h10z'/%3E%3C/svg%3E") no-repeat right 16px center;
+            color: var(--ios-label);
+            outline: none;
+            cursor: pointer;
+        }
+
+        /* iOS Toggle Switch */
+        .ios-toggle {
+            position: relative;
+            width: 51px;
+            height: 31px;
+            background: var(--ios-fill);
+            border-radius: 15.5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        .ios-toggle.active {
+            background: var(--ios-green);
+        }
+
+        .ios-toggle::after {
+            content: '';
+            position: absolute;
+            top: 2px;
+            left: 2px;
+            width: 27px;
+            height: 27px;
             background: white;
-            border-radius: 12px;
-            padding: 20px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
-            border-left: 4px solid;
+            border-radius: 50%;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.15), 0 1px 1px rgba(0,0,0,0.16);
+            transition: transform 0.3s;
         }
+
+        .ios-toggle.active::after {
+            transform: translateX(20px);
+        }
+
+        /* iOS Segmented Control */
+        .ios-segmented {
+            display: flex;
+            background: var(--ios-fill-tertiary);
+            border-radius: 8px;
+            padding: 2px;
+        }
+
+        .ios-segmented-item {
+            flex: 1;
+            padding: 6px 12px;
+            font-size: 13px;
+            font-weight: 600;
+            text-align: center;
+            border: none;
+            background: transparent;
+            color: var(--ios-label);
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .ios-segmented-item.active {
+            background: var(--ios-background);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.08);
+        }
+
+        /* iOS Stats Card */
+        .ios-stats-card {
+            background: var(--ios-background);
+            border-radius: var(--ios-radius-md);
+            padding: var(--ios-spacing-md);
+        }
+
+        .ios-stats-value {
+            font-size: 34px;
+            font-weight: 700;
+            color: var(--ios-label);
+            line-height: 1;
+        }
+
+        .ios-stats-label {
+            font-size: 13px;
+            color: var(--ios-label-secondary);
+            margin-top: 4px;
+        }
+
+        /* iOS Process Card */
+        .ios-process-card {
+            background: var(--ios-background);
+            border-radius: var(--ios-radius-lg);
+            padding: var(--ios-spacing-lg);
+            display: flex;
+            align-items: center;
+            gap: var(--ios-spacing-md);
+            transition: transform 0.15s, background 0.15s;
+            cursor: pointer;
+        }
+
+        .ios-process-card:active {
+            background: var(--ios-gray-5);
+            transform: scale(0.98);
+        }
+
+        .ios-process-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: var(--ios-radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .ios-process-content {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .ios-process-title {
+            font-size: 17px;
+            font-weight: 600;
+            color: var(--ios-label);
+            margin-bottom: 2px;
+        }
+
+        .ios-process-subtitle {
+            font-size: 15px;
+            color: var(--ios-label-secondary);
+        }
+
+        .ios-process-badge {
+            font-size: 13px;
+            color: var(--ios-label-tertiary);
+            background: var(--ios-fill-tertiary);
+            padding: 4px 10px;
+            border-radius: 100px;
+        }
+
+        /* Keep old classes for compatibility but restyle */
+        .kissflow-card {
+            background: var(--ios-background);
+            border-radius: var(--ios-radius-lg);
+            box-shadow: none;
+            transition: transform 0.15s, background 0.15s;
+            border: none;
+        }
+
+        .kissflow-card:hover {
+            transform: none;
+            box-shadow: none;
+        }
+
+        .kissflow-card:active {
+            background: var(--ios-gray-5);
+            transform: scale(0.98);
+        }
+
+        .kissflow-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: var(--ios-radius-md);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            margin-bottom: var(--ios-spacing-md);
+            transition: none;
+        }
+
+        .kissflow-card:hover .kissflow-icon {
+            transform: none;
+        }
+
+        .stats-card {
+            background: var(--ios-background);
+            border-radius: var(--ios-radius-md);
+            padding: var(--ios-spacing-md);
+            box-shadow: none;
+            border-left: none;
+        }
+
         .search-bar {
             background: white;
             border-radius: 12px;
@@ -536,6 +1155,204 @@
         .form-section-container:hover {
             box-shadow: 0 12px 48px rgba(0, 0, 0, 0.12);
         }
+
+        /* Mobile Menu Styles */
+        .mobile-menu-btn {
+            display: none;
+            padding: 0.5rem;
+            border-radius: 0.5rem;
+            color: #475569;
+            transition: all 0.2s;
+        }
+        .mobile-menu-btn:hover {
+            background: #f1f5f9;
+            color: #667eea;
+        }
+        @media (max-width: 1023px) {
+            .mobile-menu-btn { display: flex; }
+        }
+        .mobile-drawer {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 100;
+            visibility: hidden;
+            opacity: 0;
+            transition: visibility 0s 0.3s, opacity 0.3s;
+        }
+        .mobile-drawer.open {
+            visibility: visible;
+            opacity: 1;
+            transition: visibility 0s, opacity 0.3s;
+        }
+        .mobile-drawer-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
+        .mobile-drawer-content {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 280px;
+            height: 100%;
+            background: white;
+            box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
+            transform: translateX(-100%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow-y: auto;
+        }
+        .mobile-drawer.open .mobile-drawer-content {
+            transform: translateX(0);
+        }
+        .mobile-nav-link {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            padding: 1rem 1.5rem;
+            color: #475569;
+            font-weight: 500;
+            transition: all 0.2s;
+            border-left: 3px solid transparent;
+        }
+        .mobile-nav-link:hover, .mobile-nav-link.active {
+            background: #f8fafc;
+            color: #667eea;
+            border-left-color: #667eea;
+        }
+
+        /* Focus Visible States for Accessibility */
+        button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible {
+            outline: 2px solid #667eea;
+            outline-offset: 2px;
+        }
+        .nav-link:focus-visible, .mobile-nav-link:focus-visible {
+            outline: 2px solid #667eea;
+            outline-offset: -2px;
+            border-radius: 0.5rem;
+        }
+
+        /* Step Progress Indicator */
+        .step-progress {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem 1.5rem;
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);
+            border-bottom: 1px solid #e2e8f0;
+            gap: 0.5rem;
+            overflow-x: auto;
+        }
+        .step-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            white-space: nowrap;
+        }
+        .step-circle {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 700;
+            border: 2px solid #cbd5e1;
+            background: white;
+            color: #64748b;
+            transition: all 0.3s;
+        }
+        .step-item.active .step-circle {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-color: #667eea;
+            color: white;
+        }
+        .step-item.completed .step-circle {
+            background: #10b981;
+            border-color: #10b981;
+            color: white;
+        }
+        .step-label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #64748b;
+            transition: color 0.3s;
+        }
+        .step-item.active .step-label {
+            color: #667eea;
+        }
+        .step-item.completed .step-label {
+            color: #10b981;
+        }
+        .step-connector {
+            width: 24px;
+            height: 2px;
+            background: #cbd5e1;
+            transition: background 0.3s;
+        }
+        .step-item.completed + .step-connector, .step-connector.completed {
+            background: #10b981;
+        }
+        @media (max-width: 640px) {
+            .step-label { display: none; }
+            .step-connector { width: 16px; }
+        }
+
+        /* Skeleton Loader */
+        .skeleton {
+            background: linear-gradient(90deg, #f1f5f9 25%, #e2e8f0 50%, #f1f5f9 75%);
+            background-size: 200% 100%;
+            animation: skeleton-loading 1.5s infinite;
+            border-radius: 0.5rem;
+        }
+        @keyframes skeleton-loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+        .skeleton-text { height: 1rem; margin-bottom: 0.5rem; }
+        .skeleton-title { height: 1.5rem; width: 60%; margin-bottom: 0.75rem; }
+        .skeleton-card { height: 120px; }
+
+        /* Required Field Indicator */
+        .required-indicator {
+            color: #ef4444;
+            margin-left: 2px;
+        }
+
+        /* Breadcrumb Styles */
+        .breadcrumb {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            color: #64748b;
+            margin-bottom: 1rem;
+        }
+        .breadcrumb-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .breadcrumb-link {
+            color: #667eea;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+        .breadcrumb-link:hover {
+            color: #764ba2;
+            text-decoration: underline;
+        }
+        .breadcrumb-separator {
+            color: #cbd5e1;
+        }
+        .breadcrumb-current {
+            color: #1e293b;
+            font-weight: 600;
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -545,72 +1362,139 @@
 
     <div id="app" class="flex flex-col flex-1">
         <!-- LOGIN PAGE -->
-        <div id="login-page" class="hidden min-h-screen flex items-center justify-center bg-slate-900 p-4 fixed inset-0 z-50 bg-opacity-95">
-            <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md relative">
-                <div class="absolute top-4 right-4">
-                    <select onchange="setLanguage(this.value)" class="text-xs bg-slate-100 border-none rounded-lg px-2 py-1 outline-none cursor-pointer">
-                        <option value="en">English</option>
-                        <option value="vi">Tiếng Việt</option>
-                    </select>
+        <!-- iOS-style Login Sheet -->
+        <div id="login-page" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center" style="background: rgba(0,0,0,0.4); backdrop-filter: blur(4px);">
+            <div class="w-full sm:max-w-sm sm:rounded-2xl rounded-t-3xl overflow-hidden" style="background: var(--ios-background-grouped); max-height: 90vh;">
+                <!-- iOS Sheet Handle -->
+                <div class="flex justify-center pt-3 pb-2 sm:hidden">
+                    <div class="w-10 h-1 rounded-full" style="background: var(--ios-gray-4);"></div>
                 </div>
-                <div class="text-center mb-8">
-                    <div id="login-logo-preview" class="inline-flex items-center justify-center w-16 h-16 bg-blue-600 rounded-xl mb-4 text-white text-3xl">
-                        <i class="fas fa-layer-group"></i>
+
+                <div class="px-6 py-4">
+                    <!-- Header -->
+                    <div class="flex items-center justify-between mb-6">
+                        <button type="button" onclick="closeLogin()" class="ios-button-text" style="color: var(--ios-blue); padding: 0;">Cancel</button>
+                        <div class="ios-segmented" style="width: auto;">
+                            <button onclick="setLanguage('en')" class="ios-segmented-item active" style="padding: 4px 12px; font-size: 12px;">EN</button>
+                            <button onclick="setLanguage('vi')" class="ios-segmented-item" style="padding: 4px 12px; font-size: 12px;">VI</button>
+                        </div>
                     </div>
-                    <h1 data-i18n="loginTitle" class="text-2xl font-bold text-slate-800">TLCGroup Login</h1>
-                    <p data-i18n="loginSubtitle" class="text-slate-500 text-sm">Employee Portal Access</p>
+
+                    <!-- Logo & Title -->
+                    <div class="text-center mb-8">
+                        <div id="login-logo-preview" class="inline-flex items-center justify-center w-20 h-20 rounded-2xl mb-4 text-white text-3xl" style="background: linear-gradient(135deg, var(--ios-blue) 0%, var(--ios-indigo) 100%);">
+                            <i class="fas fa-building"></i>
+                        </div>
+                        <h1 data-i18n="loginTitle" class="ios-title-1 mb-1" style="color: var(--ios-label);">TLCGroup</h1>
+                        <p data-i18n="loginSubtitle" class="ios-subheadline" style="color: var(--ios-label-secondary);">Sign in to your account</p>
+                    </div>
+
+                    <!-- Login Form -->
+                    <form onsubmit="handleLogin(event)" class="space-y-4">
+                        <div class="ios-input-group">
+                            <div class="ios-input-row">
+                                <label for="login-email" class="ios-input-label">Email</label>
+                                <input type="email" id="login-email" placeholder="admin@tlcgroup.com" required
+                                       oninput="validateEmailInput(this)"
+                                       class="ios-input-field"
+                                       aria-required="true"
+                                       aria-describedby="login-email-error"
+                                       autocomplete="email">
+                            </div>
+                            <div class="ios-input-row">
+                                <label for="login-pass" class="ios-input-label">Password</label>
+                                <input type="password" id="login-pass" placeholder="Required" required
+                                       oninput="validatePasswordInput(this)"
+                                       class="ios-input-field"
+                                       aria-required="true"
+                                       aria-describedby="login-pass-error"
+                               autocomplete="current-password">
+                            </div>
+                        </div>
+                        <div id="login-email-error" class="error-message hidden px-4 pt-2" role="alert" aria-live="polite" style="color: var(--ios-red); font-size: 13px;"></div>
+                        <div id="login-pass-error" class="error-message hidden px-4 pt-1" role="alert" aria-live="polite" style="color: var(--ios-red); font-size: 13px;"></div>
+
+                        <button type="submit" data-i18n="signIn" class="ios-button ios-button-primary ios-button-full mt-6">
+                            Sign In
+                        </button>
+                    </form>
+
+                    <!-- Footer text -->
+                    <p class="text-center mt-6 ios-footnote" style="color: var(--ios-label-tertiary);">
+                        Secure login powered by TLCGroup
+                    </p>
                 </div>
-                <form onsubmit="handleLogin(event)" class="space-y-4">
-                    <div>
-                        <label data-i18n="emailLabel">Email Address</label>
-                        <input type="email" id="login-email" placeholder="admin@tlcgroup.com" required 
-                               oninput="validateEmailInput(this)">
-                        <div id="login-email-error" class="error-message hidden"></div>
-                    </div>
-                    <div>
-                        <label data-i18n="passwordLabel">Password</label>
-                        <input type="password" id="login-pass" placeholder="Enter your password" required
-                               oninput="validatePasswordInput(this)">
-                        <div id="login-pass-error" class="error-message hidden"></div>
-                    </div>
-                    <button type="submit" data-i18n="signIn" class="w-full bg-blue-600 text-white py-3 rounded-lg font-bold hover:bg-blue-700 transition">Sign In</button>
-                    <button type="button" onclick="closeLogin()" class="w-full bg-slate-200 text-slate-700 py-2 rounded-lg font-medium hover:bg-slate-300 transition text-sm">Cancel</button>
-                </form>
             </div>
         </div>
 
         <!-- MAIN CONTENT -->
         <div id="main-content" class="flex flex-col flex-1">
-            <nav class="sticky top-0 z-50 bg-white/95 backdrop-blur-md border-b border-slate-200/50 px-6 py-4 shadow-sm">
-                <div class="max-w-7xl mx-auto flex items-center justify-between">
-                    <div class="flex items-center space-x-8">
-                        <div class="flex items-center space-x-3 cursor-pointer" onclick="showPage('home')">
-                            <div class="w-10 h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
-                                <span id="default-logo-icon" class="text-white text-lg font-black italic">TLC</span>
-                                <img id="custom-logo-img" class="hidden w-full h-full object-contain rounded-xl" alt="Logo">
+            <!-- iOS Navigation Bar -->
+            <nav class="ios-nav-bar">
+                <div class="ios-nav-bar-content">
+                    <!-- Left: Back button or Menu (context dependent) -->
+                    <div class="flex items-center gap-3">
+                        <div class="flex items-center gap-2 cursor-pointer" onclick="showPage('home')">
+                            <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
+                                <span id="default-logo-icon" class="text-white text-xs font-bold">TLC</span>
+                                <img id="custom-logo-img" class="hidden w-full h-full object-contain rounded-lg" alt="Logo">
                             </div>
-                            <span class="font-bold text-xl text-slate-800 tracking-tight">TLCGroup</span>
-                        </div>
-                        <div class="hidden lg:flex space-x-1">
-                            <button onclick="showPage('home')" class="nav-link px-4 py-2 rounded-lg text-slate-600 hover:text-purple-600 hover:bg-purple-50 font-medium transition" id="nav-home" data-i18n="navDashboard">
-                                <i class="fas fa-home mr-2"></i>Dashboard
-                            </button>
-                            <button onclick="showPage('comm')" class="nav-link px-4 py-2 rounded-lg text-slate-600 hover:text-purple-600 hover:bg-purple-50 font-medium transition" id="nav-comm" data-i18n="navComm">
-                                <i class="fas fa-comments mr-2"></i>Communications
-                            </button>
-                            <button onclick="showPage('profile')" class="nav-link px-4 py-2 rounded-lg text-slate-600 hover:text-purple-600 hover:bg-purple-50 font-medium transition" id="nav-profile" data-i18n="navTasks">
-                                <i class="fas fa-tasks mr-2"></i>My Tasks
-                            </button>
-                            <button onclick="showPage('admin')" class="nav-link px-4 py-2 rounded-lg text-orange-600 hover:text-orange-700 hover:bg-orange-50 font-bold transition hidden" id="nav-admin" data-i18n="navAdmin">
-                                <i class="fas fa-shield-alt mr-2"></i>Admin
-                            </button>
+                            <span class="font-semibold text-base hidden sm:inline" style="color: var(--ios-label);">TLCGroup</span>
                         </div>
                     </div>
-                    <div class="flex items-center space-x-4">
-                        <div class="flex items-center bg-slate-100 rounded-lg p-1">
-                            <button onclick="setLanguage('en')" id="lang-en" class="px-2 py-1 text-[10px] font-bold rounded-md transition">EN</button>
-                            <button onclick="setLanguage('vi')" id="lang-vi" class="px-2 py-1 text-[10px] font-bold rounded-md transition">VI</button>
+
+                    <!-- Center: Title (shown on desktop) -->
+                    <span class="ios-nav-title hidden lg:block" id="page-title">Dashboard</span>
+
+                    <!-- Right: Actions -->
+                    <div class="flex items-center gap-3">
+                        <!-- Language Switcher - iOS Segmented Control Style -->
+                        <div class="ios-segmented hidden sm:flex">
+                            <button onclick="setLanguage('en')" id="lang-en" class="ios-segmented-item active" aria-label="Switch to English">EN</button>
+                            <button onclick="setLanguage('vi')" id="lang-vi" class="ios-segmented-item" aria-label="Switch to Vietnamese">VI</button>
                         </div>
+
+                        <!-- User Section -->
+                        <div id="user-nav-section" class="flex items-center gap-2">
+                            <div id="login-button-section" class="hidden">
+                                <button onclick="showLogin()" class="ios-button-text" style="color: var(--ios-blue); font-weight: 600;">Sign In</button>
+                            </div>
+                            <div id="user-info-section" class="hidden flex items-center gap-2">
+                                <div class="relative group">
+                                    <img id="user-avatar" src="" class="w-8 h-8 rounded-full cursor-pointer" onclick="showPage('profile')" alt="User avatar">
+                                    <div class="absolute right-0 mt-2 w-48 bg-white rounded-xl shadow-xl border border-gray-100 hidden group-hover:block z-50 overflow-hidden" style="backdrop-filter: blur(20px); background: rgba(255,255,255,0.95);">
+                                        <div class="p-3 border-b" style="border-color: var(--ios-separator);">
+                                            <p id="user-display-name" class="text-sm font-semibold" style="color: var(--ios-label);"></p>
+                                            <p id="user-display-role" class="text-xs" style="color: var(--ios-label-secondary);"></p>
+                                        </div>
+                                        <button onclick="showPage('profile')" class="w-full text-left px-4 py-3 text-sm flex items-center gap-2 hover:bg-gray-50 transition" style="color: var(--ios-label);">
+                                            <i class="fas fa-user" style="color: var(--ios-blue);"></i> Profile
+                                        </button>
+                                        <button onclick="handleLogout()" class="w-full text-left px-4 py-3 text-sm flex items-center gap-2 hover:bg-gray-50 transition" style="color: var(--ios-red);">
+                                            <i class="fas fa-sign-out-alt"></i> Sign Out
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Desktop Navigation Links (hidden on mobile - use tab bar) -->
+                <div class="hidden lg:flex justify-center gap-1 pb-2 max-w-7xl mx-auto">
+                    <button onclick="showPage('home')" class="nav-link px-4 py-2 rounded-lg font-medium transition" id="nav-home" style="color: var(--ios-blue); font-size: 15px;">
+                        <i class="fas fa-home mr-2" aria-hidden="true"></i>Dashboard
+                    </button>
+                    <button onclick="showPage('comm')" class="nav-link px-4 py-2 rounded-lg font-medium transition" id="nav-comm" style="color: var(--ios-label-secondary); font-size: 15px;">
+                        <i class="fas fa-comments mr-2" aria-hidden="true"></i>Communications
+                    </button>
+                    <button onclick="showPage('profile')" class="nav-link px-4 py-2 rounded-lg font-medium transition" id="nav-profile" style="color: var(--ios-label-secondary); font-size: 15px;">
+                        <i class="fas fa-tasks mr-2" aria-hidden="true"></i>My Tasks
+                    </button>
+                    <button onclick="showPage('admin')" class="nav-link px-4 py-2 rounded-lg font-semibold transition hidden" id="nav-admin" style="color: var(--ios-orange); font-size: 15px;">
+                        <i class="fas fa-shield-alt mr-2" aria-hidden="true"></i>Admin
+                    </button>
+                </div>
                         <div id="user-nav-section" class="flex items-center space-x-3 border-l pl-4 ml-2">
                             <div id="login-button-section" class="hidden">
                                 <button onclick="showLogin()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-700 transition">Sign In</button>
@@ -637,161 +1521,216 @@
                 </div>
             </nav>
 
+            <!-- Mobile Navigation Drawer -->
+            <div id="mobile-drawer" class="mobile-drawer" aria-hidden="true">
+                <div class="mobile-drawer-overlay" onclick="toggleMobileMenu()"></div>
+                <div class="mobile-drawer-content">
+                    <div class="p-4 border-b border-slate-200">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center space-x-3">
+                                <div class="w-10 h-10 bg-gradient-to-br from-purple-600 to-blue-600 rounded-xl flex items-center justify-center shadow-lg">
+                                    <span class="text-white text-lg font-black italic">TLC</span>
+                                </div>
+                                <span class="font-bold text-lg text-slate-800">TLCGroup</span>
+                            </div>
+                            <button onclick="toggleMobileMenu()" class="p-2 text-slate-500 hover:text-slate-700" aria-label="Close menu">
+                                <i class="fas fa-times text-xl"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <nav class="py-4" aria-label="Mobile navigation">
+                        <button onclick="showPage('home'); toggleMobileMenu();" class="mobile-nav-link w-full" id="mobile-nav-home">
+                            <i class="fas fa-home text-lg"></i>
+                            <span>Dashboard</span>
+                        </button>
+                        <button onclick="showPage('comm'); toggleMobileMenu();" class="mobile-nav-link w-full" id="mobile-nav-comm">
+                            <i class="fas fa-comments text-lg"></i>
+                            <span>Communications</span>
+                        </button>
+                        <button onclick="showPage('profile'); toggleMobileMenu();" class="mobile-nav-link w-full" id="mobile-nav-profile">
+                            <i class="fas fa-tasks text-lg"></i>
+                            <span>My Tasks</span>
+                        </button>
+                        <button onclick="showPage('admin'); toggleMobileMenu();" class="mobile-nav-link w-full hidden" id="mobile-nav-admin">
+                            <i class="fas fa-shield-alt text-lg text-orange-600"></i>
+                            <span class="text-orange-600 font-bold">Admin</span>
+                        </button>
+                        <div class="border-t border-slate-200 mt-4 pt-4">
+                            <p class="px-6 text-xs font-bold text-slate-400 uppercase mb-2">Workflows</p>
+                            <button onclick="showPage('process-o2c'); toggleMobileMenu();" class="mobile-nav-link w-full">
+                                <i class="fas fa-shopping-cart text-lg text-emerald-600"></i>
+                                <span>Order to Cash</span>
+                            </button>
+                            <button onclick="showPage('process-p2p'); toggleMobileMenu();" class="mobile-nav-link w-full">
+                                <i class="fas fa-shopping-bag text-lg text-blue-600"></i>
+                                <span>Purchase to Pay</span>
+                            </button>
+                            <button onclick="showPage('process-cash'); toggleMobileMenu();" class="mobile-nav-link w-full">
+                                <i class="fas fa-wallet text-lg text-amber-600"></i>
+                                <span>Cash & Admin</span>
+                            </button>
+                        </div>
+                    </nav>
+                    <div class="absolute bottom-0 left-0 right-0 p-4 border-t border-slate-200 bg-slate-50">
+                        <div id="mobile-user-section" class="hidden">
+                            <div class="flex items-center space-x-3 mb-3">
+                                <img id="mobile-user-avatar" src="" class="w-10 h-10 rounded-full border-2 border-white shadow-sm" alt="User avatar">
+                                <div>
+                                    <p id="mobile-user-name" class="text-sm font-semibold text-slate-800"></p>
+                                    <p id="mobile-user-role" class="text-xs text-slate-500"></p>
+                                </div>
+                            </div>
+                            <button onclick="handleLogout(); toggleMobileMenu();" class="w-full bg-red-50 text-red-600 py-2 rounded-lg text-sm font-semibold hover:bg-red-100 transition">
+                                <i class="fas fa-sign-out-alt mr-2"></i>Logout
+                            </button>
+                        </div>
+                        <div id="mobile-login-section">
+                            <button onclick="showLogin(); toggleMobileMenu();" class="w-full bg-blue-600 text-white py-2 rounded-lg text-sm font-bold hover:bg-blue-700 transition">
+                                <i class="fas fa-sign-in-alt mr-2"></i>Sign In
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             <!-- Home Dashboard - Kissflow Style -->
-            <main id="page-home" class="max-w-7xl mx-auto p-6 space-y-8 page-section animate-in fade-in">
-                <!-- Welcome Header -->
-                <header class="mb-8">
-                    <div class="flex items-center justify-between mb-4">
-                        <div>
-                            <h2 class="text-4xl font-bold text-white mb-2" data-i18n="opsHubTitle">
-                                Welcome back<span id="welcome-name" class="text-purple-200"></span>!
-                            </h2>
-                            <p class="text-purple-100 text-lg" data-i18n="opsHubDesc">Manage your workflows and processes</p>
-                        </div>
-                        <!-- Search Bar -->
-                        <div class="search-bar w-80 hidden lg:block">
-                            <div class="flex items-center gap-3">
-                                <i class="fas fa-search text-slate-400"></i>
-                                <input type="text" placeholder="Search workflows, processes..." 
-                                       class="border-none outline-none flex-1 text-slate-700 placeholder-slate-400"
-                                       id="global-search">
-                            </div>
-                        </div>
-                    </div>
-                </header>
+            <main id="page-home" class="mx-auto px-4 py-6" style="max-width: 1280px; padding-bottom: 100px; background: #F2F2F7;">
+                <!-- iOS Large Title Header -->
+                <div style="margin-bottom: 24px;">
+                    <h1 style="font-size: 34px; font-weight: 700; color: #000000; margin-bottom: 4px;">
+                        Welcome<span id="welcome-name" style="color: #007AFF;"></span>
+                    </h1>
+                    <p style="font-size: 15px; color: #3C3C43; margin-bottom: 16px;">Manage your workflows and processes</p>
 
-                <!-- Statistics Cards -->
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
-                    <div class="stats-card border-l-blue-500">
-                        <div class="flex items-center justify-between">
+                    <!-- iOS Search Bar -->
+                    <div style="background: rgba(118, 118, 128, 0.12); border-radius: 10px; padding: 10px 12px; display: flex; align-items: center; gap: 8px;">
+                        <i class="fas fa-search" style="color: #8E8E93;"></i>
+                        <input type="text" placeholder="Search workflows, processes..."
+                               style="border: none; outline: none; flex: 1; background: transparent; font-size: 17px; color: #000000;"
+                               id="global-search">
+                    </div>
+                </div>
+
+                <!-- iOS Statistics Cards -->
+                <p style="font-size: 13px; color: #6e6e73; text-transform: uppercase; padding: 16px 4px 8px; font-weight: 400;">OVERVIEW</p>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+                    <div style="background: #FFFFFF; border-radius: 12px; padding: 16px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
                             <div>
-                                <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Active Processes</p>
-                                <p class="text-2xl font-bold text-slate-800 mt-1">12</p>
+                                <p style="font-size: 34px; font-weight: 700; color: #007AFF; line-height: 1;">12</p>
+                                <p style="font-size: 13px; color: #6e6e73; margin-top: 4px;">Active</p>
                             </div>
-                            <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                                <i class="fas fa-tasks text-blue-600 text-xl"></i>
+                            <div style="width: 40px; height: 40px; border-radius: 8px; background: rgba(0, 122, 255, 0.1); display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-tasks" style="color: #007AFF; font-size: 18px;"></i>
                             </div>
                         </div>
                     </div>
-                    <div class="stats-card border-l-emerald-500">
-                        <div class="flex items-center justify-between">
+                    <div style="background: #FFFFFF; border-radius: 12px; padding: 16px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
                             <div>
-                                <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Completed</p>
-                                <p class="text-2xl font-bold text-slate-800 mt-1">48</p>
+                                <p style="font-size: 34px; font-weight: 700; color: #34C759; line-height: 1;">48</p>
+                                <p style="font-size: 13px; color: #6e6e73; margin-top: 4px;">Completed</p>
                             </div>
-                            <div class="w-12 h-12 bg-emerald-100 rounded-lg flex items-center justify-center">
-                                <i class="fas fa-check-circle text-emerald-600 text-xl"></i>
+                            <div style="width: 40px; height: 40px; border-radius: 8px; background: rgba(52, 199, 89, 0.1); display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-check-circle" style="color: #34C759; font-size: 18px;"></i>
                             </div>
                         </div>
                     </div>
-                    <div class="stats-card border-l-amber-500">
-                        <div class="flex items-center justify-between">
+                    <div style="background: #FFFFFF; border-radius: 12px; padding: 16px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
                             <div>
-                                <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide">Pending</p>
-                                <p class="text-2xl font-bold text-slate-800 mt-1">5</p>
+                                <p style="font-size: 34px; font-weight: 700; color: #FF9500; line-height: 1;">5</p>
+                                <p style="font-size: 13px; color: #6e6e73; margin-top: 4px;">Pending</p>
                             </div>
-                            <div class="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center">
-                                <i class="fas fa-clock text-amber-600 text-xl"></i>
+                            <div style="width: 40px; height: 40px; border-radius: 8px; background: rgba(255, 149, 0, 0.1); display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-clock" style="color: #FF9500; font-size: 18px;"></i>
                             </div>
                         </div>
                     </div>
-                    <div class="stats-card border-l-purple-500">
-                        <div class="flex items-center justify-between">
+                    <div style="background: #FFFFFF; border-radius: 12px; padding: 16px;">
+                        <div style="display: flex; align-items: center; justify-content: space-between;">
                             <div>
-                                <p class="text-xs font-semibold text-slate-500 uppercase tracking-wide">This Month</p>
-                                <p class="text-2xl font-bold text-slate-800 mt-1">65</p>
+                                <p style="font-size: 34px; font-weight: 700; color: #AF52DE; line-height: 1;">65</p>
+                                <p style="font-size: 13px; color: #6e6e73; margin-top: 4px;">This Month</p>
                             </div>
-                            <div class="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                                <i class="fas fa-chart-line text-purple-600 text-xl"></i>
+                            <div style="width: 40px; height: 40px; border-radius: 8px; background: rgba(175, 82, 222, 0.1); display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-chart-line" style="color: #AF52DE; font-size: 18px;"></i>
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Process Cards - Kissflow Style -->
-                <div>
-                    <h3 class="text-xl font-bold text-white mb-4">Workflow Processes</h3>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div class="kissflow-card p-6 process-card group cursor-pointer" onclick="showPage('process-o2c')">
-                            <div class="kissflow-icon bg-gradient-to-br from-emerald-400 to-emerald-600 text-white">
-                                <i class="fas fa-shopping-cart"></i>
-                            </div>
-                            <h3 class="text-xl font-bold text-slate-800 mb-2 group-hover:text-emerald-600 transition" data-i18n="o2cTitle">Order to Cash</h3>
-                            <p class="text-sm text-slate-500 mb-4">Quotation, Contract, and VAT Invoicing</p>
-                            <div class="flex items-center justify-between mt-4 pt-4 border-t border-slate-100">
-                                <span class="text-emerald-600 text-sm font-semibold flex items-center gap-2">
-                                    <i class="fas fa-play-circle"></i>
-                                    <span data-i18n="openProcesses">Launch</span>
-                                </span>
-                                <span class="text-xs text-slate-400">3 workflows</span>
-                            </div>
+                <!-- iOS Process Cards -->
+                <p style="font-size: 13px; color: #6e6e73; text-transform: uppercase; padding: 16px 4px 8px; font-weight: 400;">WORKFLOWS</p>
+                <div style="display: flex; flex-direction: column; gap: 12px;">
+                    <!-- O2C Process Card -->
+                    <div onclick="showPage('process-o2c')" style="background: #FFFFFF; border-radius: 16px; padding: 16px; display: flex; align-items: center; gap: 12px; cursor: pointer;">
+                        <div style="width: 60px; height: 60px; border-radius: 12px; background: linear-gradient(135deg, #34C759, #2ebd59); display: flex; align-items: center; justify-content: center; color: white; font-size: 24px;">
+                            <i class="fas fa-cart-shopping"></i>
                         </div>
-                        <div class="kissflow-card p-6 process-card group cursor-pointer" onclick="showPage('process-p2p')">
-                            <div class="kissflow-icon bg-gradient-to-br from-blue-400 to-blue-600 text-white">
-                                <i class="fas fa-shopping-bag"></i>
-                            </div>
-                            <h3 class="text-xl font-bold text-slate-800 mb-2 group-hover:text-blue-600 transition" data-i18n="p2pTitle">Purchase to Pay</h3>
-                            <p class="text-sm text-slate-500 mb-4">Procurement, Acceptance, and Payments</p>
-                            <div class="flex items-center justify-between mt-4 pt-4 border-t border-slate-100">
-                                <span class="text-blue-600 text-sm font-semibold flex items-center gap-2">
-                                    <i class="fas fa-play-circle"></i>
-                                    <span data-i18n="openProcesses">Launch</span>
-                                </span>
-                                <span class="text-xs text-slate-400">4 workflows</span>
-                            </div>
+                        <div style="flex: 1;">
+                            <p style="font-size: 17px; font-weight: 600; color: #000000;">Order to Cash</p>
+                            <p style="font-size: 15px; color: #6e6e73;">Quotation, Contract, VAT Invoicing</p>
                         </div>
-                        <div class="kissflow-card p-6 process-card group cursor-pointer" onclick="showPage('process-cash')">
-                            <div class="kissflow-icon bg-gradient-to-br from-amber-400 to-amber-600 text-white">
-                                <i class="fas fa-wallet"></i>
-                            </div>
-                            <h3 class="text-xl font-bold text-slate-800 mb-2 group-hover:text-amber-600 transition" data-i18n="cashTitle">Cash & Admin</h3>
-                            <p class="text-sm text-slate-500 mb-4">Cash Book and Vouchers</p>
-                            <div class="flex items-center justify-between mt-4 pt-4 border-t border-slate-100">
-                                <span class="text-amber-600 text-sm font-semibold flex items-center gap-2">
-                                    <i class="fas fa-play-circle"></i>
-                                    <span data-i18n="openProcesses">Launch</span>
-                                </span>
-                                <span class="text-xs text-slate-400">2 workflows</span>
-                            </div>
+                        <span style="font-size: 13px; color: #8e8e93; background: rgba(118,118,128,0.12); padding: 4px 10px; border-radius: 100px;">3 flows</span>
+                        <i class="fas fa-chevron-right" style="color: #C7C7CC; font-size: 14px;"></i>
+                    </div>
+
+                    <!-- P2P Process Card -->
+                    <div onclick="showPage('process-p2p')" style="background: #FFFFFF; border-radius: 16px; padding: 16px; display: flex; align-items: center; gap: 12px; cursor: pointer;">
+                        <div style="width: 60px; height: 60px; border-radius: 12px; background: linear-gradient(135deg, #007AFF, #5856D6); display: flex; align-items: center; justify-content: center; color: white; font-size: 24px;">
+                            <i class="fas fa-bag-shopping"></i>
                         </div>
+                        <div style="flex: 1;">
+                            <p style="font-size: 17px; font-weight: 600; color: #000000;">Purchase to Pay</p>
+                            <p style="font-size: 15px; color: #6e6e73;">Procurement, Acceptance, Payments</p>
+                        </div>
+                        <span style="font-size: 13px; color: #8e8e93; background: rgba(118,118,128,0.12); padding: 4px 10px; border-radius: 100px;">4 flows</span>
+                        <i class="fas fa-chevron-right" style="color: #C7C7CC; font-size: 14px;"></i>
+                    </div>
+
+                    <!-- Cash Process Card -->
+                    <div onclick="showPage('process-cash')" style="background: #FFFFFF; border-radius: 16px; padding: 16px; display: flex; align-items: center; gap: 12px; cursor: pointer;">
+                        <div style="width: 60px; height: 60px; border-radius: 12px; background: linear-gradient(135deg, #FF9500, #e08600); display: flex; align-items: center; justify-content: center; color: white; font-size: 24px;">
+                            <i class="fas fa-wallet"></i>
+                        </div>
+                        <div style="flex: 1;">
+                            <p style="font-size: 17px; font-weight: 600; color: #000000;">Cash & Admin</p>
+                            <p style="font-size: 15px; color: #6e6e73;">Cash Book and Vouchers</p>
+                        </div>
+                        <span style="font-size: 13px; color: #8e8e93; background: rgba(118,118,128,0.12); padding: 4px 10px; border-radius: 100px;">2 flows</span>
+                        <i class="fas fa-chevron-right" style="color: #C7C7CC; font-size: 14px;"></i>
                     </div>
                 </div>
 
-                <!-- Recent Activities - Kissflow Style -->
-                <div class="mt-8">
-                    <div class="kissflow-card p-6">
-                        <div class="flex items-center justify-between mb-4">
-                            <h3 class="text-lg font-bold text-slate-800">Recent Activities</h3>
-                            <button class="text-sm text-purple-600 font-semibold hover:text-purple-700">View All</button>
+                <!-- Recent Activities - iOS Style -->
+                <p style="font-size: 13px; color: #6e6e73; text-transform: uppercase; padding: 16px 4px 8px; font-weight: 400;">RECENT ACTIVITY</p>
+                <div style="background: #FFFFFF; border-radius: 12px; overflow: hidden;">
+                    <div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 0.5px solid rgba(60,60,67,0.29);">
+                        <div style="width: 40px; height: 40px; background: rgba(52, 199, 89, 0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-check" style="color: #34C759;"></i>
                         </div>
-                        <div class="space-y-3">
-                            <div class="flex items-center gap-4 p-3 rounded-lg hover:bg-slate-50 transition">
-                                <div class="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
-                                    <i class="fas fa-check text-emerald-600"></i>
-                                </div>
-                                <div class="flex-1">
-                                    <p class="text-sm font-semibold text-slate-800">Invoice #INV-2025-001 approved</p>
-                                    <p class="text-xs text-slate-500">2 hours ago</p>
-                                </div>
-                            </div>
-                            <div class="flex items-center gap-4 p-3 rounded-lg hover:bg-slate-50 transition">
-                                <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                                    <i class="fas fa-file-invoice text-blue-600"></i>
-                                </div>
-                                <div class="flex-1">
-                                    <p class="text-sm font-semibold text-slate-800">New purchase request submitted</p>
-                                    <p class="text-xs text-slate-500">5 hours ago</p>
-                                </div>
-                            </div>
-                            <div class="flex items-center gap-4 p-3 rounded-lg hover:bg-slate-50 transition">
-                                <div class="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
-                                    <i class="fas fa-clock text-amber-600"></i>
-                                </div>
-                                <div class="flex-1">
-                                    <p class="text-sm font-semibold text-slate-800">Payment voucher pending approval</p>
-                                    <p class="text-xs text-slate-500">1 day ago</p>
-                                </div>
-                            </div>
+                        <div style="flex: 1;">
+                            <p style="font-size: 15px; font-weight: 500; color: #000000;">Invoice #INV-2025-001 approved</p>
+                            <p style="font-size: 13px; color: #8E8E93;">2 hours ago</p>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 0.5px solid rgba(60,60,67,0.29);">
+                        <div style="width: 40px; height: 40px; background: rgba(0, 122, 255, 0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-file-invoice" style="color: #007AFF;"></i>
+                        </div>
+                        <div style="flex: 1;">
+                            <p style="font-size: 15px; font-weight: 500; color: #000000;">New purchase request submitted</p>
+                            <p style="font-size: 13px; color: #8E8E93;">5 hours ago</p>
+                        </div>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px;">
+                        <div style="width: 40px; height: 40px; background: rgba(255, 149, 0, 0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                            <i class="fas fa-clock" style="color: #FF9500;"></i>
+                        </div>
+                        <div style="flex: 1;">
+                            <p style="font-size: 15px; font-weight: 500; color: #000000;">Payment voucher pending approval</p>
+                            <p style="font-size: 13px; color: #8E8E93;">1 day ago</p>
                         </div>
                     </div>
                 </div>
@@ -799,28 +1738,67 @@
 
             <!-- O2C DETAILED -->
             <main id="page-process-o2c" class="hidden max-w-7xl mx-auto p-6 page-section animate-in fade-in">
+                <!-- Breadcrumb Navigation -->
+                <nav class="breadcrumb" aria-label="Breadcrumb">
+                    <div class="breadcrumb-item">
+                        <a href="#" onclick="showPage('home'); return false;" class="breadcrumb-link">
+                            <i class="fas fa-home mr-1"></i>Dashboard
+                        </a>
+                    </div>
+                    <span class="breadcrumb-separator"><i class="fas fa-chevron-right"></i></span>
+                    <div class="breadcrumb-item">
+                        <span class="breadcrumb-current">Order-to-Cash & VAT System</span>
+                    </div>
+                </nav>
+
                 <div class="flex items-center justify-between mb-6">
-                    <button onclick="showPage('home')" class="text-slate-500 hover:text-blue-600 font-bold flex items-center gap-2"><i class="fas fa-arrow-left"></i> Back</button>
-                    <h2 class="text-2xl font-bold text-slate-800">Order-to-Cash & VAT System</h2>
+                    <h2 class="ios-title-1" style="color: var(--ios-label);">Order-to-Cash & VAT System</h2>
                 </div>
                 <div class="form-section-container">
+                    <!-- Step Progress Indicator -->
+                    <div class="step-progress" id="o2c-step-progress" role="navigation" aria-label="Form progress">
+                        <div class="step-item active" data-step="1">
+                            <div class="step-circle">1</div>
+                            <span class="step-label">Company</span>
+                        </div>
+                        <div class="step-connector"></div>
+                        <div class="step-item" data-step="2">
+                            <div class="step-circle">2</div>
+                            <span class="step-label">Customer</span>
+                        </div>
+                        <div class="step-connector"></div>
+                        <div class="step-item" data-step="3">
+                            <div class="step-circle">3</div>
+                            <span class="step-label">Quotation</span>
+                        </div>
+                        <div class="step-connector"></div>
+                        <div class="step-item" data-step="4">
+                            <div class="step-circle">4</div>
+                            <span class="step-label">Contract</span>
+                        </div>
+                        <div class="step-connector"></div>
+                        <div class="step-item" data-step="5">
+                            <div class="step-circle">5</div>
+                            <span class="step-label">Invoice</span>
+                        </div>
+                    </div>
                     <div class="flex bg-slate-50 border-b overflow-x-auto">
-                        <button onclick="toggleSubTab('o2c-comp', 'o2ct', 'o2cp', event)" class="o2ct sub-tab px-6 py-4 text-xs uppercase font-bold tracking-wider active">1. Company</button>
-                        <button onclick="toggleSubTab('o2c-cust', 'o2ct', 'o2cp', event)" class="o2ct sub-tab px-6 py-4 text-xs uppercase font-bold tracking-wider">2. Customer</button>
-                        <button onclick="toggleSubTab('o2c-quot', 'o2ct', 'o2cp', event)" class="o2ct sub-tab px-6 py-4 text-xs uppercase font-bold tracking-wider">3. Quotation</button>
-                        <button onclick="toggleSubTab('o2c-cont', 'o2ct', 'o2cp', event)" class="o2ct sub-tab px-6 py-4 text-xs uppercase font-bold tracking-wider">4. Contract</button>
-                        <button onclick="toggleSubTab('o2c-inv', 'o2ct', 'o2cp', event)" class="o2ct sub-tab px-6 py-4 text-xs uppercase font-bold tracking-wider">5. Invoice</button>
+                        <button onclick="toggleSubTab('o2c-comp', 'o2ct', 'o2cp', event); updateStepProgress('o2c', 1);" class="o2ct sub-tab px-6 py-4 text-xs uppercase font-bold tracking-wider active">1. Company</button>
+                        <button onclick="toggleSubTab('o2c-cust', 'o2ct', 'o2cp', event); updateStepProgress('o2c', 2);" class="o2ct sub-tab px-6 py-4 text-xs uppercase font-bold tracking-wider">2. Customer</button>
+                        <button onclick="toggleSubTab('o2c-quot', 'o2ct', 'o2cp', event); updateStepProgress('o2c', 3);" class="o2ct sub-tab px-6 py-4 text-xs uppercase font-bold tracking-wider">3. Quotation</button>
+                        <button onclick="toggleSubTab('o2c-cont', 'o2ct', 'o2cp', event); updateStepProgress('o2c', 4);" class="o2ct sub-tab px-6 py-4 text-xs uppercase font-bold tracking-wider">4. Contract</button>
+                        <button onclick="toggleSubTab('o2c-inv', 'o2ct', 'o2cp', event); updateStepProgress('o2c', 5);" class="o2ct sub-tab px-6 py-4 text-xs uppercase font-bold tracking-wider">5. Invoice</button>
                     </div>
                     <div class="p-8">
                         <!-- Step 1: Company -->
                         <div id="o2c-comp" class="o2cp space-y-4">
                             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div><label>Select Company</label><select id="o2c-co-select" onchange="lookupCompany('o2c-co')"><option value="">-- Select Company --</option></select></div>
-                                <div><label>Requester</label><select id="o2c-req-select"><option value="">-- Select Person --</option></select></div>
+                                <div><label>Select Company<span class="required-indicator" aria-label="required">*</span></label><select id="o2c-co-select" onchange="lookupCompany('o2c-co')" required aria-required="true"><option value="">-- Select Company --</option></select></div>
+                                <div><label>Requester<span class="required-indicator" aria-label="required">*</span></label><select id="o2c-req-select" required aria-required="true"><option value="">-- Select Person --</option></select></div>
                             </div>
                             <div class="grid grid-cols-2 gap-4">
-                                <div><label>Tax Code</label><input type="text" id="o2c-co-tax" readonly></div>
-                                <div><label>Legal Rep</label><input type="text" id="o2c-co-rep" readonly></div>
+                                <div><label>Tax Code</label><input type="text" id="o2c-co-tax" readonly aria-readonly="true"></div>
+                                <div><label>Legal Rep</label><input type="text" id="o2c-co-rep" readonly aria-readonly="true"></div>
                             </div>
                         </div>
                         <!-- Step 2: Customer -->
@@ -1028,11 +2006,23 @@
 
             <!-- P2P DETAILED -->
             <main id="page-process-p2p" class="hidden max-w-7xl mx-auto p-6 page-section animate-in fade-in">
+                <!-- Breadcrumb Navigation -->
+                <nav class="breadcrumb" aria-label="Breadcrumb">
+                    <div class="breadcrumb-item">
+                        <a href="#" onclick="showPage('home'); return false;" class="breadcrumb-link">
+                            <i class="fas fa-home mr-1"></i>Dashboard
+                        </a>
+                    </div>
+                    <span class="breadcrumb-separator"><i class="fas fa-chevron-right"></i></span>
+                    <div class="breadcrumb-item">
+                        <span class="breadcrumb-current">Purchase to Pay System</span>
+                    </div>
+                </nav>
+
                 <div class="flex items-center justify-between mb-6">
-                    <button onclick="showPage('home')" class="text-slate-500 hover:text-blue-600 font-bold flex items-center gap-2"><i class="fas fa-arrow-left"></i> Back</button>
-                    <h2 class="text-2xl font-bold text-slate-800">Purchase to Pay System</h2>
+                    <h2 class="ios-title-1" style="color: var(--ios-label);">Purchase to Pay System</h2>
                 </div>
-                
+
                 <!-- Quick Access to Payment Request Form -->
                 <div class="mb-6 p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border-2 border-blue-200 shadow-sm">
                     <div class="flex items-center justify-between">
@@ -1043,18 +2033,35 @@
                             </h3>
                             <p class="text-sm text-slate-600">Complete purchase request form with multi-stage approval workflow</p>
                         </div>
-                        <a href="de_nghi_thanh_toan.html" target="_blank" class="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg flex items-center gap-2">
+                        <a href="de_nghi_thanh_toan.html" target="_blank" class="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg flex items-center gap-2" aria-label="Open Payment Request Form in new tab">
                             <i class="fas fa-external-link-alt"></i>
                             Open Form
                         </a>
                     </div>
                 </div>
-                
+
                 <div class="form-section-container">
+                    <!-- Step Progress Indicator -->
+                    <div class="step-progress" id="p2p-step-progress" role="navigation" aria-label="Form progress">
+                        <div class="step-item active" data-step="1">
+                            <div class="step-circle">1</div>
+                            <span class="step-label">Purchase Request</span>
+                        </div>
+                        <div class="step-connector"></div>
+                        <div class="step-item" data-step="2">
+                            <div class="step-circle">2</div>
+                            <span class="step-label">Acceptance</span>
+                        </div>
+                        <div class="step-connector"></div>
+                        <div class="step-item" data-step="3">
+                            <div class="step-circle">3</div>
+                            <span class="step-label">Payment</span>
+                        </div>
+                    </div>
                     <div class="flex bg-slate-50 border-b">
-                        <button onclick="toggleSubTab('p2p-pr', 'p2pt', 'p2pp', event)" class="p2pt sub-tab px-6 py-4 text-xs uppercase font-bold active">1. Purchase Request</button>
-                        <button onclick="toggleSubTab('p2p-acc', 'p2pt', 'p2pp', event)" class="p2pt sub-tab px-6 py-4 text-xs uppercase font-bold">2. Acceptance Minutes</button>
-                        <button onclick="toggleSubTab('p2p-pay', 'p2pt', 'p2pp', event)" class="p2pt sub-tab px-6 py-4 text-xs uppercase font-bold">3. Payment Request</button>
+                        <button onclick="toggleSubTab('p2p-pr', 'p2pt', 'p2pp', event); updateStepProgress('p2p', 1);" class="p2pt sub-tab px-6 py-4 text-xs uppercase font-bold active">1. Purchase Request</button>
+                        <button onclick="toggleSubTab('p2p-acc', 'p2pt', 'p2pp', event); updateStepProgress('p2p', 2);" class="p2pt sub-tab px-6 py-4 text-xs uppercase font-bold">2. Acceptance Minutes</button>
+                        <button onclick="toggleSubTab('p2p-pay', 'p2pt', 'p2pp', event); updateStepProgress('p2p', 3);" class="p2pt sub-tab px-6 py-4 text-xs uppercase font-bold">3. Payment Request</button>
                     </div>
                     <div class="p-8">
                         <div id="p2p-pr" class="p2pp space-y-6">
@@ -1198,9 +2205,21 @@
 
             <!-- CASH DETAILED -->
             <main id="page-process-cash" class="hidden max-w-7xl mx-auto p-6 page-section animate-in fade-in">
+                <!-- Breadcrumb Navigation -->
+                <nav class="breadcrumb" aria-label="Breadcrumb">
+                    <div class="breadcrumb-item">
+                        <a href="#" onclick="showPage('home'); return false;" class="breadcrumb-link">
+                            <i class="fas fa-home mr-1"></i>Dashboard
+                        </a>
+                    </div>
+                    <span class="breadcrumb-separator"><i class="fas fa-chevron-right"></i></span>
+                    <div class="breadcrumb-item">
+                        <span class="breadcrumb-current">Cash & Vouchers</span>
+                    </div>
+                </nav>
+
                 <div class="flex items-center justify-between mb-6">
-                    <button onclick="showPage('home')" class="text-slate-500 hover:text-blue-600 font-bold flex items-center gap-2"><i class="fas fa-arrow-left"></i> Back</button>
-                    <h2 class="text-2xl font-bold text-slate-800">Cash & Vouchers</h2>
+                    <h2 class="ios-title-1" style="color: var(--ios-label);">Cash & Vouchers</h2>
                 </div>
 
                 <!-- Top-line Summary: Voucher vs Cash Book -->
@@ -1434,12 +2453,38 @@
                 </div>
             </main>
         </div>
-        
-        <!-- FOOTER -->
-        <footer class="mt-auto border-t border-slate-200 py-6 bg-white text-center text-xs text-slate-400">
+
+        <!-- FOOTER (Hidden on mobile, shown on iPad landscape/desktop) -->
+        <footer class="mt-auto border-t border-slate-200 py-6 bg-white text-center text-xs text-slate-400 hidden lg:block">
             <p>&copy; 2025 TLCGroup. All rights reserved.</p>
         </footer>
     </div>
+
+    <!-- iOS Tab Bar -->
+    <nav class="ios-tab-bar" role="navigation" aria-label="Main navigation">
+        <div class="ios-tab-bar-content">
+            <button class="ios-tab-item active" onclick="showPage('home'); setActiveTab(this);" id="tab-home" aria-label="Dashboard">
+                <i class="fas fa-house"></i>
+                <span>Home</span>
+            </button>
+            <button class="ios-tab-item" onclick="showPage('process-o2c'); setActiveTab(this);" id="tab-o2c" aria-label="Order to Cash">
+                <i class="fas fa-cart-shopping"></i>
+                <span>O2C</span>
+            </button>
+            <button class="ios-tab-item" onclick="showPage('process-p2p'); setActiveTab(this);" id="tab-p2p" aria-label="Purchase to Pay">
+                <i class="fas fa-bag-shopping"></i>
+                <span>P2P</span>
+            </button>
+            <button class="ios-tab-item" onclick="showPage('process-cash'); setActiveTab(this);" id="tab-cash" aria-label="Cash and Vouchers">
+                <i class="fas fa-wallet"></i>
+                <span>Cash</span>
+            </button>
+            <button class="ios-tab-item" onclick="showPage('profile'); setActiveTab(this);" id="tab-profile" aria-label="Profile and Tasks">
+                <i class="fas fa-user"></i>
+                <span>Profile</span>
+            </button>
+        </div>
+    </nav>
 
     <script>
         const apiKey = "";
@@ -1544,6 +2589,130 @@
             vi: { loginTitle: "Đăng nhập TLCGroup", opsHubTitle: "Vận hành Nhóm", o2cTitle: "Bán hàng (O2C)", p2pTitle: "Mua hàng (P2P)", cashTitle: "Tiền mặt & Quản trị", openProcesses: "Mở hệ thống", backToDash: "Quay lại", quotation: "Báo giá", contract: "Hợp đồng", vatInvoice: "Hóa đơn VAT", purchaseRequest: "Yêu cầu mua hàng", acceptance: "Biên bản nghiệm thu", paymentRequest: "Đề nghị thanh toán", cashBook: "Sổ quỹ", vouchers: "Phiếu thu/chi", aiTitle: "✨ Hỏi Đáp TLC AI", aiWelcome: "Xin chào! Tôi có thể giúp gì về O2C, P2P hay Tiền mặt?" }
         };
 
+        // Mobile Menu Toggle Function
+        function toggleMobileMenu() {
+            const drawer = document.getElementById('mobile-drawer');
+            const menuBtn = document.getElementById('mobile-menu-btn');
+            if (!drawer) return;
+
+            const isOpen = drawer.classList.contains('open');
+            if (isOpen) {
+                drawer.classList.remove('open');
+                drawer.setAttribute('aria-hidden', 'true');
+                menuBtn?.setAttribute('aria-expanded', 'false');
+                document.body.style.overflow = '';
+            } else {
+                drawer.classList.add('open');
+                drawer.setAttribute('aria-hidden', 'false');
+                menuBtn?.setAttribute('aria-expanded', 'true');
+                document.body.style.overflow = 'hidden';
+                updateMobileUserInfo();
+            }
+        }
+
+        // Update mobile drawer user info
+        function updateMobileUserInfo() {
+            const mobileUserSection = document.getElementById('mobile-user-section');
+            const mobileLoginSection = document.getElementById('mobile-login-section');
+            const mobileAdminNav = document.getElementById('mobile-nav-admin');
+
+            if (currentUser) {
+                if (mobileUserSection) mobileUserSection.classList.remove('hidden');
+                if (mobileLoginSection) mobileLoginSection.classList.add('hidden');
+
+                const mobileUserName = document.getElementById('mobile-user-name');
+                const mobileUserRole = document.getElementById('mobile-user-role');
+                const mobileUserAvatar = document.getElementById('mobile-user-avatar');
+
+                if (mobileUserName) mobileUserName.textContent = currentUser.name || 'User';
+                if (mobileUserRole) mobileUserRole.textContent = currentUser.role || currentUser.department || '';
+                if (mobileUserAvatar) {
+                    mobileUserAvatar.src = currentUser.profilePhoto || `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.name || 'U')}&background=667eea&color=fff`;
+                }
+
+                // Show admin nav for admins
+                if (mobileAdminNav && currentUser.isAdmin) {
+                    mobileAdminNav.classList.remove('hidden');
+                }
+            } else {
+                if (mobileUserSection) mobileUserSection.classList.add('hidden');
+                if (mobileLoginSection) mobileLoginSection.classList.remove('hidden');
+                if (mobileAdminNav) mobileAdminNav.classList.add('hidden');
+            }
+        }
+
+        // Close mobile menu on escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                const drawer = document.getElementById('mobile-drawer');
+                if (drawer && drawer.classList.contains('open')) {
+                    toggleMobileMenu();
+                }
+            }
+        });
+
+        // iOS Tab Bar - Set Active Tab
+        function setActiveTab(clickedTab) {
+            document.querySelectorAll('.ios-tab-item').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            if (clickedTab) {
+                clickedTab.classList.add('active');
+            }
+        }
+
+        // Update tab bar based on current page
+        function updateTabBar(pageId) {
+            const tabMap = {
+                'home': 'tab-home',
+                'process-o2c': 'tab-o2c',
+                'process-p2p': 'tab-p2p',
+                'process-cash': 'tab-cash',
+                'profile': 'tab-profile',
+                'comm': 'tab-home',
+                'admin': 'tab-profile'
+            };
+            const tabId = tabMap[pageId] || 'tab-home';
+            const tab = document.getElementById(tabId);
+            setActiveTab(tab);
+        }
+
+        // Step Progress Update Function
+        function updateStepProgress(formPrefix, activeStep) {
+            const progressContainer = document.getElementById(`${formPrefix}-step-progress`);
+            if (!progressContainer) return;
+
+            const steps = progressContainer.querySelectorAll('.step-item');
+            const connectors = progressContainer.querySelectorAll('.step-connector');
+
+            steps.forEach((step, index) => {
+                const stepNum = index + 1;
+                step.classList.remove('active', 'completed');
+
+                if (stepNum < activeStep) {
+                    step.classList.add('completed');
+                    // Update circle to show checkmark
+                    const circle = step.querySelector('.step-circle');
+                    if (circle) circle.innerHTML = '<i class="fas fa-check text-xs"></i>';
+                } else if (stepNum === activeStep) {
+                    step.classList.add('active');
+                    const circle = step.querySelector('.step-circle');
+                    if (circle) circle.textContent = stepNum;
+                } else {
+                    const circle = step.querySelector('.step-circle');
+                    if (circle) circle.textContent = stepNum;
+                }
+            });
+
+            // Update connectors
+            connectors.forEach((connector, index) => {
+                connector.classList.remove('completed');
+                if (index < activeStep - 1) {
+                    connector.classList.add('completed');
+                }
+            });
+        }
+
         function showPage(pageId) {
             // Check if page requires authentication
             const isPublicPage = publicPages.includes(pageId);
@@ -1568,6 +2737,9 @@
             const navBtn = document.getElementById(`nav-${navBaseId}`);
             if (navBtn) navBtn.classList.add('active');
             
+            // Update iOS Tab Bar
+            updateTabBar(pageId);
+
             // Load summary data when entering Cash & Admin page
             if (pageId === 'process-cash') {
                 loadCashSummary();
@@ -1952,6 +3124,85 @@
                     }
                 }
             });
+        }
+
+        // Skeleton Loader Helper Functions
+        function showSkeleton(containerId, type = 'card') {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            let skeletonHTML = '';
+            switch(type) {
+                case 'card':
+                    skeletonHTML = `
+                        <div class="skeleton-loading p-4">
+                            <div class="skeleton skeleton-title"></div>
+                            <div class="skeleton skeleton-text" style="width: 80%"></div>
+                            <div class="skeleton skeleton-text" style="width: 60%"></div>
+                        </div>`;
+                    break;
+                case 'stats':
+                    skeletonHTML = `
+                        <div class="skeleton-loading flex items-center justify-between p-4">
+                            <div class="flex-1">
+                                <div class="skeleton skeleton-text" style="width: 50%"></div>
+                                <div class="skeleton" style="height: 2rem; width: 40%"></div>
+                            </div>
+                            <div class="skeleton" style="width: 48px; height: 48px; border-radius: 0.5rem"></div>
+                        </div>`;
+                    break;
+                case 'table':
+                    skeletonHTML = `
+                        <div class="skeleton-loading space-y-3 p-4">
+                            <div class="skeleton skeleton-text"></div>
+                            <div class="skeleton skeleton-text" style="width: 90%"></div>
+                            <div class="skeleton skeleton-text" style="width: 85%"></div>
+                            <div class="skeleton skeleton-text" style="width: 95%"></div>
+                        </div>`;
+                    break;
+                case 'activity':
+                    skeletonHTML = `
+                        <div class="skeleton-loading flex items-center gap-4 p-3">
+                            <div class="skeleton" style="width: 40px; height: 40px; border-radius: 0.5rem"></div>
+                            <div class="flex-1">
+                                <div class="skeleton skeleton-text" style="width: 70%"></div>
+                                <div class="skeleton skeleton-text" style="width: 30%; height: 0.75rem"></div>
+                            </div>
+                        </div>`;
+                    break;
+            }
+            container.innerHTML = skeletonHTML;
+        }
+
+        function hideSkeleton(containerId, content) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+            container.innerHTML = content;
+        }
+
+        // Show multiple skeleton items for lists
+        function showSkeletonList(containerId, type = 'activity', count = 3) {
+            const container = document.getElementById(containerId);
+            if (!container) return;
+
+            let html = '';
+            for (let i = 0; i < count; i++) {
+                html += `<div class="skeleton-item-${i}">`;
+                switch(type) {
+                    case 'activity':
+                        html += `
+                            <div class="flex items-center gap-4 p-3">
+                                <div class="skeleton" style="width: 40px; height: 40px; border-radius: 0.5rem"></div>
+                                <div class="flex-1">
+                                    <div class="skeleton skeleton-text" style="width: ${70 - i * 10}%"></div>
+                                    <div class="skeleton skeleton-text" style="width: 30%; height: 0.75rem; margin-top: 0.25rem"></div>
+                                </div>
+                            </div>`;
+                        break;
+                }
+                html += '</div>';
+            }
+            container.innerHTML = html;
         }
 
         function updateUI() {
