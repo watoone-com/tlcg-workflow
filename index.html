@@ -74,6 +74,122 @@
 
             /* Tab Bar Height */
             --tab-bar-height: 83px;
+            --sidebar-width: 280px;
+        }
+
+        /* iPad Sidebar Styles */
+        .ipad-sidebar {
+            width: var(--sidebar-width);
+            background: rgba(249, 249, 249, 0.94);
+            backdrop-filter: saturate(180%) blur(20px);
+            -webkit-backdrop-filter: saturate(180%) blur(20px);
+            border-right: 0.5px solid rgba(60, 60, 67, 0.29);
+            position: fixed;
+            top: 0;
+            left: 0;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 50;
+            display: none;
+            flex-direction: column;
+        }
+
+        .ipad-main {
+            transition: margin-left 0.3s;
+        }
+
+        /* Show sidebar on iPad/Desktop (768px+), hide tab bar */
+        @media (min-width: 768px) {
+            .ipad-sidebar {
+                display: flex;
+            }
+            .ipad-main {
+                margin-left: var(--sidebar-width);
+            }
+            .ios-tab-bar {
+                display: none !important;
+            }
+            body {
+                padding-bottom: 0 !important;
+            }
+        }
+
+        /* Hide sidebar on mobile, show tab bar */
+        @media (max-width: 767px) {
+            .ipad-sidebar {
+                display: none !important;
+            }
+            .ios-tab-bar {
+                display: block;
+            }
+        }
+
+        /* Sidebar Components */
+        .sidebar-header {
+            padding: 16px;
+            border-bottom: 0.5px solid rgba(60, 60, 67, 0.29);
+        }
+
+        .sidebar-section {
+            padding: 8px 0;
+        }
+
+        .sidebar-section-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #6e6e73;
+            text-transform: uppercase;
+            padding: 12px 16px 6px;
+            letter-spacing: 0.5px;
+        }
+
+        .sidebar-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 16px;
+            margin: 2px 8px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.15s;
+            color: #000000;
+            font-size: 15px;
+            font-weight: 400;
+            border: none;
+            background: transparent;
+            width: calc(100% - 16px);
+            text-align: left;
+        }
+
+        .sidebar-item:hover {
+            background: rgba(0, 0, 0, 0.04);
+        }
+
+        .sidebar-item.active {
+            background: #007AFF;
+            color: white;
+        }
+
+        .sidebar-item.active .sidebar-icon-box {
+            background: rgba(255,255,255,0.2) !important;
+        }
+
+        .sidebar-icon-box {
+            width: 28px;
+            height: 28px;
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: white;
+            flex-shrink: 0;
+        }
+
+        .sidebar-user {
+            padding: 16px;
+            border-top: 0.5px solid rgba(60, 60, 67, 0.29);
+            margin-top: auto;
         }
 
         /* Base iOS Styling */
@@ -1429,14 +1545,93 @@
 
         <!-- MAIN CONTENT -->
         <div id="main-content" class="flex flex-col flex-1">
-            <!-- iOS Navigation Bar -->
+
+            <!-- iPad Sidebar Navigation -->
+            <aside class="ipad-sidebar" id="ipad-sidebar">
+                <div class="sidebar-header">
+                    <div style="display: flex; align-items: center; gap: 12px; cursor: pointer;" onclick="showPage('home')">
+                        <img src="tlc logo.jpg" alt="TLC Logo" style="height: 40px; width: auto; object-fit: contain;">
+                        <span style="font-weight: 600; font-size: 17px; color: #000000;">TLCGroup</span>
+                    </div>
+                </div>
+
+                <div class="sidebar-section">
+                    <div class="sidebar-section-title">Menu</div>
+                    <button onclick="showPage('home'); updateSidebarActive(this);" class="sidebar-item active" id="sidebar-home">
+                        <div class="sidebar-icon-box" style="background: #007AFF;">
+                            <i class="fas fa-house"></i>
+                        </div>
+                        <span>Dashboard</span>
+                    </button>
+                    <button onclick="showPage('comm'); updateSidebarActive(this);" class="sidebar-item" id="sidebar-comm">
+                        <div class="sidebar-icon-box" style="background: #5856D6;">
+                            <i class="fas fa-comments"></i>
+                        </div>
+                        <span>Communications</span>
+                    </button>
+                    <button onclick="showPage('profile'); updateSidebarActive(this);" class="sidebar-item" id="sidebar-profile">
+                        <div class="sidebar-icon-box" style="background: #FF9500;">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        <span>My Profile</span>
+                    </button>
+                </div>
+
+                <div class="sidebar-section">
+                    <div class="sidebar-section-title">Workflows</div>
+                    <button onclick="showPage('process-o2c'); updateSidebarActive(this);" class="sidebar-item" id="sidebar-o2c">
+                        <div class="sidebar-icon-box" style="background: #34C759;">
+                            <i class="fas fa-cart-shopping"></i>
+                        </div>
+                        <span>Order to Cash</span>
+                    </button>
+                    <button onclick="showPage('process-p2p'); updateSidebarActive(this);" class="sidebar-item" id="sidebar-p2p">
+                        <div class="sidebar-icon-box" style="background: #007AFF;">
+                            <i class="fas fa-bag-shopping"></i>
+                        </div>
+                        <span>Purchase to Pay</span>
+                    </button>
+                    <button onclick="showPage('process-cash'); updateSidebarActive(this);" class="sidebar-item" id="sidebar-cash">
+                        <div class="sidebar-icon-box" style="background: #FF9500;">
+                            <i class="fas fa-wallet"></i>
+                        </div>
+                        <span>Cash & Vouchers</span>
+                    </button>
+                </div>
+
+                <div class="sidebar-user" id="sidebar-user-section">
+                    <div id="sidebar-logged-out">
+                        <button onclick="showLogin()" style="width: 100%; padding: 10px; background: #007AFF; color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer;">
+                            Sign In
+                        </button>
+                    </div>
+                    <div id="sidebar-logged-in" style="display: none;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <img id="sidebar-avatar" src="" style="width: 40px; height: 40px; border-radius: 50%;" alt="User">
+                            <div style="flex: 1; min-width: 0;">
+                                <p id="sidebar-user-name" style="font-size: 15px; font-weight: 600; color: #000; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></p>
+                                <p id="sidebar-user-role" style="font-size: 13px; color: #6e6e73; margin: 0;"></p>
+                            </div>
+                        </div>
+                        <button onclick="handleLogout()" style="width: 100%; margin-top: 12px; padding: 8px; background: rgba(255,59,48,0.1); color: #FF3B30; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer;">
+                            Sign Out
+                        </button>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Main Content Area (shifts right on iPad) -->
+            <div class="ipad-main">
+            <!-- iOS Navigation Bar (visible on mobile, simpler on iPad) -->
             <nav style="position: sticky; top: 0; z-index: 100; background: rgba(249, 249, 249, 0.94); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); border-bottom: 0.5px solid rgba(60,60,67,0.29); padding: 12px 16px;">
                 <div style="display: flex; align-items: center; justify-content: space-between; max-width: 1200px; margin: 0 auto;">
-                    <!-- Left: Logo -->
-                    <div style="display: flex; align-items: center; gap: 12px; cursor: pointer;" onclick="showPage('home')">
+                    <!-- Left: Logo (hidden on iPad since sidebar has it) -->
+                    <div style="display: flex; align-items: center; gap: 12px; cursor: pointer;" onclick="showPage('home')" class="md:hidden">
                         <img src="tlc logo.jpg" alt="TLC Logo" style="height: 44px; width: auto; object-fit: contain;">
                         <span style="font-weight: 600; font-size: 18px; color: #000000;" class="hidden sm:inline">TLCGroup</span>
                     </div>
+                    <!-- Page Title (shown on iPad) -->
+                    <h1 id="page-title-header" class="hidden md:block" style="font-size: 20px; font-weight: 600; color: #000;">Dashboard</h1>
 
                     <!-- Right: Actions -->
                     <div class="flex items-center gap-3">
@@ -1472,45 +1667,6 @@
                     </div>
                 </div>
 
-                <!-- Desktop Navigation Links (hidden on mobile - use tab bar) -->
-                <div class="hidden lg:flex justify-center gap-1 pb-2 max-w-7xl mx-auto">
-                    <button onclick="showPage('home')" class="nav-link px-4 py-2 rounded-lg font-medium transition" id="nav-home" style="color: var(--ios-blue); font-size: 15px;">
-                        <i class="fas fa-home mr-2" aria-hidden="true"></i>Dashboard
-                    </button>
-                    <button onclick="showPage('comm')" class="nav-link px-4 py-2 rounded-lg font-medium transition" id="nav-comm" style="color: var(--ios-label-secondary); font-size: 15px;">
-                        <i class="fas fa-comments mr-2" aria-hidden="true"></i>Communications
-                    </button>
-                    <button onclick="showPage('profile')" class="nav-link px-4 py-2 rounded-lg font-medium transition" id="nav-profile" style="color: var(--ios-label-secondary); font-size: 15px;">
-                        <i class="fas fa-tasks mr-2" aria-hidden="true"></i>My Tasks
-                    </button>
-                    <button onclick="showPage('admin')" class="nav-link px-4 py-2 rounded-lg font-semibold transition hidden" id="nav-admin" style="color: var(--ios-orange); font-size: 15px;">
-                        <i class="fas fa-shield-alt mr-2" aria-hidden="true"></i>Admin
-                    </button>
-                </div>
-                        <div id="user-nav-section" class="flex items-center space-x-3 border-l pl-4 ml-2">
-                            <div id="login-button-section" class="hidden">
-                                <button onclick="showLogin()" class="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-blue-700 transition">Sign In</button>
-                            </div>
-                            <div id="user-info-section" class="hidden flex items-center space-x-3">
-                                <div class="text-right hidden sm:block cursor-pointer" onclick="showPage('profile')">
-                                    <p id="user-display-name" class="text-sm font-semibold text-slate-800"></p>
-                                    <p id="user-display-role" class="text-xs text-slate-500 uppercase"></p>
-                                </div>
-                                <div class="relative group">
-                                    <img id="user-avatar" src="" class="w-10 h-10 rounded-full border-2 border-white shadow-sm cursor-pointer hover:ring-2 hover:ring-blue-500 transition" onclick="showPage('profile')">
-                                    <div class="absolute right-0 mt-2 w-40 bg-white rounded-lg shadow-xl border border-slate-200 hidden group-hover:block z-50 overflow-hidden">
-                                        <button onclick="showPage('profile')" class="w-full text-left px-4 py-2 text-sm text-slate-700 hover:bg-slate-100 transition border-b border-slate-100">
-                                            <i class="fas fa-user mr-2"></i> Profile
-                                        </button>
-                                        <button onclick="handleLogout()" class="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 transition">
-                                            <i class="fas fa-sign-out-alt mr-2"></i> Logout
-                                        </button>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
             </nav>
 
             <!-- Mobile Navigation Drawer -->
@@ -2444,12 +2600,13 @@
                     </div>
                 </div>
             </main>
-        </div>
 
-        <!-- FOOTER (Hidden on mobile, shown on iPad landscape/desktop) -->
-        <footer class="mt-auto border-t border-slate-200 py-6 bg-white text-center text-xs text-slate-400 hidden lg:block">
-            <p>&copy; 2025 TLCGroup. All rights reserved.</p>
-        </footer>
+            <!-- FOOTER (inside ipad-main) -->
+            <footer class="mt-auto border-t border-slate-200 py-6 bg-white text-center text-xs text-slate-400 hidden lg:block">
+                <p>&copy; 2025 TLCGroup. All rights reserved.</p>
+            </footer>
+            </div><!-- End ipad-main -->
+        </div><!-- End main-content -->
     </div>
 
     <!-- iOS Tab Bar -->
@@ -2667,6 +2824,74 @@
             const tabId = tabMap[pageId] || 'tab-home';
             const tab = document.getElementById(tabId);
             setActiveTab(tab);
+
+            // Also update sidebar
+            updateSidebar(pageId);
+        }
+
+        // Update iPad sidebar active state
+        function updateSidebarActive(clickedItem) {
+            document.querySelectorAll('.sidebar-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            if (clickedItem) {
+                clickedItem.classList.add('active');
+            }
+        }
+
+        // Update sidebar based on page
+        function updateSidebar(pageId) {
+            const sidebarMap = {
+                'home': 'sidebar-home',
+                'process-o2c': 'sidebar-o2c',
+                'process-p2p': 'sidebar-p2p',
+                'process-cash': 'sidebar-cash',
+                'profile': 'sidebar-profile',
+                'comm': 'sidebar-comm',
+                'admin': 'sidebar-profile'
+            };
+            const sidebarId = sidebarMap[pageId] || 'sidebar-home';
+            const sidebarItem = document.getElementById(sidebarId);
+            updateSidebarActive(sidebarItem);
+
+            // Update page title in header
+            const pageTitles = {
+                'home': 'Dashboard',
+                'process-o2c': 'Order to Cash',
+                'process-p2p': 'Purchase to Pay',
+                'process-cash': 'Cash & Vouchers',
+                'profile': 'My Profile',
+                'comm': 'Communications',
+                'admin': 'Admin'
+            };
+            const titleEl = document.getElementById('page-title-header');
+            if (titleEl) {
+                titleEl.textContent = pageTitles[pageId] || 'Dashboard';
+            }
+        }
+
+        // Update sidebar user info
+        function updateSidebarUser() {
+            const loggedOut = document.getElementById('sidebar-logged-out');
+            const loggedIn = document.getElementById('sidebar-logged-in');
+
+            if (currentUser) {
+                if (loggedOut) loggedOut.style.display = 'none';
+                if (loggedIn) loggedIn.style.display = 'block';
+
+                const nameEl = document.getElementById('sidebar-user-name');
+                const roleEl = document.getElementById('sidebar-user-role');
+                const avatarEl = document.getElementById('sidebar-avatar');
+
+                if (nameEl) nameEl.textContent = currentUser.name || 'User';
+                if (roleEl) roleEl.textContent = currentUser.role || '';
+                if (avatarEl) {
+                    avatarEl.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.name || 'U')}&background=007AFF&color=fff`;
+                }
+            } else {
+                if (loggedOut) loggedOut.style.display = 'block';
+                if (loggedIn) loggedIn.style.display = 'none';
+            }
         }
 
         // Step Progress Update Function
@@ -3200,7 +3425,10 @@
         function updateUI() {
             const loginBtnSection = document.getElementById('login-button-section');
             const userInfoSection = document.getElementById('user-info-section');
-            
+
+            // Update iPad sidebar user section
+            updateSidebarUser();
+
             if(!currentUser) {
                 // Show login button, hide user info
                 if(loginBtnSection) loginBtnSection.classList.remove('hidden');
