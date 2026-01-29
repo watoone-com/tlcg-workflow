@@ -1430,21 +1430,13 @@
         <!-- MAIN CONTENT -->
         <div id="main-content" class="flex flex-col flex-1">
             <!-- iOS Navigation Bar -->
-            <nav class="ios-nav-bar">
-                <div class="ios-nav-bar-content">
-                    <!-- Left: Back button or Menu (context dependent) -->
-                    <div class="flex items-center gap-3">
-                        <div class="flex items-center gap-2 cursor-pointer" onclick="showPage('home')">
-                            <div class="w-8 h-8 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-lg flex items-center justify-center">
-                                <span id="default-logo-icon" class="text-white text-xs font-bold">TLC</span>
-                                <img id="custom-logo-img" class="hidden w-full h-full object-contain rounded-lg" alt="Logo">
-                            </div>
-                            <span class="font-semibold text-base hidden sm:inline" style="color: var(--ios-label);">TLCGroup</span>
-                        </div>
+            <nav style="position: sticky; top: 0; z-index: 100; background: rgba(249, 249, 249, 0.94); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); border-bottom: 0.5px solid rgba(60,60,67,0.29); padding: 12px 16px;">
+                <div style="display: flex; align-items: center; justify-content: space-between; max-width: 1200px; margin: 0 auto;">
+                    <!-- Left: Logo -->
+                    <div style="display: flex; align-items: center; gap: 12px; cursor: pointer;" onclick="showPage('home')">
+                        <img src="tlc logo.jpg" alt="TLC Logo" style="height: 44px; width: auto; object-fit: contain;">
+                        <span style="font-weight: 600; font-size: 18px; color: #000000;" class="hidden sm:inline">TLCGroup</span>
                     </div>
-
-                    <!-- Center: Title (shown on desktop) -->
-                    <span class="ios-nav-title hidden lg:block" id="page-title">Dashboard</span>
 
                     <!-- Right: Actions -->
                     <div class="flex items-center gap-3">
@@ -1594,13 +1586,13 @@
             </div>
 
             <!-- Home Dashboard - Kissflow Style -->
-            <main id="page-home" class="mx-auto px-4 py-6" style="max-width: 1280px; padding-bottom: 100px; background: #F2F2F7;">
+            <main id="page-home" class="mx-auto px-4" style="max-width: 1280px; padding-top: 12px; padding-bottom: 100px; background: #F2F2F7;">
                 <!-- iOS Large Title Header -->
-                <div style="margin-bottom: 24px;">
-                    <h1 style="font-size: 34px; font-weight: 700; color: #000000; margin-bottom: 4px;">
-                        Welcome<span id="welcome-name" style="color: #007AFF;"></span>
+                <div style="margin-bottom: 16px;">
+                    <h1 style="font-size: 28px; font-weight: 700; color: #000000; margin-bottom: 2px;">
+                        Welcome, <span id="welcome-name" style="color: #007AFF;">Guest</span>
                     </h1>
-                    <p style="font-size: 15px; color: #3C3C43; margin-bottom: 16px;">Manage your workflows and processes</p>
+                    <p style="font-size: 15px; color: #3C3C43; margin-bottom: 12px;">Manage your workflows and processes</p>
 
                     <!-- iOS Search Bar -->
                     <div style="background: rgba(118, 118, 128, 0.12); border-radius: 10px; padding: 10px 12px; display: flex; align-items: center; gap: 8px;">
@@ -1612,8 +1604,8 @@
                 </div>
 
                 <!-- iOS Statistics Cards -->
-                <p style="font-size: 13px; color: #6e6e73; text-transform: uppercase; padding: 16px 4px 8px; font-weight: 400;">OVERVIEW</p>
-                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px;">
+                <p style="font-size: 13px; color: #6e6e73; text-transform: uppercase; padding: 8px 4px 6px; font-weight: 400;">OVERVIEW</p>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
                     <div style="background: #FFFFFF; border-radius: 12px; padding: 16px;">
                         <div style="display: flex; align-items: center; justify-content: space-between;">
                             <div>
@@ -1661,7 +1653,7 @@
                 </div>
 
                 <!-- iOS Process Cards -->
-                <p style="font-size: 13px; color: #6e6e73; text-transform: uppercase; padding: 16px 4px 8px; font-weight: 400;">WORKFLOWS</p>
+                <p style="font-size: 13px; color: #6e6e73; text-transform: uppercase; padding: 12px 4px 6px; font-weight: 400;">WORKFLOWS</p>
                 <div style="display: flex; flex-direction: column; gap: 12px;">
                     <!-- O2C Process Card -->
                     <div onclick="showPage('process-o2c')" style="background: #FFFFFF; border-radius: 16px; padding: 16px; display: flex; align-items: center; gap: 12px; cursor: pointer;">
@@ -1704,7 +1696,7 @@
                 </div>
 
                 <!-- Recent Activities - iOS Style -->
-                <p style="font-size: 13px; color: #6e6e73; text-transform: uppercase; padding: 16px 4px 8px; font-weight: 400;">RECENT ACTIVITY</p>
+                <p style="font-size: 13px; color: #6e6e73; text-transform: uppercase; padding: 12px 4px 6px; font-weight: 400;">RECENT ACTIVITY</p>
                 <div style="background: #FFFFFF; border-radius: 12px; overflow: hidden;">
                     <div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 0.5px solid rgba(60,60,67,0.29);">
                         <div style="width: 40px; height: 40px; background: rgba(52, 199, 89, 0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
@@ -3223,10 +3215,10 @@
             document.getElementById('user-display-name').textContent = currentUser.name;
             document.getElementById('user-display-role').textContent = currentUser.role;
             
-            // Update welcome name in dashboard
+            // Update welcome name in dashboard - show full name
             const welcomeName = document.getElementById('welcome-name');
             if (welcomeName && currentUser.name) {
-                welcomeName.textContent = ', ' + currentUser.name.split(' ')[0];
+                welcomeName.textContent = currentUser.name;
             }
             const av = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.name)}&background=${currentUser.isAdmin ? 'ea580c' : '2563eb'}&color=fff`;
             document.getElementById('user-avatar').src = av;
