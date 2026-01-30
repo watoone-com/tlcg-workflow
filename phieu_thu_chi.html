@@ -4144,10 +4144,10 @@
                     console.log('🔍 statusData.approvers:', statusData.approvers);
                 } else {
                     console.warn('⚠️ Approval status API returned unsuccessful or no data:', statusResult);
-                    // Create fallback statusData for formatting
+                    // Create fallback statusData using voucher's existing data
                     const fallbackStatusData = {
                         displayStatus: statusClass === 'pending' ? 'Chờ duyệt' : (voucher.status || 'Chờ duyệt'),
-                        approvalProgress: '0/3',
+                        approvalProgress: voucher.approvalProgress || '0/3',
                         approvers: {},
                         currentApprover: null
                     };
@@ -4156,10 +4156,10 @@
             } catch (e) {
                 // Log error for debugging
                 console.warn('❌ Could not load approval status for', voucher.voucherNumber, ':', e);
-                // Create fallback statusData for formatting
+                // Create fallback statusData using voucher's existing data
                 const fallbackStatusData = {
                     displayStatus: statusClass === 'pending' ? 'Chờ duyệt' : (voucher.status || 'Chờ duyệt'),
-                    approvalProgress: '0/3',
+                    approvalProgress: voucher.approvalProgress || '0/3',
                     approvers: {},
                     currentApprover: null
                 };
