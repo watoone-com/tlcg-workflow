@@ -454,19 +454,35 @@ function getVoucherFromHistory(voucherNumber) {
           for (let i = 1; i < data.length; i++) {
             if (data[i][0] === voucherNumber) {
               const rowAction = data[i][6] || '';
-              const rowApproverEmail = data[i][10] || '';
+              const rowNote = data[i][7] || '';
               
               // Check if this row is an approval
-              if (rowAction.includes('Approved') && rowApproverEmail) {
-                // Find which approver this is
-                for (const role in meta.companyApprovers.approvers) {
-                  const approver = meta.companyApprovers.approvers[role];
-                  if (approver.email === rowApproverEmail && approver.status !== 'approved') {
-                    approver.status = 'approved';
-                    approver.approvedAt = data[i][8]; // timestamp
-                    approvalCount++;
-                    Logger.log(`Updated ${role} approval status from history scan`);
-                    break;
+              if (rowAction.includes('Approved')) {
+                // Extract approvedBy email from Meta in the note
+                let rowApproverEmail = null;
+                const rowMetaIdx = rowNote.indexOf('Meta: ');
+                if (rowMetaIdx >= 0) {
+                  try {
+                    const rowMetaStr = rowNote.substring(rowMetaIdx + 6).trim();
+                    const rowMeta = JSON.parse(rowMetaStr);
+                    rowApproverEmail = rowMeta.approvedBy || null;
+                    Logger.log(`Found approval row - approvedBy: ${rowApproverEmail}`);
+                  } catch (e) {
+                    Logger.log(`Failed to parse meta from approval row: ${e.toString()}`);
+                  }
+                }
+                
+                // If we found an approver email, match it to an approver role
+                if (rowApproverEmail) {
+                  for (const role in meta.companyApprovers.approvers) {
+                    const approver = meta.companyApprovers.approvers[role];
+                    if (approver.email === rowApproverEmail && approver.status !== 'approved') {
+                      approver.status = 'approved';
+                      approver.approvedAt = data[i][8]; // timestamp
+                      approvalCount++;
+                      Logger.log(`✅ Updated ${role} (${approver.name}) approval status from history scan`);
+                      break;
+                    }
                   }
                 }
               }
