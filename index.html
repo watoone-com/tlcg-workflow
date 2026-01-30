@@ -4303,92 +4303,69 @@
         
         /**
          * Format approval status text with approver names
-         * Format theo yêu cầu:
-         * 1. Nếu người đầu tiên chưa duyệt (0/3): "Chờ Duyệt (0/3)"
-         * 2. Nếu người đầu tiên đã duyệt (1/3): "Đang Duyệt (1/3). Duyệt Bởi: [tên accountant] (1/3)"
-         * 3. Nếu người thứ 2 đã duyệt (2/3): "Đang Duyệt (2/3). Duyệt Bởi: [tên legalRep] (2/3)"
-         * 4. Nếu người thứ 3 đã duyệt (3/3): "Đã Duyệt (3/3). Duyệt Bởi: [tên treasurer] (3/3)"
+         * Returns object with:
+         * - status: "Chờ Duyệt (0/3)", "Đang Duyệt (1/3)", "Đang Duyệt (2/3)", "Đã Duyệt (3/3)"
+         * - detail: "Duyệt Bởi: [name] (X/3)" or empty string
          */
         function formatApprovalStatusText(statusData) {
+            const result = { status: '', detail: '' };
+
             if (!statusData) {
-                return 'Chờ duyệt (0/3)';
+                result.status = 'Chờ Duyệt (0/3)';
+                return result;
             }
-            
+
+            const progress = statusData?.approvalProgress || '0/3';
+            const progressNum = parseInt(progress.split('/')[0]) || 0;
+
             // If approvers is empty but we have currentApproverName, try to use it
             if (!statusData.approvers || Object.keys(statusData.approvers).length === 0) {
-                const progress = statusData?.approvalProgress || '0/3';
-                const progressNum = parseInt(progress.split('/')[0]) || 0;
-                
-                // For 0/3, try to show accountant name if available
-                if (progressNum === 0 && statusData.currentApproverName) {
-                    return `Chờ Duyệt - ${statusData.currentApproverName} (0/3)`;
+                // Set status based on progress
+                if (progressNum === 0) {
+                    result.status = 'Chờ Duyệt (0/3)';
+                } else if (progressNum === 3) {
+                    result.status = 'Đã Duyệt (3/3)';
+                } else {
+                    result.status = `Đang Duyệt (${progressNum}/3)`;
                 }
-                
-                // Fallback: show basic status with progress
-                const baseStatus = statusData?.displayStatus || 'Chờ duyệt';
-                if (baseStatus.includes('(') && baseStatus.includes('/3')) {
-                    return baseStatus;
-                }
-                return `${baseStatus} (${progress})`;
+                return result;
             }
-            
+
             const approvers = statusData.approvers;
-            const progress = statusData.approvalProgress || '0/3';
-            const progressNum = parseInt(progress.split('/')[0]) || 0;
-            
-            let statusText = '';
-            
             const accountant = approvers.accountant;
             const legalRep = approvers.legalRep;
             const treasurer = approvers.treasurer;
-            
-            // Case 0: 1st approver not approved yet (0/3)
+
+            // Set status based on progress
             if (progressNum === 0) {
-                if (accountant && accountant.name) {
-                    statusText = `Chờ Duyệt - ${accountant.name} (0/3)`;
-                } else if (statusData.currentApproverName) {
-                    // Fallback: use currentApproverName if accountant name not available
-                    statusText = `Chờ Duyệt - ${statusData.currentApproverName} (0/3)`;
-                } else {
-                    statusText = 'Chờ Duyệt (0/3)';
-                }
+                result.status = 'Chờ Duyệt (0/3)';
+            } else if (progressNum === 3) {
+                result.status = 'Đã Duyệt (3/3)';
+            } else {
+                result.status = `Đang Duyệt (${progressNum}/3)`;
             }
-            // Case 1: 1st approver approved (1/3)
-            // Hiển thị tên người đã duyệt gần nhất (accountant)
-            else if (progressNum === 1) {
-                if (accountant && accountant.status === 'approved' && accountant.name) {
-                    statusText = `Duyệt Bởi: ${accountant.name} (1/3)`;
-                } else {
-                    statusText = 'Đang Duyệt (1/3)';
-                }
+
+            // Set detail based on who approved last
+            if (progressNum === 1 && accountant && accountant.status === 'approved' && accountant.name) {
+                result.detail = `Duyệt Bởi: ${accountant.name} (1/3)`;
+            } else if (progressNum === 2 && legalRep && legalRep.status === 'approved' && legalRep.name) {
+                result.detail = `Duyệt Bởi: ${legalRep.name} (2/3)`;
+            } else if (progressNum === 3 && treasurer && treasurer.status === 'approved' && treasurer.name) {
+                result.detail = `Duyệt Bởi: ${treasurer.name} (3/3)`;
             }
-            // Case 2: 2nd approver approved (2/3)
-            // Hiển thị tên người đã duyệt gần nhất (legalRep)
-            else if (progressNum === 2) {
-                if (legalRep && legalRep.status === 'approved' && legalRep.name) {
-                    statusText = `Duyệt Bởi: ${legalRep.name} (2/3)`;
-                } else {
-                    statusText = 'Đang Duyệt (2/3)';
-                }
+
+            return result;
+        }
+
+        /**
+         * Helper function for backward compatibility - returns combined string
+         */
+        function getApprovalStatusString(statusData) {
+            const result = formatApprovalStatusText(statusData);
+            if (result.detail) {
+                return `${result.status}. ${result.detail}`;
             }
-            // Case 3: 3rd approver approved (3/3)
-            // Hiển thị tên người đã duyệt gần nhất (treasurer)
-            else if (progressNum === 3) {
-                if (treasurer && treasurer.status === 'approved' && treasurer.name) {
-                    statusText = `Duyệt Bởi: ${treasurer.name} (3/3)`;
-                } else {
-                    statusText = 'Đã Duyệt (3/3)';
-                }
-            }
-            // Fallback
-            else {
-                statusText = statusData.displayStatus || 'Chờ duyệt';
-                if (progress && !statusText.includes('(')) {
-                    statusText += ` (${progress})`;
-                }
-            }
-            
-            return statusText;
+            return result.status;
         }
         
         /**
@@ -4478,13 +4455,11 @@
                     }
                     
                     const formattedStatus = formatApprovalStatusText(statusData);
-                    console.log('✅ Formatted status:', formattedStatus);
+                    console.log('✅ Formatted status:', formattedStatus.status, 'detail:', formattedStatus.detail);
                     console.log('🔍 statusData.approvers:', statusData.approvers);
 
-                    // Extract badge text from formatted status (first part before " - ")
-                    const badgeText = formattedStatus.includes(' - ')
-                        ? formattedStatus.split(' - ')[0]
-                        : formattedStatus.split('.')[0];
+                    // Use status from object for badge
+                    const badgeText = formattedStatus.status;
 
                     // Determine status badge style based on progress and approval status
                     let statusClass = 'bg-slate-100 text-slate-700';
@@ -4505,7 +4480,7 @@
                         statusClass = 'bg-blue-100 text-blue-700';
                         statusIcon = 'fa-paper-plane';
                     }
-                    
+
                     // Update status badge
                     if (statusBadge) {
                         statusBadge.className = `status-badge ${statusClass}`;
@@ -4513,10 +4488,10 @@
                             statusTextSpan.innerHTML = `<i class="fas ${statusIcon} mr-1"></i>${badgeText}`;
                         }
                     }
-                    
-                    // Update approval detail
+
+                    // Update approval detail (show who approved)
                     if (approvalDetail) {
-                        approvalDetail.textContent = formattedStatus;
+                        approvalDetail.textContent = formattedStatus.detail || '';
                     }
                 } else {
                     // Fallback: Use basic status from voucher data
