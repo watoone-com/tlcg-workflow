@@ -336,9 +336,12 @@ function doPost(e) {
         
         // Pass both requestBody and extracted companyName
         return handleGetCompanyApprovers(requestBody, companyNameParam);
-      case 'getApprovalStatus': 
+      case 'getApprovalStatus':
         Logger.log('✅ Matched getApprovalStatus case');
         return handleGetApprovalStatus(requestBody);
+      case 'refreshApproverEmails':
+        Logger.log('✅ Matched refreshApproverEmails case');
+        return handleRefreshApproverEmails(requestBody);
       default: 
         Logger.log('⚠️ WARNING: Unknown action: "' + normalizedAction + '" (original: "' + action + '")');
         Logger.log('⚠️ Normalized action length: ' + normalizedAction.length);
@@ -357,7 +360,7 @@ function doPost(e) {
           return handleGetCompanyApprovers(requestBody, companyNameParam);
         }
         
-        Logger.log('⚠️ Available actions: login, sendApprovalEmail, approveVoucher, rejectVoucher, getVoucherSummary, getVoucherHistory, getEmployees, getCompanyApprovers, getApprovalStatus');
+        Logger.log('⚠️ Available actions: login, sendApprovalEmail, approveVoucher, rejectVoucher, getVoucherSummary, getVoucherHistory, getEmployees, getCompanyApprovers, getApprovalStatus, refreshApproverEmails');
         return createResponse(false, 'Action không hợp lệ: ' + normalizedAction + ' (length: ' + normalizedAction.length + ', expected: ' + 'getCompanyApprovers'.length + ')');
     }
   } catch (error) {
@@ -2634,4 +2637,188 @@ function testSpreadsheetAccess() {
     Logger.log('❌ Diagnostic test failed: ' + error.toString());
     Logger.log('❌ Error stack: ' + error.stack);
   }
+}
+
+/**
+ * Refresh approver emails for all pending vouchers
+ * This function updates the Meta JSON in Voucher_History with current approver emails from Công ty sheet
+ * Call this after updating approver emails in the Công ty master data
+ */
+function handleRefreshApproverEmails(requestBody) {
+  try {
+    Logger.log('=== REFRESH APPROVER EMAILS ===');
+
+    const ss = SpreadsheetApp.openById(VOUCHER_HISTORY_SHEET_ID);
+    const voucherSheet = ss.getSheetByName(VH_SHEET_NAME);
+    const companySheet = ss.getSheetByName(COMPANY_SHEET_NAME);
+
+    if (!voucherSheet || !companySheet) {
+      return createResponse(false, 'Không tìm thấy sheet cần thiết');
+    }
+
+    const voucherData = voucherSheet.getDataRange().getValues();
+    const companyData = companySheet.getDataRange().getValues();
+
+    // Build company approvers lookup
+    const companyApproversMap = {};
+    for (let i = 1; i < companyData.length; i++) {
+      const row = companyData[i];
+      const companyName = (row[1] || '').toString().trim(); // Column B
+      if (companyName) {
+        companyApproversMap[companyName.toLowerCase()] = {
+          legalRep: {
+            name: (row[5] || '').toString().trim(),
+            email: (row[4] || '').toString().trim(),
+            signature: (row[6] || '').toString().trim(),
+            role: 'Đại diện pháp luật'
+          },
+          accountant: {
+            name: (row[8] || '').toString().trim(),
+            email: (row[7] || '').toString().trim(),
+            signature: (row[9] || '').toString().trim(),
+            role: 'Kế toán trưởng'
+          },
+          treasurer: {
+            name: (row[11] || '').toString().trim(),
+            email: (row[10] || '').toString().trim(),
+            signature: (row[12] || '').toString().trim(),
+            role: 'Thủ quỹ'
+          }
+        };
+      }
+    }
+
+    let updatedCount = 0;
+    const updatedVouchers = [];
+
+    // Process each voucher row (skip header)
+    // Column structure: A=VoucherNumber(0), B=VoucherType(1), C=Company(2), D=Employee(3),
+    //                   E=Amount(4), F=Status(5), G=Action(6), H=By(7), I=Note(8)
+    for (let i = 1; i < voucherData.length; i++) {
+      const row = voucherData[i];
+      const voucherNo = (row[0] || '').toString().trim(); // Column A: Voucher No
+      const companyName = (row[2] || '').toString().trim(); // Column C: Company
+      const status = (row[5] || '').toString().trim(); // Column F: Status
+      const action = (row[6] || '').toString().trim(); // Column G: Action
+      const note = (row[8] || '').toString().trim(); // Column I: Note (contains "...Meta: {json}")
+
+      // Only process pending/partially approved vouchers (not fully approved or rejected)
+      const isPending = status === 'Pending' ||
+                       status === 'Chờ Duyệt' ||
+                       status.includes('Đang duyệt') ||
+                       status.includes('Partially');
+      const isRejectedOrApproved = status === 'Approved' || status === 'Rejected' ||
+                                   action === 'Fully Approved' || action === 'Rejected';
+
+      if (!isPending || isRejectedOrApproved) {
+        continue;
+      }
+
+      Logger.log('Processing voucher ' + voucherNo + ' (company: ' + companyName + ', status: ' + status + ')');
+
+      // Find company approvers
+      const approvers = companyApproversMap[companyName.toLowerCase()];
+      if (!approvers) {
+        Logger.log('⚠️ Company not found: ' + companyName + ' for voucher ' + voucherNo);
+        continue;
+      }
+
+      // Parse existing meta from note field
+      // Format: "Some text\nMeta: {...json...}"
+      let meta = {};
+      try {
+        if (note && note.includes('Meta: ')) {
+          const metaIdx = note.indexOf('Meta: ') + 6;
+          const metaStr = note.substring(metaIdx).trim();
+          meta = JSON.parse(metaStr);
+        } else if (note) {
+          // Try direct parse as fallback
+          meta = JSON.parse(note);
+        }
+      } catch (e) {
+        Logger.log('⚠️ Cannot parse meta for voucher ' + voucherNo + ': ' + e.message);
+        continue;
+      }
+
+      // Update approver emails in meta
+      if (meta.companyApprovers && meta.companyApprovers.approvers) {
+        const metaApprovers = meta.companyApprovers.approvers;
+        let changed = false;
+
+        // Update accountant
+        if (metaApprovers.accountant && approvers.accountant.email) {
+          if (metaApprovers.accountant.email !== approvers.accountant.email) {
+            Logger.log('Updating accountant email for ' + voucherNo + ': ' + metaApprovers.accountant.email + ' → ' + approvers.accountant.email);
+            metaApprovers.accountant.email = approvers.accountant.email;
+            metaApprovers.accountant.name = approvers.accountant.name;
+            changed = true;
+          }
+        }
+
+        // Update legalRep
+        if (metaApprovers.legalRep && approvers.legalRep.email) {
+          if (metaApprovers.legalRep.email !== approvers.legalRep.email) {
+            Logger.log('Updating legalRep email for ' + voucherNo + ': ' + metaApprovers.legalRep.email + ' → ' + approvers.legalRep.email);
+            metaApprovers.legalRep.email = approvers.legalRep.email;
+            metaApprovers.legalRep.name = approvers.legalRep.name;
+            changed = true;
+          }
+        }
+
+        // Update treasurer
+        if (metaApprovers.treasurer && approvers.treasurer.email) {
+          if (metaApprovers.treasurer.email !== approvers.treasurer.email) {
+            Logger.log('Updating treasurer email for ' + voucherNo + ': ' + metaApprovers.treasurer.email + ' → ' + approvers.treasurer.email);
+            metaApprovers.treasurer.email = approvers.treasurer.email;
+            metaApprovers.treasurer.name = approvers.treasurer.name;
+            changed = true;
+          }
+        }
+
+        if (changed) {
+          // Save updated meta back to sheet, preserving the note prefix
+          let updatedNote;
+          if (note.includes('Meta: ')) {
+            const metaIdx = note.indexOf('Meta: ');
+            const prefix = note.substring(0, metaIdx + 6); // Keep "...Meta: " prefix
+            updatedNote = prefix + JSON.stringify(meta);
+          } else {
+            updatedNote = 'Meta: ' + JSON.stringify(meta);
+          }
+          voucherSheet.getRange(i + 1, 9).setValue(updatedNote); // Column I (index 9, 1-based)
+          updatedCount++;
+          updatedVouchers.push({
+            voucherNo: voucherNo,
+            company: companyName,
+            newApprovers: {
+              accountant: approvers.accountant.email,
+              legalRep: approvers.legalRep.email,
+              treasurer: approvers.treasurer.email
+            }
+          });
+          Logger.log('✅ Updated voucher: ' + voucherNo);
+        }
+      }
+    }
+
+    Logger.log('=== REFRESH COMPLETE: Updated ' + updatedCount + ' vouchers ===');
+
+    return createResponse(true, 'Đã cập nhật ' + updatedCount + ' phiếu với email người duyệt mới', {
+      updatedCount: updatedCount,
+      updatedVouchers: updatedVouchers
+    });
+
+  } catch (error) {
+    Logger.log('❌ ERROR in handleRefreshApproverEmails: ' + error.toString());
+    return createResponse(false, 'Lỗi: ' + error.message);
+  }
+}
+
+/**
+ * Manual function to refresh approver emails - run from Apps Script editor
+ */
+function refreshApproverEmails() {
+  const result = handleRefreshApproverEmails({});
+  Logger.log('Result: ' + JSON.stringify(result));
+  return result;
 }
