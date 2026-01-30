@@ -412,8 +412,9 @@ function getVoucherFromHistory(voucherNumber) {
     
     const data = sheet.getDataRange().getValues();
     
-    // Find latest entry for this voucher (search from bottom up)
-    for (let i = data.length - 1; i >= 1; i--) {
+    // Find FIRST entry for this voucher (Submit row - has full companyApprovers meta)
+    // Search from top down to get the original Submit row, not intermediate Approve rows
+    for (let i = 1; i < data.length; i++) {
       if (data[i][0] === voucherNumber) {
         const note = data[i][7] || ''; // Column H = Note
         // Capture full JSON after "Meta: " (use [\s\S]+ to include newlines)
