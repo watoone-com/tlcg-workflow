@@ -412,16 +412,15 @@ function getVoucherFromHistory(voucherNumber) {
     
     const data = sheet.getDataRange().getValues();
     
-    // Find FIRST entry for this voucher (Submit row - has full companyApprovers meta)
-    // Search from top down to get the original Submit row, not intermediate Approve rows
+    // Find FIRST entry (Submit row) to get base meta with companyApprovers
+    let baseVoucher = null;
     for (let i = 1; i < data.length; i++) {
       if (data[i][0] === voucherNumber) {
-        const note = data[i][7] || ''; // Column H = Note
-        // Capture full JSON after "Meta: " (use [\s\S]+ to include newlines)
+        const note = data[i][7] || '';
         const metaIdx = note.indexOf('Meta: ');
         const metaStr = metaIdx >= 0 ? note.substring(metaIdx + 6).trim() : null;
         
-        return {
+        baseVoucher = {
           row: i + 1,
           voucherNumber: data[i][0],
           voucherType: data[i][1],
@@ -436,9 +435,76 @@ function getVoucherFromHistory(voucherNumber) {
           approverEmail: data[i][10],
           meta: metaStr || null
         };
+        break; // Found first row, stop
       }
     }
-    return null;
+    
+    if (!baseVoucher) return null;
+    
+    // Parse meta and update with approval status from subsequent rows
+    if (baseVoucher.meta) {
+      try {
+        const meta = JSON.parse(baseVoucher.meta);
+        
+        // If has companyApprovers, scan all rows to update approval status
+        if (meta.companyApprovers && meta.companyApprovers.approvers) {
+          let approvalCount = 0;
+          
+          // Scan all rows for this voucher to find approvals
+          for (let i = 1; i < data.length; i++) {
+            if (data[i][0] === voucherNumber) {
+              const rowAction = data[i][6] || '';
+              const rowApproverEmail = data[i][10] || '';
+              
+              // Check if this row is an approval
+              if (rowAction.includes('Approved') && rowApproverEmail) {
+                // Find which approver this is
+                for (const role in meta.companyApprovers.approvers) {
+                  const approver = meta.companyApprovers.approvers[role];
+                  if (approver.email === rowApproverEmail && approver.status !== 'approved') {
+                    approver.status = 'approved';
+                    approver.approvedAt = data[i][8]; // timestamp
+                    approvalCount++;
+                    Logger.log(`Updated ${role} approval status from history scan`);
+                    break;
+                  }
+                }
+              }
+            }
+          }
+          
+          // Update approval progress
+          meta.companyApprovers.approvalProgress = `${approvalCount}/3`;
+          
+          // Update currentApprover based on sequence
+          const sequence = meta.companyApprovers.approvalSequence || ['accountant', 'legalRep', 'treasurer'];
+          let nextApprover = null;
+          for (const role of sequence) {
+            if (meta.companyApprovers.approvers[role].status !== 'approved') {
+              nextApprover = role;
+              break;
+            }
+          }
+          meta.companyApprovers.currentApprover = nextApprover;
+          
+          // Update overall status
+          if (approvalCount === 3) {
+            meta.companyApprovers.overallStatus = 'Approved';
+            meta.companyApprovers.displayStatus = 'Đã duyệt';
+          } else if (approvalCount > 0) {
+            meta.companyApprovers.overallStatus = 'Partially Approved';
+            meta.companyApprovers.displayStatus = `Đang duyệt (${approvalCount}/3)`;
+          }
+          
+          // Update meta string with merged data
+          baseVoucher.meta = JSON.stringify(meta);
+        }
+      } catch (parseError) {
+        Logger.log('Error parsing/updating meta: ' + parseError.toString());
+      }
+    }
+    
+    return baseVoucher;
   } catch (error) {
     Logger.log('Error in getVoucherFromHistory: ' + error.toString());
     return null;
