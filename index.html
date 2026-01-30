@@ -132,6 +132,18 @@
 
         .sidebar-section {
             padding: 8px 0;
+            position: relative;
+        }
+        
+        /* Section dividers for better visual separation */
+        .sidebar-section:not(:first-of-type)::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 16px;
+            right: 16px;
+            height: 0.5px;
+            background: rgba(60, 60, 67, 0.18);
         }
 
         .sidebar-section-title {
@@ -161,6 +173,35 @@
             text-align: left;
             position: relative;
         }
+        
+        /* Tooltip for collapsed sidebar items */
+        .sidebar-item::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            left: 72px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s cubic-bezier(0.4, 0.0, 0.2, 1);
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .ipad-sidebar.collapsed .sidebar-item:hover::after {
+            opacity: 1;
+            transition-delay: 0.6s;
+        }
+        
+        .ipad-sidebar.collapsed:hover:not(.pinned) .sidebar-item:hover::after {
+            opacity: 0;
+        }
 
         .sidebar-item:hover {
             background: rgba(0, 0, 0, 0.04);
@@ -175,6 +216,35 @@
         .sidebar-item.active {
             background: #007AFF;
             color: white;
+        }
+        
+        /* Tooltip for collapsed sidebar items */
+        .sidebar-item::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            left: 72px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(0, 0, 0, 0.85);
+            color: white;
+            padding: 6px 12px;
+            border-radius: 8px;
+            font-size: 13px;
+            white-space: nowrap;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s cubic-bezier(0.4, 0.0, 0.2, 1);
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        }
+        
+        .ipad-sidebar.collapsed .sidebar-item:hover::after {
+            opacity: 1;
+            transition-delay: 0.6s;
+        }
+        
+        .ipad-sidebar.collapsed:hover:not(.pinned) .sidebar-item:hover::after {
+            opacity: 0;
         }
 
         .sidebar-item.active .sidebar-icon-box {
@@ -1601,19 +1671,19 @@
 
                 <div class="sidebar-section">
                     <div class="sidebar-section-title">Menu</div>
-                    <button onclick="showPage('home'); updateSidebarActive(this);" class="sidebar-item active" id="sidebar-home">
+                    <button onclick="showPage('home'); updateSidebarActive(this);" class="sidebar-item active" id="sidebar-home" data-tooltip="Dashboard">
                         <div class="sidebar-icon-box" style="background: #007AFF;">
                             <i class="fas fa-house"></i>
                         </div>
                         <span>Dashboard</span>
                     </button>
-                    <button onclick="showPage('comm'); updateSidebarActive(this);" class="sidebar-item" id="sidebar-comm">
+                    <button onclick="showPage('comm'); updateSidebarActive(this);" class="sidebar-item" id="sidebar-comm" data-tooltip="Communications">
                         <div class="sidebar-icon-box" style="background: #5856D6;">
                             <i class="fas fa-comments"></i>
                         </div>
                         <span>Communications</span>
                     </button>
-                    <button onclick="showPage('profile'); updateSidebarActive(this);" class="sidebar-item" id="sidebar-profile">
+                    <button onclick="showPage('profile'); updateSidebarActive(this);" class="sidebar-item" id="sidebar-profile" data-tooltip="My Profile">
                         <div class="sidebar-icon-box" style="background: #FF9500;">
                             <i class="fas fa-user"></i>
                         </div>
@@ -1623,19 +1693,19 @@
 
                 <div class="sidebar-section">
                     <div class="sidebar-section-title">Workflows</div>
-                    <button onclick="showPage('process-o2c'); updateSidebarActive(this);" class="sidebar-item" id="sidebar-o2c">
+                    <button onclick="showPage('process-o2c'); updateSidebarActive(this);" class="sidebar-item" id="sidebar-o2c" data-tooltip="Order to Cash">
                         <div class="sidebar-icon-box" style="background: #34C759;">
                             <i class="fas fa-cart-shopping"></i>
                         </div>
                         <span>Order to Cash</span>
                     </button>
-                    <button onclick="showPage('process-p2p'); updateSidebarActive(this);" class="sidebar-item" id="sidebar-p2p">
+                    <button onclick="showPage('process-p2p'); updateSidebarActive(this);" class="sidebar-item" id="sidebar-p2p" data-tooltip="Purchase to Pay">
                         <div class="sidebar-icon-box" style="background: #007AFF;">
                             <i class="fas fa-bag-shopping"></i>
                         </div>
                         <span>Purchase to Pay</span>
                     </button>
-                    <button onclick="showPage('process-cash'); updateSidebarActive(this);" class="sidebar-item" id="sidebar-cash">
+                    <button onclick="showPage('process-cash'); updateSidebarActive(this);" class="sidebar-item" id="sidebar-cash" data-tooltip="Cash & Vouchers">
                         <div class="sidebar-icon-box" style="background: #FF9500;">
                             <i class="fas fa-wallet"></i>
                         </div>
@@ -2763,6 +2833,119 @@
         let currentUser = null;
         let requestedPage = 'home'; // Store the page user wants to access
         const publicPages = ['home']; // Pages that don't require login
+        
+        // Sidebar expand/collapse state
+        let sidebarPinned = localStorage.getItem('tlc_sidebar_pinned') === 'true';
+        let sidebarCollapsed = !sidebarPinned; // Default collapsed if not pinned
+
+        // Toggle sidebar expand/collapse
+        function toggleSidebar() {
+            const sidebar = document.getElementById('ipad-sidebar');
+            const main = document.querySelector('.ipad-main');
+            const icon = document.getElementById('sidebar-toggle-icon');
+            
+            if (!sidebar) return;
+            
+            sidebarCollapsed = !sidebarCollapsed;
+            
+            if (sidebarCollapsed) {
+                sidebar.classList.add('collapsed');
+                if (main) main.classList.add('sidebar-collapsed');
+                if (icon) {
+                    icon.classList.remove('fa-chevron-left');
+                    icon.classList.add('fa-chevron-right');
+                }
+            } else {
+                sidebar.classList.remove('collapsed');
+                if (main) main.classList.remove('sidebar-collapsed');
+                if (icon) {
+                    icon.classList.remove('fa-chevron-right');
+                    icon.classList.add('fa-chevron-left');
+                }
+            }
+        }
+        
+        // Toggle sidebar pin/unpin
+        function toggleSidebarPin() {
+            sidebarPinned = !sidebarPinned;
+            const pinButton = document.getElementById('sidebar-pin-toggle');
+            const sidebar = document.getElementById('ipad-sidebar');
+            
+            if (!pinButton || !sidebar) return;
+            
+            const pinText = pinButton.querySelector('span');
+            
+            if (sidebarPinned) {
+                pinButton.classList.add('pinned');
+                sidebar.classList.add('pinned');
+                if (pinText) pinText.textContent = 'Pinned';
+                localStorage.setItem('tlc_sidebar_pinned', 'true');
+                
+                // Expand sidebar when pinned
+                const main = document.querySelector('.ipad-main');
+                const icon = document.getElementById('sidebar-toggle-icon');
+                
+                sidebar.classList.remove('collapsed');
+                if (main) main.classList.remove('sidebar-collapsed');
+                if (icon) {
+                    icon.classList.remove('fa-chevron-right');
+                    icon.classList.add('fa-chevron-left');
+                }
+                sidebarCollapsed = false;
+            } else {
+                pinButton.classList.remove('pinned');
+                sidebar.classList.remove('pinned');
+                if (pinText) pinText.textContent = 'Pin Sidebar';
+                localStorage.setItem('tlc_sidebar_pinned', 'false');
+            }
+        }
+        
+        // Initialize sidebar state on page load
+        function initSidebar() {
+            const sidebar = document.getElementById('ipad-sidebar');
+            const main = document.querySelector('.ipad-main');
+            const icon = document.getElementById('sidebar-toggle-icon');
+            const pinButton = document.getElementById('sidebar-pin-toggle');
+            
+            if (!sidebar || !main || !icon) return;
+            
+            if (sidebarPinned) {
+                // Expand and update pin button
+                sidebar.classList.remove('collapsed');
+                sidebar.classList.add('pinned');
+                main.classList.remove('sidebar-collapsed');
+                icon.classList.remove('fa-chevron-right');
+                icon.classList.add('fa-chevron-left');
+                sidebarCollapsed = false;
+                
+                if (pinButton) {
+                    pinButton.classList.add('pinned');
+                    const pinText = pinButton.querySelector('span');
+                    if (pinText) pinText.textContent = 'Pinned';
+                }
+            } else {
+                // Start collapsed
+                sidebar.classList.add('collapsed');
+                sidebar.classList.remove('pinned');
+                main.classList.add('sidebar-collapsed');
+                icon.classList.remove('fa-chevron-left');
+                icon.classList.add('fa-chevron-right');
+                sidebarCollapsed = true;
+            }
+        }
+        
+        // Keyboard shortcut to toggle sidebar (Cmd/Ctrl + B)
+        document.addEventListener('keydown', function(e) {
+            // Check for Cmd+B (Mac) or Ctrl+B (Windows/Linux)
+            if ((e.metaKey || e.ctrlKey) && e.key === 'b') {
+                e.preventDefault();
+                const sidebar = document.getElementById('ipad-sidebar');
+                // Only toggle if sidebar is visible (iPad/Desktop mode)
+                if (sidebar && window.innerWidth >= 768) {
+                    toggleSidebar();
+                }
+            }
+        });
 
         const companiesData = [
             { name: "CÔNG TY TNHH TƯ VẤN TLC", addr: "B.3.09, Tầng 3, Lô B, Số 34-35 Bến Vân Đồn, HCM", tax: "0313519756", rep: "Lê Ngân Anh", accountant: "Nguyễn Thị Nhanh" },
