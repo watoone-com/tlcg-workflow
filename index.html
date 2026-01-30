@@ -131,6 +131,58 @@
             }
         }
 
+        /* Collapsed Sidebar - macOS Style */
+        .ipad-sidebar {
+            transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .ipad-sidebar.collapsed {
+            width: 72px;
+        }
+
+        .ipad-sidebar.collapsed .sidebar-header > div > span,
+        .ipad-sidebar.collapsed .sidebar-section-title,
+        .ipad-sidebar.collapsed .sidebar-item > span,
+        .ipad-sidebar.collapsed #sidebar-user-name,
+        .ipad-sidebar.collapsed #sidebar-user-role,
+        .ipad-sidebar.collapsed .sidebar-signout-btn,
+        .ipad-sidebar.collapsed .sidebar-user-info {
+            display: none;
+        }
+
+        .ipad-sidebar.collapsed .sidebar-item {
+            justify-content: center;
+            padding: 12px;
+            margin: 2px 6px;
+            width: calc(100% - 12px);
+        }
+
+        .ipad-sidebar.collapsed .sidebar-header > div:first-child {
+            justify-content: center;
+        }
+
+        .ipad-sidebar.collapsed #sidebar-user-section {
+            padding: 12px;
+        }
+
+        .ipad-sidebar.collapsed #sidebar-logged-in > div {
+            justify-content: center;
+        }
+
+        .ipad-sidebar.collapsed #sidebar-toggle {
+            position: static;
+            transform: none;
+            margin-left: auto;
+        }
+
+        .ipad-main {
+            transition: margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .ipad-main.sidebar-collapsed {
+            margin-left: 72px;
+        }
+
         /* Sidebar Components */
         .sidebar-header {
             padding: 18px 16px;
@@ -1669,11 +1721,20 @@
 
             <!-- iPad Sidebar Navigation -->
             <aside class="ipad-sidebar" id="ipad-sidebar">
-                <div class="sidebar-header">
+                <div class="sidebar-header" style="position: relative; display: flex; align-items: center; justify-content: space-between;">
                     <div style="display: flex; align-items: center; gap: 10px; cursor: pointer;" onclick="showPage('home')">
                         <img src="tlc logo transparancy.png" alt="TLC Logo" style="height: 60px; width: auto; object-fit: contain;">
                         <span style="font-weight: 600; font-size: 17px; color: #000000;">TLCGroup</span>
                     </div>
+                    <button id="sidebar-toggle" onclick="event.stopPropagation(); toggleSidebar();"
+                            style="width: 28px; height: 28px; border-radius: 6px;
+                                   background: rgba(0,0,0,0.05); border: none; cursor: pointer;
+                                   display: flex; align-items: center; justify-content: center;
+                                   transition: background 0.2s; flex-shrink: 0;"
+                            onmouseover="this.style.background='rgba(0,0,0,0.1)'"
+                            onmouseout="this.style.background='rgba(0,0,0,0.05)'">
+                        <i id="sidebar-toggle-icon" class="fas fa-chevron-left" style="font-size: 11px; color: #8e8e93;"></i>
+                    </button>
                 </div>
 
                 <div class="sidebar-section">
@@ -1722,19 +1783,22 @@
 
                 <div class="sidebar-user" id="sidebar-user-section">
                     <div id="sidebar-logged-out">
-                        <button onclick="showLogin()" style="width: 100%; padding: 10px; background: #007AFF; color: white; border: none; border-radius: 8px; font-size: 15px; font-weight: 600; cursor: pointer;">
-                            Sign In
+                        <button onclick="showLogin()" class="sidebar-item" style="background: transparent;" data-tooltip="Sign In">
+                            <div class="sidebar-icon-box" style="background: #007AFF;">
+                                <i class="fas fa-right-to-bracket"></i>
+                            </div>
+                            <span>Sign In</span>
                         </button>
                     </div>
                     <div id="sidebar-logged-in" style="display: none;">
                         <div style="display: flex; align-items: center; gap: 12px;">
-                            <img id="sidebar-avatar" src="" style="width: 40px; height: 40px; border-radius: 50%;" alt="User">
-                            <div style="flex: 1; min-width: 0;">
+                            <img id="sidebar-avatar" src="" style="width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;" alt="User">
+                            <div class="sidebar-user-info" style="flex: 1; min-width: 0;">
                                 <p id="sidebar-user-name" style="font-size: 15px; font-weight: 600; color: #000; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></p>
                                 <p id="sidebar-user-role" style="font-size: 13px; color: #6e6e73; margin: 0;"></p>
                             </div>
                         </div>
-                        <button onclick="handleLogout()" style="width: 100%; margin-top: 12px; padding: 8px; background: rgba(255,59,48,0.1); color: #FF3B30; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer;">
+                        <button class="sidebar-signout-btn" onclick="handleLogout()" style="width: 100%; margin-top: 12px; padding: 8px; background: rgba(255,59,48,0.1); color: #FF3B30; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer;">
                             Sign Out
                         </button>
                     </div>
@@ -2840,19 +2904,18 @@
         const publicPages = ['home']; // Pages that don't require login
         
         // Sidebar expand/collapse state
-        let sidebarPinned = localStorage.getItem('tlc_sidebar_pinned') === 'true';
-        let sidebarCollapsed = !sidebarPinned; // Default collapsed if not pinned
+        let sidebarCollapsed = localStorage.getItem('tlc_sidebar_collapsed') === 'true';
 
         // Toggle sidebar expand/collapse
         function toggleSidebar() {
             const sidebar = document.getElementById('ipad-sidebar');
             const main = document.querySelector('.ipad-main');
             const icon = document.getElementById('sidebar-toggle-icon');
-            
+
             if (!sidebar) return;
-            
+
             sidebarCollapsed = !sidebarCollapsed;
-            
+
             if (sidebarCollapsed) {
                 sidebar.classList.add('collapsed');
                 if (main) main.classList.add('sidebar-collapsed');
@@ -2868,41 +2931,9 @@
                     icon.classList.add('fa-chevron-left');
                 }
             }
-        }
-        
-        // Toggle sidebar pin/unpin
-        function toggleSidebarPin() {
-            sidebarPinned = !sidebarPinned;
-            const pinButton = document.getElementById('sidebar-pin-toggle');
-            const sidebar = document.getElementById('ipad-sidebar');
-            
-            if (!pinButton || !sidebar) return;
-            
-            const pinText = pinButton.querySelector('span');
-            
-            if (sidebarPinned) {
-                pinButton.classList.add('pinned');
-                sidebar.classList.add('pinned');
-                if (pinText) pinText.textContent = 'Pinned';
-                localStorage.setItem('tlc_sidebar_pinned', 'true');
-                
-                // Expand sidebar when pinned
-                const main = document.querySelector('.ipad-main');
-                const icon = document.getElementById('sidebar-toggle-icon');
-                
-                sidebar.classList.remove('collapsed');
-                if (main) main.classList.remove('sidebar-collapsed');
-                if (icon) {
-                    icon.classList.remove('fa-chevron-right');
-                    icon.classList.add('fa-chevron-left');
-                }
-                sidebarCollapsed = false;
-            } else {
-                pinButton.classList.remove('pinned');
-                sidebar.classList.remove('pinned');
-                if (pinText) pinText.textContent = 'Pin Sidebar';
-                localStorage.setItem('tlc_sidebar_pinned', 'false');
-            }
+
+            // Save state to localStorage
+            localStorage.setItem('tlc_sidebar_collapsed', sidebarCollapsed);
         }
         
         // Initialize sidebar state on page load
@@ -2910,32 +2941,29 @@
             const sidebar = document.getElementById('ipad-sidebar');
             const main = document.querySelector('.ipad-main');
             const icon = document.getElementById('sidebar-toggle-icon');
-            const pinButton = document.getElementById('sidebar-pin-toggle');
-            
-            if (!sidebar || !main || !icon) return;
-            
-            if (sidebarPinned) {
-                // Expand and update pin button
-                sidebar.classList.remove('collapsed');
-                sidebar.classList.add('pinned');
-                main.classList.remove('sidebar-collapsed');
-                icon.classList.remove('fa-chevron-right');
-                icon.classList.add('fa-chevron-left');
-                sidebarCollapsed = false;
-                
-                if (pinButton) {
-                    pinButton.classList.add('pinned');
-                    const pinText = pinButton.querySelector('span');
-                    if (pinText) pinText.textContent = 'Pinned';
-                }
-            } else {
+
+            if (!sidebar || !main) return;
+
+            // Load collapsed state from localStorage (default to expanded)
+            const savedCollapsed = localStorage.getItem('tlc_sidebar_collapsed');
+            sidebarCollapsed = savedCollapsed === 'true';
+
+            if (sidebarCollapsed) {
                 // Start collapsed
                 sidebar.classList.add('collapsed');
-                sidebar.classList.remove('pinned');
                 main.classList.add('sidebar-collapsed');
-                icon.classList.remove('fa-chevron-left');
-                icon.classList.add('fa-chevron-right');
-                sidebarCollapsed = true;
+                if (icon) {
+                    icon.classList.remove('fa-chevron-left');
+                    icon.classList.add('fa-chevron-right');
+                }
+            } else {
+                // Start expanded
+                sidebar.classList.remove('collapsed');
+                main.classList.remove('sidebar-collapsed');
+                if (icon) {
+                    icon.classList.remove('fa-chevron-right');
+                    icon.classList.add('fa-chevron-left');
+                }
             }
         }
         
