@@ -126,7 +126,7 @@
 
         /* Sidebar Components */
         .sidebar-header {
-            padding: 16px;
+            padding: 18px 16px;
             border-bottom: 0.5px solid rgba(60, 60, 67, 0.29);
         }
 
@@ -151,7 +151,7 @@
             margin: 2px 8px;
             border-radius: 10px;
             cursor: pointer;
-            transition: background 0.15s;
+            transition: all 0.25s cubic-bezier(0.4, 0.0, 0.2, 1);
             color: #000000;
             font-size: 15px;
             font-weight: 400;
@@ -159,10 +159,17 @@
             background: transparent;
             width: calc(100% - 16px);
             text-align: left;
+            position: relative;
         }
 
         .sidebar-item:hover {
             background: rgba(0, 0, 0, 0.04);
+            transform: translateX(2px);
+        }
+
+        .sidebar-item:active {
+            transform: scale(0.98);
+            transition: all 0.1s cubic-bezier(0.4, 0.0, 0.2, 1);
         }
 
         .sidebar-item.active {
@@ -172,6 +179,32 @@
 
         .sidebar-item.active .sidebar-icon-box {
             background: rgba(255,255,255,0.2) !important;
+            box-shadow: 0 2px 8px rgba(0, 122, 255, 0.4);
+        }
+        
+        .sidebar-item.active::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 3px;
+            height: 20px;
+            background: white;
+            border-radius: 0 2px 2px 0;
+            opacity: 0;
+            animation: slideInLeft 0.3s cubic-bezier(0.4, 0.0, 0.2, 1) forwards;
+        }
+        
+        @keyframes slideInLeft {
+            from {
+                opacity: 0;
+                transform: translateY(-50%) translateX(-5px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(-50%) translateX(0);
+            }
         }
 
         .sidebar-icon-box {
@@ -184,6 +217,17 @@
             font-size: 14px;
             color: white;
             flex-shrink: 0;
+            transition: all 0.25s cubic-bezier(0.4, 0.0, 0.2, 1);
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+        }
+        
+        .sidebar-item:hover .sidebar-icon-box {
+            transform: scale(1.08);
+            box-shadow: 0 2px 6px rgba(0, 0, 0, 0.18);
+        }
+        
+        .sidebar-item:active .sidebar-icon-box {
+            transform: scale(0.95);
         }
 
         .sidebar-user {
@@ -1550,7 +1594,7 @@
             <aside class="ipad-sidebar" id="ipad-sidebar">
                 <div class="sidebar-header">
                     <div style="display: flex; align-items: center; gap: 12px; cursor: pointer;" onclick="showPage('home')">
-                        <img src="tlc logo.jpg" alt="TLC Logo" style="height: 40px; width: auto; object-fit: contain;">
+                        <img src="tlc logo transparancy.png" alt="TLC Logo" style="height: 60px; width: auto; object-fit: contain;">
                         <span style="font-weight: 600; font-size: 17px; color: #000000;">TLCGroup</span>
                     </div>
                 </div>
@@ -1623,11 +1667,11 @@
             <!-- Main Content Area (shifts right on iPad) -->
             <div class="ipad-main">
             <!-- iOS Navigation Bar (visible on mobile, simpler on iPad) -->
-            <nav style="position: sticky; top: 0; z-index: 100; background: rgba(249, 249, 249, 0.94); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); border-bottom: 0.5px solid rgba(60,60,67,0.29); padding: clamp(12px, 2vw, 18px) clamp(12px, 2vw, 16px);">
+            <nav style="position: sticky; top: 0; z-index: 100; background: rgba(249, 249, 249, 0.94); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); border-bottom: 0.5px solid rgba(60,60,67,0.29); padding: 18px 16px;">
                 <div style="display: flex; align-items: center; justify-content: space-between; max-width: 1200px; margin: 0 auto;">
                     <!-- Left: Logo (hidden on iPad since sidebar has it) -->
                     <div style="display: flex; align-items: center; gap: 12px; cursor: pointer;" onclick="showPage('home')" class="md:hidden">
-                        <img src="tlc logo.jpg" alt="TLC Logo" style="height: clamp(44px, 6vw, 70px); width: auto; object-fit: contain;">
+                        <img src="tlc logo transparancy.png" alt="TLC Logo" style="height: 60px; width: auto; object-fit: contain;">
                         <span style="font-weight: 600; font-size: 18px; color: #000000;" class="hidden sm:inline">TLCGroup</span>
                     </div>
                     <!-- Page Title (shown on iPad) -->
@@ -4428,4 +4472,3 @@
 
 </body>
 </html>
-
