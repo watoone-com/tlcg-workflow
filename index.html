@@ -112,6 +112,13 @@
             body {
                 padding-bottom: 0 !important;
             }
+            .nav-bpm-title {
+                display: flex !important;
+            }
+        }
+
+        .nav-bpm-title {
+            display: none;
         }
 
         /* Hide sidebar on mobile, show tab bar */
@@ -1663,12 +1670,9 @@
             <!-- iPad Sidebar Navigation -->
             <aside class="ipad-sidebar" id="ipad-sidebar">
                 <div class="sidebar-header">
-                    <div style="display: flex; align-items: center; gap: 12px; cursor: pointer;" onclick="showPage('home')">
+                    <div style="display: flex; align-items: center; gap: 10px; cursor: pointer;" onclick="showPage('home')">
                         <img src="tlc logo transparancy.png" alt="TLC Logo" style="height: 60px; width: auto; object-fit: contain;">
-                        <div style="display: flex; flex-direction: column;">
-                            <span style="font-weight: 600; font-size: 17px; color: #000000;">TLCGroup</span>
-                            <span style="font-weight: 500; font-size: 12px; color: #6e6e73;">Business Process Management (BPM)</span>
-                        </div>
+                        <span style="font-weight: 600; font-size: 17px; color: #000000;">TLCGroup</span>
                     </div>
                 </div>
 
@@ -1742,17 +1746,9 @@
             <!-- iOS Navigation Bar (visible on mobile, simpler on iPad) -->
             <nav style="position: sticky; top: 0; z-index: 100; background: rgba(249, 249, 249, 0.94); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); border-bottom: 0.5px solid rgba(60,60,67,0.29); padding: 18px 16px;">
                 <div style="display: flex; align-items: center; justify-content: space-between; max-width: 1200px; margin: 0 auto;">
-                    <!-- Left: Logo (hidden on iPad since sidebar has it) -->
-                    <div style="display: flex; align-items: center; gap: 12px; cursor: pointer;" onclick="showPage('home')" class="md:hidden">
+                    <!-- Left: Logo + BPM Title -->
+                    <div style="display: flex; align-items: center; gap: 12px; cursor: pointer;" onclick="showPage('home')">
                         <img src="tlc logo transparancy.png" alt="TLC Logo" style="height: 60px; width: auto; object-fit: contain;">
-                        <div style="display: flex; flex-direction: column;" class="hidden sm:flex">
-                            <span style="font-weight: 600; font-size: 18px; color: #000000;">TLCGroup</span>
-                            <span style="font-weight: 500; font-size: 11px; color: #6e6e73;">Business Process Management (BPM)</span>
-                        </div>
-                    </div>
-                    <!-- Logo + BPM Title (shown on iPad/desktop) -->
-                    <div style="display: flex; align-items: center; gap: 12px;" class="hidden md:flex">
-                        <img src="tlc logo transparancy.png" alt="TLC Logo" style="height: 40px; width: auto; object-fit: contain;">
                         <span style="font-weight: 600; font-size: 17px; color: #000000;">Business Process Management (BPM)</span>
                     </div>
 
