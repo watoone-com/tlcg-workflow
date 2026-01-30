@@ -147,14 +147,28 @@ function doGet(e) {
 }
 
 function doPost(e) {
+  console.log('🔴🔴🔴 === doPost called === 🔴🔴🔴');
+  Logger.log('🔴🔴🔴 === doPost called === 🔴🔴🔴');
+  console.log('🔴 Event object e is: ' + (e ? 'defined' : 'UNDEFINED'));
+  Logger.log('🔴 Event object e is: ' + (e ? 'defined' : 'UNDEFINED'));
+  
+  // CRITICAL: Check if e exists
+  if (!e) {
+    console.log('❌❌❌ CRITICAL: Event object is undefined! This is likely a test run from editor.');
+    Logger.log('❌❌❌ CRITICAL: Event object is undefined! This is likely a test run from editor.');
+    return createResponse(false, 'Internal error: No request data received. Please call this as a Web App, not from editor.');
+  }
+  
   // #region agent log
   try {
     UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:149', message: 'doPost entry', data: {hasParameter: !!e.parameter, hasPostData: !!e.postData}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A'})}).catch(() => {});
-  } catch (e) {}
+  } catch (err) {}
   // #endregion
+  
   try {
-    Logger.log('=== doPost called ===');
+    console.log('e.parameter keys: ' + (e.parameter ? Object.keys(e.parameter).join(', ') : 'none'));
     Logger.log('e.parameter keys: ' + (e.parameter ? Object.keys(e.parameter).join(', ') : 'none'));
+    console.log('e.postData exists: ' + (e.postData ? 'yes' : 'no'));
     Logger.log('e.postData exists: ' + (e.postData ? 'yes' : 'no'));
     
     let requestBody;
@@ -183,7 +197,8 @@ function doPost(e) {
         
         requestBody = JSON.parse(e.parameter.data);
         action = requestBody.action;
-        Logger.log('Parsed action from data field: ' + action);
+        console.log('🟢🟢🟢 Parsed action from data field: ' + action);
+        Logger.log('🟢🟢🟢 Parsed action from data field: ' + action);
       } catch (parseError) {
         Logger.log('❌ JSON Parse Error: ' + parseError.toString());
         Logger.log('❌ Data length: ' + (e.parameter.data ? e.parameter.data.length : 'N/A'));
@@ -230,22 +245,6 @@ function doPost(e) {
       } else {
         return createResponse(false, 'Lỗi: Request không hợp lệ - thiếu dữ liệu');
       }
-      Logger.log('e.parameter.companyName: ' + (e.parameter.companyName || 'not found'));
-      Logger.log('e.parameter.companyName type: ' + (typeof e.parameter.companyName));
-    } else if (e.postData && e.postData.contents) {
-      try {
-        requestBody = JSON.parse(e.postData.contents);
-        action = requestBody.action;
-        Logger.log('Parsed from e.postData.contents, action: ' + action);
-      } catch (parseError) {
-        Logger.log('❌ Error parsing e.postData.contents: ' + parseError.toString());
-        return createResponse(false, 'Lỗi parse dữ liệu từ postData: ' + parseError.message);
-      }
-    } else {
-      Logger.log('⚠️ WARNING: No data found in e.parameter or e.postData');
-      Logger.log('e.parameter: ' + JSON.stringify(e.parameter));
-      Logger.log('e.postData: ' + JSON.stringify(e.postData));
-      return createResponse(false, 'Không tìm thấy dữ liệu trong request');
     }
 
     if (!action) {
@@ -367,8 +366,12 @@ function doPost(e) {
       UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:325', message: 'Error in doPost', data: {error: error.toString(), message: error.message}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'G'})}).catch(() => {});
     } catch (e) {}
     // #endregion
-    Logger.log('❌ CRITICAL ERROR in doPost: ' + error.toString());
-    Logger.log('❌ Error stack: ' + error.stack);
+    console.log('❌❌❌ CRITICAL ERROR in doPost: ' + error.toString());
+    Logger.log('❌❌❌ CRITICAL ERROR in doPost: ' + error.toString());
+    console.log('❌❌❌ Error stack: ' + error.stack);
+    Logger.log('❌❌❌ Error stack: ' + error.stack);
+    console.log('❌❌❌ Error message: ' + error.message);
+    Logger.log('❌❌❌ Error message: ' + error.message);
     // Always return JSON, never HTML
     return createResponse(false, 'Lỗi Server: ' + error.message);
   }
@@ -441,13 +444,16 @@ function getVoucherFromHistory(voucherNumber) {
     const data = sheet.getDataRange().getValues();
     
     // Find FIRST entry (Submit row) to get base meta with companyApprovers
+    // Column structure: 0=VoucherNumber, 1=VoucherType, 2=Company, 3=Employee, 4=Amount,
+    //                   5=Status, 6=Action, 7=By, 8=Note, 9=Attachments,
+    //                   10=RequestorEmail, 11=ApproverEmail, 12=Timestamp
     let baseVoucher = null;
     for (let i = 1; i < data.length; i++) {
       if (data[i][0] === voucherNumber) {
-        const note = data[i][7] || '';
+        const note = data[i][8] || '';  // Index 8 = Note column (contains Meta JSON)
         const metaIdx = note.indexOf('Meta: ');
         const metaStr = metaIdx >= 0 ? note.substring(metaIdx + 6).trim() : null;
-        
+
         baseVoucher = {
           row: i + 1,
           voucherNumber: data[i][0],
@@ -458,9 +464,9 @@ function getVoucherFromHistory(voucherNumber) {
           status: data[i][5],
           action: data[i][6],
           note: note,
-          timestamp: data[i][8],
-          requestorEmail: data[i][9],
-          approverEmail: data[i][10],
+          timestamp: data[i][12],       // Index 12 = Timestamp
+          requestorEmail: data[i][10],  // Index 10 = RequestorEmail
+          approverEmail: data[i][11],   // Index 11 = ApproverEmail
           meta: metaStr || null
         };
         break; // Found first row, stop
@@ -482,34 +488,50 @@ function getVoucherFromHistory(voucherNumber) {
           for (let i = 1; i < data.length; i++) {
             if (data[i][0] === voucherNumber) {
               const rowAction = data[i][6] || '';
-              const rowNote = data[i][7] || '';
-              
+              const rowNote = data[i][8] || '';  // Index 8 = Note column
+
               // Check if this row is an approval
               if (rowAction.includes('Approved')) {
                 // Extract approvedBy email from Meta in the note
                 let rowApproverEmail = null;
+                let rowMeta = null;
                 const rowMetaIdx = rowNote.indexOf('Meta: ');
                 if (rowMetaIdx >= 0) {
                   try {
                     const rowMetaStr = rowNote.substring(rowMetaIdx + 6).trim();
-                    const rowMeta = JSON.parse(rowMetaStr);
+                    rowMeta = JSON.parse(rowMetaStr);
                     rowApproverEmail = rowMeta.approvedBy || null;
                     Logger.log(`Found approval row - approvedBy: ${rowApproverEmail}`);
                   } catch (e) {
                     Logger.log(`Failed to parse meta from approval row: ${e.toString()}`);
                   }
                 }
-                
+
                 // If we found an approver email, match it to an approver role
                 if (rowApproverEmail) {
                   for (const role in meta.companyApprovers.approvers) {
                     const approver = meta.companyApprovers.approvers[role];
                     if (approver.email === rowApproverEmail && approver.status !== 'approved') {
                       approver.status = 'approved';
-                      approver.approvedAt = data[i][8]; // timestamp
+                      approver.approvedAt = data[i][12]; // Index 12 = Timestamp
                       approvalCount++;
                       Logger.log(`✅ Updated ${role} (${approver.name}) approval status from history scan`);
                       break;
+                    }
+                  }
+                }
+                // ✅ FALLBACK: If approvedBy not found, check rowMeta.companyApprovers directly
+                // This handles vouchers approved before the fix
+                else if (rowMeta && rowMeta.companyApprovers && rowMeta.companyApprovers.approvers) {
+                  const rowApprovers = rowMeta.companyApprovers.approvers;
+                  for (const role in rowApprovers) {
+                    if (rowApprovers[role].status === 'approved' &&
+                        meta.companyApprovers.approvers[role] &&
+                        meta.companyApprovers.approvers[role].status !== 'approved') {
+                      meta.companyApprovers.approvers[role].status = 'approved';
+                      meta.companyApprovers.approvers[role].approvedAt = rowApprovers[role].approvedAt || data[i][12];
+                      approvalCount++;
+                      Logger.log(`✅ Updated ${role} approval status from rowMeta.companyApprovers (fallback)`);
                     }
                   }
                 }
@@ -1025,10 +1047,12 @@ function handleApproveVoucher(requestBody) {
       companyApprovers.displayStatus = 'Đã duyệt';
       companyApprovers.currentApprover = null;
       companyApprovers.fullyApprovedAt = new Date().toISOString();
-      
+
       // Update meta
       meta.companyApprovers = companyApprovers;
-      
+      // ✅ CRITICAL: Add approvedBy at root level for history scanning
+      meta.approvedBy = approverEmail;
+
       // Append final approval entry
       appendHistory_({
         voucherNumber: voucherNumber,
@@ -1056,10 +1080,12 @@ function handleApproveVoucher(requestBody) {
       const nextApproverRole = sequence[nextIndex];
       companyApprovers.currentApprover = nextApproverRole;
       companyApprovers.overallStatus = 'Partially Approved';
-      
+
       // Update meta
       meta.companyApprovers = companyApprovers;
-      
+      // ✅ CRITICAL: Add approvedBy at root level for history scanning
+      meta.approvedBy = approverEmail;
+
       // Append partial approval entry
       appendHistory_({
         voucherNumber: voucherNumber,
@@ -1100,8 +1126,12 @@ function handleApproveVoucher(requestBody) {
     }
     
   } catch (error) {
-    Logger.log('❌ Error approving voucher: ' + error.toString());
-    Logger.log('❌ Error stack: ' + error.stack);
+    console.log('❌❌❌ Error approving voucher: ' + error.toString());
+    Logger.log('❌❌❌ Error approving voucher: ' + error.toString());
+    console.log('❌❌❌ Error stack: ' + error.stack);
+    Logger.log('❌❌❌ Error stack: ' + error.stack);
+    console.log('❌❌❌ Error at line: ' + (error.lineNumber || 'unknown'));
+    Logger.log('❌❌❌ Error at line: ' + (error.lineNumber || 'unknown'));
     return createResponse(false, 'Lỗi: ' + error.message);
   }
 }

@@ -9,8 +9,8 @@ export default async function handler(req, res) {
   // ⚠️ IMPORTANT: This is a SERVER-SIDE variable (no prefix needed for Vercel Serverless Functions)
   // If undefined, log warning and use fallback
   // PHIEU_THU_CHI_BACKEND - For voucher operations (getVoucherSummary, getVoucherHistory, approveVoucher, rejectVoucher, sendApprovalEmail)
-  const GAS_URL = process.env.GOOGLE_APPS_SCRIPT_URL || 
-    'https://script.google.com/macros/s/AKfycbyltkunEjTHhFSRH6evpwDAxZk74QouLTG-FSlCOQtLJGts8guLhFYuBq9n1h0fJvyd/exec';
+  const GAS_URL = process.env.GOOGLE_APPS_SCRIPT_URL ||
+    'https://script.google.com/macros/s/AKfycbzFRZd09TYfyHRcQ0_BxjnvOjRiHQQNXO5PgI0B7zoxWpFfySFuU1EIKDKVj2nk2FOB/exec';
   
   // Log warning if using fallback (environment variable not set)
   if (!process.env.GOOGLE_APPS_SCRIPT_URL) {
