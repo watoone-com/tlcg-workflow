@@ -1225,13 +1225,33 @@ function sendApprovalEmailToNextApprover(voucher, nextApprover, approverRole, me
     }
     
     const baseUrl = 'https://workflow.egg-ventures.com';
+
+    // Get voucher details from existingVoucher or voucher object
+    const voucherType = voucher.voucherType || existingVoucher.voucherType || '';
+    const companyName = voucher.company || existingVoucher.company || '';
+    const employeeName = voucher.employee || existingVoucher.employee || '';
+    const voucherAmount = voucher.amount || existingVoucher.amount || '';
+    const requesterEmail = voucher.requestorEmail || existingVoucher.requestorEmail || '';
+
+    // Build approval URL with all required parameters
     const approveUrl = `${baseUrl}/approve_voucher.html?` +
-      `voucherNumber=${voucherNumber}&` +
+      `voucherNumber=${encodeURIComponent(voucherNumber)}&` +
+      `voucherType=${encodeURIComponent(voucherType)}&` +
+      `company=${encodeURIComponent(companyName)}&` +
+      `employee=${encodeURIComponent(employeeName)}&` +
+      `amount=${encodeURIComponent(voucherAmount)}&` +
+      `requestorEmail=${encodeURIComponent(requesterEmail)}&` +
       `approverEmail=${encodeURIComponent(nextApprover.email)}&` +
       `approverRole=${approverRole}`;
-    
+
+    // Build reject URL with all required parameters
     const rejectUrl = `${baseUrl}/reject_voucher.html?` +
-      `voucherNumber=${voucherNumber}&` +
+      `voucherNumber=${encodeURIComponent(voucherNumber)}&` +
+      `voucherType=${encodeURIComponent(voucherType)}&` +
+      `company=${encodeURIComponent(companyName)}&` +
+      `employee=${encodeURIComponent(employeeName)}&` +
+      `amount=${encodeURIComponent(voucherAmount)}&` +
+      `requestorEmail=${encodeURIComponent(requesterEmail)}&` +
       `approverEmail=${encodeURIComponent(nextApprover.email)}&` +
       `approverRole=${approverRole}`;
     
