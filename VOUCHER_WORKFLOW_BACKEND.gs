@@ -202,6 +202,34 @@ function doPost(e) {
       Logger.log('Action type: ' + typeof action);
       Logger.log('Action length: ' + action.length);
       Logger.log('e.parameter keys: ' + Object.keys(e.parameter).join(', '));
+    } else {
+      // FALLBACK: No data or action field found
+      Logger.log('⚠️⚠️⚠️ WARNING: No data or action field in request! ⚠️⚠️⚠️');
+      Logger.log('⚠️ e.parameter exists: ' + !!e.parameter);
+      Logger.log('⚠️ e.parameter keys: ' + (e.parameter ? Object.keys(e.parameter).join(', ') : 'N/A'));
+      Logger.log('⚠️ e.parameter.data exists: ' + !!(e.parameter && e.parameter.data));
+      Logger.log('⚠️ e.parameter.action exists: ' + !!(e.parameter && e.parameter.action));
+      Logger.log('⚠️ e.postData exists: ' + !!e.postData);
+      if (e.postData) {
+        Logger.log('⚠️ e.postData.type: ' + e.postData.type);
+        Logger.log('⚠️ e.postData.contents (first 200 chars): ' + (e.postData.contents ? e.postData.contents.substring(0, 200) : 'N/A'));
+      }
+      
+      // Try to extract from postData as last resort
+      if (e.postData && e.postData.contents) {
+        try {
+          const postDataObj = JSON.parse(e.postData.contents);
+          Logger.log('✅ Successfully parsed postData.contents');
+          requestBody = postDataObj;
+          action = postDataObj.action;
+          Logger.log('✅ Action from postData: ' + action);
+        } catch (postError) {
+          Logger.log('❌ Failed to parse postData.contents: ' + postError.toString());
+          return createResponse(false, 'Lỗi: Không tìm thấy dữ liệu yêu cầu (no data/action field)');
+        }
+      } else {
+        return createResponse(false, 'Lỗi: Request không hợp lệ - thiếu dữ liệu');
+      }
       Logger.log('e.parameter.companyName: ' + (e.parameter.companyName || 'not found'));
       Logger.log('e.parameter.companyName type: ' + (typeof e.parameter.companyName));
     } else if (e.postData && e.postData.contents) {
@@ -871,10 +899,18 @@ function handleSendEmail(requestBody) {
  * Order: accountant → legalRep → treasurer
  */
 function handleApproveVoucher(requestBody) {
+  console.log('🟢 === APPROVE VOUCHER START ===');
+  Logger.log('🟢 === APPROVE VOUCHER START ===');
+  
   try {
     const v = requestBody.voucher || {};
     const voucherNumber = v.voucherNumber || '';
     const approverEmail = v.approverEmail || '';
+    
+    console.log('🟢 Voucher Number: ' + voucherNumber);
+    console.log('🟢 Approver Email: ' + approverEmail);
+    Logger.log('🟢 Voucher Number: ' + voucherNumber);
+    Logger.log('🟢 Approver Email: ' + approverEmail);
     
     if (!voucherNumber) {
       return createResponse(false, 'Thiếu số phiếu');
@@ -1041,8 +1077,18 @@ function handleApproveVoucher(requestBody) {
       });
       
       // Send email to next approver in sequence
+      Logger.log('🔍 Debug - nextApproverRole: ' + nextApproverRole);
+      Logger.log('🔍 Debug - companyApprovers.approvers: ' + JSON.stringify(companyApprovers.approvers));
+      Logger.log('🔍 Debug - sequence: ' + JSON.stringify(sequence));
+      Logger.log('🔍 Debug - nextIndex: ' + nextIndex);
+      
       const nextApprover = companyApprovers.approvers[nextApproverRole];
-      sendApprovalEmailToNextApprover(v, nextApprover, nextApproverRole, companyApprovers, voucherNumber, existingVoucher);
+      if (nextApprover && nextApprover.email) {
+        sendApprovalEmailToNextApprover(v, nextApprover, nextApproverRole, companyApprovers, voucherNumber, existingVoucher);
+      } else {
+        Logger.log('⚠️ Next approver not found or missing email for role: ' + nextApproverRole);
+        Logger.log('⚠️ Available approvers: ' + Object.keys(companyApprovers.approvers || {}).join(', '));
+      }
       
       // Send progress email to requester
       sendProgressEmail(v, approvalCount, companyApprovers, voucherNumber, existingVoucher);
@@ -1137,6 +1183,14 @@ function handleApproveVoucherLegacy(requestBody, existingVoucher) {
  */
 function sendApprovalEmailToNextApprover(voucher, nextApprover, approverRole, meta, voucherNumber, existingVoucher) {
   try {
+    // Safety check
+    if (!nextApprover || !nextApprover.email) {
+      Logger.log('⚠️ Cannot send email: nextApprover or email is missing');
+      Logger.log('⚠️ nextApprover:', nextApprover);
+      Logger.log('⚠️ approverRole:', approverRole);
+      return;
+    }
+    
     const baseUrl = 'https://workflow.egg-ventures.com';
     const approveUrl = `${baseUrl}/approve_voucher.html?` +
       `voucherNumber=${voucherNumber}&` +
