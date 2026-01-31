@@ -1416,6 +1416,7 @@
         }
 
         .voucher-icon.pending { background: #fef3c7; color: #d97706; }
+        .voucher-icon.in-progress { background: #dbeafe; color: #2563eb; }
         .voucher-icon.approved { background: #d1fae5; color: #059669; }
         .voucher-icon.rejected { background: #fee2e2; color: #dc2626; }
 
@@ -1453,6 +1454,7 @@
         }
 
         .voucher-status.pending { background: #fef3c7; color: #92400e; }
+        .voucher-status.in-progress { background: #dbeafe; color: #1e40af; }
         .voucher-status.approved { background: #d1fae5; color: #065f46; }
         .voucher-status.rejected { background: #fee2e2; color: #991b1b; }
 
@@ -3987,9 +3989,38 @@
                             </div>
                         `;
                     } else {
-                        // ✅ PHASE 2: renderVoucherItem is now async, so we need to handle promises
-                        Promise.all(vouchers.map(v => renderVoucherItem(v))).then(htmlItems => {
-                            voucherList.innerHTML = htmlItems.join('');
+                        // Step 1: Render vouchers with placeholder status (like index.html)
+                        voucherList.innerHTML = vouchers.map((voucher, index) => {
+                            const voucherId = `voucher-${voucher.voucherNumber || index}`;
+                            const amount = typeof voucher.amount === 'number'
+                                ? voucher.amount.toLocaleString('vi-VN') + ' ₫'
+                                : voucher.amount || '0 ₫';
+                            const formattedTimestamp = formatTimestamp(voucher.timestamp);
+
+                            return `
+                                <div id="${voucherId}" class="voucher-item" onclick="openVoucherDetail('${voucher.voucherNumber}')">
+                                    <div class="voucher-icon pending">
+                                        <i class="fas fa-clock"></i>
+                                    </div>
+                                    <div class="voucher-info">
+                                        <div class="voucher-title">${voucher.voucherNumber || 'N/A'} - ${voucher.voucherType || ''}</div>
+                                        <div class="voucher-meta">${voucher.employee || ''} • ${voucher.company || ''} • ${formattedTimestamp}</div>
+                                    </div>
+                                    <div class="voucher-amount">${amount}</div>
+                                    <div class="voucher-status-container">
+                                        <span class="voucher-status pending">
+                                            <i class="fas fa-circle mr-1"></i>
+                                            <span class="status-text">Đang tải...</span>
+                                        </span>
+                                        <p class="voucher-approval-detail">Đang tải thông tin...</p>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('');
+
+                        // Step 2: Load detailed approval status for each voucher (like index.html)
+                        vouchers.forEach((voucher, index) => {
+                            loadVoucherApprovalStatus(voucher, `voucher-${voucher.voucherNumber || index}`);
                         });
                     }
                 } else {
@@ -4020,16 +4051,10 @@
             }
         }
         
-        // Render a single voucher item
-        async function renderVoucherItem(voucher) {
-            let statusClass = (voucher.status || 'Pending').toLowerCase();
-            
-            // ✅ PHASE 2: Load approval status to get approver information
-            let displayStatus = '';
-            let statusBadgeHtml = '';
-            let approverName = '';
-            
-            // Load approval status for all statuses to get approver information
+        /**
+         * Load and display approval status for a voucher (same approach as index.html)
+         */
+        async function loadVoucherApprovalStatus(voucher, voucherElementId) {
             try {
                 const statusResponse = await fetch('/api/voucher', {
                     method: 'POST',
@@ -4040,207 +4065,87 @@
                     })
                 });
                 const statusResult = await statusResponse.json();
-                console.log('📊 Approval status for', voucher.voucherNumber, ':', statusResult);
-                
+
+                console.log('🔍 Approval Status API Response for', voucher.voucherNumber, ':', statusResult);
+
+                const voucherElement = document.getElementById(voucherElementId);
+                if (!voucherElement) return;
+
+                const statusBadge = voucherElement.querySelector('.voucher-status');
+                const statusTextSpan = voucherElement.querySelector('.status-text');
+                const approvalDetail = voucherElement.querySelector('.voucher-approval-detail');
+                const voucherIcon = voucherElement.querySelector('.voucher-icon');
+
                 if (statusResult.success && statusResult.data) {
                     const statusData = statusResult.data;
-                    displayStatus = statusData.displayStatus || '';
-                    const progress = statusData.approvalProgress || '0/3';
-                    
-                    // Get approver name: current approver (if pending) or last approved approver
-                    if (statusData.currentApproverName) {
-                        // Show current approver (who needs to approve next)
-                        approverName = statusData.currentApproverName;
-                        console.log('✅ Found current approver:', approverName);
-                    } else if (statusData.currentApprover && statusData.approvers) {
-                        // If currentApprover is set but currentApproverName is missing, get it from approvers
-                        const approver = statusData.approvers[statusData.currentApprover];
-                        if (approver && approver.name) {
-                            approverName = approver.name;
-                            console.log('✅ Found approver from currentApprover role:', approverName);
+                    const formattedStatus = formatApprovalStatusText(statusData);
+                    console.log('✅ Formatted status:', formattedStatus.status, 'detail:', formattedStatus.detail);
+
+                    const badgeText = formattedStatus.status;
+
+                    // Determine status class and icon based on status text
+                    let statusClass = 'pending';
+                    let statusIcon = 'fa-clock';
+
+                    if (badgeText.includes('Đã Duyệt')) {
+                        statusClass = 'approved';
+                        statusIcon = 'fa-check-circle';
+                    } else if (badgeText.includes('Đang Duyệt')) {
+                        statusClass = 'in-progress';
+                        statusIcon = 'fa-clock';
+                    } else if (badgeText.includes('Chờ Duyệt')) {
+                        statusClass = 'pending';
+                        statusIcon = 'fa-clock';
+                    } else if (badgeText.includes('Từ chối')) {
+                        statusClass = 'rejected';
+                        statusIcon = 'fa-times-circle';
+                    }
+
+                    // Update status badge
+                    if (statusBadge) {
+                        statusBadge.className = `voucher-status ${statusClass}`;
+                        if (statusTextSpan) {
+                            statusTextSpan.innerHTML = `<i class="fas ${statusIcon} mr-1"></i>${badgeText}`;
                         }
-                    } else if (statusData.approvers) {
-                        // If no current approver, check progress to determine which approver to show
-                        const approvers = statusData.approvers;
-                        const progressNum = parseInt(progress.split('/')[0]) || 0;
-                        
-                        console.log('🔍 Checking approvers object:', approvers);
-                        console.log('🔍 Progress:', progressNum);
-                        
-                        if (progressNum === 0) {
-                            // No one has approved yet, show first approver (accountant)
-                            if (approvers.accountant && approvers.accountant.name) {
-                                approverName = approvers.accountant.name;
-                                console.log('✅ Found first approver (accountant):', approverName);
-                            } else {
-                                // Try to get any approver name if accountant is missing
-                                const sequence = ['accountant', 'legalRep', 'treasurer'];
-                                for (const role of sequence) {
-                                    if (approvers[role] && approvers[role].name) {
-                                        approverName = approvers[role].name;
-                                        console.log('✅ Found approver from', role, ':', approverName);
-                                        break;
-                                    }
-                                }
-                            }
+                    }
+
+                    // Update approval detail
+                    if (approvalDetail) {
+                        if (formattedStatus.detail) {
+                            approvalDetail.textContent = formattedStatus.detail;
                         } else {
-                            // Some have approved, find the last approved approver
-                            const sequence = ['treasurer', 'legalRep', 'accountant']; // Check in reverse order
-                            for (const role of sequence) {
-                                if (approvers[role] && approvers[role].status === 'approved' && approvers[role].name) {
-                                    approverName = approvers[role].name;
-                                    console.log('✅ Found last approved approver:', approverName, 'from role:', role);
-                                    break;
-                                }
-                            }
-                        }
-                    } else {
-                        console.log('⚠️ No approvers object in statusData');
-                    }
-                    
-                    // Fallback: If no approver name found and approvers object is empty, try to get from company
-                    if (!approverName && (!statusData.approvers || Object.keys(statusData.approvers).length === 0)) {
-                        const progressNum = parseInt(progress.split('/')[0]) || 0;
-                        if (progressNum === 0 && voucher.company) {
-                            // Try to get company approvers as fallback
-                            try {
-                                console.log('🔄 Fetching company approvers for:', voucher.company);
-                                const companyResponse = await fetch('/api/voucher', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                                    body: new URLSearchParams({
-                                        action: 'getCompanyApprovers',
-                                        companyName: voucher.company
-                                    })
-                                });
-                                const companyResult = await companyResponse.json();
-                                if (companyResult.success && companyResult.data && companyResult.data.approvers) {
-                                    const companyApprovers = companyResult.data.approvers;
-                                    // Get first approver (accountant)
-                                    if (companyApprovers.accountant && companyApprovers.accountant.name) {
-                                        approverName = companyApprovers.accountant.name;
-                                        console.log('✅ Found approver from company data (accountant):', approverName);
-                                        
-                                        // ✅ IMPORTANT: Update statusData with the found accountant name
-                                        // so formatApprovalStatusText can use it
-                                        if (!statusData.approvers) {
-                                            statusData.approvers = {};
-                                        }
-                                        if (!statusData.approvers.accountant) {
-                                            statusData.approvers.accountant = {};
-                                        }
-                                        statusData.approvers.accountant.name = approverName;
-                                        statusData.approvers.accountant.email = companyApprovers.accountant.email || '';
-                                        statusData.approvers.accountant.status = 'pending';
-                                        
-                                        // Also update currentApproverName as fallback
-                                        if (!statusData.currentApproverName) {
-                                            statusData.currentApproverName = approverName;
-                                        }
-                                        // Ensure currentApprover is set to 'accountant' for 0/3
-                                        if (!statusData.currentApprover && statusData.approvalProgress === '0/3') {
-                                            statusData.currentApprover = 'accountant';
-                                        }
-                                        
-                                        console.log('✅ Updated statusData with accountant name:', approverName);
-                                    }
-                                }
-                            } catch (e) {
-                                console.warn('⚠️ Could not fetch company approvers:', e);
-                            }
+                            approvalDetail.textContent = '';
                         }
                     }
-                    
-                    // Format status text with approver names (approved + next)
-                    const statusResult = formatApprovalStatusText(statusData);
-                    displayStatus = statusResult.status;
-                    // Add the detail (e.g., "Duyệt Bởi: Nguyễn Thị Nhanh (1/3)")
-                    if (statusResult.detail) {
-                        statusBadgeHtml = `<div class="voucher-approval-detail">${statusResult.detail}</div>`;
+
+                    // Update voucher icon
+                    if (voucherIcon) {
+                        voucherIcon.className = `voucher-icon ${statusClass}`;
+                        voucherIcon.innerHTML = `<i class="fas ${statusIcon}"></i>`;
                     }
-                    console.log('✅ Formatted status:', displayStatus, 'detail:', statusResult.detail);
-                    console.log('🔍 statusData.approvers:', statusData.approvers);
                 } else {
-                    console.warn('⚠️ Approval status API returned unsuccessful or no data:', statusResult);
-                    // Create fallback statusData using voucher's existing data
-                    const fallbackStatusData = {
-                        displayStatus: statusClass === 'pending' ? 'Chờ duyệt' : (voucher.status || 'Chờ duyệt'),
-                        approvalProgress: voucher.approvalProgress || '0/3',
-                        approvers: {},
-                        currentApprover: null
-                    };
-                    displayStatus = formatApprovalStatusText(fallbackStatusData).status;
+                    // API failed - show fallback
+                    if (statusTextSpan) {
+                        statusTextSpan.innerHTML = `<i class="fas fa-clock mr-1"></i>Chờ Duyệt (0/3)`;
+                    }
+                    if (approvalDetail) {
+                        approvalDetail.textContent = 'Không thể tải thông tin';
+                    }
                 }
-            } catch (e) {
-                // Log error for debugging
-                console.warn('❌ Could not load approval status for', voucher.voucherNumber, ':', e);
-                // Create fallback statusData using voucher's existing data
-                const fallbackStatusData = {
-                    displayStatus: statusClass === 'pending' ? 'Chờ duyệt' : (voucher.status || 'Chờ duyệt'),
-                    approvalProgress: voucher.approvalProgress || '0/3',
-                    approvers: {},
-                    currentApprover: null
-                };
-                displayStatus = formatApprovalStatusText(fallbackStatusData).status;
-            }
-            
-            // Final fallback if displayStatus is still empty
-            let statusText = displayStatus;
-            if (!statusText || statusText.trim() === '') {
-                const fallbackStatus = {
-                    'pending': 'Chờ duyệt',
-                    'approved': 'Đã duyệt',
-                    'rejected': 'Từ chối',
-                    'partially approved': 'Đang duyệt'
-                }[statusClass] || voucher.status;
-
-                // For pending status, always add (0/3) if not already present
-                if (statusClass === 'pending' && !fallbackStatus.includes('(')) {
-                    statusText = `${fallbackStatus} (0/3)`;
-                } else {
-                    statusText = fallbackStatus;
+            } catch (error) {
+                console.error('❌ Error loading approval status for', voucher.voucherNumber, ':', error);
+                const voucherElement = document.getElementById(voucherElementId);
+                if (voucherElement) {
+                    const statusTextSpan = voucherElement.querySelector('.status-text');
+                    const approvalDetail = voucherElement.querySelector('.voucher-approval-detail');
+                    if (statusTextSpan) {
+                        statusTextSpan.innerHTML = `<i class="fas fa-clock mr-1"></i>Chờ Duyệt (0/3)`;
+                    }
+                    if (approvalDetail) {
+                        approvalDetail.textContent = 'Lỗi kết nối';
+                    }
                 }
             }
-
-            // Update statusClass based on formatted status text
-            if (statusText.includes('Đã Duyệt')) {
-                statusClass = 'approved';
-            } else if (statusText.includes('Chờ Duyệt')) {
-                statusClass = 'pending';
-            } else if (statusText.includes('Từ chối')) {
-                statusClass = 'rejected';
-            }
-            
-            const statusIcon = {
-                'pending': '<i class="fas fa-clock"></i>',
-                'approved': '<i class="fas fa-check"></i>',
-                'rejected': '<i class="fas fa-times"></i>',
-                'partially approved': '<i class="fas fa-clock"></i>'
-            }[statusClass] || '<i class="fas fa-file"></i>';
-            
-            const amount = typeof voucher.amount === 'number' 
-                ? voucher.amount.toLocaleString('vi-VN') + ' ₫'
-                : voucher.amount || '0 ₫';
-            
-            // Format timestamp: "2026-01-27 (18:22)"
-            const formattedTimestamp = formatTimestamp(voucher.timestamp);
-            
-            return `
-                <div class="voucher-item" onclick="openVoucherDetail('${voucher.voucherNumber}')">
-                    <div class="voucher-icon ${statusClass}">
-                        ${statusIcon}
-                    </div>
-                    <div class="voucher-info">
-                        <div class="voucher-title">${voucher.voucherNumber || 'N/A'} - ${voucher.voucherType || ''}</div>
-                        <div class="voucher-meta">${voucher.employee || ''} • ${voucher.company || ''} • ${formattedTimestamp}</div>
-                    </div>
-                    <div class="voucher-amount">${amount}</div>
-                    <div class="voucher-status-container">
-                        <span class="voucher-status ${statusClass}">${statusText}</span>
-                        ${statusBadgeHtml}
-                    </div>
-                </div>
-            `;
         }
         
         // Open voucher detail modal
