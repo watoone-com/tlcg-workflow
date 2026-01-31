@@ -1449,13 +1449,27 @@
             border-radius: 20px;
             font-size: 0.75rem;
             font-weight: 600;
-            margin-left: 1rem;
             white-space: nowrap;
         }
 
         .voucher-status.pending { background: #fef3c7; color: #92400e; }
         .voucher-status.approved { background: #d1fae5; color: #065f46; }
         .voucher-status.rejected { background: #fee2e2; color: #991b1b; }
+
+        .voucher-status-container {
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 4px;
+            margin-left: 1rem;
+        }
+
+        .voucher-approval-detail {
+            font-size: 0.7rem;
+            font-weight: 500;
+            color: #64748b;
+            white-space: nowrap;
+        }
 
         .no-vouchers {
             padding: 3rem;
@@ -4140,6 +4154,10 @@
                     // Format status text with approver names (approved + next)
                     const statusResult = formatApprovalStatusText(statusData);
                     displayStatus = statusResult.status;
+                    // Add the detail (e.g., "Duyệt Bởi: Nguyễn Thị Nhanh (1/3)")
+                    if (statusResult.detail) {
+                        statusBadgeHtml = `<div class="voucher-approval-detail">${statusResult.detail}</div>`;
+                    }
                     console.log('✅ Formatted status:', displayStatus, 'detail:', statusResult.detail);
                     console.log('🔍 statusData.approvers:', statusData.approvers);
                 } else {
@@ -4217,9 +4235,10 @@
                         <div class="voucher-meta">${voucher.employee || ''} • ${voucher.company || ''} • ${formattedTimestamp}</div>
                     </div>
                     <div class="voucher-amount">${amount}</div>
-                    <span class="voucher-status ${statusClass}">
-                        ${statusText}${statusBadgeHtml}
-                    </span>
+                    <div class="voucher-status-container">
+                        <span class="voucher-status ${statusClass}">${statusText}</span>
+                        ${statusBadgeHtml}
+                    </div>
                 </div>
             `;
         }
