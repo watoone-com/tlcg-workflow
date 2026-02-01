@@ -73,7 +73,9 @@
         .ipad-sidebar.collapsed { width: 72px; }
         .ipad-sidebar.collapsed .sidebar-header > div > span,
         .ipad-sidebar.collapsed .sidebar-section-title,
-        .ipad-sidebar.collapsed .sidebar-item > span { display: none; }
+        .ipad-sidebar.collapsed .sidebar-item > span,
+        .ipad-sidebar.collapsed .sidebar-signout-text,
+        .ipad-sidebar.collapsed .sidebar-user-info { display: none; }
         .ipad-sidebar.collapsed .sidebar-item {
             justify-content: center;
             padding: 12px;
@@ -1417,8 +1419,9 @@
                         <p id="sidebar-user-role" style="font-size: 13px; color: #6e6e73; margin: 0;"></p>
                     </div>
                 </div>
-                <button class="sidebar-signout-btn" onclick="handleLogout()" style="width: 100%; margin-top: 12px; padding: 8px; background: rgba(255,59,48,0.1); color: #FF3B30; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer;">
-                    Sign Out
+                <button class="sidebar-signout-btn" onclick="handleLogout()" style="width: 100%; margin-top: 12px; padding: 8px; background: rgba(255,59,48,0.1); color: #FF3B30; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px;">
+                    <i class="fas fa-sign-out-alt"></i>
+                    <span class="sidebar-signout-text">Sign Out</span>
                 </button>
             </div>
         </div>
@@ -1467,7 +1470,7 @@
 
         <div class="flex-1 py-6" style="background: #F2F2F7;">
         <div class="container form-section-container" id="voucher-form">
-        <h1 id="form-title" style="font-weight: 700;">ĐỀ NGHỊ THANH TOÁN</h1>
+        <h1 id="form-title" style="font-weight: 700; font-size: 28px; text-align: center;">ĐỀ NGHỊ THANH TOÁN</h1>
         
         <!-- Progress Stepper -->
         <div class="progress-stepper">
