@@ -4656,8 +4656,57 @@
             }
         }
 
-        // Initialize sidebar on page load
-        document.addEventListener('DOMContentLoaded', initSidebar);
+        // Restore user login state from localStorage
+        function initUserState() {
+            try {
+                const storedUser = localStorage.getItem('tlc_current_user');
+                if (storedUser) {
+                    const currentUser = JSON.parse(storedUser);
+
+                    // Update sidebar user section
+                    const sidebarLoggedOut = document.getElementById('sidebar-logged-out');
+                    const sidebarLoggedIn = document.getElementById('sidebar-logged-in');
+                    const sidebarAvatar = document.getElementById('sidebar-avatar');
+                    const sidebarUserName = document.getElementById('sidebar-user-name');
+                    const sidebarUserRole = document.getElementById('sidebar-user-role');
+
+                    if (sidebarLoggedOut) sidebarLoggedOut.style.display = 'none';
+                    if (sidebarLoggedIn) sidebarLoggedIn.style.display = 'block';
+                    if (sidebarAvatar) {
+                        sidebarAvatar.src = currentUser.profilePhoto ||
+                            `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.name || 'U')}&background=007AFF&color=fff`;
+                    }
+                    if (sidebarUserName) sidebarUserName.textContent = currentUser.name || 'User';
+                    if (sidebarUserRole) sidebarUserRole.textContent = currentUser.role || currentUser.department || '';
+
+                    // Update header avatar
+                    const navLoginBtn = document.getElementById('nav-login-btn');
+                    const navUserAvatar = document.getElementById('nav-user-avatar');
+                    const navAvatar = document.getElementById('nav-avatar');
+
+                    if (navLoginBtn) navLoginBtn.classList.add('hidden');
+                    if (navUserAvatar) navUserAvatar.classList.remove('hidden');
+                    if (navAvatar) {
+                        navAvatar.src = currentUser.profilePhoto ||
+                            `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.name || 'U')}&background=007AFF&color=fff`;
+                    }
+
+                    console.log('User state restored:', currentUser.name);
+                } else {
+                    // Show login button if no user
+                    const navLoginBtn = document.getElementById('nav-login-btn');
+                    if (navLoginBtn) navLoginBtn.classList.remove('hidden');
+                }
+            } catch (e) {
+                console.warn('Could not restore user state:', e);
+            }
+        }
+
+        // Initialize sidebar and user state on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            initSidebar();
+            initUserState();
+        });
     </script>
 </body>
 </html>
