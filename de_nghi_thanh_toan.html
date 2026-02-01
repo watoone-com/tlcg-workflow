@@ -111,6 +111,7 @@
         .sidebar-item {
             display: flex;
             align-items: center;
+            justify-content: flex-start;
             gap: 12px;
             padding: 10px 16px;
             margin: 2px 8px;
@@ -1389,26 +1390,35 @@
 
         <div class="sidebar-section">
             <div class="sidebar-section-title">Workflows</div>
-            <button onclick="window.location.href='index.html#process-o2c'" class="sidebar-item" data-tooltip="Order to Cash">
-                <div class="sidebar-icon-box" style="background: #34C759;"><i class="fas fa-cart-shopping"></i></div>
-                <span>Order to Cash</span>
-            </button>
-            <button onclick="window.location.href='index.html#process-p2p'" class="sidebar-item" data-tooltip="Purchase to Pay">
-                <div class="sidebar-icon-box" style="background: #007AFF;"><i class="fas fa-bag-shopping"></i></div>
-                <span>Purchase to Pay</span>
-            </button>
-            <button class="sidebar-item active" style="padding-left: 28px;" data-tooltip="Đề Nghị Thanh Toán">
-                <div class="sidebar-icon-box" style="background: #5856D6; width: 24px; height: 24px; font-size: 12px;"><i class="fas fa-file-invoice-dollar"></i></div>
+            <button class="sidebar-item active" data-tooltip="Đề Nghị Thanh Toán">
+                <div class="sidebar-icon-box" style="background: #5856D6;"><i class="fas fa-file-invoice-dollar"></i></div>
                 <span>Đề Nghị Thanh Toán</span>
             </button>
-            <button onclick="window.location.href='index.html#process-cash'" class="sidebar-item" data-tooltip="Cash & Vouchers">
-                <div class="sidebar-icon-box" style="background: #FF9500;"><i class="fas fa-wallet"></i></div>
-                <span>Cash & Vouchers</span>
-            </button>
-            <button onclick="window.open('phieu_thu_chi.html', '_blank')" class="sidebar-item" style="padding-left: 28px;" data-tooltip="Phiếu Thu Chi">
-                <div class="sidebar-icon-box" style="background: #FF9500; width: 24px; height: 24px; font-size: 12px;"><i class="fas fa-file-invoice"></i></div>
+            <button onclick="window.open('phieu_thu_chi.html', '_blank')" class="sidebar-item" data-tooltip="Phiếu Thu Chi">
+                <div class="sidebar-icon-box" style="background: #FF9500;"><i class="fas fa-file-invoice"></i></div>
                 <span>Phiếu Thu Chi</span>
             </button>
+        </div>
+
+        <div class="sidebar-user" id="sidebar-user-section" style="margin-top: auto; padding: 16px;">
+            <div id="sidebar-logged-out">
+                <button onclick="window.location.href='index.html'" class="sidebar-item" style="background: transparent;" data-tooltip="Sign In">
+                    <div class="sidebar-icon-box" style="background: #007AFF;"><i class="fas fa-right-to-bracket"></i></div>
+                    <span>Sign In</span>
+                </button>
+            </div>
+            <div id="sidebar-logged-in" style="display: none;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <img id="sidebar-avatar" src="" style="width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;" alt="User">
+                    <div class="sidebar-user-info" style="flex: 1; min-width: 0;">
+                        <p id="sidebar-user-name" style="font-size: 15px; font-weight: 600; color: #000; margin: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;"></p>
+                        <p id="sidebar-user-role" style="font-size: 13px; color: #6e6e73; margin: 0;"></p>
+                    </div>
+                </div>
+                <button class="sidebar-signout-btn" onclick="handleLogout()" style="width: 100%; margin-top: 12px; padding: 8px; background: rgba(255,59,48,0.1); color: #FF3B30; border: none; border-radius: 8px; font-size: 14px; font-weight: 500; cursor: pointer;">
+                    Sign Out
+                </button>
+            </div>
         </div>
     </aside>
 
@@ -1432,11 +1442,20 @@
 
         <!-- Desktop Header - BPM Banner -->
         <nav class="hidden md:block sticky top-0 z-40" style="background: rgba(249, 249, 249, 0.94); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); border-bottom: 0.5px solid rgba(60,60,67,0.29); padding: 18px 16px;">
-            <div style="display: flex; align-items: center; max-width: 1200px; margin: 0 auto;">
+            <div style="display: flex; align-items: center; justify-content: space-between; max-width: 1200px; margin: 0 auto;">
                 <!-- Logo + BPM Title -->
                 <div style="display: flex; align-items: center; gap: 12px; cursor: pointer;" onclick="window.location.href='index.html'">
                     <img src="tlc logo transparancy.png" alt="TLC Logo" style="height: 60px; width: auto; object-fit: contain;">
                     <span style="font-weight: 600; font-size: 17px; color: #000000;">Business Process Management (BPM)</span>
+                </div>
+                <!-- User Avatar -->
+                <div id="nav-user-section" class="flex items-center gap-2">
+                    <div id="nav-login-btn" class="hidden">
+                        <button onclick="window.location.href='index.html'" style="color: #007AFF; font-weight: 600; background: none; border: none; cursor: pointer;">Sign In</button>
+                    </div>
+                    <div id="nav-user-avatar" class="hidden relative group">
+                        <img id="nav-avatar" src="" class="w-8 h-8 rounded-full cursor-pointer" onclick="window.location.href='index.html#profile'" alt="User avatar">
+                    </div>
                 </div>
             </div>
         </nav>
