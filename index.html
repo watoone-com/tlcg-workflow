@@ -181,6 +181,47 @@
             margin-left: auto;
         }
 
+        /* Hover to expand collapsed sidebar */
+        .ipad-sidebar.collapsed:hover {
+            width: 280px;
+        }
+        .ipad-sidebar.collapsed .sidebar-header {
+            cursor: pointer;
+        }
+        .ipad-sidebar.collapsed:hover .sidebar-header > div > span,
+        .ipad-sidebar.collapsed:hover .sidebar-section-title,
+        .ipad-sidebar.collapsed:hover .sidebar-item > span,
+        .ipad-sidebar.collapsed:hover #sidebar-user-name,
+        .ipad-sidebar.collapsed:hover #sidebar-user-role,
+        .ipad-sidebar.collapsed:hover .sidebar-signout-btn,
+        .ipad-sidebar.collapsed:hover .sidebar-user-info {
+            display: block;
+        }
+        .ipad-sidebar.collapsed:hover .sidebar-item {
+            justify-content: flex-start;
+            padding: 10px 12px;
+            margin: 2px 8px;
+            width: calc(100% - 16px);
+        }
+        .ipad-sidebar.collapsed:hover .sidebar-header > div:first-child {
+            justify-content: flex-start;
+        }
+        .ipad-sidebar.collapsed:hover .sidebar-header img {
+            height: 60px !important;
+            width: auto !important;
+            max-width: none;
+        }
+        .ipad-sidebar.collapsed:hover #sidebar-toggle {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            margin-left: 0;
+        }
+        .ipad-sidebar.collapsed:hover #sidebar-logged-in > div {
+            justify-content: flex-start;
+        }
+
         .ipad-main {
             transition: margin-left 0.25s cubic-bezier(0.4, 0, 0.2, 1);
         }
