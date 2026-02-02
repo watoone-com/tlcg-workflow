@@ -342,6 +342,9 @@ function doPost(e) {
       case 'refreshApproverEmails':
         Logger.log('✅ Matched refreshApproverEmails case');
         return handleRefreshApproverEmails(requestBody);
+      case 'fetchSignatureImage':
+        Logger.log('✅ Matched fetchSignatureImage case');
+        return handleFetchSignatureImage(requestBody);
       default: 
         Logger.log('⚠️ WARNING: Unknown action: "' + normalizedAction + '" (original: "' + action + '")');
         Logger.log('⚠️ Normalized action length: ' + normalizedAction.length);
@@ -1037,7 +1040,19 @@ function handleApproveVoucher(requestBody) {
       meta.treasurerName = approverName;
     }
     Logger.log('✅ Stored role-specific signature for: ' + approverRole + ', name: ' + approverName);
-    
+
+    // 6c. Log signature verification result (for audit trail)
+    if (v.signatureVerification) {
+      Logger.log('🔍 Signature verification result: ' + JSON.stringify(v.signatureVerification));
+      meta.signatureVerification = meta.signatureVerification || {};
+      meta.signatureVerification[approverRole] = {
+        verified: v.signatureVerification.verified,
+        similarity: v.signatureVerification.similarity,
+        reason: v.signatureVerification.reason,
+        verifiedAt: new Date().toISOString()
+      };
+    }
+
     // 7. Count approvals
     const approvalCount = countApprovals(companyApprovers.approvers);
     companyApprovers.approvalProgress = `${approvalCount}/3`;
@@ -2856,4 +2871,71 @@ function refreshApproverEmails() {
   const result = handleRefreshApproverEmails({});
   Logger.log('Result: ' + JSON.stringify(result));
   return result;
+}
+
+/**
+ * Fetch signature image from URL (handles Google Drive) and return as base64
+ * Used as backend proxy to avoid CORS issues when frontend needs to compare signatures
+ */
+function handleFetchSignatureImage(requestBody) {
+  try {
+    const imageUrl = requestBody.imageUrl || '';
+    if (!imageUrl) {
+      Logger.log('❌ fetchSignatureImage: Missing image URL');
+      return createResponse(false, 'Missing image URL');
+    }
+
+    Logger.log('🖼️ Fetching signature image: ' + imageUrl);
+
+    // Handle Google Drive URLs - convert sharing URL to direct download URL
+    let fetchUrl = imageUrl;
+    if (imageUrl.includes('drive.google.com')) {
+      // Extract file ID from various Google Drive URL formats
+      // Format 1: https://drive.google.com/file/d/FILE_ID/view
+      // Format 2: https://drive.google.com/open?id=FILE_ID
+      // Format 3: https://drive.google.com/uc?id=FILE_ID
+      let fileId = null;
+
+      const fileIdMatch = imageUrl.match(/\/d\/([a-zA-Z0-9_-]+)/);
+      if (fileIdMatch) {
+        fileId = fileIdMatch[1];
+      } else {
+        const idMatch = imageUrl.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+        if (idMatch) {
+          fileId = idMatch[1];
+        }
+      }
+
+      if (fileId) {
+        fetchUrl = 'https://drive.google.com/uc?export=download&id=' + fileId;
+        Logger.log('🔗 Converted to direct download URL: ' + fetchUrl);
+      }
+    }
+
+    // Fetch the image
+    const response = UrlFetchApp.fetch(fetchUrl, {
+      muteHttpExceptions: true,
+      followRedirects: true
+    });
+
+    const responseCode = response.getResponseCode();
+    if (responseCode !== 200) {
+      Logger.log('❌ Failed to fetch image: HTTP ' + responseCode);
+      return createResponse(false, 'Failed to fetch image: HTTP ' + responseCode);
+    }
+
+    // Convert to base64
+    const blob = response.getBlob();
+    const base64 = Utilities.base64Encode(blob.getBytes());
+    const mimeType = blob.getContentType() || 'image/png';
+    const dataUrl = 'data:' + mimeType + ';base64,' + base64;
+
+    Logger.log('✅ Signature image fetched successfully, size: ' + Math.round(base64.length / 1024) + 'KB');
+
+    return createResponse(true, 'Success', { imageBase64: dataUrl });
+  } catch (error) {
+    Logger.log('❌ Error fetching signature image: ' + error.toString());
+    Logger.log('❌ Error stack: ' + error.stack);
+    return createResponse(false, 'Error: ' + error.message);
+  }
 }

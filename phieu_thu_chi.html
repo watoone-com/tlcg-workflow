@@ -3958,20 +3958,20 @@
                         // Calculate new dimensions
                         let width = img.width;
                         let height = img.height;
-                        
+
                         if (width > maxWidth || height > maxHeight) {
                             const ratio = Math.min(maxWidth / width, maxHeight / height);
                             width = width * ratio;
                             height = height * ratio;
                         }
-                        
+
                         // Create canvas and resize
                         const canvas = document.createElement('canvas');
                         canvas.width = width;
                         canvas.height = height;
                         const ctx = canvas.getContext('2d');
                         ctx.drawImage(img, 0, 0, width, height);
-                        
+
                         // Convert to base64 with compression
                         const base64 = canvas.toDataURL('image/jpeg', quality);
                         console.log(`📏 Signature compressed: ${img.width}x${img.height} -> ${width}x${height}, size: ${(base64.length / 1024).toFixed(2)}KB`);
@@ -3984,7 +3984,142 @@
                 reader.readAsDataURL(file);
             });
         }
-        
+
+        // ============ SIGNATURE VERIFICATION FUNCTIONS ============
+
+        /**
+         * Fetch sample signature image from URL via backend proxy
+         * Uses backend to avoid CORS issues with Google Drive URLs
+         */
+        async function fetchSampleSignature(signatureUrl) {
+            if (!signatureUrl || signatureUrl.trim() === '') {
+                console.log('🔍 No sample signature URL provided');
+                return null;
+            }
+            try {
+                console.log('🔍 Fetching sample signature via backend proxy:', signatureUrl);
+
+                // Use backend proxy to avoid CORS issues with Google Drive
+                const formData = new FormData();
+                formData.append('data', JSON.stringify({
+                    action: 'fetchSignatureImage',
+                    imageUrl: signatureUrl
+                }));
+
+                const response = await fetch(GOOGLE_APPS_SCRIPT_WEB_APP_URL, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                if (result.success && result.data && result.data.imageBase64) {
+                    console.log('✅ Sample signature fetched successfully');
+                    return result.data.imageBase64;
+                } else {
+                    console.warn('⚠️ Failed to fetch sample signature:', result.message);
+                    return null;
+                }
+            } catch (error) {
+                console.error('❌ Error fetching sample signature:', error);
+                return null;
+            }
+        }
+
+        /**
+         * Generate perceptual hash of an image for similarity comparison
+         * Creates a 16x16 grayscale representation and computes average-based hash
+         */
+        async function generateImageHash(imageDataUrl, size = 16) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.crossOrigin = 'Anonymous';
+                img.onload = () => {
+                    try {
+                        // Create small grayscale version for hashing
+                        const canvas = document.createElement('canvas');
+                        canvas.width = size;
+                        canvas.height = size;
+                        const ctx = canvas.getContext('2d');
+
+                        // Draw scaled image
+                        ctx.drawImage(img, 0, 0, size, size);
+                        const imageData = ctx.getImageData(0, 0, size, size);
+                        const pixels = imageData.data;
+
+                        // Convert to grayscale values
+                        const grayscale = [];
+                        for (let i = 0; i < pixels.length; i += 4) {
+                            // Standard luminance formula
+                            const gray = (pixels[i] * 0.299 + pixels[i+1] * 0.587 + pixels[i+2] * 0.114);
+                            grayscale.push(gray);
+                        }
+
+                        // Calculate average
+                        const avg = grayscale.reduce((a, b) => a + b, 0) / grayscale.length;
+
+                        // Generate binary hash (1 if above average, 0 if below)
+                        const hash = grayscale.map(g => g >= avg ? '1' : '0').join('');
+                        console.log('🔢 Generated image hash, length:', hash.length);
+                        resolve(hash);
+                    } catch (e) {
+                        console.error('Error generating hash:', e);
+                        resolve(null);
+                    }
+                };
+                img.onerror = () => {
+                    console.error('Failed to load image for hashing');
+                    resolve(null);
+                };
+                img.src = imageDataUrl;
+            });
+        }
+
+        /**
+         * Compare uploaded signature with sample signature using perceptual hash
+         * Returns verification result with similarity percentage
+         */
+        async function compareSignatures(uploadedBase64, sampleUrl) {
+            // Get sample signature as base64 via backend proxy
+            const sampleBase64 = await fetchSampleSignature(sampleUrl);
+            if (!sampleBase64) {
+                console.log('📋 No sample signature available - skipping verification');
+                return { verified: true, reason: 'no_sample', similarity: 0 };
+            }
+
+            // Generate perceptual hashes
+            console.log('🔍 Generating hashes for comparison...');
+            const uploadedHash = await generateImageHash(uploadedBase64);
+            const sampleHash = await generateImageHash(sampleBase64);
+
+            if (!uploadedHash || !sampleHash) {
+                console.warn('⚠️ Failed to generate hashes for comparison');
+                return { verified: false, reason: 'hash_failed', similarity: 0 };
+            }
+
+            // Calculate Hamming distance (number of different bits)
+            let differences = 0;
+            for (let i = 0; i < uploadedHash.length; i++) {
+                if (uploadedHash[i] !== sampleHash[i]) differences++;
+            }
+
+            // Calculate similarity percentage
+            const similarity = ((uploadedHash.length - differences) / uploadedHash.length) * 100;
+
+            // Threshold: 70% similarity required
+            const SIMILARITY_THRESHOLD = 70;
+            const verified = similarity >= SIMILARITY_THRESHOLD;
+
+            console.log(`🔍 Signature comparison: ${similarity.toFixed(1)}% similarity (threshold: ${SIMILARITY_THRESHOLD}%)`);
+            console.log(`🔍 Result: ${verified ? '✅ VERIFIED' : '⚠️ MISMATCH'}`);
+
+            return {
+                verified: verified,
+                similarity: similarity.toFixed(1),
+                reason: verified ? 'match' : 'mismatch',
+                threshold: SIMILARITY_THRESHOLD
+            };
+        }
+
         // ============ SIGNATURE FUNCTIONS ============
         let currentSignatureData = null;
         const SIGNATURE_STORAGE_KEY = 'tlcg_user_signature';
@@ -5108,7 +5243,52 @@
                     modalFooter.querySelectorAll('button').forEach(btn => btn.disabled = false);
                     return;
                 }
-                
+
+                // ============ SIGNATURE VERIFICATION ============
+                // Get sample signature URL from company approvers data
+                let sampleSignatureUrl = null;
+                const companyApprovers = currentModalMeta?.companyApprovers?.approvers ||
+                                         currentModalVoucher?.companyApprovers?.approvers;
+
+                if (companyApprovers && currentApproverRole) {
+                    if (currentApproverRole === 'accountant' && companyApprovers.accountant) {
+                        sampleSignatureUrl = companyApprovers.accountant.signature;
+                    } else if (currentApproverRole === 'legalRep' && companyApprovers.legalRep) {
+                        sampleSignatureUrl = companyApprovers.legalRep.signature;
+                    } else if (currentApproverRole === 'treasurer' && companyApprovers.treasurer) {
+                        sampleSignatureUrl = companyApprovers.treasurer.signature;
+                    }
+                }
+
+                // Perform signature verification if sample exists
+                let verificationResult = { verified: true, reason: 'no_sample', similarity: '0' };
+                if (sampleSignatureUrl && sampleSignatureUrl.trim() !== '') {
+                    console.log('🔍 Verifying signature against sample...');
+                    verificationResult = await compareSignatures(finalSignature, sampleSignatureUrl);
+                    console.log('🔍 Verification result:', verificationResult);
+
+                    // Show warning if signature doesn't match (but allow to proceed)
+                    if (!verificationResult.verified && verificationResult.reason === 'mismatch') {
+                        const confirmProceed = confirm(
+                            `⚠️ CẢNH BÁO: Chữ ký tải lên không khớp với chữ ký mẫu đã đăng ký.\n\n` +
+                            `📊 Độ tương đồng: ${verificationResult.similarity}%\n` +
+                            `📏 Ngưỡng yêu cầu: ${verificationResult.threshold}%\n\n` +
+                            `Bạn có muốn tiếp tục phê duyệt không?`
+                        );
+                        if (!confirmProceed) {
+                            console.log('User cancelled approval due to signature mismatch');
+                            modalLoading.classList.remove('show');
+                            modalContent.style.opacity = '1';
+                            modalFooter.querySelectorAll('button').forEach(btn => btn.disabled = false);
+                            return;
+                        }
+                        console.log('User confirmed to proceed despite signature mismatch');
+                    }
+                } else {
+                    console.log('📋 No sample signature URL found for verification');
+                }
+                // ============ END SIGNATURE VERIFICATION ============
+
                 // Get current user name for approval
                 const approverName = currentUser?.name || 'Approver';
 
@@ -5126,10 +5306,11 @@
                         approvedBy: approverName,
                         approverRole: currentApproverRole, // 'accountant', 'legalRep', or 'treasurer'
                         approverName: approverName, // Store approver name with role-specific key in backend
-                        approverSignature: finalSignature
+                        approverSignature: finalSignature,
+                        signatureVerification: verificationResult // Include verification result for audit
                     }
                 };
-                console.log('Sending approval with role:', currentApproverRole, 'name:', approverName);
+                console.log('Sending approval with role:', currentApproverRole, 'name:', approverName, 'verification:', verificationResult);
                 
                 // Calculate total payload size
                 const payloadString = JSON.stringify(requestData);
