@@ -993,7 +993,15 @@ function handleApproveVoucher(requestBody) {
     if (!approverRole) {
       return createResponse(false, 'Không tìm thấy thông tin người phê duyệt.');
     }
-    
+
+    // 1b. SECURITY: Prevent self-approval (requester cannot approve their own voucher)
+    const requestorEmail = (v.requestorEmail || existingVoucher.requestorEmail || '').toLowerCase().trim();
+    const currentApproverEmail = approverEmail.toLowerCase().trim();
+    if (requestorEmail && currentApproverEmail && requestorEmail === currentApproverEmail) {
+      Logger.log('❌ Self-approval attempt blocked: ' + approverEmail + ' tried to approve their own voucher');
+      return createResponse(false, 'Người đề nghị không thể phê duyệt phiếu của chính họ.');
+    }
+
     // 2. Check if this approver already approved
     if (companyApprovers.approvers[approverRole].status === 'approved') {
       return createResponse(false, 'Bạn đã phê duyệt phiếu này rồi.');
@@ -1175,7 +1183,15 @@ function handleApproveVoucher(requestBody) {
 function handleApproveVoucherLegacy(requestBody, existingVoucher) {
   const v = requestBody.voucher || {};
   const voucherNumber = v.voucherNumber || '';
-  
+
+  // SECURITY: Prevent self-approval (requester cannot approve their own voucher)
+  const requestorEmail = (v.requestorEmail || existingVoucher.requestorEmail || '').toLowerCase().trim();
+  const currentApproverEmail = (v.approverEmail || '').toLowerCase().trim();
+  if (requestorEmail && currentApproverEmail && requestorEmail === currentApproverEmail) {
+    Logger.log('❌ Self-approval attempt blocked (legacy): ' + currentApproverEmail + ' tried to approve their own voucher');
+    return createResponse(false, 'Người đề nghị không thể phê duyệt phiếu của chính họ.');
+  }
+
   // Check if already approved or rejected
   const sheet = SpreadsheetApp.openById(VOUCHER_HISTORY_SHEET_ID).getSheetByName(VH_SHEET_NAME);
   const data = sheet.getDataRange().getValues();
