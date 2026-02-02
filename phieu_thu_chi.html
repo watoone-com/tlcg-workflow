@@ -5692,8 +5692,12 @@
                                 <div class="signature-box">
                                     <div class="signature-title">Thủ quỹ <span class="signature-required">*</span></div>
                                     <div class="signature-image-container">
+                                        ${(voucher.status === 'Approved' && meta.approverSignature)
+                                            ? `<img src="${meta.approverSignature}" alt="Chữ ký" class="signature-img">`
+                                            : ''
+                                        }
                                     </div>
-                                    <div class="signature-name"></div>
+                                    <div class="signature-name">${voucher.status === 'Approved' ? (voucher.approvedBy || '') : ''}</div>
                                 </div>
                                 `}
                                 
