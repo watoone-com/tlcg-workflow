@@ -14,29 +14,88 @@
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         :root {
-            --primary: #3b82f6;      /* Blue-500 */
-            --primary-hover: #2563eb; /* Blue-600 */
-            --success: #10b981;      /* Emerald-500 */
-            --warning: #f59e0b;      /* Amber-500 */
-            --error: #ef4444;        /* Red-500 */
-            --text-primary: #0f172a;  /* Slate-900 */
-            --text-secondary: #64748b; /* Slate-500 */
-            --border: #e2e8f0;       /* Slate-200 */
-            --background: #f8fafc;    /* Slate-50 */
-            --card-bg: #ffffff;      /* White */
+            /* iOS System Colors */
+            --ios-blue: #007AFF;
+            --ios-blue-hover: #0056CC;
+            --ios-green: #34C759;
+            --ios-red: #FF3B30;
+            --ios-orange: #FF9500;
+            --ios-yellow: #FFCC00;
+            --ios-purple: #AF52DE;
+            --ios-pink: #FF2D55;
+            --ios-teal: #5AC8FA;
+            --ios-indigo: #5856D6;
+
+            /* iOS Gray Scale */
+            --ios-gray: #8E8E93;
+            --ios-gray-1: #8E8E93;
+            --ios-gray-2: #AEAEB2;
+            --ios-gray-3: #C7C7CC;
+            --ios-gray-4: #D1D1D6;
+            --ios-gray-5: #E5E5EA;
+            --ios-gray-6: #F2F2F7;
+
+            /* iOS Semantic Colors */
+            --ios-label: #000000;
+            --ios-label-secondary: #3C3C43;
+            --ios-label-tertiary: rgba(60, 60, 67, 0.6);
+            --ios-fill: rgba(120, 120, 128, 0.2);
+            --ios-fill-secondary: rgba(120, 120, 128, 0.16);
+            --ios-fill-tertiary: rgba(118, 118, 128, 0.12);
+            --ios-background: #FFFFFF;
+            --ios-background-secondary: #F2F2F7;
+            --ios-separator: rgba(60, 60, 67, 0.29);
+
+            /* Semantic Colors */
+            --primary: var(--ios-blue);
+            --primary-hover: var(--ios-blue-hover);
+            --success: var(--ios-green);
+            --warning: var(--ios-orange);
+            --error: var(--ios-red);
+
+            /* Text Colors */
+            --text-primary: #000000;
+            --text-secondary: var(--ios-gray-1);
+            --text-tertiary: var(--ios-gray-2);
+
+            /* Background & Surface */
+            --background: var(--ios-gray-6);
+            --card-bg: rgba(255, 255, 255, 0.8);
+            --card-bg-solid: #ffffff;
+
+            /* Border */
+            --border: var(--ios-gray-4);
+            --border-light: var(--ios-gray-5);
+
+            /* iOS Design Tokens */
+            --ios-blur: blur(20px);
+            --ios-radius-sm: 10px;
+            --ios-radius-md: 14px;
+            --ios-radius-lg: 20px;
+            --ios-radius-xl: 24px;
+            --ios-shadow: 0 2px 10px rgba(0, 0, 0, 0.08);
+            --ios-shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.12);
+
             /* Legacy support */
-            --primary-color: #3b82f6;
-            --secondary-color: #10b981;
-            --accent-color: #f59e0b;
-            --text-color: #0f172a;
-            --light-gray: #f8fafc;
-            --border-color: #e2e8f0;
-            --shadow-color: rgba(0, 0, 0, 0.04);
-            --success-color: #10b981;
-            --error-color: #ef4444;
+            --primary-color: var(--ios-blue);
+            --secondary-color: var(--ios-green);
+            --accent-color: var(--ios-orange);
+            --text-color: #000000;
+            --light-gray: var(--ios-gray-6);
+            --border-color: var(--ios-gray-4);
+            --shadow-color: rgba(0, 0, 0, 0.06);
+            --success-color: var(--ios-green);
+            --error-color: var(--ios-red);
+
             /* Sidebar variables */
             --sidebar-width: 280px;
-            --ios-font: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            --font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Helvetica, Arial, system-ui, sans-serif;
+            --ios-font: var(--font-family);
+
+            /* Safe Areas & Tab Bar */
+            --safe-area-top: env(safe-area-inset-top, 0px);
+            --safe-area-bottom: env(safe-area-inset-bottom, 0px);
+            --tab-bar-height: 83px;
         }
 
         /* iPad Sidebar Styles */
@@ -178,6 +237,187 @@
         .sidebar-item.active .sidebar-icon-box {
             background: rgba(255,255,255,0.2) !important;
         }
+
+        /* Sidebar User Section */
+        .sidebar-user {
+            padding: 16px;
+            border-top: 0.5px solid rgba(60, 60, 67, 0.29);
+            margin-top: auto;
+        }
+
+        .sidebar-signout-btn {
+            width: 100%;
+            margin-top: 12px;
+            padding: 8px;
+            background: rgba(255,59,48,0.1);
+            color: #FF3B30;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .sidebar-signout-btn:hover {
+            background: rgba(255,59,48,0.2);
+        }
+
+        /* iOS Tab Bar */
+        .ios-tab-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 1000;
+            background: rgba(249, 249, 249, 0.94);
+            backdrop-filter: saturate(180%) blur(20px);
+            -webkit-backdrop-filter: saturate(180%) blur(20px);
+            border-top: 0.5px solid var(--ios-separator);
+            padding-bottom: var(--safe-area-bottom);
+            height: var(--tab-bar-height);
+            display: none;
+        }
+
+        .ios-tab-bar-content {
+            display: flex;
+            justify-content: space-around;
+            align-items: flex-start;
+            padding-top: 6px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .ios-tab-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 3px;
+            padding: 4px 12px;
+            background: none;
+            border: none;
+            cursor: pointer;
+            transition: transform 0.1s ease;
+            min-width: 64px;
+        }
+
+        .ios-tab-item:active {
+            transform: scale(0.92);
+        }
+
+        .ios-tab-item i {
+            font-size: 24px;
+            color: var(--ios-gray);
+            transition: color 0.2s;
+        }
+
+        .ios-tab-item span {
+            font-size: 10px;
+            font-weight: 500;
+            color: var(--ios-gray);
+            transition: color 0.2s;
+        }
+
+        .ios-tab-item.active i,
+        .ios-tab-item.active span {
+            color: var(--ios-blue);
+        }
+
+        /* Show tab bar on mobile only */
+        @media (max-width: 767px) {
+            .ios-tab-bar {
+                display: block;
+            }
+            body {
+                padding-bottom: var(--tab-bar-height);
+            }
+        }
+
+        /* iOS Segmented Control (Language Switcher) */
+        .ios-segmented {
+            display: flex;
+            background: var(--ios-fill-tertiary);
+            border-radius: 8px;
+            padding: 2px;
+        }
+
+        .ios-segmented-item {
+            flex: 1;
+            padding: 6px 12px;
+            font-size: 13px;
+            font-weight: 600;
+            text-align: center;
+            border: none;
+            background: transparent;
+            color: var(--ios-label);
+            cursor: pointer;
+            border-radius: 6px;
+            transition: all 0.2s;
+        }
+
+        .ios-segmented-item.active {
+            background: var(--ios-background);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.08);
+        }
+
+        /* User Dropdown Menu */
+        .user-dropdown {
+            position: absolute;
+            right: 0;
+            margin-top: 8px;
+            width: 192px;
+            background: rgba(255,255,255,0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border-radius: 12px;
+            box-shadow: 0 4px 24px rgba(0,0,0,0.12);
+            border: 0.5px solid rgba(0,0,0,0.1);
+            overflow: hidden;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-8px);
+            transition: all 0.2s ease;
+            z-index: 100;
+        }
+
+        .user-dropdown.show,
+        .group:hover .user-dropdown {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        .user-dropdown-item {
+            width: 100%;
+            text-align: left;
+            padding: 12px 16px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: transparent;
+            border: none;
+            cursor: pointer;
+            transition: background 0.15s;
+            color: var(--ios-label);
+        }
+
+        .user-dropdown-item:hover {
+            background: rgba(0,0,0,0.04);
+        }
+
+        .user-dropdown-item.danger {
+            color: var(--ios-red);
+        }
+
+        /* SPA Page Content */
+        .page-content {
+            display: none;
+        }
+
+        .page-content.active {
+            display: block;
+        }
         
         * {
             box-sizing: border-box;
@@ -188,53 +428,56 @@
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
         
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: var(--font-family);
             font-weight: 400;
-            line-height: 1.6;
+            line-height: 1.5;
             color: var(--text-primary);
             background: var(--background);
             min-height: 100vh;
             margin: 0;
             padding: 0;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
         }
-        
-        /* Navigation Bar - Kissflow Style */
+
+        /* Navigation Bar - iOS Style */
         nav.sticky {
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            background: rgba(255, 255, 255, 0.95);
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            backdrop-filter: saturate(180%) var(--ios-blur);
+            -webkit-backdrop-filter: saturate(180%) var(--ios-blur);
+            background: rgba(255, 255, 255, 0.72);
+            border-bottom: 0.5px solid rgba(0, 0, 0, 0.1);
+            box-shadow: none;
         }
-        
+
         .container {
             max-width: 1200px;
             margin: 0 auto;
             padding: 1.5rem;
         }
-        
+
         .form-section-container {
-            background: var(--card-bg);
-            border-radius: 8px;
-            border: 1px solid var(--border);
+            background: var(--card-bg-solid);
+            border-radius: var(--ios-radius-lg);
+            border: 0.5px solid rgba(0, 0, 0, 0.1);
             overflow: hidden;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.02);
+            box-shadow: var(--ios-shadow);
             transition: all 0.2s ease;
-            padding: 2rem;
+            padding: 24px;
         }
-        
+
         .form-section-container:hover {
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05), 0 0 0 1px rgba(0, 0, 0, 0.02);
-            transform: translateY(-2px);
+            box-shadow: var(--ios-shadow);
+            transform: none;
         }
-        
+
         h1 {
             font-weight: 700;
             color: var(--text-primary);
             text-align: left;
             margin-bottom: 1.5rem;
-            font-size: 1.5rem; /* 20% larger than 1.25rem */
-            letter-spacing: -0.025em;
-            font-family: 'Inter', sans-serif;
+            font-size: 28px;
+            letter-spacing: -0.5px;
+            font-family: var(--font-family);
             line-height: 1.2;
         }
 
@@ -432,11 +675,11 @@
             color: var(--text-primary);
             margin-top: 2rem;
             margin-bottom: 1rem;
-            font-size: 1.125rem;
+            font-size: 22px;
             display: flex;
             align-items: center;
             gap: 0.5rem;
-            letter-spacing: -0.01em;
+            letter-spacing: -0.3px;
         }
 
         h2 .tooltip-icon {
@@ -513,46 +756,52 @@
         
         input, select, textarea {
             width: 100%;
-            padding: 0.625rem 0.875rem;
-            border: 1px solid var(--border);
-            border-radius: 6px;
-            font-family: 'Inter', sans-serif;
-            font-size: 0.9375rem;
-            transition: all 0.15s ease;
-            background-color: white;
+            padding: 12px 16px;
+            border: none;
+            border-radius: var(--ios-radius-sm);
+            font-family: var(--font-family);
+            font-size: 17px;
+            transition: all 0.2s ease;
+            background-color: var(--ios-gray-6);
             color: var(--text-primary);
         }
-        
+
         input::placeholder, textarea::placeholder {
-            color: #94a3b8;
+            color: var(--ios-gray-2);
         }
-        
+
         input:focus, select:focus, textarea:focus {
             outline: none;
-            border-color: var(--primary);
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+            background-color: var(--ios-gray-5);
+            box-shadow: none;
         }
-        
+
         input:read-only, textarea:read-only {
-            background-color: #f8fafc;
-            color: #64748b;
+            background-color: var(--ios-gray-6);
+            color: var(--ios-gray-1);
             cursor: default;
         }
         
         label {
             display: block;
-            font-size: 0.8125rem;
+            font-size: 13px;
             font-weight: 500;
             color: var(--text-secondary);
-            margin-bottom: 0.375rem;
-            letter-spacing: 0;
-            text-transform: none;
+            margin-bottom: 6px;
+            letter-spacing: 0.3px;
+            text-transform: uppercase;
         }
         
         select {
-            background-color: white;
+            background-color: var(--ios-gray-6);
             cursor: pointer;
-            height: 42px;
+            height: 48px;
+            appearance: none;
+            -webkit-appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238E8E93' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            padding-right: 40px;
         }
         
         textarea {
@@ -1451,9 +1700,10 @@
         .recent-vouchers-card {
             max-width: 1200px;
             margin: 0 auto;
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            background: var(--card-bg-solid);
+            border-radius: var(--ios-radius-lg);
+            border: 0.5px solid rgba(0, 0, 0, 0.1);
+            box-shadow: var(--ios-shadow);
             overflow: hidden;
         }
 
@@ -1897,17 +2147,25 @@
 
         <div class="sidebar-section">
             <div class="sidebar-section-title">Workflows</div>
-            <button onclick="window.open('de_nghi_thanh_toan.html', '_blank')" class="sidebar-item" data-tooltip="Đề Nghị Thanh Toán">
+            <button onclick="window.location.href='de_nghi_thanh_toan.html'" class="sidebar-item" data-tooltip="Đề Nghị Thanh Toán" data-page="payment-request">
                 <div class="sidebar-icon-box" style="background: #5856D6;"><i class="fas fa-file-invoice-dollar"></i></div>
                 <span>Đề Nghị Thanh Toán</span>
             </button>
-            <button class="sidebar-item active" data-tooltip="Phiếu Thu Chi">
+            <button onclick="showPage('voucher-form')" class="sidebar-item active" data-tooltip="Phiếu Thu Chi" data-page="voucher-form">
                 <div class="sidebar-icon-box" style="background: #FF9500;"><i class="fas fa-file-invoice"></i></div>
                 <span>Phiếu Thu Chi</span>
             </button>
         </div>
 
-        <div class="sidebar-user" id="sidebar-user-section" style="margin-top: auto; padding: 16px;">
+        <div class="sidebar-user" id="sidebar-user-section">
+            <div id="sidebar-logged-out">
+                <button onclick="window.location.href='index.html'" class="sidebar-item" data-tooltip="Sign In">
+                    <div class="sidebar-icon-box" style="background: #007AFF;">
+                        <i class="fas fa-right-to-bracket"></i>
+                    </div>
+                    <span>Sign In</span>
+                </button>
+            </div>
             <div id="sidebar-logged-in" style="display: none;">
                 <div style="display: flex; align-items: center; gap: 12px;">
                     <img id="sidebar-avatar" src="" style="width: 40px; height: 40px; border-radius: 50%; flex-shrink: 0;" alt="User">
@@ -1916,6 +2174,9 @@
                         <p id="sidebar-user-role" style="font-size: 13px; color: #6e6e73; margin: 0;"></p>
                     </div>
                 </div>
+                <button class="sidebar-signout-btn" onclick="handleLogout()">
+                    <i class="fas fa-sign-out-alt" style="margin-right: 6px;"></i>Sign Out
+                </button>
             </div>
         </div>
     </aside>
@@ -1946,13 +2207,34 @@
                     <img src="tlc logo transparancy.png" alt="TLC Logo" style="height: 60px; width: auto; object-fit: contain;">
                     <span style="font-weight: 600; font-size: 17px; color: #000000;">Business Process Management (BPM)</span>
                 </div>
-                <!-- User Avatar -->
-                <div id="nav-user-section" class="flex items-center gap-2">
-                    <div id="nav-login-btn" class="hidden">
-                        <button onclick="window.location.href='index.html'" style="color: #007AFF; font-weight: 600; background: none; border: none; cursor: pointer;">Sign In</button>
+                <!-- Language Switcher + User Section -->
+                <div class="flex items-center gap-4">
+                    <!-- Language Switcher - iOS Segmented Control Style -->
+                    <div class="ios-segmented hidden sm:flex">
+                        <button onclick="setLanguage('en')" id="lang-en" class="ios-segmented-item" aria-label="Switch to English">EN</button>
+                        <button onclick="setLanguage('vi')" id="lang-vi" class="ios-segmented-item active" aria-label="Switch to Vietnamese">VI</button>
                     </div>
-                    <div id="nav-user-avatar" class="hidden relative group">
-                        <img id="nav-avatar" src="" class="w-8 h-8 rounded-full cursor-pointer" onclick="window.location.href='index.html#profile'" alt="User avatar">
+                    <!-- User Avatar -->
+                    <div id="nav-user-section" class="flex items-center gap-2">
+                        <div id="nav-login-btn" class="hidden">
+                            <button onclick="window.location.href='index.html'" style="color: #007AFF; font-weight: 600; background: none; border: none; cursor: pointer;">Sign In</button>
+                        </div>
+                        <div id="nav-user-avatar" class="hidden relative group">
+                            <img id="nav-avatar" src="" class="w-8 h-8 rounded-full cursor-pointer" alt="User avatar">
+                            <!-- User Dropdown Menu -->
+                            <div class="user-dropdown">
+                                <div style="padding: 12px 16px; border-bottom: 0.5px solid var(--ios-separator);">
+                                    <p id="user-display-name" style="font-size: 14px; font-weight: 600; color: var(--ios-label); margin: 0;"></p>
+                                    <p id="user-display-role" style="font-size: 12px; color: var(--ios-label-secondary); margin: 2px 0 0 0;"></p>
+                                </div>
+                                <button onclick="window.location.href='index.html#profile'" class="user-dropdown-item">
+                                    <i class="fas fa-user" style="color: var(--ios-blue);"></i> Profile
+                                </button>
+                                <button onclick="handleLogout()" class="user-dropdown-item danger">
+                                    <i class="fas fa-sign-out-alt"></i> Sign Out
+                                </button>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -1961,6 +2243,8 @@
         <!-- Toast Container -->
         <div id="toast-container" class="toast-container"></div>
 
+        <!-- Main Page Content - Voucher Form -->
+        <main id="page-voucher-form" class="page-content active">
         <div class="flex-1 py-6" style="background: #F2F2F7;">
         <div class="container form-section-container" id="voucher-form">
         <h1 id="form-title" style="font-weight: 700; font-size: 28px; text-align: center;">PHIẾU THU/CHI</h1>
@@ -2473,6 +2757,7 @@
             </div>
         </div>
     </div>
+    </main><!-- Close page-voucher-form -->
     
     <script>
         const data = (function(b64){
@@ -8609,6 +8894,188 @@
         }
         */
 
+        // Translations for i18n
+        const translations = {
+            en: {
+                formTitle: 'RECEIPT/PAYMENT VOUCHER',
+                basicInfo: 'Basic Information',
+                subjectInfo: 'Subject Information',
+                expenseDetails: 'Expense Details',
+                approval: 'Approval',
+                reviewSubmit: 'Review & Submit',
+                company: 'Company',
+                voucherType: 'Voucher Type',
+                receiptVoucher: 'Receipt Voucher',
+                paymentVoucher: 'Payment Voucher',
+                date: 'Date',
+                currency: 'Currency',
+                payee: 'Payee/Payer',
+                reason: 'Reason',
+                amount: 'Amount',
+                total: 'Total',
+                submit: 'Submit',
+                previous: 'Previous',
+                next: 'Next',
+                signOut: 'Sign Out',
+                signIn: 'Sign In',
+                profile: 'Profile',
+                tabHome: 'Home',
+                tabVoucher: 'Voucher',
+                tabRequest: 'Request',
+                tabProfile: 'Profile',
+                recentVouchers: 'Recent Vouchers',
+                pending: 'Pending',
+                approved: 'Approved',
+                rejected: 'Rejected'
+            },
+            vi: {
+                formTitle: 'PHIẾU THU/CHI',
+                basicInfo: 'Thông tin cơ bản',
+                subjectInfo: 'Thông tin đối tượng',
+                expenseDetails: 'Chi tiết chi phí',
+                approval: 'Phê duyệt',
+                reviewSubmit: 'Xem lại & Gửi',
+                company: 'Công ty',
+                voucherType: 'Loại phiếu',
+                receiptVoucher: 'Phiếu Thu',
+                paymentVoucher: 'Phiếu Chi',
+                date: 'Ngày',
+                currency: 'Tiền tệ',
+                payee: 'Người nhận/trả',
+                reason: 'Lý do',
+                amount: 'Số tiền',
+                total: 'Tổng cộng',
+                submit: 'Gửi phê duyệt',
+                previous: 'Quay lại',
+                next: 'Tiếp theo',
+                signOut: 'Đăng xuất',
+                signIn: 'Đăng nhập',
+                profile: 'Hồ sơ',
+                tabHome: 'Trang chủ',
+                tabVoucher: 'Phiếu',
+                tabRequest: 'Đề nghị',
+                tabProfile: 'Hồ sơ',
+                recentVouchers: 'Phiếu gần đây',
+                pending: 'Chờ duyệt',
+                approved: 'Đã duyệt',
+                rejected: 'Từ chối'
+            }
+        };
+
+        let currentLang = localStorage.getItem('tlc_language') || 'vi';
+
+        // Set language and update UI
+        function setLanguage(lang) {
+            currentLang = lang;
+            localStorage.setItem('tlc_language', lang);
+
+            // Update all elements with data-i18n attribute
+            document.querySelectorAll('[data-i18n]').forEach(el => {
+                const key = el.getAttribute('data-i18n');
+                if (translations[lang][key]) {
+                    el.textContent = translations[lang][key];
+                }
+            });
+
+            // Update language switcher buttons
+            const enBtn = document.getElementById('lang-en');
+            const viBtn = document.getElementById('lang-vi');
+            if (enBtn) {
+                enBtn.classList.toggle('active', lang === 'en');
+            }
+            if (viBtn) {
+                viBtn.classList.toggle('active', lang === 'vi');
+            }
+
+            console.log('Language set to:', lang);
+        }
+
+        // Handle logout
+        function handleLogout() {
+            // Clear user data from localStorage
+            localStorage.removeItem('tlc_current_user');
+            localStorage.removeItem('tlc_user_token');
+
+            // Show toast notification
+            if (typeof showToast === 'function') {
+                showToast('Đã đăng xuất thành công', 'success');
+            }
+
+            // Redirect to home page after short delay
+            setTimeout(() => {
+                window.location.href = 'index.html';
+            }, 500);
+        }
+
+        // Set active tab in iOS tab bar
+        function setActiveTab(tabId) {
+            document.querySelectorAll('.ios-tab-item').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            const activeTab = document.getElementById(tabId);
+            if (activeTab) {
+                activeTab.classList.add('active');
+            }
+        }
+
+        // SPA Navigation - Show Page
+        function showPage(pageId) {
+            // Hide all page content
+            document.querySelectorAll('.page-content').forEach(page => {
+                page.classList.remove('active');
+            });
+
+            // Show target page
+            const targetPage = document.getElementById(`page-${pageId}`);
+            if (targetPage) {
+                targetPage.classList.add('active');
+            } else {
+                // Default to voucher form page
+                const defaultPage = document.getElementById('page-voucher-form');
+                if (defaultPage) defaultPage.classList.add('active');
+            }
+
+            // Update sidebar active state
+            updateSidebarActive(pageId);
+
+            // Update URL hash
+            if (pageId && pageId !== 'voucher-form') {
+                window.location.hash = pageId;
+            } else {
+                history.replaceState(null, null, ' ');
+            }
+
+            // Scroll to top
+            window.scrollTo(0, 0);
+        }
+
+        // Update sidebar active state
+        function updateSidebarActive(pageId) {
+            document.querySelectorAll('.sidebar-item').forEach(item => {
+                item.classList.remove('active');
+            });
+
+            // Find and activate the matching sidebar item
+            const sidebarItem = document.querySelector(`.sidebar-item[data-page="${pageId}"]`);
+            if (sidebarItem) {
+                sidebarItem.classList.add('active');
+            } else {
+                // Default: activate Phieu Thu Chi
+                const defaultItem = document.querySelector('.sidebar-item[data-page="voucher-form"]');
+                if (defaultItem) defaultItem.classList.add('active');
+            }
+        }
+
+        // Handle URL hash changes
+        function handleHashChange() {
+            const hash = window.location.hash.slice(1);
+            if (hash) {
+                showPage(hash);
+            } else {
+                showPage('voucher-form');
+            }
+        }
+
         // Sidebar toggle functionality
         let sidebarCollapsed = localStorage.getItem('tlc_sidebar_collapsed') === 'true';
 
@@ -8666,10 +9133,12 @@
                     if (sidebarUserName) sidebarUserName.textContent = currentUser.name || 'User';
                     if (sidebarUserRole) sidebarUserRole.textContent = currentUser.role || currentUser.department || '';
 
-                    // Update header avatar
+                    // Update header avatar and dropdown
                     const navLoginBtn = document.getElementById('nav-login-btn');
                     const navUserAvatar = document.getElementById('nav-user-avatar');
                     const navAvatar = document.getElementById('nav-avatar');
+                    const userDisplayName = document.getElementById('user-display-name');
+                    const userDisplayRole = document.getElementById('user-display-role');
 
                     if (navLoginBtn) navLoginBtn.classList.add('hidden');
                     if (navUserAvatar) navUserAvatar.classList.remove('hidden');
@@ -8677,23 +9146,38 @@
                         navAvatar.src = currentUser.profilePhoto ||
                             `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.name || 'U')}&background=007AFF&color=fff`;
                     }
+                    if (userDisplayName) userDisplayName.textContent = currentUser.name || 'User';
+                    if (userDisplayRole) userDisplayRole.textContent = currentUser.role || currentUser.department || '';
 
                     console.log('User state restored:', currentUser.name);
                 } else {
                     // Show login button if no user
                     const navLoginBtn = document.getElementById('nav-login-btn');
+                    const sidebarLoggedOut = document.getElementById('sidebar-logged-out');
+                    const sidebarLoggedIn = document.getElementById('sidebar-logged-in');
+
                     if (navLoginBtn) navLoginBtn.classList.remove('hidden');
+                    if (sidebarLoggedOut) sidebarLoggedOut.style.display = 'block';
+                    if (sidebarLoggedIn) sidebarLoggedIn.style.display = 'none';
                 }
             } catch (e) {
                 console.warn('Could not restore user state:', e);
             }
         }
 
-        // Initialize sidebar and user state on page load
+        // Initialize sidebar, user state, and language on page load
         document.addEventListener('DOMContentLoaded', function() {
             initSidebar();
             initUserState();
+            // Initialize language from localStorage
+            const savedLang = localStorage.getItem('tlc_language') || 'vi';
+            setLanguage(savedLang);
+            // Handle initial hash or show default page
+            handleHashChange();
         });
+
+        // Listen for hash changes
+        window.addEventListener('hashchange', handleHashChange);
     </script>
 
     <!-- Footer - Matching Intranet Style -->
@@ -8701,5 +9185,27 @@
         <p>&copy; 2025 TLCGroup. All rights reserved.</p>
     </footer>
     </div><!-- Close ipad-main -->
+
+    <!-- iOS Tab Bar for Mobile -->
+    <nav class="ios-tab-bar" role="navigation" aria-label="Main navigation">
+        <div class="ios-tab-bar-content">
+            <button class="ios-tab-item" onclick="window.location.href='index.html'" id="tab-home" aria-label="Dashboard">
+                <i class="fas fa-house"></i>
+                <span data-i18n="tabHome">Home</span>
+            </button>
+            <button class="ios-tab-item active" id="tab-voucher" aria-label="Voucher">
+                <i class="fas fa-receipt"></i>
+                <span data-i18n="tabVoucher">Voucher</span>
+            </button>
+            <button class="ios-tab-item" onclick="window.location.href='de_nghi_thanh_toan.html'" id="tab-request" aria-label="Payment Request">
+                <i class="fas fa-file-invoice"></i>
+                <span data-i18n="tabRequest">Request</span>
+            </button>
+            <button class="ios-tab-item" onclick="window.location.href='index.html#profile'" id="tab-profile" aria-label="Profile">
+                <i class="fas fa-user"></i>
+                <span data-i18n="tabProfile">Profile</span>
+            </button>
+        </div>
+    </nav>
 </body>
 </html>
