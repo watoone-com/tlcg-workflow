@@ -1022,6 +1022,21 @@ function handleApproveVoucher(requestBody) {
     companyApprovers.approvers[approverRole].status = 'approved';
     companyApprovers.approvers[approverRole].signature = v.approverSignature;
     companyApprovers.approvers[approverRole].approvedAt = new Date().toISOString();
+
+    // 6b. Store role-specific signature and name in meta for print template
+    // Frontend expects meta.accountantSignature, meta.legalRepSignature, meta.treasurerSignature
+    const approverName = v.approverName || companyApprovers.approvers[approverRole].name || v.approvedBy || '';
+    if (approverRole === 'accountant') {
+      meta.accountantSignature = v.approverSignature;
+      meta.accountantName = approverName;
+    } else if (approverRole === 'legalRep') {
+      meta.legalRepSignature = v.approverSignature;
+      meta.legalRepName = approverName;
+    } else if (approverRole === 'treasurer') {
+      meta.treasurerSignature = v.approverSignature;
+      meta.treasurerName = approverName;
+    }
+    Logger.log('✅ Stored role-specific signature for: ' + approverRole + ', name: ' + approverName);
     
     // 7. Count approvals
     const approvalCount = countApprovals(companyApprovers.approvers);

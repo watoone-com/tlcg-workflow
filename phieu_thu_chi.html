@@ -4089,6 +4089,7 @@
         // ============ RECENT VOUCHERS & APPROVAL FUNCTIONS ============
         let currentModalVoucher = null;
         let currentModalMeta = null; // Merged meta from all history entries
+        let currentApproverRole = null; // 'accountant', 'legalRep', or 'treasurer'
         let approverSignatureData = null;
         const APPROVER_SIGNATURE_KEY = 'tlcg_approver_signature';
         
@@ -4431,9 +4432,46 @@
                         // Try to parse signature from note field if it contains JSON
                         if (h.note && h.note.includes('{')) {
                             try {
-                                const noteMeta = JSON.parse(h.note);
+                                // Extract JSON from note (format: "Text\nMeta: {JSON}" or just "{JSON}")
+                                let jsonStr = h.note;
+                                const metaIdx = h.note.indexOf('Meta: ');
+                                if (metaIdx >= 0) {
+                                    jsonStr = h.note.substring(metaIdx + 6).trim();
+                                } else {
+                                    // Try to find the start of JSON
+                                    const jsonStart = h.note.indexOf('{');
+                                    if (jsonStart >= 0) {
+                                        jsonStr = h.note.substring(jsonStart);
+                                    }
+                                }
+                                const noteMeta = JSON.parse(jsonStr);
                                 if (noteMeta.requesterSignature) currentModalMeta.requesterSignature = noteMeta.requesterSignature;
                                 if (noteMeta.approverSignature) currentModalMeta.approverSignature = noteMeta.approverSignature;
+                                // Extract role-specific signatures (direct keys take priority)
+                                if (noteMeta.accountantSignature) currentModalMeta.accountantSignature = noteMeta.accountantSignature;
+                                if (noteMeta.legalRepSignature) currentModalMeta.legalRepSignature = noteMeta.legalRepSignature;
+                                if (noteMeta.treasurerSignature) currentModalMeta.treasurerSignature = noteMeta.treasurerSignature;
+                                // Extract role-specific approver names
+                                if (noteMeta.accountantName) currentModalMeta.accountantName = noteMeta.accountantName;
+                                if (noteMeta.legalRepName) currentModalMeta.legalRepName = noteMeta.legalRepName;
+                                if (noteMeta.treasurerName) currentModalMeta.treasurerName = noteMeta.treasurerName;
+
+                                // Fallback: Extract from companyApprovers for backward compatibility
+                                const approvers = noteMeta.companyApprovers?.approvers;
+                                if (approvers) {
+                                    if (!currentModalMeta.accountantSignature && approvers.accountant?.signature) {
+                                        currentModalMeta.accountantSignature = approvers.accountant.signature;
+                                        currentModalMeta.accountantName = approvers.accountant.name;
+                                    }
+                                    if (!currentModalMeta.legalRepSignature && approvers.legalRep?.signature) {
+                                        currentModalMeta.legalRepSignature = approvers.legalRep.signature;
+                                        currentModalMeta.legalRepName = approvers.legalRep.name;
+                                    }
+                                    if (!currentModalMeta.treasurerSignature && approvers.treasurer?.signature) {
+                                        currentModalMeta.treasurerSignature = approvers.treasurer.signature;
+                                        currentModalMeta.treasurerName = approvers.treasurer.name;
+                                    }
+                                }
                             } catch (e) {
                                 // Not JSON, ignore
                             }
@@ -4579,7 +4617,14 @@
                     const statusData = statusResult.data;
                     const progress = statusData.approvalProgress || '0/3';
                     const progressNum = parseInt(progress.split('/')[0]);
-                    
+
+                    // Detect current approver role based on approval progress
+                    if (progressNum === 0) currentApproverRole = 'accountant';
+                    else if (progressNum === 1) currentApproverRole = 'legalRep';
+                    else if (progressNum === 2) currentApproverRole = 'treasurer';
+                    else currentApproverRole = null; // Fully approved
+                    console.log('Current approver role detected:', currentApproverRole, 'Progress:', progress);
+
                     approvalStatusHtml = `
                         <div class="approval-progress-section" style="background: #f8fafc; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid #e2e8f0;">
                             <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem;">
@@ -5064,6 +5109,9 @@
                     return;
                 }
                 
+                // Get current user name for approval
+                const approverName = currentUser?.name || 'Approver';
+
                 // Use POST request because approverSignature is too long for URL
                 const requestData = {
                     action: 'approveVoucher',
@@ -5075,10 +5123,13 @@
                         amount: currentModalVoucher.amount || '',
                         requestorEmail: currentModalVoucher.requestorEmail || '',
                         approverEmail: currentModalVoucher.approverEmail || '',
-                        approvedBy: 'Approver',
+                        approvedBy: approverName,
+                        approverRole: currentApproverRole, // 'accountant', 'legalRep', or 'treasurer'
+                        approverName: approverName, // Store approver name with role-specific key in backend
                         approverSignature: finalSignature
                     }
                 };
+                console.log('Sending approval with role:', currentApproverRole, 'name:', approverName);
                 
                 // Calculate total payload size
                 const payloadString = JSON.stringify(requestData);
@@ -5635,79 +5686,44 @@
                                     <div class="signature-name">${voucher.employee || ''}</div>
                                 </div>
                                 
-                                ${companyApprovers && companyApprovers.accountant ? `
                                 <div class="signature-box">
-                                    <div class="signature-title">${companyApprovers.accountant.role || 'Kế toán trưởng'} <span class="signature-required">*</span></div>
+                                    <div class="signature-title">${companyApprovers?.accountant?.role || 'Kế toán trưởng'} <span class="signature-required">*</span></div>
                                     <div class="signature-image-container">
-                                        ${companyApprovers.accountant.signature 
-                                            ? `<img src="${companyApprovers.accountant.signature}" alt="Chữ ký" class="signature-img">`
-                                            : (voucher.status === 'Approved' && meta.approverSignature) 
-                                                ? `<img src="${meta.approverSignature}" alt="Chữ ký" class="signature-img">`
+                                        ${meta.accountantSignature
+                                            ? `<img src="${meta.accountantSignature}" alt="Chữ ký" class="signature-img">`
+                                            : (companyApprovers?.accountant?.signature)
+                                                ? `<img src="${companyApprovers.accountant.signature}" alt="Chữ ký" class="signature-img">`
                                                 : ''
                                         }
                                     </div>
-                                    <div class="signature-name">${companyApprovers.accountant.name || (voucher.status === 'Approved' ? (voucher.approvedBy || '') : '')}</div>
+                                    <div class="signature-name">${meta.accountantName || companyApprovers?.accountant?.name || ''}</div>
                                 </div>
-                                ` : `
-                                <div class="signature-box">
-                                    <div class="signature-title">Kế toán trưởng <span class="signature-required">*</span></div>
-                                    <div class="signature-image-container">
-                                        ${(voucher.status === 'Approved' && meta.approverSignature) 
-                                            ? `<img src="${meta.approverSignature}" alt="Chữ ký" class="signature-img">`
-                                            : ''
-                                        }
-                                    </div>
-                                    <div class="signature-name">${voucher.status === 'Approved' ? (voucher.approvedBy || '') : ''}</div>
-                                </div>
-                                `}
                                 
-                                ${companyApprovers && companyApprovers.legalRep ? `
                                 <div class="signature-box">
-                                    <div class="signature-title">${companyApprovers.legalRep.role || 'Đại diện pháp luật'} <span class="signature-required">*</span></div>
+                                    <div class="signature-title">${companyApprovers?.legalRep?.role || 'Giám đốc'} <span class="signature-required">*</span></div>
                                     <div class="signature-image-container">
-                                        ${companyApprovers.legalRep.signature 
-                                            ? `<img src="${companyApprovers.legalRep.signature}" alt="Chữ ký" class="signature-img">`
-                                            : ''
+                                        ${meta.legalRepSignature
+                                            ? `<img src="${meta.legalRepSignature}" alt="Chữ ký" class="signature-img">`
+                                            : (companyApprovers?.legalRep?.signature)
+                                                ? `<img src="${companyApprovers.legalRep.signature}" alt="Chữ ký" class="signature-img">`
+                                                : ''
                                         }
                                     </div>
-                                    <div class="signature-name">${companyApprovers.legalRep.name || ''}</div>
+                                    <div class="signature-name">${meta.legalRepName || companyApprovers?.legalRep?.name || ''}</div>
                                 </div>
-                                ` : `
-                                <div class="signature-box">
-                                    <div class="signature-title">Giám đốc <span class="signature-required">*</span></div>
-                                    <div class="signature-image-container">
-                                        ${(voucher.status === 'Approved' && meta.approverSignature) 
-                                            ? `<img src="${meta.approverSignature}" alt="Chữ ký" class="signature-img">`
-                                            : ''
-                                        }
-                                    </div>
-                                    <div class="signature-name">${voucher.status === 'Approved' ? (voucher.approvedBy || '') : ''}</div>
-                                </div>
-                                `}
                                 
-                                ${companyApprovers && companyApprovers.treasurer ? `
                                 <div class="signature-box">
-                                    <div class="signature-title">${companyApprovers.treasurer.role || 'Thủ quỹ'} <span class="signature-required">*</span></div>
+                                    <div class="signature-title">${companyApprovers?.treasurer?.role || 'Thủ quỹ'} <span class="signature-required">*</span></div>
                                     <div class="signature-image-container">
-                                        ${companyApprovers.treasurer.signature 
-                                            ? `<img src="${companyApprovers.treasurer.signature}" alt="Chữ ký" class="signature-img">`
-                                            : ''
+                                        ${meta.treasurerSignature
+                                            ? `<img src="${meta.treasurerSignature}" alt="Chữ ký" class="signature-img">`
+                                            : (companyApprovers?.treasurer?.signature)
+                                                ? `<img src="${companyApprovers.treasurer.signature}" alt="Chữ ký" class="signature-img">`
+                                                : ''
                                         }
                                     </div>
-                                    <div class="signature-name">${companyApprovers.treasurer.name || ''}</div>
+                                    <div class="signature-name">${meta.treasurerName || companyApprovers?.treasurer?.name || ''}</div>
                                 </div>
-                                ` : `
-                                <div class="signature-box">
-                                    <div class="signature-title">Thủ quỹ <span class="signature-required">*</span></div>
-                                    <div class="signature-image-container">
-                                        ${(voucher.status === 'Approved' && meta.approverSignature)
-                                            ? `<img src="${meta.approverSignature}" alt="Chữ ký" class="signature-img">`
-                                            : ''
-                                        }
-                                    </div>
-                                    <div class="signature-name">${voucher.status === 'Approved' ? (voucher.approvedBy || '') : ''}</div>
-                                </div>
-                                `}
                                 
                                 <div class="signature-box">
                                     <div class="signature-title">Người nộp/nhận tiền <span class="signature-required">*</span></div>
