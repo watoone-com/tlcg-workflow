@@ -5282,12 +5282,12 @@
                 const voucher = currentModalVoucher;
                 let meta = currentModalMeta || voucher.meta || {}; // Use merged meta
                 console.log('printVoucher: voucher data loaded', voucher.voucherNumber);
-            
-            // Get company approvers from voucher data (stored when submitted)
-            const companyApprovers = voucher.companyApprovers || meta.companyApprovers || null;
 
-            // Approval status HTML (not needed for print, but template references it)
-            const approvalStatusHtml = '';
+                // Approval status HTML (not needed for print, but template references it)
+                const approvalStatusHtml = '';
+
+                // Get company approvers from voucher data (stored when submitted)
+                const companyApprovers = voucher.companyApprovers || meta.companyApprovers || null;
 
             // DO NOT use localStorage for signatures in print view
             // Signatures should ONLY come from the backend (meta) to ensure we show
