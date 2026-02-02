@@ -5270,13 +5270,18 @@
         
         // Print voucher - opens print-friendly view matching Vietnamese voucher format
         function printVoucher() {
-            if (!currentModalVoucher) {
-                showToast('Không tìm thấy thông tin phiếu', 'error');
-                return;
-            }
-            
-            const voucher = currentModalVoucher;
-            let meta = currentModalMeta || voucher.meta || {}; // Use merged meta
+            try {
+                console.log('printVoucher called, currentModalVoucher:', currentModalVoucher);
+
+                if (!currentModalVoucher) {
+                    showToast('Không tìm thấy thông tin phiếu', 'error');
+                    console.error('printVoucher: currentModalVoucher is null');
+                    return;
+                }
+
+                const voucher = currentModalVoucher;
+                let meta = currentModalMeta || voucher.meta || {}; // Use merged meta
+                console.log('printVoucher: voucher data loaded', voucher.voucherNumber);
             
             // Get company approvers from voucher data (stored when submitted)
             const companyApprovers = voucher.companyApprovers || meta.companyApprovers || null;
@@ -5718,15 +5723,35 @@
                 </html>
             `;
             
-            // Open print window
+            // Try to open print window
+            console.log('printVoucher: Attempting to open print window...');
             const printWindow = window.open('', '_blank');
             if (printWindow) {
                 printWindow.document.write(printContent);
                 printWindow.document.close();
                 printWindow.focus();
+                console.log('printVoucher: Print window opened successfully');
             } else {
-                showToast('Vui lòng cho phép popup để in phiếu', 'error');
+                console.error('printVoucher: Popup blocked, trying iframe method...');
+                // Fallback: Use iframe if popup is blocked
+                let printFrame = document.getElementById('print-frame');
+                if (!printFrame) {
+                    printFrame = document.createElement('iframe');
+                    printFrame.id = 'print-frame';
+                    printFrame.style.cssText = 'position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: 99999; background: white; border: none;';
+                    document.body.appendChild(printFrame);
+                }
+                printFrame.style.display = 'block';
+                const frameDoc = printFrame.contentDocument || printFrame.contentWindow.document;
+                frameDoc.open();
+                frameDoc.write(printContent);
+                frameDoc.close();
+                showToast('Đang mở trang in phiếu...', 'info');
             }
+        } catch (error) {
+            console.error('printVoucher error:', error);
+            showToast('Lỗi khi in phiếu: ' + error.message, 'error');
+        }
         }
         
         // Edit voucher from modal - load data into form for editing
