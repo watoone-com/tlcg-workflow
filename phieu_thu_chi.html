@@ -4228,19 +4228,32 @@
         let approverSignatureData = null;
         const APPROVER_SIGNATURE_KEY = 'tlcg_approver_signature';
         
-        // Get current user's email from the employee dropdown
+        // Get current LOGGED-IN user's email from localStorage
         function getCurrentUserEmail() {
-            const employeeSelect = document.getElementById('employee');
-            if (employeeSelect && employeeSelect.value) {
-                return employeeEmailMap[employeeSelect.value] || '';
+            try {
+                const storedUser = localStorage.getItem('tlc_current_user');
+                if (storedUser) {
+                    const user = JSON.parse(storedUser);
+                    return user.email || '';
+                }
+            } catch (e) {
+                console.warn('Could not get current user email:', e);
             }
             return '';
         }
-        
-        // Get current user's name from the employee dropdown
+
+        // Get current LOGGED-IN user's name from localStorage
         function getCurrentUserName() {
-            const employeeSelect = document.getElementById('employee');
-            return employeeSelect ? employeeSelect.value : '';
+            try {
+                const storedUser = localStorage.getItem('tlc_current_user');
+                if (storedUser) {
+                    const user = JSON.parse(storedUser);
+                    return user.name || '';
+                }
+            } catch (e) {
+                console.warn('Could not get current user name:', e);
+            }
+            return '';
         }
         
         // Check if current user is the requester of the voucher
