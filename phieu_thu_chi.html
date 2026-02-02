@@ -5293,10 +5293,18 @@
             // Signatures should ONLY come from the backend (meta) to ensure we show
             // the correct signature of the person who created/approved the voucher,
             // not the signature of the current user viewing the voucher
-            console.log('Print voucher meta:', meta);
+            // === PRINT DEBUG - Check what signature data is available ===
+            console.log('=== PRINT DEBUG ===');
+            console.log('Full meta object:', JSON.stringify(meta, null, 2));
+            console.log('Full voucher object keys:', Object.keys(voucher));
+            console.log('voucher.companyApprovers:', JSON.stringify(voucher.companyApprovers, null, 2));
+            console.log('companyApprovers variable:', JSON.stringify(companyApprovers, null, 2));
             console.log('Requester signature available:', !!meta.requesterSignature);
-            console.log('Approver signature available:', !!meta.approverSignature);
-            console.log('Company approvers:', companyApprovers);
+            console.log('Approver signature (generic):', !!meta.approverSignature);
+            console.log('Accountant signature:', !!meta.accountantSignature);
+            console.log('LegalRep signature:', !!meta.legalRepSignature);
+            console.log('Treasurer signature:', !!meta.treasurerSignature);
+            console.log('===================');
             
             // Determine voucher type title
             const voucherTypeUpper = (voucher.voucherType || '').toUpperCase();
