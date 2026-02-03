@@ -4386,8 +4386,8 @@
             // Calculate similarity percentage
             const similarity = ((uploadedHash.length - differences) / uploadedHash.length) * 100;
 
-            // Threshold: 70% similarity required
-            const SIMILARITY_THRESHOLD = 70;
+            // Threshold: 85% similarity required for mandatory verification
+            const SIMILARITY_THRESHOLD = 85;
             const verified = similarity >= SIMILARITY_THRESHOLD;
 
             console.log(`🔍 Signature comparison: ${similarity.toFixed(1)}% similarity (threshold: ${SIMILARITY_THRESHOLD}%)`);
@@ -5554,32 +5554,30 @@
                     }
                 }
 
-                // Perform signature verification if sample exists
+                // Perform MANDATORY signature verification if sample exists
                 let verificationResult = { verified: true, reason: 'no_sample', similarity: '0' };
                 if (sampleSignatureUrl && sampleSignatureUrl.trim() !== '') {
                     console.log('🔍 Verifying signature against sample...');
                     verificationResult = await compareSignatures(finalSignature, sampleSignatureUrl);
                     console.log('🔍 Verification result:', verificationResult);
 
-                    // Show warning if signature doesn't match (but allow to proceed)
+                    // MANDATORY: Block approval if signature doesn't match
                     if (!verificationResult.verified && verificationResult.reason === 'mismatch') {
-                        const confirmProceed = confirm(
-                            `⚠️ CẢNH BÁO: Chữ ký tải lên không khớp với chữ ký mẫu đã đăng ký.\n\n` +
+                        alert(
+                            `❌ KHÔNG THỂ PHÊ DUYỆT: Chữ ký không khớp!\n\n` +
                             `📊 Độ tương đồng: ${verificationResult.similarity}%\n` +
                             `📏 Ngưỡng yêu cầu: ${verificationResult.threshold}%\n\n` +
-                            `Bạn có muốn tiếp tục phê duyệt không?`
+                            `Vui lòng tải lên chữ ký đã đăng ký trong hệ thống.`
                         );
-                        if (!confirmProceed) {
-                            console.log('User cancelled approval due to signature mismatch');
-                            modalLoading.classList.remove('show');
-                            modalContent.style.opacity = '1';
-                            modalFooter.querySelectorAll('button').forEach(btn => btn.disabled = false);
-                            return;
-                        }
-                        console.log('User confirmed to proceed despite signature mismatch');
+                        console.log('❌ Approval BLOCKED due to signature mismatch');
+                        modalLoading.classList.remove('show');
+                        modalContent.style.opacity = '1';
+                        modalFooter.querySelectorAll('button').forEach(btn => btn.disabled = false);
+                        return;
                     }
+                    console.log('✅ Signature verification passed');
                 } else {
-                    console.log('📋 No sample signature URL found for verification');
+                    console.log('📋 No sample signature URL found for verification - proceeding without verification');
                 }
                 // ============ END SIGNATURE VERIFICATION ============
 

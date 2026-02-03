@@ -285,6 +285,147 @@
             });
         }
 
+        // ============ SIGNATURE VERIFICATION FUNCTIONS ============
+        let companyApproversData = null;
+        let currentApproverRole = null;
+
+        // Fetch company approvers data on page load
+        async function fetchCompanyApprovers() {
+            try {
+                console.log('🔍 Fetching company approvers for:', company);
+                const response = await fetch(GOOGLE_APPS_SCRIPT_WEB_APP_URL + '?action=getCompanyApprovers&company=' + encodeURIComponent(company));
+                const result = await response.json();
+                
+                if (result.success && result.data) {
+                    companyApproversData = result.data.approvers;
+                    console.log('✅ Company approvers loaded:', companyApproversData);
+                    
+                    // Determine approver role based on email
+                    if (companyApproversData) {
+                        if (companyApproversData.accountant && companyApproversData.accountant.email === approverEmail) {
+                            currentApproverRole = 'accountant';
+                        } else if (companyApproversData.legalRep && companyApproversData.legalRep.email === approverEmail) {
+                            currentApproverRole = 'legalRep';
+                        } else if (companyApproversData.treasurer && companyApproversData.treasurer.email === approverEmail) {
+                            currentApproverRole = 'treasurer';
+                        }
+                        console.log('👤 Detected approver role:', currentApproverRole);
+                    }
+                } else {
+                    console.warn('⚠️ Could not load company approvers:', result.message);
+                }
+            } catch (error) {
+                console.error('❌ Error fetching company approvers:', error);
+            }
+        }
+
+        // Fetch sample signature from URL via backend proxy
+        async function fetchSampleSignature(signatureUrl) {
+            if (!signatureUrl || signatureUrl.trim() === '') {
+                console.log('🔍 No sample signature URL provided');
+                return null;
+            }
+            try {
+                console.log('🖼️ Fetching sample signature from:', signatureUrl);
+                const formData = new FormData();
+                formData.append('data', JSON.stringify({
+                    action: 'fetchSignatureImage',
+                    imageUrl: signatureUrl
+                }));
+
+                const response = await fetch(GOOGLE_APPS_SCRIPT_WEB_APP_URL, {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const result = await response.json();
+                if (result.success && result.data && result.data.imageBase64) {
+                    console.log('✅ Sample signature fetched successfully');
+                    return result.data.imageBase64;
+                } else {
+                    console.warn('⚠️ Failed to fetch sample signature:', result.message);
+                    return null;
+                }
+            } catch (error) {
+                console.error('❌ Error fetching sample signature:', error);
+                return null;
+            }
+        }
+
+        // Generate perceptual hash for image comparison
+        async function generateImageHash(base64Data) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const size = 8;
+                    canvas.width = size;
+                    canvas.height = size;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, size, size);
+                    
+                    const imageData = ctx.getImageData(0, 0, size, size);
+                    const pixels = imageData.data;
+                    
+                    let totalGray = 0;
+                    const grayValues = [];
+                    for (let i = 0; i < pixels.length; i += 4) {
+                        const gray = pixels[i] * 0.299 + pixels[i + 1] * 0.587 + pixels[i + 2] * 0.114;
+                        grayValues.push(gray);
+                        totalGray += gray;
+                    }
+                    
+                    const avgGray = totalGray / grayValues.length;
+                    const hash = grayValues.map(g => g >= avgGray ? '1' : '0').join('');
+                    
+                    resolve(hash);
+                };
+                img.onerror = () => resolve(null);
+                img.src = base64Data;
+            });
+        }
+
+        // Compare uploaded signature with sample signature
+        async function compareSignatures(uploadedBase64, sampleUrl) {
+            const sampleBase64 = await fetchSampleSignature(sampleUrl);
+            if (!sampleBase64) {
+                console.log('📋 No sample signature available - skipping verification');
+                return { verified: true, reason: 'no_sample', similarity: 0 };
+            }
+
+            console.log('🔍 Generating hashes for comparison...');
+            const uploadedHash = await generateImageHash(uploadedBase64);
+            const sampleHash = await generateImageHash(sampleBase64);
+
+            if (!uploadedHash || !sampleHash) {
+                console.warn('⚠️ Failed to generate hashes for comparison');
+                return { verified: false, reason: 'hash_failed', similarity: 0 };
+            }
+
+            let differences = 0;
+            for (let i = 0; i < uploadedHash.length; i++) {
+                if (uploadedHash[i] !== sampleHash[i]) differences++;
+            }
+
+            const similarity = ((uploadedHash.length - differences) / uploadedHash.length) * 100;
+            const SIMILARITY_THRESHOLD = 85; // Same as phieu_thu_chi.html
+            const verified = similarity >= SIMILARITY_THRESHOLD;
+
+            console.log(`🔍 Signature comparison: ${similarity.toFixed(1)}% similarity (threshold: ${SIMILARITY_THRESHOLD}%)`);
+            console.log(`🔍 Result: ${verified ? '✅ VERIFIED' : '⚠️ MISMATCH'}`);
+
+            return {
+                verified: verified,
+                similarity: similarity.toFixed(1),
+                reason: verified ? 'match' : 'mismatch',
+                threshold: SIMILARITY_THRESHOLD
+            };
+        }
+
+        // Initialize: Fetch company approvers when page loads
+        fetchCompanyApprovers();
+
         // Handle signature upload
         document.getElementById('signature-upload-input').addEventListener('change', async (e) => {
             const file = e.target.files[0];
@@ -383,8 +524,50 @@
             console.log('Requestor Email:', requestorEmail);
             console.log('Approver Email:', approverEmail);
             console.log('Signature uploaded:', !!approverSignatureData);
+            console.log('Approver role:', currentApproverRole);
 
             try {
+                // ============ MANDATORY SIGNATURE VERIFICATION ============
+                let sampleSignatureUrl = null;
+                let verificationResult = { verified: true, reason: 'no_sample', similarity: '0' };
+
+                // Get sample signature URL based on approver role
+                if (companyApproversData && currentApproverRole) {
+                    if (currentApproverRole === 'accountant' && companyApproversData.accountant) {
+                        sampleSignatureUrl = companyApproversData.accountant.signature;
+                    } else if (currentApproverRole === 'legalRep' && companyApproversData.legalRep) {
+                        sampleSignatureUrl = companyApproversData.legalRep.signature;
+                    } else if (currentApproverRole === 'treasurer' && companyApproversData.treasurer) {
+                        sampleSignatureUrl = companyApproversData.treasurer.signature;
+                    }
+                }
+
+                // Perform signature verification if sample exists
+                if (sampleSignatureUrl && sampleSignatureUrl.trim() !== '') {
+                    console.log('🔍 Verifying signature against sample...');
+                    verificationResult = await compareSignatures(approverSignatureData, sampleSignatureUrl);
+                    console.log('🔍 Verification result:', verificationResult);
+
+                    // MANDATORY: Block approval if signature doesn't match
+                    if (!verificationResult.verified && verificationResult.reason === 'mismatch') {
+                        showMessage(
+                            `❌ KHÔNG THỂ PHÊ DUYỆT: Chữ ký không khớp!\n` +
+                            `Độ tương đồng: ${verificationResult.similarity}% (yêu cầu: ${verificationResult.threshold}%)\n` +
+                            `Vui lòng tải lên chữ ký đã đăng ký trong hệ thống.`,
+                            'error'
+                        );
+                        console.log('❌ Approval BLOCKED due to signature mismatch');
+                        document.getElementById('loading').classList.remove('show');
+                        document.querySelector('.button-group').style.display = 'flex';
+                        document.getElementById('approve-btn').disabled = false;
+                        return;
+                    }
+                    console.log('✅ Signature verification passed');
+                } else {
+                    console.log('📋 No sample signature URL found - proceeding without verification');
+                }
+                // ============ END SIGNATURE VERIFICATION ============
+
                 // Use POST method to send signature (too large for URL)
                 const requestData = {
                     action: 'approveVoucher',
@@ -397,7 +580,9 @@
                         requestorEmail: requestorEmail,
                         approverEmail: approverEmail,
                         approvedBy: approverEmail,
-                        approverSignature: approverSignatureData
+                        approverRole: currentApproverRole,
+                        approverSignature: approverSignatureData,
+                        signatureVerification: verificationResult
                     }
                 };
 
