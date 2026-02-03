@@ -1060,7 +1060,7 @@ function handleApproveVoucher(requestBody) {
           'Chữ ký không hợp lệ. ' +
           'Lý do: ' + (v.signatureVerification.reason || 'unknown') + '. ' +
           (v.signatureVerification.similarity ?
-            'Độ tương đồng: ' + v.signatureVerification.similarity + '% (yêu cầu: 85%)' :
+            'Độ tương đồng: ' + v.signatureVerification.similarity + '% (yêu cầu: 75%)' :
             'Vui lòng sử dụng chữ ký mẫu đã đăng ký.')
         );
       }

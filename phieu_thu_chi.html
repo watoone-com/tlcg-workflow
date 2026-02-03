@@ -4468,8 +4468,8 @@
             // Calculate similarity percentage
             const similarity = ((uploadedHash.length - differences) / uploadedHash.length) * 100;
 
-            // Threshold: 85% similarity required for mandatory verification
-            const SIMILARITY_THRESHOLD = 85;
+            // Threshold: 75% similarity required for mandatory verification
+            const SIMILARITY_THRESHOLD = 75;
             const verified = similarity >= SIMILARITY_THRESHOLD;
 
             console.log(`🔍 Signature comparison: ${similarity.toFixed(1)}% similarity (threshold: ${SIMILARITY_THRESHOLD}%)`);
