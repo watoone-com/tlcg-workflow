@@ -1049,9 +1049,23 @@ function handleApproveVoucher(requestBody) {
     }
     Logger.log('✅ Stored role-specific signature for: ' + approverRole + ', name: ' + approverName);
 
-    // 6c. Log signature verification result (for audit trail)
+    // 6c. CRITICAL FIX: Enforce signature verification result
     if (v.signatureVerification) {
       Logger.log('🔍 Signature verification result: ' + JSON.stringify(v.signatureVerification));
+
+      // CRITICAL FIX: Enforce verification result - block if not verified
+      if (v.signatureVerification.verified !== true) {
+        Logger.log('❌ Signature verification failed - blocking approval');
+        return createResponse(false,
+          'Chữ ký không hợp lệ. ' +
+          'Lý do: ' + (v.signatureVerification.reason || 'unknown') + '. ' +
+          (v.signatureVerification.similarity ?
+            'Độ tương đồng: ' + v.signatureVerification.similarity + '% (yêu cầu: 85%)' :
+            'Vui lòng sử dụng chữ ký mẫu đã đăng ký.')
+        );
+      }
+
+      // Store verification result for audit trail
       meta.signatureVerification = meta.signatureVerification || {};
       meta.signatureVerification[approverRole] = {
         verified: v.signatureVerification.verified,
@@ -1059,6 +1073,14 @@ function handleApproveVoucher(requestBody) {
         reason: v.signatureVerification.reason,
         verifiedAt: new Date().toISOString()
       };
+    }
+
+    // CRITICAL FIX: Require verification object to be present
+    if (!v.signatureVerification || typeof v.signatureVerification !== 'object') {
+      Logger.log('❌ Missing signature verification data');
+      return createResponse(false,
+        'Thiếu dữ liệu xác thực chữ ký. Vui lòng thử lại hoặc liên hệ quản trị viên.'
+      );
     }
 
     // 7. Count approvals

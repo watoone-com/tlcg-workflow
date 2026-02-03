@@ -294,12 +294,18 @@
             try {
                 console.log('🔍 Fetching company approvers for:', company);
                 const response = await fetch(GOOGLE_APPS_SCRIPT_WEB_APP_URL + '?action=getCompanyApprovers&company=' + encodeURIComponent(company));
+
+                // CRITICAL FIX: Check HTTP response status
+                if (!response.ok) {
+                    throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                }
+
                 const result = await response.json();
-                
+
                 if (result.success && result.data) {
                     companyApproversData = result.data.approvers;
                     console.log('✅ Company approvers loaded:', companyApproversData);
-                    
+
                     // Determine approver role based on email
                     if (companyApproversData) {
                         if (companyApproversData.accountant && companyApproversData.accountant.email === approverEmail) {
@@ -312,10 +318,23 @@
                         console.log('👤 Detected approver role:', currentApproverRole);
                     }
                 } else {
-                    console.warn('⚠️ Could not load company approvers:', result.message);
+                    // CRITICAL FIX: Throw error instead of silent warning
+                    throw new Error(result.message || 'Failed to load company approvers');
                 }
             } catch (error) {
+                // CRITICAL FIX: Show user-facing error alert
                 console.error('❌ Error fetching company approvers:', error);
+                showMessage(
+                    `❌ LỖI: Không thể tải thông tin công ty\n\n` +
+                    `Không thể kết nối đến hệ thống để lấy danh sách người phê duyệt.\n\n` +
+                    `Chi tiết: ${error.message}\n\n` +
+                    `Vui lòng:\n` +
+                    `1. Kiểm tra kết nối mạng\n` +
+                    `2. Tải lại trang\n` +
+                    `3. Liên hệ quản trị viên nếu vẫn lỗi`,
+                    'error'
+                );
+                throw error; // Propagate error to caller
             }
         }
 
@@ -388,39 +407,74 @@
 
         // Compare uploaded signature with sample signature
         async function compareSignatures(uploadedBase64, sampleUrl) {
-            const sampleBase64 = await fetchSampleSignature(sampleUrl);
-            if (!sampleBase64) {
-                console.log('📋 No sample signature available - skipping verification');
-                return { verified: true, reason: 'no_sample', similarity: 0 };
+            try {
+                const sampleBase64 = await fetchSampleSignature(sampleUrl);
+
+                // CRITICAL FIX: Fail-closed instead of fail-open
+                if (!sampleBase64) {
+                    console.error('❌ Failed to fetch sample signature');
+                    return {
+                        verified: false,
+                        reason: 'fetch_failed',
+                        similarity: 0,
+                        threshold: 85
+                    };
+                }
+
+                console.log('🔍 Generating hashes for comparison...');
+                const uploadedHash = await generateImageHash(uploadedBase64);
+                const sampleHash = await generateImageHash(sampleBase64);
+
+                // CRITICAL FIX: Check if hash generation succeeded
+                if (!uploadedHash || !sampleHash) {
+                    console.error('❌ Hash generation failed');
+                    return {
+                        verified: false,
+                        reason: 'hash_failed',
+                        similarity: 0,
+                        threshold: 85
+                    };
+                }
+
+                // Calculate Hamming distance
+                let differences = 0;
+                for (let i = 0; i < uploadedHash.length; i++) {
+                    if (uploadedHash[i] !== sampleHash[i]) differences++;
+                }
+
+                const similarity = ((uploadedHash.length - differences) / uploadedHash.length) * 100;
+                const SIMILARITY_THRESHOLD = 85; // Same as phieu_thu_chi.html
+
+                console.log(`🔍 Signature similarity: ${similarity.toFixed(2)}% (threshold: ${SIMILARITY_THRESHOLD}%)`);
+
+                if (similarity >= SIMILARITY_THRESHOLD) {
+                    console.log('✅ Signature VERIFIED');
+                    return {
+                        verified: true,
+                        similarity: similarity.toFixed(2),
+                        reason: 'match',
+                        threshold: SIMILARITY_THRESHOLD
+                    };
+                } else {
+                    console.log('❌ Signature MISMATCH');
+                    return {
+                        verified: false,
+                        similarity: similarity.toFixed(2),
+                        reason: 'mismatch',
+                        threshold: SIMILARITY_THRESHOLD
+                    };
+                }
+            } catch (error) {
+                // CRITICAL FIX: Fail-closed on any error
+                console.error('❌ Signature comparison error:', error);
+                return {
+                    verified: false,
+                    reason: 'comparison_error',
+                    similarity: 0,
+                    threshold: 85,
+                    error: error.message
+                };
             }
-
-            console.log('🔍 Generating hashes for comparison...');
-            const uploadedHash = await generateImageHash(uploadedBase64);
-            const sampleHash = await generateImageHash(sampleBase64);
-
-            if (!uploadedHash || !sampleHash) {
-                console.warn('⚠️ Failed to generate hashes for comparison');
-                return { verified: false, reason: 'hash_failed', similarity: 0 };
-            }
-
-            let differences = 0;
-            for (let i = 0; i < uploadedHash.length; i++) {
-                if (uploadedHash[i] !== sampleHash[i]) differences++;
-            }
-
-            const similarity = ((uploadedHash.length - differences) / uploadedHash.length) * 100;
-            const SIMILARITY_THRESHOLD = 85; // Same as phieu_thu_chi.html
-            const verified = similarity >= SIMILARITY_THRESHOLD;
-
-            console.log(`🔍 Signature comparison: ${similarity.toFixed(1)}% similarity (threshold: ${SIMILARITY_THRESHOLD}%)`);
-            console.log(`🔍 Result: ${verified ? '✅ VERIFIED' : '⚠️ MISMATCH'}`);
-
-            return {
-                verified: verified,
-                similarity: similarity.toFixed(1),
-                reason: verified ? 'match' : 'mismatch',
-                threshold: SIMILARITY_THRESHOLD
-            };
         }
 
         // Initialize: Fetch company approvers when page loads
@@ -529,7 +583,8 @@
             try {
                 // ============ MANDATORY SIGNATURE VERIFICATION ============
                 let sampleSignatureUrl = null;
-                let verificationResult = { verified: true, reason: 'no_sample', similarity: '0' };
+                // CRITICAL FIX: Default to fail-closed (verified: false)
+                let verificationResult = { verified: false, reason: 'no_sample_required', similarity: '0' };
 
                 // Get sample signature URL based on approver role
                 if (companyApproversData && currentApproverRole) {
@@ -542,30 +597,60 @@
                     }
                 }
 
-                // Perform signature verification if sample exists
-                if (sampleSignatureUrl && sampleSignatureUrl.trim() !== '') {
-                    console.log('🔍 Verifying signature against sample...');
-                    verificationResult = await compareSignatures(approverSignatureData, sampleSignatureUrl);
-                    console.log('🔍 Verification result:', verificationResult);
-
-                    // MANDATORY: Block approval if signature doesn't match
-                    if (!verificationResult.verified && verificationResult.reason === 'mismatch') {
-                        showMessage(
-                            `❌ KHÔNG THỂ PHÊ DUYỆT: Chữ ký không khớp!\n` +
-                            `Độ tương đồng: ${verificationResult.similarity}% (yêu cầu: ${verificationResult.threshold}%)\n` +
-                            `Vui lòng tải lên chữ ký đã đăng ký trong hệ thống.`,
-                            'error'
-                        );
-                        console.log('❌ Approval BLOCKED due to signature mismatch');
-                        document.getElementById('loading').classList.remove('show');
-                        document.querySelector('.button-group').style.display = 'flex';
-                        document.getElementById('approve-btn').disabled = false;
-                        return;
-                    }
-                    console.log('✅ Signature verification passed');
-                } else {
-                    console.log('📋 No sample signature URL found - proceeding without verification');
+                // CRITICAL FIX: Block approval if sample signature missing
+                if (!sampleSignatureUrl || sampleSignatureUrl.trim() === '') {
+                    console.error('❌ No sample signature URL found for this approver');
+                    showMessage(
+                        `❌ KHÔNG THỂ PHÊ DUYỆT: Thiếu chữ ký mẫu\n\n` +
+                        `Vui lòng liên hệ quản trị viên để cập nhật chữ ký mẫu cho người phê duyệt này trong hệ thống.\n\n` +
+                        `Không thể phê duyệt phiếu khi chưa có chữ ký mẫu để so sánh.`,
+                        'error'
+                    );
+                    document.getElementById('loading').classList.remove('show');
+                    document.querySelector('.button-group').style.display = 'flex';
+                    document.getElementById('approve-btn').disabled = false;
+                    return; // Block approval
                 }
+
+                // Perform signature verification
+                console.log('🔍 Verifying signature against sample...');
+                verificationResult = await compareSignatures(approverSignatureData, sampleSignatureUrl);
+                console.log('🔍 Verification result:', verificationResult);
+
+                // MANDATORY: Block approval if verification failed for any reason
+                if (!verificationResult.verified) {
+                    let errorMessage = '';
+                    if (verificationResult.reason === 'mismatch') {
+                        errorMessage = `❌ KHÔNG THỂ PHÊ DUYỆT: Chữ ký không khớp!\n` +
+                            `Độ tương đồng: ${verificationResult.similarity}%\n` +
+                            `(yêu cầu: ${verificationResult.threshold}%)\n\n` +
+                            `Vui lòng sử dụng chữ ký mẫu đã đăng ký.`;
+                    } else if (verificationResult.reason === 'no_sample' || verificationResult.reason === 'fetch_failed') {
+                        errorMessage = `❌ KHÔNG THỂ PHÊ DUYỆT: Lỗi hệ thống\n\n` +
+                            `Không thể tải chữ ký mẫu từ hệ thống.\n` +
+                            `Lý do: ${verificationResult.reason}\n\n` +
+                            `Vui lòng thử lại hoặc liên hệ quản trị viên.`;
+                    } else if (verificationResult.reason === 'hash_failed') {
+                        errorMessage = `❌ KHÔNG THỂ PHÊ DUYỆT: Lỗi xử lý chữ ký\n\n` +
+                            `Không thể xử lý file chữ ký. Vui lòng kiểm tra:\n` +
+                            `- File có đúng định dạng PNG/JPG\n` +
+                            `- File không bị hỏng\n` +
+                            `- Kích thước file hợp lệ\n\n` +
+                            `Nếu vẫn lỗi, vui lòng liên hệ quản trị viên.`;
+                    } else {
+                        errorMessage = `❌ KHÔNG THỂ PHÊ DUYỆT: Lỗi xác thực chữ ký\n\n` +
+                            `Lý do: ${verificationResult.reason || 'unknown'}\n\n` +
+                            `Vui lòng thử lại hoặc liên hệ quản trị viên.`;
+                    }
+
+                    showMessage(errorMessage, 'error');
+                    console.log('❌ Approval BLOCKED:', verificationResult.reason);
+                    document.getElementById('loading').classList.remove('show');
+                    document.querySelector('.button-group').style.display = 'flex';
+                    document.getElementById('approve-btn').disabled = false;
+                    return; // Block approval
+                }
+                console.log('✅ Signature verification passed');
                 // ============ END SIGNATURE VERIFICATION ============
 
                 // Use POST method to send signature (too large for URL)
