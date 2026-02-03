@@ -2780,7 +2780,94 @@
         // 10. Ensure your Google account has permissions to send emails via Gmail (usually default).
         // Use proxy URL like index.html (Cash & Admin) does - this works correctly
         const GOOGLE_APPS_SCRIPT_WEB_APP_URL = '/api/voucher'; // Voucher operations proxy
-        
+
+        // ==================== API REQUEST QUEUE & RETRY LOGIC ====================
+        /**
+         * APIRequestQueue - Prevents concurrent API overload by queuing requests
+         * @param {number} maxConcurrent - Maximum number of concurrent requests (default: 3)
+         */
+        class APIRequestQueue {
+            constructor(maxConcurrent = 3) {
+                this.queue = [];
+                this.activeRequests = 0;
+                this.maxConcurrent = maxConcurrent;
+            }
+
+            async enqueue(requestFn) {
+                return new Promise((resolve, reject) => {
+                    this.queue.push({ requestFn, resolve, reject });
+                    this.processQueue();
+                });
+            }
+
+            async processQueue() {
+                if (this.activeRequests >= this.maxConcurrent || this.queue.length === 0) {
+                    return;
+                }
+
+                this.activeRequests++;
+                const { requestFn, resolve, reject } = this.queue.shift();
+
+                try {
+                    const result = await requestFn();
+                    resolve(result);
+                } catch (error) {
+                    reject(error);
+                } finally {
+                    this.activeRequests--;
+                    this.processQueue();
+                }
+            }
+        }
+
+        // Global API queue instance
+        const apiQueue = new APIRequestQueue(3); // Max 3 concurrent requests
+
+        /**
+         * fetchWithRetry - Fetch with automatic retry on 400 Bad Request (concurrency issues)
+         * @param {string} url - The URL to fetch
+         * @param {object} options - Fetch options
+         * @param {number} maxRetries - Maximum number of retries (default: 3)
+         * @param {number} delay - Base delay in ms between retries (default: 1000)
+         */
+        async function fetchWithRetry(url, options, maxRetries = 3, delay = 1000) {
+            for (let attempt = 1; attempt <= maxRetries; attempt++) {
+                try {
+                    const response = await fetch(url, options);
+
+                    // Specific 400 Bad Request handling
+                    if (response.status === 400) {
+                        const errorText = await response.text();
+                        console.error(`[API Error 400] Attempt ${attempt}/${maxRetries}:`, errorText);
+
+                        // If concurrency issue, wait and retry
+                        if (errorText.includes('concurrent') || errorText.includes('rate limit') || errorText.includes('too many')) {
+                            if (attempt < maxRetries) {
+                                const waitTime = delay * attempt; // Exponential backoff
+                                console.log(`[Retry] Waiting ${waitTime}ms before retry ${attempt + 1}...`);
+                                await new Promise(resolve => setTimeout(resolve, waitTime));
+                                continue;
+                            }
+                        }
+
+                        // Non-retryable 400 error
+                        throw new Error(`API Error 400: ${errorText}`);
+                    }
+
+                    if (!response.ok) {
+                        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+                    }
+
+                    return response;
+                } catch (error) {
+                    if (attempt === maxRetries) throw error;
+                    const waitTime = delay * attempt;
+                    console.log(`[Retry] Error occurred, waiting ${waitTime}ms before retry ${attempt + 1}...`);
+                    await new Promise(resolve => setTimeout(resolve, waitTime));
+                }
+            }
+        }
+
         // ==================== GOOGLE DRIVE API CONFIGURATION ====================
         // TODO: Replace these with your actual credentials after Google Cloud setup
         const DRIVE_CONFIG = {
@@ -3831,29 +3918,24 @@
                 console.log('📧 Request body:', bodyString);
                 console.log('📧 Action value:', 'getCompanyApprovers');
                 console.log('📧 CompanyName value:', companyName);
-                
-                // #region agent log
-                fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'phieu_thu_chi.html:3310',message:'FRONTEND_PRE_FETCH',data:{bodyString:bodyString,companyName:companyName,actionValue:'getCompanyApprovers'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B,C,E'})}).catch(()=>{});
-                // #endregion
-                
-                const response = await fetch('/api/voucher', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded',
-                    },
-                    body: bodyString
-                });
+
+                // Use API queue with retry logic to prevent concurrency issues
+                const response = await apiQueue.enqueue(() =>
+                    fetchWithRetry('/api/voucher', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                        },
+                        body: bodyString
+                    })
+                );
                 
                 console.log('📧 Response status:', response.status);
                 console.log('📧 Response ok:', response.ok);
                 
                 const result = await response.json();
                 console.log('📧 Response result:', result);
-                
-                // #region agent log
-                fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'phieu_thu_chi.html:3330',message:'FRONTEND_RESPONSE',data:{success:result.success,message:result.message,hasData:!!result.data,hasApprovers:!!(result.data&&result.data.approvers)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,B'})}).catch(()=>{});
-                // #endregion
-                
+
                 if (result.success && result.data && result.data.approvers) {
                     data.selectedCompanyApprovers = result.data.approvers;
                     console.log('✅ Company approvers loaded:', data.selectedCompanyApprovers);

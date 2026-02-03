@@ -15,6 +15,37 @@ export const config = {
 
 import busboy from 'busboy';
 
+// ==================== RATE LIMITING ====================
+// In-memory rate limit tracking (IP -> { count, resetTime })
+const requestCounts = new Map();
+const RATE_LIMIT = 30; // requests per minute
+const RATE_WINDOW = 60000; // 1 minute in ms
+
+/**
+ * Check if client has exceeded rate limit
+ * @param {string} ip - Client IP address
+ * @returns {boolean} - True if within limit, false if exceeded
+ */
+function checkRateLimit(ip) {
+    const now = Date.now();
+    const record = requestCounts.get(ip);
+
+    if (!record || now > record.resetTime) {
+        // No record or window expired - reset counter
+        requestCounts.set(ip, { count: 1, resetTime: now + RATE_WINDOW });
+        return true;
+    }
+
+    if (record.count >= RATE_LIMIT) {
+        // Rate limit exceeded
+        return false;
+    }
+
+    // Increment counter
+    record.count++;
+    return true;
+}
+
 // Helper to parse FormData from request
 async function parseFormData(req) {
   return new Promise((resolve, reject) => {
@@ -55,6 +86,21 @@ async function parseFormData(req) {
 }
 
 export default async function handler(req, res) {
+  // ==================== RATE LIMITING CHECK ====================
+  const clientIp = req.headers['x-forwarded-for'] ||
+                   req.headers['x-real-ip'] ||
+                   req.socket?.remoteAddress ||
+                   'unknown';
+
+  if (!checkRateLimit(clientIp)) {
+    console.warn(`[Proxy] Rate limit exceeded for IP: ${clientIp}`);
+    return res.status(429).json({
+      success: false,
+      message: 'Rate limit exceeded. Please try again later.',
+      error: 'TOO_MANY_REQUESTS'
+    });
+  }
+
   // Smart routing: Route to appropriate backend based on action
   // PHIEU_THU_CHI_BACKEND - For voucher operations
   const PHIEU_THU_CHI_BACKEND = process.env.PHIEU_THU_CHI_BACKEND_URL ||
