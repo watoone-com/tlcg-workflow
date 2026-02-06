@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="theme-color" content="#F2F2F7">
@@ -269,7 +269,7 @@
             margin: 2px 8px;
             border-radius: 10px;
             cursor: pointer;
-            transition: all 0.25s cubic-bezier(0.4, 0.0, 0.2, 1);
+            transition: background-color 0.25s cubic-bezier(0.4, 0.0, 0.2, 1), transform 0.25s cubic-bezier(0.4, 0.0, 0.2, 1);
             color: #000000;
             font-size: 15px;
             font-weight: 400;
@@ -316,7 +316,7 @@
 
         .sidebar-item:active {
             transform: scale(0.98);
-            transition: all 0.1s cubic-bezier(0.4, 0.0, 0.2, 1);
+            transition: transform 0.1s cubic-bezier(0.4, 0.0, 0.2, 1);
         }
 
         .sidebar-item.active {
@@ -393,7 +393,7 @@
             font-size: 14px;
             color: white;
             flex-shrink: 0;
-            transition: all 0.25s cubic-bezier(0.4, 0.0, 0.2, 1);
+            transition: transform 0.25s cubic-bezier(0.4, 0.0, 0.2, 1), box-shadow 0.25s cubic-bezier(0.4, 0.0, 0.2, 1);
             box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
         }
         
@@ -718,7 +718,7 @@
             font-weight: 600;
             border: none;
             cursor: pointer;
-            transition: all 0.15s ease;
+            transition: transform 0.15s ease, opacity 0.15s ease, background-color 0.15s ease;
             min-height: 50px;
         }
 
@@ -887,7 +887,7 @@
             color: var(--ios-label);
             cursor: pointer;
             border-radius: 6px;
-            transition: all 0.2s;
+            transition: transform 0.2s, opacity 0.2s, background-color 0.2s;
         }
 
         .ios-segmented-item.active {
@@ -1112,7 +1112,7 @@
             outline: none;
             border-color: #3b82f6;
             box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
-            transition: all 0.2s;
+            transition: transform 0.2s, opacity 0.2s, background-color 0.2s;
         }
         input.error, select.error, textarea.error {
             border-color: #ef4444;
@@ -1140,7 +1140,7 @@
         }
         /* Enhanced Hover Effects */
         .process-card {
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .process-card:hover {
             transform: translateY(-4px);
@@ -1180,9 +1180,9 @@
         }
         .status-badge { font-size: 0.7rem; padding: 2px 8px; border-radius: 9999px; font-weight: 700; text-transform: uppercase; }
         #custom-logo-img { max-height: 32px; width: auto; object-fit: contain; }
-        .page-section { transition: all 0.3s ease-in-out; }
+        .page-section { transition: transform 0.3s ease-in-out, opacity 0.3s ease-in-out; }
         .form-section-container { background: white; border-radius: 1rem; border: 1px solid #e2e8f0; overflow: hidden; box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1); }
-        .sub-tab { transition: all 0.2s; border-bottom: 3px solid transparent; }
+        .sub-tab { transition: transform 0.2s, opacity 0.2s, background-color 0.2s; border-bottom: 3px solid transparent; }
         .sub-tab.active { background: #f1f5f9; color: #2563eb; border-bottom-color: #2563eb; font-weight: 700; }
         input, select, textarea { border: 1px solid #cbd5e1; border-radius: 0.5rem; padding: 0.625rem; width: 100%; font-size: 0.875rem; background-color: white; }
         input:read-only, textarea:read-only { background-color: #f8fafc; color: #64748b; }
@@ -1340,7 +1340,7 @@
             transition: background 0.2s;
         }
         .data-table tbody tr {
-            transition: all 0.2s;
+            transition: transform 0.2s, opacity 0.2s, background-color 0.2s;
         }
         .data-table tbody tr:hover {
             background: #f8fafc;
@@ -1380,7 +1380,7 @@
             font-size: 0.875rem;
             font-weight: 500;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: transform 0.2s, opacity 0.2s, background-color 0.2s;
             display: flex;
             align-items: center;
             gap: 0.5rem;
@@ -1401,7 +1401,7 @@
             border-radius: 8px;
             font-size: 0.875rem;
             width: 250px;
-            transition: all 0.2s;
+            transition: transform 0.2s, opacity 0.2s, background-color 0.2s;
         }
         .table-search:focus {
             outline: none;
@@ -1415,7 +1415,7 @@
             border-radius: 0.75rem; 
             background: white; 
             text-align: center;
-            transition: all 0.2s;
+            transition: transform 0.2s, opacity 0.2s, background-color 0.2s;
         }
         .signature-box:hover {
             border-color: #cbd5e1;
@@ -1429,7 +1429,7 @@
             padding: 1.5rem;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
             border-left: 4px solid;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             position: relative;
             overflow: hidden;
         }
@@ -1455,7 +1455,7 @@
             border-radius: 20px;
             padding: 2rem;
             box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1);
             border: 1px solid rgba(255, 255, 255, 0.2);
             position: relative;
             overflow: hidden;
@@ -1486,7 +1486,7 @@
             border: 1px solid rgba(226, 232, 240, 0.8);
             overflow: hidden;
             box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
-            transition: all 0.3s;
+            transition: transform 0.3s, opacity 0.3s, background-color 0.3s;
         }
         .form-section-container:hover {
             box-shadow: 0 12px 48px rgba(0, 0, 0, 0.12);
@@ -1498,7 +1498,7 @@
             padding: 0.5rem;
             border-radius: 0.5rem;
             color: #475569;
-            transition: all 0.2s;
+            transition: transform 0.2s, opacity 0.2s, background-color 0.2s;
         }
         .mobile-menu-btn:hover {
             background: #f1f5f9;
@@ -1551,7 +1551,7 @@
             padding: 1rem 1.5rem;
             color: #475569;
             font-weight: 500;
-            transition: all 0.2s;
+            transition: transform 0.2s, opacity 0.2s, background-color 0.2s;
             border-left: 3px solid transparent;
         }
         .mobile-nav-link:hover, .mobile-nav-link.active {
@@ -1600,7 +1600,7 @@
             border: 2px solid #cbd5e1;
             background: white;
             color: #64748b;
-            transition: all 0.3s;
+            transition: transform 0.3s, opacity 0.3s, background-color 0.3s;
         }
         .step-item.active .step-circle {
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -1689,6 +1689,18 @@
             color: #1e293b;
             font-weight: 600;
         }
+
+        /* Reduced Motion Support */
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
@@ -1774,6 +1786,7 @@
                         <span style="font-weight: 600; font-size: 17px; color: #000000;">TLCGroup</span>
                     </div>
                     <button id="sidebar-toggle" onclick="event.stopPropagation(); toggleSidebar();"
+                            aria-label="Toggle sidebar"
                             style="width: 28px; height: 28px; border-radius: 6px;
                                    background: rgba(0,0,0,0.05); border: none; cursor: pointer;
                                    display: flex; align-items: center; justify-content: center;
@@ -2411,7 +2424,7 @@
                             </h3>
                             <p class="text-sm text-slate-600">Complete purchase request form with multi-stage approval workflow</p>
                         </div>
-                        <a href="de_nghi_thanh_toan.html" target="_blank" class="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-all shadow-md hover:shadow-lg flex items-center gap-2" aria-label="Open Payment Request Form in new tab">
+                        <a href="de_nghi_thanh_toan.html" target="_blank" class="px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-lg font-semibold hover:from-blue-700 hover:to-purple-700 transition-shadow transition-transform shadow-md hover:shadow-lg flex items-center gap-2" aria-label="Open Payment Request Form in new tab">
                             <i class="fas fa-external-link-alt"></i>
                             Open Form
                         </a>
@@ -2538,7 +2551,7 @@
                                         <span class="text-sm text-slate-500">0 of 3 completed</span>
                                     </div>
                                     <div class="w-full bg-slate-200 rounded-full h-2">
-                                        <div id="p2p-pr-approval-progress" class="bg-emerald-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div>
+                                        <div id="p2p-pr-approval-progress" class="bg-emerald-600 h-2 rounded-full transition-width duration-300" style="width: 0%"></div>
                                     </div>
                                 </div>
                                 

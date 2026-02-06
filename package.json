@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "TLCG Workflow Voucher System",
   "scripts": {
-    "dev": "vercel dev",
+    "start": "vercel dev",
     "build": "echo 'No build step required for static files'"
   },
   "dependencies": {
@@ -11,5 +11,8 @@
   },
   "engines": {
     "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "vercel": "^50.11.0"
   }
 }

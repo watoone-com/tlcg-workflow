@@ -256,7 +256,7 @@
             font-size: 14px;
             font-weight: 500;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: transform 0.2s, opacity 0.2s, background-color 0.2s;
         }
 
         .sidebar-signout-btn:hover {
@@ -352,7 +352,7 @@
             color: var(--ios-label);
             cursor: pointer;
             border-radius: 6px;
-            transition: all 0.2s;
+            transition: transform 0.2s, opacity 0.2s, background-color 0.2s;
         }
 
         .ios-segmented-item.active {
@@ -770,10 +770,11 @@
             color: var(--ios-gray-2);
         }
 
-        input:focus, select:focus, textarea:focus {
-            outline: none;
+        input:focus-visible, select:focus-visible, textarea:focus-visible {
+            outline: 2px solid var(--ios-blue);
+            outline-offset: 2px;
             background-color: var(--ios-gray-5);
-            box-shadow: none;
+            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
         }
 
         input:read-only, textarea:read-only {
@@ -1939,7 +1940,7 @@
             display: flex;
             align-items: center;
             justify-content: center;
-            transition: all 0.2s;
+            transition: transform 0.2s, opacity 0.2s, background-color 0.2s;
         }
 
         .modal-close-btn:hover {
@@ -2039,7 +2040,7 @@
             font-size: 0.875rem;
             font-weight: 500;
             cursor: pointer;
-            transition: all 0.2s;
+            transition: transform 0.2s, opacity 0.2s, background-color 0.2s;
             border: none;
             display: flex;
             align-items: center;
@@ -2106,10 +2107,22 @@
             .voucher-modal-footer {
                 flex-direction: column;
             }
-            
+
             .modal-btn {
                 width: 100%;
                 justify-content: center;
+            }
+        }
+
+        /* Reduced Motion Support */
+        @media (prefers-reduced-motion: reduce) {
+            *,
+            *::before,
+            *::after {
+                animation-duration: 0.01ms !important;
+                animation-iteration-count: 1 !important;
+                transition-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
             }
         }
     </style>
@@ -2123,6 +2136,7 @@
                 <span style="font-weight: 600; font-size: 17px; color: #000000;">TLCGroup</span>
             </div>
             <button id="sidebar-toggle" onclick="event.stopPropagation(); toggleSidebar();"
+                    aria-label="Toggle sidebar"
                     style="width: 28px; height: 28px; border-radius: 6px; background: rgba(0,0,0,0.05); border: none; cursor: pointer; display: flex; align-items: center; justify-content: center;"
                     onmouseover="this.style.background='rgba(0,0,0,0.1)'" onmouseout="this.style.background='rgba(0,0,0,0.05)'">
                 <i id="sidebar-toggle-icon" class="fas fa-chevron-left" style="font-size: 11px; color: #8e8e93;"></i>
@@ -2315,14 +2329,14 @@
         <div class="form-row">
             <div class="form-group">
                 <label for="employee">Người đề nghị:</label>
-                <select id="employee" name="employee" required onchange="updateEmployeeDepartment()">
+                <select id="employee" name="employee" required onchange="updateEmployeeDepartment()" autocomplete="name">
                     <option value="">-- Chọn nhân viên --</option>
                 </select>
                 <div class="error-message"></div>
             </div>
             <div class="form-group">
                 <label for="department">Bộ phận:</label>
-                <input type="text" id="department" name="department" readonly>
+                <input type="text" id="department" name="department" readonly autocomplete="organization">
             </div>
         </div>
         
@@ -2344,7 +2358,7 @@
             </div>
             <div class="form-group">
                 <label for="payee-name">Họ tên người nộp/nhận:</label>
-                <input type="text" id="payee-name" name="payee-name" required>
+                <input type="text" id="payee-name" name="payee-name" required autocomplete="name">
                 <div class="error-message"></div>
             </div>
         </div>
@@ -2360,7 +2374,7 @@
         <div class="form-row">
             <div class="form-group">
                 <label for="amount">Tổng số tiền:</label>
-                <input type="text" id="amount" name="amount" required readonly>
+                <input type="text" id="amount" name="amount" required readonly inputmode="numeric">
             </div>
         </div>
 
@@ -8356,7 +8370,7 @@
                 row.innerHTML = `
                     <td>${index + 1}</td>
                     <td><input type="text" value="${item.content || ''}" oninput="updateExpenseItem(${index}, 'content', this.value)"></td>
-                    <td><input type="text" value="${formatCurrency(item.amount || 0)}" oninput="updateExpenseItem(${index}, 'amount', parseCurrency(this.value))" onblur="this.value = formatCurrency(parseCurrency(this.value))"></td>
+                    <td><input type="text" inputmode="numeric" value="${formatCurrency(item.amount || 0)}" oninput="updateExpenseItem(${index}, 'amount', parseCurrency(this.value))" onblur="this.value = formatCurrency(parseCurrency(this.value))"></td>
                     <td class="attachment-cell">
                         <button type="button" class="attachment-button" onclick="triggerAttachmentInput(${index})">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
