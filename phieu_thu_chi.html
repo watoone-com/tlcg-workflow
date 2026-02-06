@@ -3752,17 +3752,26 @@
                 // Show status review modal
                 loadAndDisplayApprovalStatus(viewStatusVoucher);
             }
-            
+
             // ==================== AUTHENTICATION CHECK ====================
+            console.log('🔍 PHIEU AUTH DEBUG: Page loaded at', new Date().toISOString());
+            console.log('🔍 PHIEU AUTH DEBUG: Checking authentication...');
+            console.log('🔍 PHIEU AUTH DEBUG: localStorage available:', typeof localStorage !== 'undefined');
+
             // Check if user is logged in before allowing access
             const currentUser = localStorage.getItem('tlc_current_user');
-            
+            console.log('🔍 PHIEU AUTH DEBUG: Session data from localStorage:', currentUser ? 'EXISTS' : 'NULL');
+
             if (!currentUser) {
                 // User not logged in - redirect to login page
-                console.warn('⚠️ User not logged in. Redirecting to login page...');
+                console.error('❌ PHIEU AUTH DEBUG: No session found - redirecting to login');
+                console.error('❌ PHIEU AUTH DEBUG: localStorage keys:', Object.keys(localStorage));
                 alert('Vui lòng đăng nhập để truy cập trang này.\n\nPlease login to access this page.');
                 window.location.href = 'index.html';
                 return; // Stop execution
+            } else {
+                console.log('✅ PHIEU AUTH DEBUG: Session found in localStorage');
+                console.log('✅ PHIEU AUTH DEBUG: Session length:', currentUser.length, 'bytes');
             }
             
             // ==================== INITIALIZE GOOGLE DRIVE (GIS TOKEN FLOW) ====================

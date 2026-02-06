@@ -2879,6 +2879,38 @@
     </nav>
 
     <script>
+        // ==================== SESSION PERSISTENCE MONITOR ====================
+        // Monitor localStorage changes to debug session loss
+        (function() {
+            const originalSetItem = localStorage.setItem;
+            const originalRemoveItem = localStorage.removeItem;
+            const originalClear = localStorage.clear;
+
+            localStorage.setItem = function(key, value) {
+                if (key === 'tlc_current_user') {
+                    console.log('📝 STORAGE MONITOR: Setting tlc_current_user');
+                    console.trace('📝 STORAGE MONITOR: Call stack');
+                }
+                return originalSetItem.apply(this, arguments);
+            };
+
+            localStorage.removeItem = function(key) {
+                if (key === 'tlc_current_user') {
+                    console.warn('🗑️ STORAGE MONITOR: Removing tlc_current_user');
+                    console.trace('🗑️ STORAGE MONITOR: Call stack');
+                }
+                return originalRemoveItem.apply(this, arguments);
+            };
+
+            localStorage.clear = function() {
+                console.error('🧹 STORAGE MONITOR: localStorage.clear() called!');
+                console.trace('🧹 STORAGE MONITOR: Call stack');
+                return originalClear.apply(this, arguments);
+            };
+
+            console.log('✅ Storage monitor initialized');
+        })();
+
         const apiKey = "";
         // ⚠️ IMPORTANT: Use proxy URL for voucher operations, or direct URL for intranet operations
         // For voucher operations: '/api/voucher' (uses VOUCHER_WORKFLOW_BACKEND)
@@ -3597,9 +3629,25 @@
                     
                     // Persist login session
                     try {
-                        localStorage.setItem('tlc_current_user', JSON.stringify(currentUser));
+                        const userDataToStore = JSON.stringify(currentUser);
+                        console.log('💾 SESSION DEBUG: Saving user to localStorage');
+                        console.log('💾 SESSION DEBUG: User data length:', userDataToStore.length, 'bytes');
+                        console.log('💾 SESSION DEBUG: User email:', currentUser.email);
+
+                        localStorage.setItem('tlc_current_user', userDataToStore);
+
+                        // Verify it was saved
+                        const verification = localStorage.getItem('tlc_current_user');
+                        if (verification) {
+                            console.log('✅ SESSION DEBUG: User successfully saved to localStorage');
+                            console.log('✅ SESSION DEBUG: Verification passed - data exists');
+                        } else {
+                            console.error('❌ SESSION DEBUG: Save failed - verification returned null');
+                        }
                     } catch (e) {
-                        console.warn('Could not persist user in localStorage:', e);
+                        console.error('❌ SESSION DEBUG: Error saving to localStorage:', e);
+                        console.error('❌ SESSION DEBUG: Error type:', e.name);
+                        console.error('❌ SESSION DEBUG: Error message:', e.message);
                     }
                     
                     // Show success toast
@@ -4732,6 +4780,11 @@
         });
 
         window.onload = () => {
+            // ==================== SESSION DEBUG LOGGING ====================
+            console.log('🔍 SESSION DEBUG: Page loaded at', new Date().toISOString());
+            console.log('🔍 SESSION DEBUG: localStorage available:', typeof localStorage !== 'undefined');
+            console.log('🔍 SESSION DEBUG: Current URL:', window.location.href);
+
             setLanguage('en');
 
             // Load master data first
@@ -4744,23 +4797,34 @@
             // Restore login session from localStorage if available
             try {
                 const stored = localStorage.getItem('tlc_current_user');
+                console.log('🔍 SESSION DEBUG: Raw localStorage value:', stored ? 'EXISTS' : 'NULL');
+                console.log('🔍 SESSION DEBUG: localStorage length:', stored ? stored.length : 0);
+
                 if (stored) {
                     const parsed = JSON.parse(stored);
+                    console.log('🔍 SESSION DEBUG: Parsed user data:', parsed);
+                    console.log('🔍 SESSION DEBUG: User email:', parsed?.email);
+                    console.log('🔍 SESSION DEBUG: User name:', parsed?.name);
+
                     if (parsed && parsed.email) {
                         currentUser = parsed;
-                        console.log('Restored user from localStorage:', currentUser);
+                        console.log('✅ SESSION DEBUG: User session restored successfully');
+                        console.log('✅ SESSION DEBUG: Current user set to:', currentUser.name, '(' + currentUser.email + ')');
                         updateUI();
                         // Show main content directly, keep user on home dashboard
                         document.getElementById('login-page').classList.add('hidden');
                         document.getElementById('main-content').classList.remove('hidden');
                     } else {
+                        console.warn('⚠️ SESSION DEBUG: User data exists but invalid (missing email)');
                         updateUI();
                     }
                 } else {
+                    console.warn('⚠️ SESSION DEBUG: No session found in localStorage');
                     updateUI();
                 }
             } catch (e) {
-                console.warn('Error restoring user from localStorage:', e);
+                console.error('❌ SESSION DEBUG: Error restoring session:', e);
+                console.error('❌ SESSION DEBUG: Error details:', e.message, e.stack);
                 updateUI();
             }
 
