@@ -22,7 +22,7 @@
 
 // ⚠️ IMPORTANT: Google Sheet ID for TLCG Master Data (Users)
 const USERS_SHEET_ID = '1ujmPbtEdkGLgEshfhvV8gRB6R0GLI31jsZM5rDOJS0g'; // TLCG Master Data
-const USERS_SHEET_NAME = 'Nhân viên'; // Sheet name: Nhân viên
+const USERS_SHEET_NAME = 'Master Employee'; // Sheet name: Master Employee
 // Alternative: Use gid=2018642708 if sheet name doesn't work
 
 // ============================================================================
@@ -1542,7 +1542,7 @@ function handleGetMasterData(requestBody) {
     const ss = safeOpenSpreadsheet(USERS_SHEET_ID, 'handleGetMasterData');
     
     // Fetch Nhân viên (Employees)
-    const employeesSheet = ss.getSheetByName('Nhân viên');
+    const employeesSheet = ss.getSheetByName('Master Employee');
     let employeesData = [];
     if (employeesSheet) {
       const employeesValues = employeesSheet.getDataRange().getValues();

@@ -7,8 +7,8 @@ const TLCG_MASTER_DATA_SHEET_ID = '1ujmPbtEdkGLgEshfhvV8gRB6R0GLI31jsZM5rDOJS0g'
 const USERS_SHEET_ID = TLCG_MASTER_DATA_SHEET_ID; // Same spreadsheet
 const VOUCHER_HISTORY_SHEET_ID = TLCG_MASTER_DATA_SHEET_ID; // Same spreadsheet
 const VH_SHEET_NAME = 'Voucher_History';
-const EMPLOYEES_SHEET_NAME = 'Nhân viên';
-const COMPANY_SHEET_NAME = 'Công ty';
+const EMPLOYEES_SHEET_NAME = 'Master Employee';
+const COMPANY_SHEET_NAME = 'Master Company';
 
 /**
  * Helper function to safely open a spreadsheet with detailed error handling
