@@ -1,4 +1,19 @@
 /**
+ * ⚠️ DEPRECATED — DO NOT DEPLOY
+ *
+ * This file is an archived legacy version of the authentication functions.
+ * The active, up-to-date implementation lives in TLCG_INTRANET_BACKEND_COMPLETE.gs.
+ *
+ * Known issues in this file (fixed in the active file):
+ *   - createUser() uses lowercase 'email'/'password' header lookups (returns -1, silently corrupts data)
+ *   - updateUserPassword() has the same case-mismatch bug
+ *   - Missing mustChangePassword support
+ *   - Missing handleChangePassword action
+ *
+ * Do not add this file to any Apps Script deployment.
+ */
+
+/**
  * AUTHENTICATION FUNCTIONS FOR TLCGROUP INTRANET
  * Add these functions to your existing google-apps-script-code.gs file
  */

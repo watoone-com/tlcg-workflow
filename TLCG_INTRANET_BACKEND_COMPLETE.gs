@@ -38,23 +38,6 @@ const USERS_SHEET_NAME = 'Master Employee'; // Sheet name: Master Employee
  */
 function safeOpenSpreadsheet(spreadsheetId, context) {
   try {
-    // #region agent log
-    try {
-      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        payload: JSON.stringify({
-          location: 'TLCG_INTRANET_BACKEND_COMPLETE.gs:39',
-          message: 'safeOpenSpreadsheet entry',
-          data: { context, spreadsheetId, spreadsheetIdType: typeof spreadsheetId, spreadsheetIdLength: spreadsheetId ? spreadsheetId.length : 0 },
-          timestamp: Date.now(),
-          sessionId: 'debug-session',
-          runId: 'run1',
-          hypothesisId: 'A'
-        })
-      });
-    } catch (e) {}
-    // #endregion
     
     Logger.log('[' + context + '] ========================================');
     Logger.log('[' + context + '] safeOpenSpreadsheet called');
@@ -68,25 +51,6 @@ function safeOpenSpreadsheet(spreadsheetId, context) {
     }
     Logger.log('[' + context + '] Attempting to open spreadsheet: ' + spreadsheetId);
 
-    // #region agent log
-    try {
-      const spreadSheetAppDefined = typeof SpreadsheetApp !== 'undefined';
-      const openByIdExists = spreadSheetAppDefined && typeof SpreadsheetApp.openById === 'function';
-      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        payload: JSON.stringify({
-          location: 'TLCG_INTRANET_BACKEND_COMPLETE.gs:47',
-          message: 'Before openById - checking SpreadsheetApp',
-          data: { spreadSheetAppDefined, openByIdExists, spreadSheetAppType: typeof SpreadsheetApp, availableMethods: spreadSheetAppDefined ? Object.keys(SpreadsheetApp).slice(0, 10) : [] },
-          timestamp: Date.now(),
-          sessionId: 'debug-session',
-          runId: 'run1',
-          hypothesisId: 'B'
-        })
-      });
-    } catch (e) {}
-    // #endregion
 
     // Check if SpreadsheetApp is available
     if (typeof SpreadsheetApp === 'undefined') {
@@ -102,93 +66,17 @@ function safeOpenSpreadsheet(spreadsheetId, context) {
     }
 
     if (!spreadsheetId || spreadsheetId === '') {
-      // #region agent log
-      try {
-        UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          payload: JSON.stringify({
-            location: 'TLCG_INTRANET_BACKEND_COMPLETE.gs:43',
-            message: 'Spreadsheet ID validation failed',
-            data: { spreadsheetId, isNull: spreadsheetId === null, isUndefined: spreadsheetId === undefined, isEmpty: spreadsheetId === '' },
-            timestamp: Date.now(),
-            sessionId: 'debug-session',
-            runId: 'run1',
-            hypothesisId: 'C'
-          })
-        });
-      } catch (e) {}
-      // #endregion
       throw new Error('Spreadsheet ID không được định nghĩa hoặc rỗng');
     }
 
-    // #region agent log
-    try {
-      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        payload: JSON.stringify({
-          location: 'TLCG_INTRANET_BACKEND_COMPLETE.gs:47',
-          message: 'About to call openById',
-          data: { spreadsheetId, context },
-          timestamp: Date.now(),
-          sessionId: 'debug-session',
-          runId: 'run1',
-          hypothesisId: 'D'
-        })
-      });
-    } catch (e) {}
-    // #endregion
 
     const ss = SpreadsheetApp.openById(spreadsheetId);
     
-    // #region agent log
-    try {
-      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        payload: JSON.stringify({
-          location: 'TLCG_INTRANET_BACKEND_COMPLETE.gs:48',
-          message: 'openById succeeded',
-          data: { spreadsheetId, spreadsheetName: ss ? ss.getName() : 'null' },
-          timestamp: Date.now(),
-          sessionId: 'debug-session',
-          runId: 'run1',
-          hypothesisId: 'E'
-        })
-      });
-    } catch (e) {}
-    // #endregion
     
     Logger.log('[' + context + '] ✅ Successfully opened spreadsheet');
     return ss;
 
   } catch (error) {
-    // #region agent log
-    try {
-      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        payload: JSON.stringify({
-          location: 'TLCG_INTRANET_BACKEND_COMPLETE.gs:51',
-          message: 'openById error caught',
-          data: { 
-            errorMessage: error.message, 
-            errorToString: error.toString(), 
-            errorName: error.name,
-            spreadsheetId,
-            context,
-            hasOpenByIdInMessage: error.message.includes('openById'),
-            hasUnexpectedError: error.message.includes('Unexpected error')
-          },
-          timestamp: Date.now(),
-          sessionId: 'debug-session',
-          runId: 'run1',
-          hypothesisId: 'F'
-        })
-      });
-    } catch (e) {}
-    // #endregion
     
     Logger.log('[' + context + '] ❌ ERROR opening spreadsheet: ' + error.toString());
     Logger.log('[' + context + '] Error details: ' + error.message);
@@ -239,23 +127,6 @@ function safeGetSheet(spreadsheet, sheetName, context) {
  */
 function doPost(e) {
   try {
-    // #region agent log
-    try {
-      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        payload: JSON.stringify({
-          location: 'TLCG_INTRANET_BACKEND_COMPLETE.gs:95',
-          message: 'doPost entry',
-          data: { hasPostData: !!(e && e.postData), hasParameter: !!(e && e.parameter), action: e && e.parameter ? e.parameter.action : null },
-          timestamp: Date.now(),
-          sessionId: 'debug-session',
-          runId: 'run1',
-          hypothesisId: 'I'
-        })
-      });
-    } catch (e) {}
-    // #endregion
     
     Logger.log('========================================');
     Logger.log('=== doPost called ===');
@@ -348,23 +219,6 @@ function doPost(e) {
     
     const action = requestBody.action;
     
-    // #region agent log
-    try {
-      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        payload: JSON.stringify({
-          location: 'TLCG_INTRANET_BACKEND_COMPLETE.gs:163',
-          message: 'Action determined, routing to handler',
-          data: { action, isLogin: action === 'login' },
-          timestamp: Date.now(),
-          sessionId: 'debug-session',
-          runId: 'run1',
-          hypothesisId: 'J'
-        })
-      });
-    } catch (e) {}
-    // #endregion
     
     let result;
 
@@ -398,6 +252,10 @@ function doPost(e) {
       
       case 'getMasterData':
         result = handleGetMasterData(requestBody);
+        break;
+
+      case 'changePassword':
+        result = handleChangePassword(requestBody);
         break;
       
       case 'diagnose':
@@ -560,23 +418,6 @@ function doGet(e) {
  */
 function authenticateUser(email, password) {
   try {
-    // #region agent log
-    try {
-      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        payload: JSON.stringify({
-          location: 'TLCG_INTRANET_BACKEND_COMPLETE.gs:273',
-          message: 'authenticateUser entry',
-          data: { email, hasPassword: !!password, USERS_SHEET_ID, USERS_SHEET_IDType: typeof USERS_SHEET_ID, USERS_SHEET_IDLength: USERS_SHEET_ID ? USERS_SHEET_ID.length : 0 },
-          timestamp: Date.now(),
-          sessionId: 'debug-session',
-          runId: 'run1',
-          hypothesisId: 'H'
-        })
-      });
-    } catch (e) {}
-    // #endregion
     
     Logger.log('=== AUTHENTICATE USER ===');
     Logger.log('Email: ' + email);
@@ -689,22 +530,19 @@ function authenticateUser(email, password) {
     let statusCol = headers.indexOf('Status');
     if (statusCol === -1) statusCol = headers.indexOf('status');
     if (statusCol === -1) statusCol = 6; // Column G
-    
+
+    const mustChangeCol = headers.indexOf('mustChangePassword'); // Column M (optional)
+
     Logger.log('Column mapping:');
     Logger.log('Email: ' + emailCol + ' (header: ' + (headers[emailCol] || 'N/A') + ')');
     Logger.log('Password: ' + passwordCol + ' (header: ' + (headers[passwordCol] || 'N/A') + ')');
     Logger.log('Name: ' + nameCol + ', Role: ' + roleCol + ', isAdmin: ' + isAdminCol + ', Status: ' + statusCol);
-    
+    Logger.log('mustChangePassword column: ' + mustChangeCol);
+
     // Validate required columns exist
     if (emailCol === -1) {
       Logger.log('ERROR: Email column not found');
       return { success: false, message: 'Database configuration error: Email column not found' };
-    }
-    
-    // Check if password column has data
-    if (passwordCol >= 0 && data.length > 1) {
-      const samplePassword = data[1][passwordCol];
-      Logger.log('Sample password from row 2, column ' + passwordCol + ': ' + (samplePassword ? samplePassword.toString().substring(0, 20) + '...' : 'EMPTY'));
     }
     
     // Validate password input
@@ -796,6 +634,9 @@ function authenticateUser(email, password) {
           Logger.log('Row length: ' + row.length + ', All row values: ' + JSON.stringify(row));
           
           // Return user data (DO NOT include password - security)
+          const mustChange = mustChangeCol >= 0
+            ? (row[mustChangeCol] === true || row[mustChangeCol] === 'TRUE' || row[mustChangeCol] === 'true')
+            : false;
           return {
             success: true,
             user: {
@@ -806,8 +647,9 @@ function authenticateUser(email, password) {
               employeeId: userEmployeeId,
               department: userDepartment,
               company: userCompany,
-              phone: userPhone
-              // Password is NOT included for security
+              phone: userPhone,
+              mustChangePassword: mustChange
+              // Password hash is NOT included for security
             }
           };
         } else {
@@ -883,23 +725,6 @@ function hashPassword(password) {
  */
 function handleLogin(requestBody) {
   try {
-    // #region agent log
-    try {
-      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        payload: JSON.stringify({
-          location: 'TLCG_INTRANET_BACKEND_COMPLETE.gs:571',
-          message: 'handleLogin entry',
-          data: { action: requestBody ? requestBody.action : 'null', hasEmail: !!(requestBody && requestBody.email), hasPassword: !!(requestBody && requestBody.password) },
-          timestamp: Date.now(),
-          sessionId: 'debug-session',
-          runId: 'run1',
-          hypothesisId: 'G'
-        })
-      });
-    } catch (e) {}
-    // #endregion
     
     Logger.log('=== HANDLE LOGIN ===');
     Logger.log('Request body: ' + JSON.stringify(requestBody));
@@ -963,7 +788,7 @@ function handleLogin(requestBody) {
 /**
  * Create a new user (Admin only function)
  */
-function createUser(email, password, name, role, isAdmin, employeeId, department) {
+function createUser(email, password, name, role, isAdmin, employeeId, department, company) {
   try {
     const spreadsheet = safeOpenSpreadsheet(USERS_SHEET_ID, 'createUser');
     let sheet;
@@ -973,35 +798,53 @@ function createUser(email, password, name, role, isAdmin, employeeId, department
       sheet = spreadsheet.getSheets()[0];
       Logger.log('Using first sheet as fallback');
     }
-    
-    // Check if user exists
+
     const data = sheet.getDataRange().getValues();
     const headers = data[0];
-    const emailCol = headers.indexOf('email');
-    
+
+    // Use correct capitalized header names matching the Master Employee sheet
+    const emailCol    = headers.indexOf('Email');
+    const nameCol     = headers.indexOf('Họ và tên');
+    const roleCol     = headers.indexOf('Chức vụ');
+    const deptCol     = headers.indexOf('Phòng ban');
+    const companyCol  = headers.indexOf('Công ty');
+    const phoneCol    = headers.indexOf('Điện thoại');
+    const statusCol   = headers.indexOf('Status');
+    const empIdCol    = headers.indexOf('EmployeeId');
+    const isAdminCol  = headers.indexOf('isAdmin');
+    const passwordCol = 11; // Column L — SHA-256 hash
+    const mustChangeCol = headers.indexOf('mustChangePassword');
+
+    if (emailCol === -1) {
+      return { success: false, message: 'Email column not found in sheet' };
+    }
+
+    // Check if user already exists
     for (let i = 1; i < data.length; i++) {
-      if (data[i][emailCol] === email) {
+      if (data[i][emailCol] && data[i][emailCol].toString().toLowerCase() === email.toLowerCase()) {
         return { success: false, message: 'User already exists' };
       }
     }
-    
+
     // Hash password
     const hashedPassword = hashPassword(password);
-    
-    // Add new user
-    const newRow = [
-      email,
-      hashedPassword,
-      name || '',
-      role || 'Employee',
-      isAdmin || false,
-      employeeId || '',
-      department || '',
-      'Active'
-    ];
-    
+
+    // Build row matching actual sheet column order
+    const newRow = new Array(Math.max(headers.length, passwordCol + 1)).fill('');
+    if (nameCol >= 0)     newRow[nameCol]     = name || '';
+    if (roleCol >= 0)     newRow[roleCol]     = role || 'Employee';
+    if (deptCol >= 0)     newRow[deptCol]     = department || '';
+    if (companyCol >= 0)  newRow[companyCol]  = company || '';
+    if (emailCol >= 0)    newRow[emailCol]    = email;
+    if (phoneCol >= 0)    newRow[phoneCol]    = '';
+    if (statusCol >= 0)   newRow[statusCol]   = 'Active';
+    if (empIdCol >= 0)    newRow[empIdCol]    = employeeId || '';
+    if (isAdminCol >= 0)  newRow[isAdminCol]  = isAdmin || false;
+    newRow[passwordCol] = hashedPassword;
+    if (mustChangeCol >= 0) newRow[mustChangeCol] = true; // Force password change on first login
+
     sheet.appendRow(newRow);
-    
+    Logger.log('User created: ' + email);
     return { success: true, message: 'User created successfully' };
   } catch (error) {
     Logger.log('Create user error: ' + error.toString());
@@ -1027,24 +870,90 @@ function updateUserPassword(email, oldPassword, newPassword) {
       sheet = spreadsheet.getSheets()[0];
       Logger.log('Using first sheet as fallback');
     }
-    
+
     const data = sheet.getDataRange().getValues();
     const headers = data[0];
-    const emailCol = headers.indexOf('email');
-    const passwordCol = headers.indexOf('password');
-    
+    const emailCol = headers.indexOf('Email'); // Capitalized — matches sheet header
+    const passwordCol = 11; // Column L — SHA-256 hash, always index 11
+
+    if (emailCol === -1) {
+      return { success: false, message: 'Email column not found in sheet' };
+    }
+
     for (let i = 1; i < data.length; i++) {
-      if (data[i][emailCol] === email) {
+      if (data[i][emailCol] && data[i][emailCol].toString().toLowerCase() === email.toLowerCase()) {
         const hashedPassword = hashPassword(newPassword);
         sheet.getRange(i + 1, passwordCol + 1).setValue(hashedPassword);
+        Logger.log('Password updated for: ' + email);
         return { success: true, message: 'Password updated successfully' };
       }
     }
-    
+
     return { success: false, message: 'User not found' };
   } catch (error) {
     Logger.log('Update password error: ' + error.toString());
     return { success: false, message: 'Error updating password: ' + error.message };
+  }
+}
+
+/**
+ * Handle change password request (used for first-login forced change and self-service change)
+ */
+function handleChangePassword(requestBody) {
+  try {
+    Logger.log('=== HANDLE CHANGE PASSWORD ===');
+    const email       = requestBody.email;
+    const currentPassword = requestBody.currentPassword;
+    const newPassword = requestBody.newPassword;
+
+    if (!email || !currentPassword || !newPassword) {
+      return createResponse(false, 'Email, current password, and new password are required');
+    }
+    if (newPassword.length < 8) {
+      return createResponse(false, 'New password must be at least 8 characters');
+    }
+
+    // Verify current password first
+    const authResult = authenticateUser(email, currentPassword);
+    if (!authResult.success) {
+      return createResponse(false, 'Current password is incorrect');
+    }
+
+    const spreadsheet = safeOpenSpreadsheet(USERS_SHEET_ID, 'handleChangePassword');
+    let sheet;
+    try {
+      sheet = safeGetSheet(spreadsheet, USERS_SHEET_NAME, 'handleChangePassword');
+    } catch (e) {
+      sheet = spreadsheet.getSheets()[0];
+    }
+
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    const emailCol       = headers.indexOf('Email');
+    const passwordCol    = 11; // Column L — SHA-256 hash
+    const mustChangeCol  = headers.indexOf('mustChangePassword');
+
+    if (emailCol === -1) {
+      return createResponse(false, 'Email column not found in sheet');
+    }
+
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][emailCol] && data[i][emailCol].toString().toLowerCase() === email.toLowerCase()) {
+        const hashedNew = hashPassword(newPassword);
+        sheet.getRange(i + 1, passwordCol + 1).setValue(hashedNew);
+        // Clear the mustChangePassword flag if the column exists
+        if (mustChangeCol >= 0) {
+          sheet.getRange(i + 1, mustChangeCol + 1).setValue(false);
+        }
+        Logger.log('Password changed successfully for: ' + email);
+        return createResponse(true, 'Password changed successfully');
+      }
+    }
+
+    return createResponse(false, 'User not found');
+  } catch (error) {
+    Logger.log('Change password error: ' + error.toString());
+    return createResponse(false, 'Error changing password: ' + error.message);
   }
 }
 
