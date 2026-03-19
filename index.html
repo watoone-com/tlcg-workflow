@@ -6,11 +6,14 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="default">
     <meta name="theme-color" content="#F2F2F7">
-    <title>TLCGroup - BPM </title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <meta name="description" content="TLCGroup Business Process Management - O2C, P2P, and Cash &amp; Voucher workflows">
+    <link rel="icon" href="favicon.ico">
+    <link rel="apple-touch-icon" href="apple-touch-icon.png">
+    <title>TLCGroup - BPM</title>
+    <script src="https://cdn.tailwindcss.com/3.4.16" defer></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js" defer></script>
+    <script src="https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js" defer></script>
     <style>
         /* ============================================
            iOS Design System - Apple Human Interface
@@ -416,6 +419,13 @@
         * {
             -webkit-tap-highlight-color: transparent;
             -webkit-touch-callout: none;
+        }
+
+        /* Focus visibility for keyboard navigation */
+        :focus-visible {
+            outline: 2px solid var(--ios-blue);
+            outline-offset: 2px;
+            border-radius: 4px;
         }
 
         body {
@@ -2879,9 +2889,11 @@
     </nav>
 
     <script>
+        const DEBUG = false;
+
         // ==================== SESSION PERSISTENCE MONITOR ====================
-        // Monitor localStorage changes to debug session loss
-        (function() {
+        // Monitor localStorage changes to debug session loss (DEBUG only)
+        if (DEBUG) (function() {
             const originalSetItem = localStorage.setItem;
             const originalRemoveItem = localStorage.removeItem;
             const originalClear = localStorage.clear;
