@@ -2996,6 +2996,7 @@
         // For intranet operations (login, getMasterData): Use TLCG_INTRANET_BACKEND directly if needed
         // TLCGROUP_BACKEND: https://script.google.com/macros/s/AKfycbzPRHqtSW6JSef5A4tiDJbHnIhm2jhK9c8RH6lOBFPEMLR-EjF0iVJO2ndinMZRwbJ4Xw/exec
         const GOOGLE_APPS_SCRIPT_WEB_APP_URL = '/api/voucher'; // Voucher operations proxy
+        const INTRANET_BACKEND_URL = 'https://script.google.com/macros/s/AKfycbzPRHqtSW6JSef5A4tiDJbHnIhm2jhK9c8RH6lOBFPEMLR-EjF0iVJO2ndinMZRwbJ4Xw/exec'; // Login, changePassword, getMasterData
 
         // ==================== API REQUEST QUEUE & RETRY LOGIC ====================
         /**
@@ -3602,7 +3603,7 @@
                 params.append('currentPassword', currentPw);
                 params.append('newPassword', newPw);
 
-                const response = await fetch(GOOGLE_APPS_SCRIPT_WEB_APP_URL, {
+                const response = await fetch(INTRANET_BACKEND_URL, {
                     method: 'POST',
                     mode: 'cors',
                     redirect: 'follow',
