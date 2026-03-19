@@ -109,7 +109,7 @@ git push
 ```bash
 cd "/Volumes/MacEx01/TLCG Workflow"
 git add .
-git commit -m "Your commit message"
+git commit -m "updated"
 git push
 ```
 

@@ -737,13 +737,17 @@
             opacity: 0.8;
         }
 
+        .ios-button:hover:not(:disabled) {
+            filter: brightness(0.92);
+        }
+
         .ios-button-primary {
             background: var(--ios-blue);
             color: white;
         }
 
         .ios-button-secondary {
-            background: var(--ios-fill);
+            background: rgba(0, 122, 255, 0.1);
             color: var(--ios-blue);
         }
 
@@ -1196,7 +1200,9 @@
         .sub-tab.active { background: #f1f5f9; color: #2563eb; border-bottom-color: #2563eb; font-weight: 700; }
         input, select, textarea { border: 1px solid #cbd5e1; border-radius: 0.5rem; padding: 0.625rem; width: 100%; font-size: 0.875rem; background-color: white; }
         input:read-only, textarea:read-only { background-color: #f8fafc; color: #64748b; }
-        label { display: block; font-size: 0.7rem; font-weight: 800; color: #64748b; text-transform: uppercase; margin-bottom: 0.35rem; }
+        input:focus, select:focus, textarea:focus { outline: none; border-color: var(--ios-blue); box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.18); }
+        textarea { resize: vertical; }
+        label { display: block; font-size: 0.8125rem; font-weight: 600; color: #64748b; text-transform: uppercase; margin-bottom: 0.35rem; }
         /* Enhanced Approval Workflow Styles */
         .approval-block { 
             border: 2px dashed #cbd5e1; 
@@ -1288,7 +1294,7 @@
             font-size: 0.75rem;
             font-weight: 600;
         }
-        .badge-pending { background: #fef3c7; color: #92400e; }
+        .badge-pending { background: #fbbf24; color: #451a03; }
         .badge-approved { background: #d1fae5; color: #065f46; }
         .badge-rejected { background: #fee2e2; color: #991b1b; }
         .badge-changes-requested { background: #dbeafe; color: #1e40af; }
@@ -1543,7 +1549,7 @@
             position: absolute;
             top: 0;
             left: 0;
-            width: 280px;
+            width: min(280px, 85vw);
             height: 100%;
             background: white;
             box-shadow: 4px 0 20px rgba(0, 0, 0, 0.15);
@@ -1714,6 +1720,7 @@
     </style>
 </head>
 <body class="min-h-screen flex flex-col">
+    <a href="#main-content" class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:px-4 focus:py-2 focus:bg-white focus:text-blue-600 focus:rounded-lg focus:shadow-lg">Skip to main content</a>
 
     <!-- Toast Container -->
     <div id="toast-container" class="toast-container"></div>
@@ -1721,7 +1728,7 @@
     <div id="app" class="flex flex-col flex-1">
         <!-- LOGIN PAGE -->
         <!-- iOS-style Login Sheet -->
-        <div id="login-page" class="hidden fixed inset-0 z-50 flex items-end sm:items-center justify-center" style="background: rgba(0,0,0,0.4); backdrop-filter: blur(4px);">
+        <div id="login-page" class="hidden fixed inset-0 flex items-end sm:items-center justify-center" style="z-index: 999; background: rgba(0,0,0,0.4); backdrop-filter: blur(4px);">
             <div class="w-full sm:max-w-sm sm:rounded-2xl rounded-t-3xl overflow-hidden" style="background: var(--ios-background-grouped); max-height: 90vh;">
                 <!-- iOS Sheet Handle -->
                 <div class="flex justify-center pt-3 pb-2 sm:hidden">
@@ -2256,14 +2263,14 @@
                                                 <button onclick="approveStep('o2c-quot', 1)" class="flex-1 bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-emerald-700 transition">
                                                     <i class="fas fa-check mr-2"></i>Approve
                                                 </button>
-                                                <button onclick="rejectStep('o2c-quot', 1)" class="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-700 transition">
-                                                    <i class="fas fa-times mr-2"></i>Reject
-                                                </button>
                                                 <button onclick="requestChanges('o2c-quot', 1)" class="flex-1 bg-amber-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-amber-700 transition">
                                                     <i class="fas fa-edit mr-2"></i>Request Changes
                                                 </button>
+                                                <button onclick="rejectStep('o2c-quot', 1)" class="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-700 transition">
+                                                    <i class="fas fa-times mr-2"></i>Reject
+                                                </button>
                                             </div>
-                                            <textarea id="o2c-quot-comment-1" placeholder="Add comment (optional)" class="mt-2 w-full text-sm border border-slate-200 rounded-lg p-2 resize-none" rows="2"></textarea>
+                                            <textarea id="o2c-quot-comment-1" placeholder="Add comment (optional)" class="mt-2 w-full text-sm border border-slate-200 rounded-lg p-2 resize-y" rows="2"></textarea>
                                         </div>
                                     </div>
                                     
@@ -2331,7 +2338,7 @@
                                             </button>
                                         </div>
                                         <input type="text" id="o2c-legal-sign" class="mt-2 text-center text-sm" placeholder="Sign name">
-                                        <textarea id="o2c-legal-comment" placeholder="Comment" class="mt-2 w-full text-xs border border-slate-200 rounded-lg p-2 resize-none" rows="2"></textarea>
+                                        <textarea id="o2c-legal-comment" placeholder="Comment" class="mt-2 w-full text-xs border border-slate-200 rounded-lg p-2 resize-y" rows="2"></textarea>
                                     </div>
                                     
                                     <!-- Accountant Approval -->
@@ -2355,7 +2362,7 @@
                                             </button>
                                         </div>
                                         <input type="text" id="o2c-acc-sign" class="mt-2 text-center text-sm" placeholder="Sign name">
-                                        <textarea id="o2c-acc-comment" placeholder="Comment" class="mt-2 w-full text-xs border border-slate-200 rounded-lg p-2 resize-none" rows="2"></textarea>
+                                        <textarea id="o2c-acc-comment" placeholder="Comment" class="mt-2 w-full text-xs border border-slate-200 rounded-lg p-2 resize-y" rows="2"></textarea>
                                     </div>
                                     
                                     <!-- Director Approval -->
@@ -2379,7 +2386,7 @@
                                             </button>
                                         </div>
                                         <input type="text" id="o2c-dir-sign" class="mt-2 text-center text-sm" placeholder="Sign name">
-                                        <textarea id="o2c-dir-comment" placeholder="Comment" class="mt-2 w-full text-xs border border-slate-200 rounded-lg p-2 resize-none" rows="2"></textarea>
+                                        <textarea id="o2c-dir-comment" placeholder="Comment" class="mt-2 w-full text-xs border border-slate-200 rounded-lg p-2 resize-y" rows="2"></textarea>
                                     </div>
                                 </div>
                                 
@@ -2506,7 +2513,7 @@
                                                     <i class="fas fa-times mr-2"></i>Reject
                                                 </button>
                                             </div>
-                                            <textarea id="p2p-pr-comment-1" placeholder="Add comment" class="mt-2 w-full text-sm border border-slate-200 rounded-lg p-2 resize-none" rows="2"></textarea>
+                                            <textarea id="p2p-pr-comment-1" placeholder="Add comment" class="mt-2 w-full text-sm border border-slate-200 rounded-lg p-2 resize-y" rows="2"></textarea>
                                         </div>
                                     </div>
                                     
@@ -2532,7 +2539,7 @@
                                                     <i class="fas fa-times mr-2"></i>Reject
                                                 </button>
                                             </div>
-                                            <textarea id="p2p-pr-comment-2" placeholder="Add comment" class="mt-2 w-full text-sm border border-slate-200 rounded-lg p-2 resize-none" rows="2"></textarea>
+                                            <textarea id="p2p-pr-comment-2" placeholder="Add comment" class="mt-2 w-full text-sm border border-slate-200 rounded-lg p-2 resize-y" rows="2"></textarea>
                                         </div>
                                     </div>
                                     
@@ -3403,17 +3410,33 @@
         }
 
         function showLogin() {
-            document.getElementById('login-page').classList.remove('hidden');
+            const modal = document.getElementById('login-page');
+            modal.classList.remove('hidden');
+            // Trap focus inside modal
+            const focusable = modal.querySelectorAll('button, input, a[href], select, textarea, [tabindex]:not([tabindex="-1"])');
+            const first = focusable[0];
+            const last = focusable[focusable.length - 1];
+            first && first.focus();
+            modal._trapFn = function(e) {
+                if (e.key === 'Escape') { closeLogin(); return; }
+                if (e.key !== 'Tab') return;
+                if (e.shiftKey) { if (document.activeElement === first) { e.preventDefault(); last.focus(); } }
+                else { if (document.activeElement === last) { e.preventDefault(); first.focus(); } }
+            };
+            document.addEventListener('keydown', modal._trapFn);
         }
 
         function closeLogin() {
-            document.getElementById('login-page').classList.add('hidden');
+            const modal = document.getElementById('login-page');
+            modal.classList.add('hidden');
+            if (modal._trapFn) { document.removeEventListener('keydown', modal._trapFn); modal._trapFn = null; }
             // Reset requested page to home if user cancels
             requestedPage = 'home';
             showPage('home');
         }
 
         function handleLogout() {
+            if (!confirm('Sign out of TLCGroup?')) return;
             // Show logout confirmation toast
             showToast('Logged out successfully', 'info');
             
