@@ -104,7 +104,8 @@ function doGet(e) {
           requestorEmail: e.parameter.requestorEmail || '',
           approverEmail: e.parameter.approverEmail || '',
           approvedBy: e.parameter.approvedBy || e.parameter.approverEmail || '',
-          approverSignature: e.parameter.approverSignature || '' // May be empty for GET (too large)
+          approverSignature: e.parameter.approverSignature || '', // May be empty for GET (too large)
+          submittedBy: e.parameter.submittedBy || ''
         }
       };
       Logger.log('Request body for approveVoucher (GET): ' + JSON.stringify(requestBody));
@@ -472,6 +473,7 @@ function getVoucherFromHistory(voucherNumber) {
           note: note,
           timestamp: data[i][12],       // Index 12 = Timestamp
           requestorEmail: data[i][10],  // Index 10 = RequestorEmail
+          submittedBy: data[i][13] || '',  // Index 13 = SubmittedBy
           approverEmail: data[i][11],   // Index 11 = ApproverEmail
           meta: metaStr || null
         };
@@ -1128,6 +1130,7 @@ function handleApproveVoucher(requestBody) {
         by: companyApprovers.approvers[approverRole].name,
         note: 'Tất cả 3 người phê duyệt đã duyệt\nMeta: ' + JSON.stringify(meta),
         requestorEmail: v.requestorEmail || existingVoucher.requestorEmail || '',
+        submittedBy: v.submittedBy || existingVoucher.submittedBy || '',
         approverEmail: approverEmail,
         attachments: ""
       });
@@ -1161,6 +1164,7 @@ function handleApproveVoucher(requestBody) {
         by: companyApprovers.approvers[approverRole].name,
         note: `Đã duyệt bởi ${getApproverRoleName(approverRole)} (${approvalCount}/3)\nMeta: ` + JSON.stringify(meta),
         requestorEmail: v.requestorEmail || existingVoucher.requestorEmail || '',
+        submittedBy: v.submittedBy || existingVoucher.submittedBy || '',
         approverEmail: approverEmail,
         attachments: ""
       });
@@ -1366,7 +1370,8 @@ function sendApprovalEmailToNextApprover(voucher, nextApprover, approverRole, me
         <li><strong>Số phiếu:</strong> ${voucherNumber}</li>
         <li><strong>Loại phiếu:</strong> ${voucher.voucherType || existingVoucher.voucherType || 'N/A'}</li>
         <li><strong>Công ty:</strong> ${voucher.company || existingVoucher.company || 'N/A'}</li>
-        <li><strong>Người đề nghị:</strong> ${voucher.employee || existingVoucher.employee || 'N/A'}</li>
+        <li><strong>Người đề nghị:</strong> ${employeeName}</li>
+        ${(voucher.submittedBy || existingVoucher.submittedBy || '') && (voucher.submittedBy || existingVoucher.submittedBy) !== employeeName ? `<li><strong>Người nộp phiếu:</strong> ${voucher.submittedBy || existingVoucher.submittedBy}</li>` : ''}
         <li><strong>Số tiền:</strong> ${typeof voucher.amount === 'number' ? voucher.amount.toLocaleString('vi-VN') + ' ₫' : voucher.amount || existingVoucher.amount || '0 ₫'}</li>
       </ul>
       
@@ -1646,6 +1651,7 @@ function handleRejectVoucher(requestBody) {
         by: companyApprovers.approvers[approverRole].name,
         note: `Từ chối bởi ${getApproverRoleName(approverRole)}\nLý do: ${rejectReason}\nMeta: ` + JSON.stringify(meta),
         requestorEmail: v.requestorEmail || existingVoucher.requestorEmail || '',
+        submittedBy: v.submittedBy || existingVoucher.submittedBy || '',
         approverEmail: approverEmail,
         attachments: ""
       });
@@ -2336,7 +2342,7 @@ function handleGetVoucherSummary(requestBody) {
       });
     }
     
-    // Column structure: A=VoucherNumber, B=VoucherType, C=Company, D=Employee, E=Amount, F=Status, G=Action, H=By, I=Note, J=Attachments, K=RequestorEmail, L=ApproverEmail, M=Timestamp
+    // Column structure: A=VoucherNumber, B=VoucherType, C=Company, D=Employee, E=Amount, F=Status, G=Action, H=By, I=Note, J=Attachments, K=RequestorEmail, L=ApproverEmail, M=Timestamp, N=SubmittedBy
     const headers = data[0];
     const rows = data.slice(1);
     
@@ -2366,6 +2372,7 @@ function handleGetVoucherSummary(requestBody) {
           note: row[8] || '', // Column I
           attachments: row[9] || '', // Column J
           requestorEmail: row[10] || '', // Column K
+            submittedBy: row[13] || '', // Column N
           approverEmail: row[11] || '', // Column L
           timestamp: timestampDate
         });
@@ -2388,6 +2395,7 @@ function handleGetVoucherSummary(requestBody) {
             note: row[8] || '', // Column I
             attachments: row[9] || '', // Column J
             requestorEmail: row[10] || '', // Column K
+            submittedBy: row[13] || '', // Column N
             approverEmail: row[11] || '', // Column L
             timestamp: timestampDate
           });
@@ -2493,6 +2501,7 @@ function handleGetVoucherHistory(requestBody) {
           meta: meta, // Add parsed meta object
           attachments: row[9] || '', // Column J
           requestorEmail: row[10] || '',
+          submittedBy: row[13] || '',
           approverEmail: row[11] || '',
           timestamp: row[12] || new Date()
         });
@@ -2586,7 +2595,8 @@ function appendHistory_(entry) {
       entry.attachments || '',
       entry.requestorEmail || '',
       entry.approverEmail || '',
-      new Date()
+      new Date(),
+      entry.submittedBy || entry.employee || ''  // Column N: Người nộp phiếu
     ]);
     
     // #region agent log

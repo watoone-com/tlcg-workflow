@@ -2339,6 +2339,22 @@
                 <input type="text" id="department" name="department" readonly autocomplete="organization">
             </div>
         </div>
+        <div class="form-row" id="submitted-by-row" style="display:none;">
+            <div class="form-group" style="width:100%;">
+                <label for="submitted-by">Người nộp phiếu <span style="font-weight:normal;color:#64748b;">(nếu khác với người đề nghị)</span>:</label>
+                <select id="submitted-by" name="submittedBy" autocomplete="name">
+                    <option value="">-- Giống người đề nghị --</option>
+                </select>
+            </div>
+        </div>
+        <div class="form-row">
+            <div class="form-group" style="width:100%;">
+                <label style="font-size:0.85em;color:#64748b;cursor:pointer;">
+                    <input type="checkbox" id="proxy-submit-toggle" onchange="toggleProxySubmit(this.checked)" style="margin-right:6px;">
+                    Nộp thay cho người khác
+                </label>
+            </div>
+        </div>
         
         <div class="step-navigation">
             <button type="button" disabled class="btn-prev">← Quay lại</button>
@@ -3904,6 +3920,14 @@
                 companySelect.appendChild(option);
             });
             
+            const submittedBySelect = document.getElementById('submitted-by');
+            data.employee_names.forEach(employee => {
+                const opt = document.createElement('option');
+                opt.value = employee;
+                opt.textContent = employee;
+                submittedBySelect.appendChild(opt);
+            });
+            
             const employeeSelect = document.getElementById('employee');
             const payeeDropdown = document.getElementById('payee-dropdown');
             data.employee_names.forEach(employee => {
@@ -4019,6 +4043,11 @@
                 treasurerNameEl.textContent = 'Chưa có';
                 treasurerNameEl.style.color = '#ef4444';
             }
+        }
+        
+        function toggleProxySubmit(checked) {
+            document.getElementById('submitted-by-row').style.display = checked ? '' : 'none';
+            if (!checked) document.getElementById('submitted-by').value = '';
         }
         
         function updateCompanyDetails() {
@@ -7361,8 +7390,14 @@
             
             console.log('✅ Voucher number validated:', voucherNumber);
             const voucherType = document.getElementById('voucher-type').value;
-            const companyName = document.getElementById('company').value;
+            const companySelectEl = document.getElementById('company');
+            const companyOption = companySelectEl.options[companySelectEl.selectedIndex];
+            const companyName = companyOption ? (companyOption.dataset.name || companyOption.value) : companySelectEl.value;
+            const companyKey  = companyOption ? (companyOption.dataset.key  || '') : '';
             const requestorName = document.getElementById('employee').value;
+            const submittedBySelect = document.getElementById('submitted-by');
+            const submittedByName = (submittedBySelect && submittedBySelect.value) ? submittedBySelect.value : '';
+            const isProxy = submittedByName && submittedByName !== requestorName;
             const payeeName = document.getElementById('payee-name').value;
             const totalAmount = document.getElementById('amount').value;
             const amountInWords = document.getElementById('amount-in-words').value;
@@ -7394,7 +7429,7 @@
             
             const department = document.getElementById('department').value;
 
-            const selectedCompanyData = data.companies_data.find(c => c["Tên công ty"] === companyName);
+            const selectedCompanyData = data.companies_data.find(c => c["Tên công ty"] === companyName && (!companyKey || c["Mã định danh"] === companyKey));
 
             // Debug: Log để kiểm tra
             console.log('=== DEBUG EMAIL ===');
@@ -7593,7 +7628,8 @@
                 employee: requestorName,
                 amount: totalAmount,
                 requestorEmail: requestorEmail || '',
-                approverEmail: approverEmail || ''
+                approverEmail: approverEmail || '',
+                submittedBy: submittedByName || requestorName
             });
             
             console.log('Query Params:', queryParams.toString());
@@ -7632,6 +7668,7 @@
                     <li><b>Ngày lập phiếu:</b> ${formattedSubmitDateTime}</li>
                     <li><b>Công ty:</b> ${companyName}</li>
                     <li><b>Người đề nghị:</b> ${requestorName} (${requestorEmail || 'Không có email'})</li>
+                    ${isProxy ? `<li><b>Người nộp phiếu:</b> ${submittedByName}</li>` : ''}
                     <li><b>Bộ phận:</b> ${department}</li>
                     <li><b>Người nộp/nhận:</b> ${payeeName}</li>
                     <li><b>Tổng số tiền:</b> ${totalAmount}</li>
