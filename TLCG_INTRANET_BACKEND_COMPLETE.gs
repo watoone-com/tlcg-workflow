@@ -162,12 +162,8 @@ function doPost(e) {
       try {
         // Check if it's form data (from FormData) - this avoids CORS preflight
         if (e.parameter.action) {
-          // Form data format: action, email, password, etc.
-          requestBody = {
-            action: e.parameter.action,
-            email: e.parameter.email,
-            password: e.parameter.password
-          };
+          // Form data format — copy all parameters so any action can access its fields
+          requestBody = Object.assign({}, e.parameter);
           Logger.log('Parsed from e.parameter (form data)');
           Logger.log('Form data - action: ' + requestBody.action + ', email: ' + requestBody.email);
         } else {
@@ -929,13 +925,11 @@ function handleChangePassword(requestBody) {
 
     const data = sheet.getDataRange().getValues();
     const headers = data[0];
-    const emailCol       = headers.indexOf('Email');
+    let emailCol = headers.indexOf('Email');
+    if (emailCol === -1) emailCol = headers.indexOf('email');
+    if (emailCol === -1) emailCol = 4; // Column E fallback
     const passwordCol    = 11; // Column L — SHA-256 hash
     const mustChangeCol  = headers.indexOf('mustChangePassword');
-
-    if (emailCol === -1) {
-      return createResponse(false, 'Email column not found in sheet');
-    }
 
     for (let i = 1; i < data.length; i++) {
       if (data[i][emailCol] && data[i][emailCol].toString().toLowerCase() === email.toLowerCase()) {

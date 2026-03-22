@@ -2115,6 +2115,7 @@ function handleGetCompanyApprovers(requestBody, directCompanyName) {
     // When called from doGet: e.parameter.companyName
     // requestBody should be e.parameter object directly (but might not serialize well)
     let companyName = '';
+    let companyKey = '';
     
     if (requestBody) {
       if (typeof requestBody === 'object') {
@@ -2124,6 +2125,7 @@ function handleGetCompanyApprovers(requestBody, directCompanyName) {
                      requestBody.company || 
                      (requestBody.hasOwnProperty ? (requestBody.hasOwnProperty('companyName') ? requestBody.companyName : '') : '') ||
                      '';
+        companyKey = requestBody.companyKey || '';
         
         // Try accessing as dictionary-style
         if (!companyName) {
@@ -2133,8 +2135,14 @@ function handleGetCompanyApprovers(requestBody, directCompanyName) {
             Logger.log('Error accessing companyName with bracket notation:', e);
           }
         }
+        if (!companyKey) {
+          try {
+            companyKey = requestBody['companyKey'] || '';
+          } catch (e) {}
+        }
         
         Logger.log('Extracted companyName from object:', companyName || '(empty)');
+        Logger.log('Extracted companyKey from object:', companyKey || '(empty)');
         
         // Log all keys for debugging (might not work for e.parameter)
         try {
@@ -2154,6 +2162,7 @@ function handleGetCompanyApprovers(requestBody, directCompanyName) {
         try {
           const parsed = JSON.parse(requestBody);
           companyName = parsed.companyName || parsed.company || '';
+          companyKey = parsed.companyKey || '';
           Logger.log('Parsed companyName from JSON string:', companyName);
         } catch (e) {
           // Not JSON, treat as company name directly
@@ -2197,45 +2206,46 @@ function handleGetCompanyApprovers(requestBody, directCompanyName) {
       return createResponse(false, 'Không tìm thấy dữ liệu công ty');
     }
     
-    // Column mapping based on "Công ty" sheet structure:
-    // A: Tên công ty viết tắt - index 0
-    // B: Tên công ty - index 1 (THIS IS WHERE WE MATCH - Column B)
-    // C: Địa chỉ - index 2
-    // D: Mã số thuế - index 3
-    // 
-    // Legal Representative (Đại diện pháp luật):
-    //   E: Email - index 4
-    //   F: Name - index 5
-    //   G: Signature URL - index 6
-    // 
-    // Chief Accountant (Kế toán trưởng):
-    //   H: Email - index 7
-    //   I: Name - index 8
-    //   J: Signature URL - index 9
-    // 
-    // Treasurer (Thủ quỹ):
-    //   K: Email - index 10
-    //   L: Name - index 11
-    //   M: Signature URL - index 12
+    // Column mapping based on new "Master Company" sheet structure:
+    // A: Company_Name - index 0 (MATCH HERE)
+    // B: Company_Code - index 1
+    // C: Company_Key_Or_Taxid - index 2 (ALSO MATCH HERE for uniqueness)
+    // D: Legal_Representative_Name - index 3
+    // E: Legal_Representative_Email - index 4
+    // F: Legal_Representative_Signature - index 5
+    // G: Email_Director - index 6
+    // H: Chief_Accountant_Name - index 7
+    // I: Chief_Accountant_Email - index 8
+    // J: Chief_Accountant_Signature - index 9
+    // K: Effective_Date - index 10
+    // L: Treasurer_Name - index 11
+    // M: Treasurer_Email - index 12
+    // N: Treasurer_Signature - index 13
+    // O: Company_Full_Name - index 14
+    // P: Tax_ID - index 15
+    // Q: Address - index 16
     
-    Logger.log('Searching for company: "' + companyName + '" in column B (index 1)');
+    Logger.log('Searching for company: "' + companyName + '" key: "' + companyKey + '" in column A (index 0) + C (index 2)');
     
     // Find the company row (skip header row at index 0)
     let companyRow = null;
     for (let i = 1; i < data.length; i++) {
       const row = data[i];
-      const rowCompanyName = (row[1] || '').toString().trim(); // Column B (index 1): Tên công ty
+      const rowName = (row[0] || '').toString().trim(); // Column A (index 0): Company_Name
+      const rowKey  = (row[2] || '').toString().trim(); // Column C (index 2): Company_Key_Or_Taxid
       
-      Logger.log('Row ' + (i + 1) + ' - Column B value: "' + rowCompanyName + '"');
+      Logger.log('Row ' + (i + 1) + ' - Name: "' + rowName + '" Key: "' + rowKey + '"');
       
-      // Exact match or case-insensitive match
       const searchName = companyName.trim();
-      const searchNameLower = searchName.toLowerCase();
-      const rowNameLower = rowCompanyName.toLowerCase();
+      const searchKey  = companyKey.trim();
       
-      if (rowCompanyName === searchName || rowNameLower === searchNameLower) {
+      const isMatch = searchKey
+        ? rowName === searchName && rowKey === searchKey
+        : rowName === searchName;
+      
+      if (isMatch) {
         companyRow = row;
-        Logger.log('✅ Found company match at row ' + (i + 1) + ': "' + rowCompanyName + '"');
+        Logger.log('✅ Found company match at row ' + (i + 1) + ': "' + rowName + '" / "' + rowKey + '"');
         break;
       }
     }
@@ -2246,23 +2256,28 @@ function handleGetCompanyApprovers(requestBody, directCompanyName) {
     }
     
     // Extract approver data
+    // New column structure: A=Company_Name(0), B=Company_Code(1), C=Company_Key(2),
+    // D=LegalRep_Name(3), E=LegalRep_Email(4), F=LegalRep_Sig(5), G=Director_Email(6),
+    // H=Accountant_Name(7), I=Accountant_Email(8), J=Accountant_Sig(9), K=Effective_Date(10),
+    // L=Treasurer_Name(11), M=Treasurer_Email(12), N=Treasurer_Sig(13),
+    // O=Company_Full_Name(14), P=Tax_ID(15), Q=Address(16)
     const approvers = {
       legalRep: {
-        name: (companyRow[5] || '').toString().trim(),        // Column F: Đại diện pháp luật
-        email: (companyRow[4] || '').toString().trim(),       // Column E: Email Đại diện pháp luật
-        signature: (companyRow[6] || '').toString().trim(),   // Column G: Chữ ký (URL)
+        name: (companyRow[3] || '').toString().trim(),        // Column D: Legal_Representative_Name
+        email: (companyRow[4] || '').toString().trim(),       // Column E: Legal_Representative_Email
+        signature: (companyRow[5] || '').toString().trim(),   // Column F: Legal_Representative_Signature
         role: 'Đại diện pháp luật'
       },
       accountant: {
-        name: (companyRow[8] || '').toString().trim(),        // Column I: Kế toán trưởng
-        email: (companyRow[7] || '').toString().trim(),       // Column H: Email Kế toán trưởng
-        signature: (companyRow[9] || '').toString().trim(),   // Column J: Chữ ký (URL)
+        name: (companyRow[7] || '').toString().trim(),        // Column H: Chief_Accountant_Name
+        email: (companyRow[8] || '').toString().trim(),       // Column I: Chief_Accountant_Email
+        signature: (companyRow[9] || '').toString().trim(),   // Column J: Chief_Accountant_Signature
         role: 'Kế toán trưởng'
       },
       treasurer: {
-        name: (companyRow[11] || '').toString().trim(),       // Column L: Thủ quỹ
-        email: (companyRow[10] || '').toString().trim(),      // Column K: Email Thủ quỹ
-        signature: (companyRow[12] || '').toString().trim(),  // Column M: Chữ ký (URL)
+        name: (companyRow[11] || '').toString().trim(),       // Column L: Treasurer_Name
+        email: (companyRow[12] || '').toString().trim(),      // Column M: Treasurer_Email
+        signature: (companyRow[13] || '').toString().trim(),  // Column N: Treasurer_Signature
         role: 'Thủ quỹ'
       }
     };
