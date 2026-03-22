@@ -7371,14 +7371,14 @@
 
             // Ensure voucher number is generated if not already set
             let voucherNumber = document.getElementById('voucher-number').value;
-            if (!voucherNumber || voucherNumber.trim() === '' || voucherNumber === 'TL-2023-') {
+            if (!voucherNumber || voucherNumber.trim() === '' || voucherNumber === 'TL-2023-' || !voucherNumber.match(/^[A-Z]+-(?:PT|PC)\d{14}$/)) {
                 console.log('⚠️ Voucher number missing or invalid, generating new one...');
                 generateVoucherNumber();
                 voucherNumber = document.getElementById('voucher-number').value;
             }
             
-            // Validate voucher number format
-            if (!voucherNumber || !voucherNumber.match(/^TL-\d{4}\d{2}-\d{4}$/)) {
+            // Validate voucher number format: {Code}-{PT|PC}{YYYYMMdd}{######}
+            if (!voucherNumber || !voucherNumber.match(/^[A-Z]+-(?:PT|PC)\d{8}\d{6}$/)) {
                 console.error('❌ Invalid voucher number format:', voucherNumber);
                 showToast('Lỗi: Số phiếu không hợp lệ. Vui lòng thử lại.', 'error');
                 loadingIndicator.classList.remove('show');
