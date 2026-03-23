@@ -920,6 +920,7 @@ function handleSendEmail(requestBody) {
       attachments: fileLinks,
       description: voucher.reason || voucher.description || '',
       note: 'Gửi phê duyệt',
+      dueDate: voucher.dueDate || '',
       metaJson: JSON.stringify(submitMetaData)
     });
 
