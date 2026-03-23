@@ -2634,7 +2634,7 @@ function appendHistory_(entry) {
       entry.requestorEmail || '',                      // F (5):  submited_email
       entry.submittedBy || entry.employee || '',       // G (6):  submitted_by
       new Date(),                                      // H (7):  submitted_at
-      parseFloat((entry.amount || '0').toString().replace(/[^0-9.]/g, '')) || 0,  // I (8):  amount
+      parseFloat((entry.amount || '0').toString().replace(/\./g, '').replace(/,/g, '.')) || 0,  // I (8):  amount (VN format: dots=thousands, comma=decimal)
       entry.status || '',                              // J (9):  status
       entry.dueDate || '',                             // K (10): due_date
       entry.action || '',                              // L (11): action
