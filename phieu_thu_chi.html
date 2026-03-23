@@ -2339,23 +2339,6 @@
                 <input type="text" id="department" name="department" readonly autocomplete="organization">
             </div>
         </div>
-        <div class="form-row" id="submitted-by-row" style="display:none;">
-            <div class="form-group" style="width:100%;">
-                <label for="submitted-by">Người nộp phiếu <span style="font-weight:normal;color:#64748b;">(nếu khác với người đề nghị)</span>:</label>
-                <select id="submitted-by" name="submittedBy" autocomplete="name">
-                    <option value="">-- Giống người đề nghị --</option>
-                </select>
-            </div>
-        </div>
-        <div class="form-row">
-            <div class="form-group" style="width:100%;">
-                <label style="font-size:0.85em;color:#64748b;cursor:pointer;">
-                    <input type="checkbox" id="proxy-submit-toggle" onchange="toggleProxySubmit(this.checked)" style="margin-right:6px;">
-                    Nộp thay cho người khác
-                </label>
-            </div>
-        </div>
-        
         <div class="step-navigation">
             <button type="button" disabled class="btn-prev">← Quay lại</button>
             <button type="button" class="btn-next" onclick="goToStepAfterEdit(2)">Tiếp theo →</button>
