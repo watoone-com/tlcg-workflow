@@ -4124,7 +4124,10 @@
             }
             
             if (currentUser.isAdmin) {
-                document.getElementById('nav-admin').classList.remove('hidden');
+                const navAdmin = document.getElementById('nav-admin');
+                if (navAdmin) navAdmin.classList.remove('hidden');
+                const mobileNavAdmin = document.getElementById('mobile-nav-admin');
+                if (mobileNavAdmin) mobileNavAdmin.classList.remove('hidden');
                 document.getElementById('admin-management-hub').classList.remove('hidden');
                 document.getElementById('admin-verified-badge').classList.remove('hidden');
             }
