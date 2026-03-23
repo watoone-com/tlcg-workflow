@@ -9,6 +9,14 @@ const VOUCHER_HISTORY_SHEET_ID = TLCG_MASTER_DATA_SHEET_ID; // Same spreadsheet
 const VH_SHEET_NAME = 'Voucher_History';
 const EMPLOYEES_SHEET_NAME = 'Master Employee';
 const COMPANY_SHEET_NAME = 'Master Company';
+const VH_IMPORT_SHEET_NAME = 'VH_import';
+
+// Fixed approvers for VH_import bulk flow
+const IMPORT_APPROVERS = {
+  accountant: { email: 'nhanh.nguyen@tl-c.com.vn', name: 'Nhanh Nguyễn', order: 1 },
+  legalRep:   { email: 'anh.le@mediainsider.vn',   name: 'Anh Lê',        order: 2 },
+  treasurer:  { email: 'linh.le@tl-c.com.vn',       name: 'Linh Lê',       order: 3 }
+};
 
 /**
  * Helper function to safely open a spreadsheet with detailed error handling
@@ -110,6 +118,9 @@ function doGet(e) {
       };
       Logger.log('Request body for approveVoucher (GET): ' + JSON.stringify(requestBody));
       return handleApproveVoucher(requestBody);
+    } else if (action === 'bulkApproveByToken') {
+      Logger.log('Handling bulkApproveByToken via GET');
+      return handleBulkApproveByToken(e.parameter);
     } else if (action === 'rejectVoucher') {
       // Handle reject via GET (from email links)
       Logger.log('Handling rejectVoucher via GET');
@@ -297,6 +308,8 @@ function doPost(e) {
         return handleSendEmail(requestBody);
       case 'approveVoucher': return handleApproveVoucher(requestBody);
       case 'rejectVoucher': return handleRejectVoucher(requestBody);
+      case 'importFromVHImport': return handleImportFromVHImport(requestBody);
+      case 'bulkApprove': return handleBulkApprove(requestBody);
       case 'getVoucherSummary': return handleGetVoucherSummary(requestBody);
       case 'getVoucherHistory': return handleGetVoucherHistory(requestBody);
       case 'getEmployees': return handleGetEmployees(requestBody);
@@ -1779,6 +1792,583 @@ function handleRejectVoucher(requestBody) {
   } catch (error) {
     Logger.log('❌ Error rejecting voucher: ' + error.toString());
     return createResponse(false, 'Lỗi: ' + error.message);
+  }
+}
+
+/**
+ * Import rows from VH_import sheet into Voucher_History as Submit entries.
+ * Skips rows where col K = '✅' (already imported).
+ * Stamps col K = '✅' after each successful import.
+ */
+/**
+ * Import rows from VH_import sheet into Voucher_History.
+ * Phase A: validate required fields (B=type, C=company, E=employee, G=amount).
+ *          Returns invalid rows without importing if any exist.
+ * Phase B: import valid rows with full 3-tier companyApprovers MetaJSON.
+ * Phase C: send ONE batched email to the first approver (accountant).
+ *
+ * VH_import columns: A=voucher_number, B=voucher_type, C=company_name, D=company_key,
+ *                    E=employee_name, F=requestor_email, G=amount, H=description,
+ *                    I=note, J=due_date, K=imported (stamped ✅ after import)
+ */
+function handleImportFromVHImport(requestBody) {
+  try {
+    const ss = safeOpenSpreadsheet(TLCG_MASTER_DATA_SHEET_ID, 'handleImportFromVHImport');
+    const importSheet = ss.getSheetByName(VH_IMPORT_SHEET_NAME);
+    if (!importSheet) {
+      return createResponse(false, 'Không tìm thấy sheet "' + VH_IMPORT_SHEET_NAME + '". Vui lòng tạo sheet với tên chính xác.');
+    }
+
+    const data = importSheet.getDataRange().getValues();
+    if (data.length < 2) {
+      return createResponse(true, 'Sheet VH_import không có dữ liệu để nhập.', { imported: 0, skipped: 0, invalid: [] });
+    }
+
+    // ── Phase A: Validate ────────────────────────────────────────────────
+    const invalid = [];
+    let pendingRows = []; // rows that are valid and not yet imported
+
+    // VH_import mirrors Voucher_History columns A–R:
+    // A(0)=voucher_number, B(1)=voucher_type, C(2)=company_name, D(3)=company_key_or_taxid,
+    // E(4)=employee_name, F(5)=submited_email, G(6)=submitted_by, H(7)=submitted_at,
+    // I(8)=amount, J(9)=status, K(10)=due_date, L(11)=action, M(12)=attachments,
+    // N(13)=description, O(14)=note, P(15)=approver_email, Q(16)=approved_at, R(17)=MetaJSON
+    // S(18)=imported marker (col 19, 1-based) — added by import process
+    for (let i = 1; i < data.length; i++) {
+      const row = data[i];
+
+      // Skip already-imported rows (col S = index 18)
+      if ((row[18] || '').toString().trim() === '✅') continue;
+
+      // Skip fully empty rows (check key fields)
+      const rowKey = [row[0], row[1], row[2], row[4], row[8]].join('').trim();
+      if (!rowKey) continue;
+
+      const rowErrors = [];
+      if (!(row[1] || '').toString().trim()) rowErrors.push('Thiếu Loại phiếu (cột B: voucher_type)');
+      if (!(row[2] || '').toString().trim()) rowErrors.push('Thiếu Tên công ty (cột C: company_name)');
+      if (!(row[4] || '').toString().trim()) rowErrors.push('Thiếu Tên nhân viên (cột E: employee_name)');
+      if (!(row[8] || '').toString().trim()) rowErrors.push('Thiếu Số tiền (cột I: amount)');
+
+      if (rowErrors.length) {
+        invalid.push({ row: i + 1, errors: rowErrors, data: { company: row[2], employee: row[4] } });
+      } else {
+        pendingRows.push({ sheetRow: i + 1, rowIndex: i, data: row });
+      }
+    }
+
+    // Return early if any validation errors
+    if (invalid.length) {
+      return createResponse(false,
+        invalid.length + ' dòng có lỗi dữ liệu. Vui lòng kiểm tra và sửa trước khi nhập.',
+        { invalid: invalid }
+      );
+    }
+
+    if (!pendingRows.length) {
+      return createResponse(true, 'Không có dòng mới để nhập (tất cả đã được nhập hoặc trống).', { imported: 0, skipped: 0 });
+    }
+
+    // ── Phase B: Import ──────────────────────────────────────────────────
+    const now = new Date();
+    const yyyymmdd = now.getFullYear().toString() +
+      String(now.getMonth() + 1).padStart(2, '0') +
+      String(now.getDate()).padStart(2, '0');
+
+    // Look up Master Company & Master Employee once for all rows
+    let companyData = [];
+    let employeeData = [];
+    try {
+      const compSheet = ss.getSheetByName(COMPANY_SHEET_NAME);
+      if (compSheet) companyData = compSheet.getDataRange().getValues().slice(1);
+    } catch(e) { Logger.log('⚠️ Could not load Master Company: ' + e); }
+    try {
+      const empSheet = ss.getSheetByName(EMPLOYEES_SHEET_NAME);
+      if (empSheet) employeeData = empSheet.getDataRange().getValues().slice(1);
+    } catch(e) { Logger.log('⚠️ Could not load Master Employee: ' + e); }
+
+    // Build fixed companyApprovers meta template
+    const buildApproversMeta = function() {
+      return {
+        approvers: {
+          accountant: { email: IMPORT_APPROVERS.accountant.email, name: IMPORT_APPROVERS.accountant.name, status: 'pending', signature: '', approvedAt: null, order: 1 },
+          legalRep:   { email: IMPORT_APPROVERS.legalRep.email,   name: IMPORT_APPROVERS.legalRep.name,   status: 'pending', signature: '', approvedAt: null, order: 2 },
+          treasurer:  { email: IMPORT_APPROVERS.treasurer.email,   name: IMPORT_APPROVERS.treasurer.name,  status: 'pending', signature: '', approvedAt: null, order: 3 }
+        },
+        overallStatus: 'Pending Approval',
+        approvalProgress: '0/3',
+        currentApprover: 'accountant',
+        approvalSequence: ['accountant', 'legalRep', 'treasurer'],
+        displayStatus: 'Chờ duyệt',
+        fullyApprovedAt: null
+      };
+    };
+
+    const importedVouchers = []; // for batch email
+    const errors = [];
+
+    for (let pi = 0; pi < pendingRows.length; pi++) {
+      const { sheetRow, rowIndex, data: row } = pendingRows[pi];
+      try {
+        // Column mapping mirrors Voucher_History A–R
+        // A(0)=voucher_number, B(1)=voucher_type, C(2)=company_name, D(3)=company_key,
+        // E(4)=employee_name, F(5)=submited_email, G(6)=submitted_by, H(7)=submitted_at,
+        // I(8)=amount, J(9)=status, K(10)=due_date, L(11)=action, M(12)=attachments,
+        // N(13)=description, O(14)=note, P(15)=approver_email, Q(16)=approved_at, R(17)=MetaJSON
+
+        // Auto-generate voucher number if blank
+        let voucherNumber = (row[0] || '').toString().trim();
+        if (!voucherNumber) {
+          const vType = (row[1] || 'PT').toString().trim().toUpperCase() === 'PC' ? 'PC' : 'PT';
+          const compKey = (row[3] || 'XX').toString().trim().replace(/[^A-Za-z0-9._-]/g, '').substring(0, 6) || 'XX';
+          const seq = String(rowIndex).padStart(6, '0');
+          voucherNumber = compKey + '-' + vType + yyyymmdd + seq;
+        }
+
+        // Resolve companyKey (col D) if blank — look up from Master Company by name
+        let companyKey = (row[3] || '').toString().trim();
+        if (!companyKey) {
+          const companyName = (row[2] || '').toString().trim();
+          for (let ci = 0; ci < companyData.length; ci++) {
+            if ((companyData[ci][0] || '').toString().trim() === companyName && companyData[ci][2]) {
+              companyKey = companyData[ci][2].toString().trim();
+              break;
+            }
+          }
+        }
+
+        // Resolve requestorEmail (col F) if blank — look up from Master Employee by name
+        let requestorEmail = (row[5] || '').toString().trim();
+        if (!requestorEmail) {
+          const empName = (row[4] || '').toString().trim();
+          for (let ei = 0; ei < employeeData.length; ei++) {
+            if ((employeeData[ei][0] || '').toString().trim() === empName && employeeData[ei][2]) {
+              requestorEmail = employeeData[ei][2].toString().trim();
+              break;
+            }
+          }
+        }
+
+        const companyApprovers = buildApproversMeta();
+        const metaJson = JSON.stringify({
+          importedFrom: 'VH_import',
+          importedAt: now.toISOString(),
+          importRow: sheetRow,
+          companyApprovers: companyApprovers
+        });
+
+        const amountRaw = (row[8] || '0').toString().trim();   // I(8) = amount
+
+        appendHistory_({
+          voucherNumber:  voucherNumber,
+          voucherType:    (row[1]  || '').toString().trim(),    // B
+          company:        (row[2]  || '').toString().trim(),    // C
+          companyKey:     companyKey,                           // D (resolved)
+          employee:       (row[4]  || '').toString().trim(),    // E
+          requestorEmail: requestorEmail,                       // F (resolved)
+          submittedBy:    (row[6]  || 'Import').toString().trim() || 'Import', // G
+          amount:         amountRaw,                            // I
+          status:         'Pending',
+          dueDate:        (row[10] || '').toString().trim(),    // K
+          action:         'Submit',
+          attachments:    (row[12] || '').toString().trim(),    // M
+          description:    (row[13] || '').toString().trim(),    // N
+          note:           (row[14] || '').toString().trim(),    // O
+          approverEmail:  '',
+          approvedAt:     '',
+          metaJson:       metaJson
+        });
+
+        // Stamp col S (index 18, 1-based = 19) on the import sheet
+        importSheet.getRange(sheetRow, 19).setValue('✅');
+
+        importedVouchers.push({
+          voucherNumber: voucherNumber,
+          company:       (row[2]  || '').toString().trim(),
+          employee:      (row[4]  || '').toString().trim(),
+          amount:        amountRaw,
+          description:   (row[13] || '').toString().trim()     // N = description
+        });
+      } catch (rowErr) {
+        Logger.log('❌ Error importing row ' + sheetRow + ': ' + rowErr.toString());
+        errors.push({ row: sheetRow, error: rowErr.message });
+      }
+    }
+
+    // ── Phase C: Send batched email to first approver ────────────────────
+    if (importedVouchers.length) {
+      try {
+        sendBatchApprovalEmail_('accountant', importedVouchers);
+      } catch (emailErr) {
+        Logger.log('⚠️ Could not send batch email: ' + emailErr.toString());
+        // Don't fail the whole import for email errors
+      }
+    }
+
+    Logger.log('✅ VH_import: imported=' + importedVouchers.length + ', errors=' + errors.length);
+    return createResponse(true,
+      'Đã nhập ' + importedVouchers.length + ' phiếu từ VH_import. Email phê duyệt đã gửi tới Kế toán trưởng.' +
+      (errors.length ? ' Lỗi: ' + errors.length + ' dòng.' : ''),
+      { imported: importedVouchers.length, skipped: pendingRows.length - importedVouchers.length, errors: errors }
+    );
+  } catch (error) {
+    Logger.log('❌ handleImportFromVHImport error: ' + error.toString());
+    return createResponse(false, 'Lỗi nhập dữ liệu: ' + error.message);
+  }
+}
+
+/**
+ * Send ONE batched approval email to the specified approver role.
+ * voucherList: [{voucherNumber, company, employee, amount, description}]
+ */
+function sendBatchApprovalEmail_(approverRole, voucherList) {
+  const approverInfo = IMPORT_APPROVERS[approverRole];
+  if (!approverInfo) throw new Error('Unknown approverRole: ' + approverRole);
+
+  const n = voucherList.length;
+  const roleLabels = { accountant: 'Kế toán trưởng', legalRep: 'Đại diện pháp luật', treasurer: 'Thủ quỹ' };
+  const roleLabel = roleLabels[approverRole] || approverRole;
+
+  // Build token for "Approve All" link
+  const tokenData = {
+    approverEmail: approverInfo.email,
+    approverRole:  approverRole,
+    voucherNumbers: voucherList.map(function(v) { return v.voucherNumber; }),
+    issuedAt: Date.now()
+  };
+  let batchToken = '';
+  try {
+    batchToken = Utilities.base64EncodeWebSafe(JSON.stringify(tokenData));
+  } catch(e) {
+    Logger.log('⚠️ base64EncodeWebSafe failed: ' + e);
+    batchToken = encodeURIComponent(JSON.stringify(tokenData));
+  }
+
+  const scriptUrl = ScriptApp.getService().getUrl();
+  const approveAllUrl = scriptUrl + '?action=bulkApproveByToken&token=' + batchToken;
+
+  // Build voucher table rows
+  let tableRows = '';
+  for (let i = 0; i < voucherList.length; i++) {
+    const v = voucherList[i];
+    const amtNum = parseFloat((v.amount || '0').toString().replace(/\./g, '').replace(/,/g, '.')) || 0;
+    const amtDisplay = amtNum ? amtNum.toLocaleString('vi-VN') + ' ₫' : v.amount || '0';
+    tableRows += '<tr style="border-bottom:1px solid #e2e8f0;">' +
+      '<td style="padding:8px 12px;font-weight:600;color:#1e40af;">' + (v.voucherNumber || '') + '</td>' +
+      '<td style="padding:8px 12px;">' + (v.company || '') + '</td>' +
+      '<td style="padding:8px 12px;">' + (v.employee || '') + '</td>' +
+      '<td style="padding:8px 12px;text-align:right;font-weight:600;">' + amtDisplay + '</td>' +
+      '<td style="padding:8px 12px;color:#64748b;">' + (v.description || '') + '</td>' +
+      '</tr>';
+  }
+
+  const emailSubject = '[PHÊ DUYỆT HÀNG LOẠT] ' + n + ' phiếu cần duyệt - ' + roleLabel;
+  const emailBody = `
+    <div style="font-family:Arial,sans-serif;max-width:800px;margin:0 auto;padding:24px;">
+      <div style="background:#1e40af;color:white;padding:20px 24px;border-radius:8px 8px 0 0;">
+        <h2 style="margin:0;font-size:1.25rem;">📋 Yêu cầu phê duyệt hàng loạt</h2>
+        <p style="margin:8px 0 0;opacity:0.85;">Kính gửi ${approverInfo.name} (${roleLabel})</p>
+      </div>
+      <div style="background:#f8fafc;border:1px solid #e2e8f0;border-top:none;padding:20px 24px;">
+        <p>Có <strong>${n} phiếu</strong> được nhập từ VH_import và cần được phê duyệt bởi bạn (bước ${approverInfo.order}/3):</p>
+        <table style="width:100%;border-collapse:collapse;background:white;border-radius:6px;overflow:hidden;border:1px solid #e2e8f0;margin:16px 0;">
+          <thead>
+            <tr style="background:#f1f5f9;font-size:0.8rem;text-transform:uppercase;color:#64748b;">
+              <th style="padding:10px 12px;text-align:left;">Số phiếu</th>
+              <th style="padding:10px 12px;text-align:left;">Công ty</th>
+              <th style="padding:10px 12px;text-align:left;">Nhân viên</th>
+              <th style="padding:10px 12px;text-align:right;">Số tiền</th>
+              <th style="padding:10px 12px;text-align:left;">Mô tả</th>
+            </tr>
+          </thead>
+          <tbody>${tableRows}</tbody>
+        </table>
+        <div style="text-align:center;margin:24px 0;">
+          <a href="${approveAllUrl}" style="display:inline-block;background:#16a34a;color:white;padding:14px 32px;border-radius:8px;text-decoration:none;font-size:1rem;font-weight:700;">
+            ✅ Duyệt tất cả (${n} phiếu)
+          </a>
+        </div>
+        <p style="font-size:0.85rem;color:#64748b;text-align:center;">
+          Hoặc đăng nhập vào hệ thống để duyệt từng phiếu hoặc chọn duyệt hàng loạt.
+        </p>
+      </div>
+      <div style="background:#f1f5f9;border:1px solid #e2e8f0;border-top:none;padding:12px 24px;border-radius:0 0 8px 8px;font-size:0.8rem;color:#94a3b8;text-align:center;">
+        Email tự động từ Hệ thống Workflow TLC Group
+      </div>
+    </div>
+  `;
+
+  GmailApp.sendEmail(approverInfo.email, emailSubject, '', { htmlBody: emailBody });
+  Logger.log('✅ Batch email sent to ' + approverInfo.email + ' for ' + n + ' vouchers');
+}
+
+/**
+ * Core approval logic for one voucher — used by both bulk-approve paths.
+ * Skips signature verification (batch admin operation).
+ * Returns { success, error, voucherData } — does NOT send next-step email (caller does that).
+ */
+function _approveVoucherCore_(voucherNumber, approverEmail, approverRole) {
+  const existing = getVoucherFromHistory(voucherNumber);
+  if (!existing) return { success: false, error: 'Không tìm thấy phiếu: ' + voucherNumber };
+
+  let meta = {};
+  if (existing.meta) {
+    try { meta = JSON.parse(existing.meta); } catch(e) {}
+  }
+
+  const companyApprovers = meta.companyApprovers;
+  if (!companyApprovers || !companyApprovers.approvers) {
+    return { success: false, error: 'Phiếu không có thông tin phê duyệt tuần tự (companyApprovers).' };
+  }
+
+  const approver = companyApprovers.approvers[approverRole];
+  if (!approver) return { success: false, error: 'Vai trò phê duyệt không hợp lệ: ' + approverRole };
+  if (approver.status === 'approved') return { success: false, error: 'Phiếu đã được duyệt bởi ' + approverRole };
+  if (companyApprovers.overallStatus === 'Rejected') return { success: false, error: 'Phiếu đã bị từ chối.' };
+
+  const expectedRole = companyApprovers.currentApprover || 'accountant';
+  if (approverRole !== expectedRole) {
+    return { success: false, error: 'Chưa đến lượt phê duyệt. Đang chờ: ' + expectedRole };
+  }
+
+  // Mark this approver as approved
+  const nowIso = new Date().toISOString();
+  companyApprovers.approvers[approverRole].status = 'approved';
+  companyApprovers.approvers[approverRole].approvedAt = nowIso;
+  companyApprovers.approvers[approverRole].signature = ''; // no signature for bulk
+
+  const approvalCount = countApprovals(companyApprovers.approvers);
+  companyApprovers.approvalProgress = approvalCount + '/3';
+  meta.companyApprovers = companyApprovers;
+  meta.approvedBy = approverEmail;
+
+  const isFinal = (approverRole === 'treasurer' || approvalCount === 3);
+
+  if (isFinal) {
+    companyApprovers.overallStatus = 'Approved';
+    companyApprovers.displayStatus = 'Đã duyệt';
+    companyApprovers.currentApprover = null;
+    companyApprovers.fullyApprovedAt = nowIso;
+
+    appendHistory_({
+      voucherNumber:  voucherNumber,
+      voucherType:    existing.voucherType  || '',
+      company:        existing.company      || '',
+      companyKey:     existing.companyKey   || '',
+      employee:       existing.employee     || '',
+      requestorEmail: existing.requestorEmail || '',
+      submittedBy:    existing.submittedBy  || '',
+      amount:         existing.amount       || 0,
+      status:         'Approved',
+      dueDate:        existing.dueDate      || '',
+      action:         'Fully Approved',
+      attachments:    existing.attachments  || '',
+      description:    existing.description  || '',
+      note:           'Duyệt hàng loạt — tất cả 3 bước',
+      approverEmail:  approverEmail,
+      approvedAt:     nowIso,
+      metaJson:       JSON.stringify(meta)
+    });
+  } else {
+    const sequence = companyApprovers.approvalSequence || ['accountant', 'legalRep', 'treasurer'];
+    const nextRole = sequence[sequence.indexOf(approverRole) + 1];
+    companyApprovers.currentApprover = nextRole;
+    companyApprovers.overallStatus = 'Partially Approved';
+    companyApprovers.displayStatus = 'Đang duyệt (' + approvalCount + '/3)';
+
+    appendHistory_({
+      voucherNumber:  voucherNumber,
+      voucherType:    existing.voucherType  || '',
+      company:        existing.company      || '',
+      companyKey:     existing.companyKey   || '',
+      employee:       existing.employee     || '',
+      requestorEmail: existing.requestorEmail || '',
+      submittedBy:    existing.submittedBy  || '',
+      amount:         existing.amount       || 0,
+      status:         'Pending',
+      dueDate:        existing.dueDate      || '',
+      action:         'Approved by ' + (IMPORT_APPROVERS[approverRole] ? IMPORT_APPROVERS[approverRole].name : approverRole),
+      attachments:    existing.attachments  || '',
+      description:    existing.description  || '',
+      note:           'Duyệt hàng loạt — bước ' + approvalCount + '/3',
+      approverEmail:  approverEmail,
+      approvedAt:     nowIso,
+      metaJson:       JSON.stringify(meta)
+    });
+  }
+
+  return { success: true, isFinal: isFinal, voucherData: existing };
+}
+
+/**
+ * Handle bulk approval via email token link (doGet).
+ * Returns an HTML confirmation page.
+ */
+function handleBulkApproveByToken(params) {
+  try {
+    const rawToken = params.token || '';
+    if (!rawToken) {
+      return HtmlService.createHtmlOutput('<h2>Lỗi: Thiếu token xác thực.</h2>');
+    }
+
+    let tokenData;
+    try {
+      tokenData = JSON.parse(Utilities.newBlob(Utilities.base64DecodeWebSafe(rawToken)).getDataAsString());
+    } catch(e) {
+      return HtmlService.createHtmlOutput('<h2>Lỗi: Token không hợp lệ hoặc đã hết hạn.</h2>');
+    }
+
+    const { approverEmail, approverRole, voucherNumbers } = tokenData;
+    if (!approverEmail || !approverRole || !voucherNumbers || !voucherNumbers.length) {
+      return HtmlService.createHtmlOutput('<h2>Lỗi: Dữ liệu token không đầy đủ.</h2>');
+    }
+
+    const approved = [];
+    const failed   = [];
+    const nextStepVouchers = [];
+
+    for (let i = 0; i < voucherNumbers.length; i++) {
+      const result = _approveVoucherCore_(voucherNumbers[i], approverEmail, approverRole);
+      if (result.success) {
+        approved.push(voucherNumbers[i]);
+        if (!result.isFinal) {
+          nextStepVouchers.push({
+            voucherNumber: voucherNumbers[i],
+            company:       result.voucherData ? result.voucherData.company       : '',
+            employee:      result.voucherData ? result.voucherData.employee      : '',
+            amount:        result.voucherData ? result.voucherData.amount        : '',
+            description:   result.voucherData ? result.voucherData.description   : ''
+          });
+        } else {
+          // Send individual final email to requestor
+          try {
+            const v = result.voucherData || {};
+            const existing = getVoucherFromHistory(voucherNumbers[i]);
+            if (existing && existing.requestorEmail) {
+              sendFinalApprovalEmail(
+                { requestorEmail: existing.requestorEmail },
+                (existing.meta ? JSON.parse(existing.meta) : {}).companyApprovers || {},
+                voucherNumbers[i]
+              );
+            }
+          } catch(fe) { Logger.log('⚠️ Final email error: ' + fe); }
+        }
+      } else {
+        failed.push({ voucherNumber: voucherNumbers[i], error: result.error });
+      }
+    }
+
+    // Send batch email to next approver
+    if (nextStepVouchers.length) {
+      const sequence = ['accountant', 'legalRep', 'treasurer'];
+      const nextRole = sequence[sequence.indexOf(approverRole) + 1];
+      if (nextRole) {
+        try { sendBatchApprovalEmail_(nextRole, nextStepVouchers); } catch(e) { Logger.log('⚠️ ' + e); }
+      }
+    }
+
+    const approverInfo = IMPORT_APPROVERS[approverRole] || {};
+    const failedHtml = failed.length
+      ? '<p style="color:#dc2626;">Thất bại (' + failed.length + '): ' +
+        failed.map(function(f) { return f.voucherNumber + ' — ' + f.error; }).join(', ') + '</p>'
+      : '';
+    const nextMsg = nextStepVouchers.length
+      ? '<p>📧 Đã gửi email phê duyệt bước tiếp theo.</p>'
+      : approved.length ? '<p>🎉 Tất cả phiếu đã được duyệt hoàn toàn (3/3).</p>' : '';
+
+    return HtmlService.createHtmlOutput(
+      '<html><body style="font-family:Arial,sans-serif;max-width:600px;margin:40px auto;padding:24px;">' +
+      '<h2 style="color:#16a34a;">✅ Đã duyệt ' + approved.length + '/' + voucherNumbers.length + ' phiếu</h2>' +
+      '<p>Người duyệt: <strong>' + (approverInfo.name || approverEmail) + '</strong> (' + approverEmail + ')</p>' +
+      nextMsg + failedHtml +
+      '<p style="margin-top:32px;color:#64748b;font-size:0.85rem;">Email tự động từ Hệ thống Workflow TLC Group</p>' +
+      '</body></html>'
+    );
+  } catch (error) {
+    Logger.log('❌ handleBulkApproveByToken error: ' + error.toString());
+    return HtmlService.createHtmlOutput('<h2>Lỗi hệ thống: ' + error.message + '</h2>');
+  }
+}
+
+/**
+ * Bulk approve a list of vouchers via the UI (POST).
+ * Triggers proper 3-tier flow — sends batch email to next approver.
+ * requestBody.voucherNumbers: string[]
+ * requestBody.approverEmail: string
+ */
+function handleBulkApprove(requestBody) {
+  try {
+    const voucherNumbers = requestBody.voucherNumbers || [];
+    const approverEmail  = requestBody.approverEmail  || '';
+
+    if (!voucherNumbers.length) return createResponse(false, 'Không có phiếu nào được chọn.');
+    if (!approverEmail)         return createResponse(false, 'Thiếu thông tin người duyệt.');
+
+    // Determine approver role from email
+    let approverRole = null;
+    const roles = Object.keys(IMPORT_APPROVERS);
+    for (let ri = 0; ri < roles.length; ri++) {
+      if (IMPORT_APPROVERS[roles[ri]].email.toLowerCase() === approverEmail.toLowerCase()) {
+        approverRole = roles[ri];
+        break;
+      }
+    }
+    if (!approverRole) {
+      return createResponse(false, 'Email ' + approverEmail + ' không có trong danh sách người phê duyệt.');
+    }
+
+    const approved = [];
+    const failed   = [];
+    const nextStepVouchers = [];
+
+    for (let vi = 0; vi < voucherNumbers.length; vi++) {
+      const result = _approveVoucherCore_(voucherNumbers[vi], approverEmail, approverRole);
+      if (result.success) {
+        approved.push(voucherNumbers[vi]);
+        if (!result.isFinal) {
+          nextStepVouchers.push({
+            voucherNumber: voucherNumbers[vi],
+            company:       result.voucherData ? result.voucherData.company     : '',
+            employee:      result.voucherData ? result.voucherData.employee    : '',
+            amount:        result.voucherData ? result.voucherData.amount      : '',
+            description:   result.voucherData ? result.voucherData.description : ''
+          });
+        } else {
+          try {
+            const existing = getVoucherFromHistory(voucherNumbers[vi]);
+            if (existing && existing.requestorEmail) {
+              sendFinalApprovalEmail(
+                { requestorEmail: existing.requestorEmail },
+                (existing.meta ? JSON.parse(existing.meta) : {}).companyApprovers || {},
+                voucherNumbers[vi]
+              );
+            }
+          } catch(fe) { Logger.log('⚠️ Final email error: ' + fe); }
+        }
+      } else {
+        Logger.log('❌ bulkApprove skip ' + voucherNumbers[vi] + ': ' + result.error);
+        failed.push({ voucherNumber: voucherNumbers[vi], error: result.error });
+      }
+    }
+
+    // Send batch email to next approver
+    if (nextStepVouchers.length) {
+      const sequence = ['accountant', 'legalRep', 'treasurer'];
+      const nextRole = sequence[sequence.indexOf(approverRole) + 1];
+      if (nextRole) {
+        try { sendBatchApprovalEmail_(nextRole, nextStepVouchers); } catch(e) { Logger.log('⚠️ ' + e); }
+      }
+    }
+
+    Logger.log('✅ bulkApprove: approved=' + approved.length + ', failed=' + failed.length);
+    return createResponse(true,
+      'Đã duyệt ' + approved.length + ' phiếu.' + (failed.length ? ' Thất bại: ' + failed.length + '.' : '') +
+      (nextStepVouchers.length ? ' Đã gửi email bước tiếp theo.' : ''),
+      { approved: approved, failed: failed }
+    );
+  } catch (error) {
+    Logger.log('❌ handleBulkApprove error: ' + error.toString());
+    return createResponse(false, 'Lỗi duyệt hàng loạt: ' + error.message);
   }
 }
 
