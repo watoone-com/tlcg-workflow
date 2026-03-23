@@ -887,16 +887,26 @@ function handleSendEmail(requestBody) {
     // #endregion
 
     // Look up authoritative Company_Key_Or_Taxid from Master Company sheet col C
+    // Only overwrite frontend value if exact name+key match found in sheet
     let verifiedCompanyKey = voucher.companyKey || '';
     try {
       const compSheet = safeOpenSpreadsheet(TLCG_MASTER_DATA_SHEET_ID, 'verifyCompanyKey').getSheetByName(COMPANY_SHEET_NAME);
       if (compSheet) {
-        const compData = compSheet.getDataRange().getValues().slice(1); // skip header row
+        const compData = compSheet.getDataRange().getValues().slice(1);
         const searchName = (voucher.company || '').trim();
+        const searchKey  = (voucher.companyKey || '').trim();
         for (let ci = 0; ci < compData.length; ci++) {
-          if ((compData[ci][0] || '').toString().trim() === searchName) {
-            const sheetKey = (compData[ci][2] || '').toString().trim(); // col C = Company_Key_Or_Taxid
-            if (sheetKey) verifiedCompanyKey = sheetKey;
+          const rowName = (compData[ci][0] || '').toString().trim();
+          const rowKey  = (compData[ci][2] || '').toString().trim();
+          if (rowName !== searchName) continue;
+          if (searchKey && rowKey === searchKey) {
+            // Exact name+key match — confirmed, use sheet value
+            verifiedCompanyKey = rowKey;
+            break;
+          }
+          if (!searchKey && rowKey) {
+            // Frontend sent no key — fill from first name match
+            verifiedCompanyKey = rowKey;
             break;
           }
         }

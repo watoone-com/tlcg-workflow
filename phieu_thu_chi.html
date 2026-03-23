@@ -2709,7 +2709,7 @@
                     <h3>📋 Phiếu gần đây</h3>
                     <span id="last-refresh-time" style="font-size: 0.75rem; color: #64748b; font-weight: normal;"></span>
                 </div>
-                <button class="refresh-btn" onclick="loadRecentVouchers()" title="Tự động làm mới mỗi 30 giây">
+                <button class="refresh-btn" onclick="loadRecentVouchers()" title="Làm mới danh sách phiếu">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
                     Làm mới
                 </button>
@@ -6483,51 +6483,11 @@
             }
         }
         
-        // Auto-refresh interval for Recent Vouchers (30 seconds)
-        let recentVouchersRefreshInterval = null;
-        const REFRESH_INTERVAL_MS = 30000; // 30 seconds
-        
-        // Start auto-refresh for Recent Vouchers
-        function startAutoRefresh() {
-            if (recentVouchersRefreshInterval) {
-                clearInterval(recentVouchersRefreshInterval);
-            }
-            recentVouchersRefreshInterval = setInterval(() => {
-                console.log('Auto-refreshing Recent Vouchers...');
-                loadRecentVouchers();
-            }, REFRESH_INTERVAL_MS);
-            console.log('Auto-refresh started (every 30 seconds)');
-        }
-        
-        // Stop auto-refresh (e.g., when modal is open)
-        function stopAutoRefresh() {
-            if (recentVouchersRefreshInterval) {
-                clearInterval(recentVouchersRefreshInterval);
-                recentVouchersRefreshInterval = null;
-                console.log('Auto-refresh stopped');
-            }
-        }
-        
-        // Initialize recent vouchers on page load
+        // Initialize recent vouchers on page load (once — user refreshes manually)
         document.addEventListener('DOMContentLoaded', function() {
-            // Load recent vouchers after a short delay to ensure page is ready
             setTimeout(() => {
                 loadRecentVouchers();
-                startAutoRefresh();
             }, 1000);
-
-            // Note: Signature upload button already has onclick handler in HTML
-            // No need to add additional event listener to avoid double triggering
-        });
-        
-        // Stop auto-refresh when page is hidden (tab switched), resume when visible
-        document.addEventListener('visibilitychange', function() {
-            if (document.hidden) {
-                stopAutoRefresh();
-            } else {
-                loadRecentVouchers(); // Refresh immediately when tab becomes visible
-                startAutoRefresh();
-            }
         });
         // ============ END RECENT VOUCHERS FUNCTIONS ============
         
