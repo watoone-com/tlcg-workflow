@@ -885,12 +885,31 @@ function handleSendEmail(requestBody) {
       UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:662', message: 'Before appendHistory_', data: {voucherNo: voucherNo, action: 'Submit'}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'E'})}).catch(() => {});
     } catch (e) {}
     // #endregion
-    
+
+    // Look up authoritative Company_Key_Or_Taxid from Master Company sheet col C
+    let verifiedCompanyKey = voucher.companyKey || '';
+    try {
+      const compSheet = safeOpenSpreadsheet(TLCG_MASTER_DATA_SHEET_ID, 'verifyCompanyKey').getSheetByName(COMPANY_SHEET_NAME);
+      if (compSheet) {
+        const compData = compSheet.getDataRange().getValues().slice(1); // skip header row
+        const searchName = (voucher.company || '').trim();
+        for (let ci = 0; ci < compData.length; ci++) {
+          if ((compData[ci][0] || '').toString().trim() === searchName) {
+            const sheetKey = (compData[ci][2] || '').toString().trim(); // col C = Company_Key_Or_Taxid
+            if (sheetKey) verifiedCompanyKey = sheetKey;
+            break;
+          }
+        }
+      }
+    } catch (keyLookupErr) {
+      Logger.log('⚠️ Could not verify companyKey from Master Company sheet: ' + keyLookupErr);
+    }
+
     appendHistory_({
       voucherNumber: voucherNo,
       voucherType: voucher.voucherType || '',
       company: voucher.company || '',
-      companyKey: voucher.companyKey || '',
+      companyKey: verifiedCompanyKey,
       employee: voucher.employee || '',
       amount: voucher.amount || 0,
       status: 'Pending',
@@ -2614,7 +2633,7 @@ function appendHistory_(entry) {
       entry.requestorEmail || '',                      // F (5):  submited_email
       entry.submittedBy || entry.employee || '',       // G (6):  submitted_by
       new Date(),                                      // H (7):  submitted_at
-      entry.amount || 0,                               // I (8):  amount
+      parseFloat((entry.amount || '0').toString().replace(/[^0-9.]/g, '')) || 0,  // I (8):  amount
       entry.status || '',                              // J (9):  status
       entry.dueDate || '',                             // K (10): due_date
       entry.action || '',                              // L (11): action
