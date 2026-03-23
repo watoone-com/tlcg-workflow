@@ -2392,6 +2392,11 @@
                 <label for="amount">Tổng số tiền:</label>
                 <input type="text" id="amount" name="amount" required readonly inputmode="numeric">
             </div>
+            <div class="form-group">
+                <label for="due-date">Ngày thanh toán dự kiến:</label>
+                <input type="date" id="due-date" name="due-date">
+                <small class="form-hint" style="display: block; margin-top: 0.25rem; color: #6b7280; font-size: 0.875rem;">Để trống nếu chưa xác định</small>
+            </div>
         </div>
 
         <!-- Signature Upload Section -->
@@ -8203,21 +8208,23 @@
                     voucherNumber: voucherNumber || '',
                     voucherType: voucherType || '',
                     company: companyName || '',
+                    companyKey: companyKey || '',
                     employee: requestorName || '',
+                    submittedBy: submittedByName || requestorName || '',
                     amount: totalAmount || '0',
                     requestorEmail: requestorEmail || '',
                     approverEmail: approverEmail || '',
+                    dueDate: (document.getElementById('due-date') || {}).value || '',
                     voucherDate: voucherDate || '',
                     department: department || '',
                     payeeName: payeeName || '',
                     reason: reason || '',
                     amountInWords: amountInWords || '',
-                    expenseItems: expenseItems || [], // Include expense items for backend to save in meta
-                    files: filesToUpload,  // Files (Drive URLs if using API, base64 if legacy)
-                    // Company approvers from "Công ty" sheet
+                    expenseItems: expenseItems || [],
+                    files: filesToUpload,
                     companyApprovers: data.selectedCompanyApprovers || null,
-                    useDriveAPI: true, // Force Drive API path when configured
-                    requesterSignature: finalRequesterSignature || '' // Requester signature for history (compressed if needed)
+                    useDriveAPI: true,
+                    requesterSignature: finalRequesterSignature || ''
                 }
             };
 

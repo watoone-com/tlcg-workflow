@@ -451,31 +451,36 @@ function getVoucherFromHistory(voucherNumber) {
     const data = sheet.getDataRange().getValues();
     
     // Find FIRST entry (Submit row) to get base meta with companyApprovers
-    // Column structure: 0=VoucherNumber, 1=VoucherType, 2=Company, 3=Employee, 4=Amount,
-    //                   5=Status, 6=Action, 7=By, 8=Note, 9=Attachments,
-    //                   10=RequestorEmail, 11=ApproverEmail, 12=Timestamp
+    // Column structure: A(0)=voucher_number, B(1)=voucher_type, C(2)=company_name,
+    //   D(3)=company_key_or_taxid, E(4)=employee_name, F(5)=submited_email,
+    //   G(6)=submitted_by, H(7)=submitted_at, I(8)=amount, J(9)=status,
+    //   K(10)=due_date, L(11)=action, M(12)=attachments, N(13)=description,
+    //   O(14)=note, P(15)=approver_email, Q(16)=approved_at, R(17)=MetaJSON
     let baseVoucher = null;
     for (let i = 1; i < data.length; i++) {
       if (data[i][0] === voucherNumber) {
-        const note = data[i][8] || '';  // Index 8 = Note column (contains Meta JSON)
-        const metaIdx = note.indexOf('Meta: ');
-        const metaStr = metaIdx >= 0 ? note.substring(metaIdx + 6).trim() : null;
+        const metaJson = (data[i][17] || '').toString().trim();  // R = MetaJSON
 
         baseVoucher = {
           row: i + 1,
           voucherNumber: data[i][0],
           voucherType: data[i][1],
           company: data[i][2],
-          employee: data[i][3],
-          amount: data[i][4],
-          status: data[i][5],
-          action: data[i][6],
-          note: note,
-          timestamp: data[i][12],       // Index 12 = Timestamp
-          requestorEmail: data[i][10],  // Index 10 = RequestorEmail
-          submittedBy: data[i][13] || '',  // Index 13 = SubmittedBy
-          approverEmail: data[i][11],   // Index 11 = ApproverEmail
-          meta: metaStr || null
+          companyKey: data[i][3] || '',
+          employee: data[i][4],
+          requestorEmail: data[i][5],
+          submittedBy: data[i][6] || '',
+          timestamp: data[i][7],        // H = submitted_at
+          amount: data[i][8],
+          status: data[i][9],
+          dueDate: data[i][10] || '',
+          action: data[i][11],
+          attachments: data[i][12] || '',
+          description: data[i][13] || '',
+          note: data[i][14] || '',
+          approverEmail: data[i][15],
+          approvedAt: data[i][16] || '',
+          meta: metaJson || null
         };
         break; // Found first row, stop
       }
@@ -495,23 +500,21 @@ function getVoucherFromHistory(voucherNumber) {
           // Scan all rows for this voucher to find approvals
           for (let i = 1; i < data.length; i++) {
             if (data[i][0] === voucherNumber) {
-              const rowAction = data[i][6] || '';
-              const rowNote = data[i][8] || '';  // Index 8 = Note column
+              const rowAction = (data[i][11] || '').toString();  // L(11) = action
+              const rowMetaJson = (data[i][17] || '').toString(); // R(17) = MetaJSON
 
               // Check if this row is an approval
               if (rowAction.includes('Approved')) {
-                // Extract approvedBy email from Meta in the note
+                // Extract approvedBy email from MetaJSON column
                 let rowApproverEmail = null;
                 let rowMeta = null;
-                const rowMetaIdx = rowNote.indexOf('Meta: ');
-                if (rowMetaIdx >= 0) {
+                if (rowMetaJson) {
                   try {
-                    const rowMetaStr = rowNote.substring(rowMetaIdx + 6).trim();
-                    rowMeta = JSON.parse(rowMetaStr);
+                    rowMeta = JSON.parse(rowMetaJson);
                     rowApproverEmail = rowMeta.approvedBy || null;
                     Logger.log(`Found approval row - approvedBy: ${rowApproverEmail}`);
                   } catch (e) {
-                    Logger.log(`Failed to parse meta from approval row: ${e.toString()}`);
+                    Logger.log(`Failed to parse MetaJSON from approval row: ${e.toString()}`);
                   }
                 }
 
@@ -521,7 +524,7 @@ function getVoucherFromHistory(voucherNumber) {
                     const approver = meta.companyApprovers.approvers[role];
                     if (approver.email === rowApproverEmail && approver.status !== 'approved') {
                       approver.status = 'approved';
-                      approver.approvedAt = data[i][12]; // Index 12 = Timestamp
+                      approver.approvedAt = data[i][7]; // H(7) = submitted_at
                       approvalCount++;
                       Logger.log(`✅ Updated ${role} (${approver.name}) approval status from history scan`);
                       break;
@@ -529,7 +532,6 @@ function getVoucherFromHistory(voucherNumber) {
                   }
                 }
                 // ✅ FALLBACK: If approvedBy not found, check rowMeta.companyApprovers directly
-                // This handles vouchers approved before the fix
                 else if (rowMeta && rowMeta.companyApprovers && rowMeta.companyApprovers.approvers) {
                   const rowApprovers = rowMeta.companyApprovers.approvers;
                   for (const role in rowApprovers) {
@@ -537,7 +539,7 @@ function getVoucherFromHistory(voucherNumber) {
                         meta.companyApprovers.approvers[role] &&
                         meta.companyApprovers.approvers[role].status !== 'approved') {
                       meta.companyApprovers.approvers[role].status = 'approved';
-                      meta.companyApprovers.approvers[role].approvedAt = rowApprovers[role].approvedAt || data[i][12];
+                      meta.companyApprovers.approvers[role].approvedAt = rowApprovers[role].approvedAt || data[i][7];
                       approvalCount++;
                       Logger.log(`✅ Updated ${role} approval status from rowMeta.companyApprovers (fallback)`);
                     }
@@ -653,8 +655,8 @@ function handleSendEmail(requestBody) {
     
     // Check if this voucher was already submitted (action = 'Submit')
     for (let i = 0; i < rows.length; i++) {
-      const rowVoucherNo = rows[i][0]; // Column A = Voucher Number
-      const rowAction = rows[i][6];    // Column G = Action
+      const rowVoucherNo = rows[i][0]; // A(0) = voucher_number
+      const rowAction = rows[i][11];   // L(11) = action
       
       if (rowVoucherNo === voucherNo && rowAction === 'Submit') {
         Logger.log('⚠️ DUPLICATE SUBMISSION DETECTED: ' + voucherNo);
@@ -888,15 +890,18 @@ function handleSendEmail(requestBody) {
       voucherNumber: voucherNo,
       voucherType: voucher.voucherType || '',
       company: voucher.company || '',
+      companyKey: voucher.companyKey || '',
       employee: voucher.employee || '',
       amount: voucher.amount || 0,
       status: 'Pending',
       action: 'Submit',
-      by: voucher.employee || 'User',
-      note: 'Gửi phê duyệt\nMeta: ' + JSON.stringify(submitMetaData), // Store all metadata including signature and approvers meta
       requestorEmail: voucher.requestorEmail || '',
+      submittedBy: voucher.submittedBy || voucher.employee || '',
       approverEmail: emailData.to,
-      attachments: fileLinks
+      attachments: fileLinks,
+      description: voucher.reason || voucher.description || '',
+      note: 'Gửi phê duyệt',
+      metaJson: JSON.stringify(submitMetaData)
     });
 
     // #region agent log
@@ -1123,16 +1128,19 @@ function handleApproveVoucher(requestBody) {
         voucherNumber: voucherNumber,
         voucherType: v.voucherType || existingVoucher.voucherType || '',
         company: v.company || existingVoucher.company || '',
+        companyKey: v.companyKey || existingVoucher.companyKey || '',
         employee: v.employee || existingVoucher.employee || '',
         amount: v.amount || existingVoucher.amount || 0,
         status: 'Approved',
         action: 'Fully Approved',
-        by: companyApprovers.approvers[approverRole].name,
-        note: 'Tất cả 3 người phê duyệt đã duyệt\nMeta: ' + JSON.stringify(meta),
         requestorEmail: v.requestorEmail || existingVoucher.requestorEmail || '',
         submittedBy: v.submittedBy || existingVoucher.submittedBy || '',
         approverEmail: approverEmail,
-        attachments: ""
+        attachments: "",
+        description: v.description || existingVoucher.description || '',
+        note: 'Tất cả 3 người phê duyệt đã duyệt',
+        approvedAt: new Date().toISOString(),
+        metaJson: JSON.stringify(meta)
       });
       
       // Send final approval email to requester
@@ -1157,16 +1165,19 @@ function handleApproveVoucher(requestBody) {
         voucherNumber: voucherNumber,
         voucherType: v.voucherType || existingVoucher.voucherType || '',
         company: v.company || existingVoucher.company || '',
+        companyKey: v.companyKey || existingVoucher.companyKey || '',
         employee: v.employee || existingVoucher.employee || '',
         amount: v.amount || existingVoucher.amount || 0,
         status: companyApprovers.displayStatus,
         action: 'Approved by ' + companyApprovers.approvers[approverRole].name,
-        by: companyApprovers.approvers[approverRole].name,
-        note: `Đã duyệt bởi ${getApproverRoleName(approverRole)} (${approvalCount}/3)\nMeta: ` + JSON.stringify(meta),
         requestorEmail: v.requestorEmail || existingVoucher.requestorEmail || '',
         submittedBy: v.submittedBy || existingVoucher.submittedBy || '',
         approverEmail: approverEmail,
-        attachments: ""
+        attachments: "",
+        description: v.description || existingVoucher.description || '',
+        note: `Đã duyệt bởi ${getApproverRoleName(approverRole)} (${approvalCount}/3)`,
+        approvedAt: new Date().toISOString(),
+        metaJson: JSON.stringify(meta)
       });
       
       // Send email to next approver in sequence
@@ -1227,12 +1238,12 @@ function handleApproveVoucherLegacy(requestBody, existingVoucher) {
   let latestAction = null;
   for (let i = rows.length - 1; i >= 0; i--) {
     if (rows[i][0] === voucherNumber) {
-      latestStatus = rows[i][5] || '';
-      latestAction = rows[i][6] || '';
+      latestStatus = rows[i][9] || '';   // J(9) = status
+      latestAction = rows[i][11] || '';  // L(11) = action
       break;
     }
   }
-  
+
   if (latestStatus === 'Approved' || latestAction === 'Approved') {
     return createResponse(false, 'Phiếu này đã được duyệt trước đó.');
   }
@@ -1251,19 +1262,22 @@ function handleApproveVoucherLegacy(requestBody, existingVoucher) {
     approvedBy: v.approvedBy || v.approverEmail || ''
   };
   
-  appendHistory_({ 
+  appendHistory_({
     voucherNumber: voucherNumber,
     voucherType: v.voucherType || existingVoucher.voucherType || '',
     company: v.company || existingVoucher.company || '',
+    companyKey: v.companyKey || existingVoucher.companyKey || '',
     employee: v.employee || existingVoucher.employee || '',
     amount: v.amount || existingVoucher.amount || 0,
-    status: 'Approved', 
-    action: 'Approved', 
-    by: v.approvedBy || v.approverEmail || '', 
-    note: 'Duyệt qua Email\nMeta: ' + JSON.stringify(metaData),
+    status: 'Approved',
+    action: 'Approved',
     requestorEmail: v.requestorEmail || existingVoucher.requestorEmail || '',
     approverEmail: v.approverEmail || '',
-    attachments: "" 
+    attachments: "",
+    description: v.description || existingVoucher.description || '',
+    note: 'Duyệt qua Email',
+    approvedAt: new Date().toISOString(),
+    metaJson: JSON.stringify(metaData)
   });
   
   if (v.requestorEmail) {
@@ -1644,16 +1658,19 @@ function handleRejectVoucher(requestBody) {
         voucherNumber: voucherNumber,
         voucherType: v.voucherType || existingVoucher.voucherType || '',
         company: v.company || existingVoucher.company || '',
+        companyKey: v.companyKey || existingVoucher.companyKey || '',
         employee: v.employee || existingVoucher.employee || '',
         amount: v.amount || existingVoucher.amount || 0,
         status: 'Rejected',
         action: 'Rejected by ' + companyApprovers.approvers[approverRole].name,
-        by: companyApprovers.approvers[approverRole].name,
-        note: `Từ chối bởi ${getApproverRoleName(approverRole)}\nLý do: ${rejectReason}\nMeta: ` + JSON.stringify(meta),
         requestorEmail: v.requestorEmail || existingVoucher.requestorEmail || '',
         submittedBy: v.submittedBy || existingVoucher.submittedBy || '',
         approverEmail: approverEmail,
-        attachments: ""
+        attachments: "",
+        description: v.description || existingVoucher.description || '',
+        note: `Từ chối bởi ${getApproverRoleName(approverRole)}\nLý do: ${rejectReason}`,
+        approvedAt: '',
+        metaJson: JSON.stringify(meta)
       });
       
       // Send rejection email to requester
@@ -1693,8 +1710,8 @@ function handleRejectVoucher(requestBody) {
       let latestAction = null;
       for (let i = rows.length - 1; i >= 0; i--) {
         if (rows[i][0] === voucherNumber) {
-          latestStatus = rows[i][5] || '';
-          latestAction = rows[i][6] || '';
+          latestStatus = rows[i][9] || '';   // J(9) = status
+          latestAction = rows[i][11] || '';  // L(11) = action
           break;
         }
       }
@@ -1707,19 +1724,20 @@ function handleRejectVoucher(requestBody) {
         return createResponse(false, 'Phiếu này đã được từ chối trước đó.');
       }
       
-      appendHistory_({ 
+      appendHistory_({
         voucherNumber: v.voucherNumber || '',
         voucherType: v.voucherType || '',
         company: v.company || '',
         employee: v.employee || '',
         amount: v.amount || 0,
-        status: 'Rejected', 
-        action: 'Rejected', 
-        by: v.rejectedBy || v.approverEmail || '', 
-        note: v.rejectReason || 'Từ chối', 
+        status: 'Rejected',
+        action: 'Rejected',
         requestorEmail: v.requestorEmail || '',
         approverEmail: v.approverEmail || '',
-        attachments: "" 
+        attachments: "",
+        note: v.rejectReason || 'Từ chối',
+        approvedAt: '',
+        metaJson: ''
       });
       
       if (v.requestorEmail) {
@@ -2342,7 +2360,9 @@ function handleGetVoucherSummary(requestBody) {
       });
     }
     
-    // Column structure: A=VoucherNumber, B=VoucherType, C=Company, D=Employee, E=Amount, F=Status, G=Action, H=By, I=Note, J=Attachments, K=RequestorEmail, L=ApproverEmail, M=Timestamp, N=SubmittedBy
+    // Column structure: A=voucher_number, B=voucher_type, C=company_name, D=company_key_or_taxid,
+    //   E=employee_name, F=submited_email, G=submitted_by, H=submitted_at, I=amount, J=status,
+    //   K=due_date, L=action, M=attachments, N=description, O=note, P=approver_email, Q=approved_at, R=MetaJSON
     const headers = data[0];
     const rows = data.slice(1);
     
@@ -2354,7 +2374,7 @@ function handleGetVoucherSummary(requestBody) {
       const voucherNumber = row[0]; // Column A
       if (!voucherNumber || voucherNumber.toString().trim() === '') return; // Skip empty voucher numbers
       
-      const timestamp = row[12] || new Date(0); // Column M
+      const timestamp = row[7] || new Date(0); // H(7) = submitted_at
       // Convert timestamp to Date for comparison
       const timestampDate = timestamp instanceof Date ? timestamp : new Date(timestamp);
       
@@ -2362,18 +2382,21 @@ function handleGetVoucherSummary(requestBody) {
         // First occurrence of this voucher number
         voucherMap.set(voucherNumber, {
           voucherNumber: voucherNumber.toString().trim(),
-          voucherType: row[1] || '', // Column B
-          company: row[2] || '', // Column C
-          employee: row[3] || '', // Column D
-          amount: row[4] || 0, // Column E
-          status: row[5] || '', // Column F
-          action: row[6] || '', // Column G
-          by: row[7] || '', // Column H
-          note: row[8] || '', // Column I
-          attachments: row[9] || '', // Column J
-          requestorEmail: row[10] || '', // Column K
-            submittedBy: row[13] || '', // Column N
-          approverEmail: row[11] || '', // Column L
+          voucherType: row[1] || '',     // B
+          company: row[2] || '',         // C
+          companyKey: row[3] || '',      // D
+          employee: row[4] || '',        // E
+          requestorEmail: row[5] || '',  // F
+          submittedBy: row[6] || '',     // G
+          amount: row[8] || 0,           // I
+          status: row[9] || '',          // J
+          dueDate: row[10] || '',        // K
+          action: row[11] || '',         // L
+          attachments: row[12] || '',    // M
+          description: row[13] || '',    // N
+          note: row[14] || '',           // O
+          approverEmail: row[15] || '',  // P
+          approvedAt: row[16] || '',     // Q
           timestamp: timestampDate
         });
       } else {
@@ -2385,18 +2408,21 @@ function handleGetVoucherSummary(requestBody) {
           // This row is newer, replace the existing entry
           voucherMap.set(voucherNumber, {
             voucherNumber: voucherNumber.toString().trim(),
-            voucherType: row[1] || '', // Column B
-            company: row[2] || '', // Column C
-            employee: row[3] || '', // Column D
-            amount: row[4] || 0, // Column E
-            status: row[5] || '', // Column F
-            action: row[6] || '', // Column G
-            by: row[7] || '', // Column H
-            note: row[8] || '', // Column I
-            attachments: row[9] || '', // Column J
-            requestorEmail: row[10] || '', // Column K
-            submittedBy: row[13] || '', // Column N
-            approverEmail: row[11] || '', // Column L
+            voucherType: row[1] || '',     // B
+            company: row[2] || '',         // C
+            companyKey: row[3] || '',      // D
+            employee: row[4] || '',        // E
+            requestorEmail: row[5] || '',  // F
+            submittedBy: row[6] || '',     // G
+            amount: row[8] || 0,           // I
+            status: row[9] || '',          // J
+            dueDate: row[10] || '',        // K
+            action: row[11] || '',         // L
+            attachments: row[12] || '',    // M
+            description: row[13] || '',    // N
+            note: row[14] || '',           // O
+            approverEmail: row[15] || '',  // P
+            approvedAt: row[16] || '',     // Q
             timestamp: timestampDate
           });
         }
@@ -2468,23 +2494,17 @@ function handleGetVoucherHistory(requestBody) {
     const rows = data.slice(1);
     const history = [];
     
-    // Column structure: A=VoucherNumber, B=VoucherType, C=Company, D=Employee, E=Amount, F=Status, G=Action, H=By, I=Note, J=Attachments, K=RequestorEmail, L=ApproverEmail, M=Timestamp
     rows.forEach(row => {
       if (row[0] === voucherNumber) {
-        const noteField = row[8] || '';
+        const noteField = (row[14] || '').toString(); // O(14) = note
+        const metaJsonStr = (row[17] || '').toString(); // R(17) = MetaJSON
         let meta = {};
-        
-        // Try to extract meta JSON from note field
-        // Format: "Some text\nMeta: {...json...}"
-        if (noteField && noteField.includes('Meta: ')) {
+
+        if (metaJsonStr) {
           try {
-            const metaStart = noteField.indexOf('Meta: ') + 6;
-            const metaJsonString = noteField.substring(metaStart);
-            meta = JSON.parse(metaJsonString);
-            Logger.log('Parsed meta from note: ' + JSON.stringify(meta));
+            meta = JSON.parse(metaJsonStr);
           } catch (parseError) {
-            Logger.log('Warning: Failed to parse meta from note field: ' + parseError.toString());
-            // If parsing fails, meta remains empty object
+            Logger.log('Warning: Failed to parse MetaJSON: ' + parseError.toString());
           }
         }
         
@@ -2492,18 +2512,21 @@ function handleGetVoucherHistory(requestBody) {
           voucherNumber: row[0] || '',
           voucherType: row[1] || '',
           company: row[2] || '',
-          employee: row[3] || '',
-          amount: row[4] || 0,
-          status: row[5] || '',
-          action: row[6] || '',
-          by: row[7] || '',
+          companyKey: row[3] || '',
+          employee: row[4] || '',
+          requestorEmail: row[5] || '',
+          submittedBy: row[6] || '',
+          timestamp: row[7] || new Date(),
+          amount: row[8] || 0,
+          status: row[9] || '',
+          dueDate: row[10] || '',
+          action: row[11] || '',
+          attachments: row[12] || '',
+          description: row[13] || '',
           note: noteField,
-          meta: meta, // Add parsed meta object
-          attachments: row[9] || '', // Column J
-          requestorEmail: row[10] || '',
-          submittedBy: row[13] || '',
-          approverEmail: row[11] || '',
-          timestamp: row[12] || new Date()
+          meta: meta,
+          approverEmail: row[15] || '',
+          approvedAt: row[16] || '',
         });
       }
     });
@@ -2583,20 +2606,24 @@ function appendHistory_(entry) {
     // #endregion
     
     sheet.appendRow([
-      entry.voucherNumber || '',
-      entry.voucherType || '',
-      entry.company || '',
-      entry.employee || '',
-      entry.amount || 0,
-      entry.status || '',
-      entry.action || '',
-      entry.by || '',
-      entry.note || '',
-      entry.attachments || '',
-      entry.requestorEmail || '',
-      entry.approverEmail || '',
-      new Date(),
-      entry.submittedBy || entry.employee || ''  // Column N: Người nộp phiếu
+      entry.voucherNumber || '',                       // A (0):  voucher_number
+      entry.voucherType || '',                         // B (1):  voucher_type
+      entry.company || '',                             // C (2):  company_name
+      entry.companyKey || '',                          // D (3):  company_key_or_taxid
+      entry.employee || '',                            // E (4):  employee_name
+      entry.requestorEmail || '',                      // F (5):  submited_email
+      entry.submittedBy || entry.employee || '',       // G (6):  submitted_by
+      new Date(),                                      // H (7):  submitted_at
+      entry.amount || 0,                               // I (8):  amount
+      entry.status || '',                              // J (9):  status
+      entry.dueDate || '',                             // K (10): due_date
+      entry.action || '',                              // L (11): action
+      entry.attachments || '',                         // M (12): attachments
+      entry.description || '',                         // N (13): description
+      entry.note || '',                                // O (14): note
+      entry.approverEmail || '',                       // P (15): approver_email
+      entry.approvedAt || '',                          // Q (16): approved_at
+      entry.metaJson || ''                             // R (17): MetaJSON
     ]);
     
     // #region agent log
@@ -2772,29 +2799,29 @@ function handleRefreshApproverEmails(requestBody) {
     const voucherData = voucherSheet.getDataRange().getValues();
     const companyData = companySheet.getDataRange().getValues();
 
-    // Build company approvers lookup
+    // Build company approvers lookup (Master Company sheet structure)
     const companyApproversMap = {};
     for (let i = 1; i < companyData.length; i++) {
       const row = companyData[i];
-      const companyName = (row[1] || '').toString().trim(); // Column B
+      const companyName = (row[0] || '').toString().trim(); // A(0): Company_Name
       if (companyName) {
         companyApproversMap[companyName.toLowerCase()] = {
           legalRep: {
-            name: (row[5] || '').toString().trim(),
+            name: (row[3] || '').toString().trim(),
             email: (row[4] || '').toString().trim(),
-            signature: (row[6] || '').toString().trim(),
+            signature: (row[5] || '').toString().trim(),
             role: 'Đại diện pháp luật'
           },
           accountant: {
-            name: (row[8] || '').toString().trim(),
-            email: (row[7] || '').toString().trim(),
+            name: (row[7] || '').toString().trim(),
+            email: (row[8] || '').toString().trim(),
             signature: (row[9] || '').toString().trim(),
             role: 'Kế toán trưởng'
           },
           treasurer: {
             name: (row[11] || '').toString().trim(),
-            email: (row[10] || '').toString().trim(),
-            signature: (row[12] || '').toString().trim(),
+            email: (row[12] || '').toString().trim(),
+            signature: (row[13] || '').toString().trim(),
             role: 'Thủ quỹ'
           }
         };
@@ -2809,11 +2836,11 @@ function handleRefreshApproverEmails(requestBody) {
     //                   E=Amount(4), F=Status(5), G=Action(6), H=By(7), I=Note(8)
     for (let i = 1; i < voucherData.length; i++) {
       const row = voucherData[i];
-      const voucherNo = (row[0] || '').toString().trim(); // Column A: Voucher No
-      const companyName = (row[2] || '').toString().trim(); // Column C: Company
-      const status = (row[5] || '').toString().trim(); // Column F: Status
-      const action = (row[6] || '').toString().trim(); // Column G: Action
-      const note = (row[8] || '').toString().trim(); // Column I: Note (contains "...Meta: {json}")
+      const voucherNo = (row[0] || '').toString().trim(); // A(0): voucher_number
+      const companyName = (row[2] || '').toString().trim(); // C(2): company_name
+      const status = (row[9] || '').toString().trim(); // J(9): status
+      const action = (row[11] || '').toString().trim(); // L(11): action
+      const metaJson = (row[17] || '').toString().trim(); // R(17): MetaJSON
 
       // Only process pending/partially approved vouchers (not fully approved or rejected)
       const isPending = status === 'Pending' ||
@@ -2836,20 +2863,14 @@ function handleRefreshApproverEmails(requestBody) {
         continue;
       }
 
-      // Parse existing meta from note field
-      // Format: "Some text\nMeta: {...json...}"
+      // Parse existing MetaJSON from column R
       let meta = {};
       try {
-        if (note && note.includes('Meta: ')) {
-          const metaIdx = note.indexOf('Meta: ') + 6;
-          const metaStr = note.substring(metaIdx).trim();
-          meta = JSON.parse(metaStr);
-        } else if (note) {
-          // Try direct parse as fallback
-          meta = JSON.parse(note);
+        if (metaJson) {
+          meta = JSON.parse(metaJson);
         }
       } catch (e) {
-        Logger.log('⚠️ Cannot parse meta for voucher ' + voucherNo + ': ' + e.message);
+        Logger.log('⚠️ Cannot parse MetaJSON for voucher ' + voucherNo + ': ' + e.message);
         continue;
       }
 
@@ -2889,16 +2910,8 @@ function handleRefreshApproverEmails(requestBody) {
         }
 
         if (changed) {
-          // Save updated meta back to sheet, preserving the note prefix
-          let updatedNote;
-          if (note.includes('Meta: ')) {
-            const metaIdx = note.indexOf('Meta: ');
-            const prefix = note.substring(0, metaIdx + 6); // Keep "...Meta: " prefix
-            updatedNote = prefix + JSON.stringify(meta);
-          } else {
-            updatedNote = 'Meta: ' + JSON.stringify(meta);
-          }
-          voucherSheet.getRange(i + 1, 9).setValue(updatedNote); // Column I (index 9, 1-based)
+          // Save updated meta back to MetaJSON column (R = column 18, 1-based)
+          voucherSheet.getRange(i + 1, 18).setValue(JSON.stringify(meta)); // R(18): MetaJSON
           updatedCount++;
           updatedVouchers.push({
             voucherNo: voucherNo,
