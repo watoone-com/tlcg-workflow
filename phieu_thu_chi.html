@@ -3908,14 +3908,6 @@
                 companySelect.appendChild(option);
             });
             
-            const submittedBySelect = document.getElementById('submitted-by');
-            data.employee_names.forEach(employee => {
-                const opt = document.createElement('option');
-                opt.value = employee;
-                opt.textContent = employee;
-                submittedBySelect.appendChild(opt);
-            });
-            
             const employeeSelect = document.getElementById('employee');
             const payeeDropdown = document.getElementById('payee-dropdown');
             data.employee_names.forEach(employee => {
