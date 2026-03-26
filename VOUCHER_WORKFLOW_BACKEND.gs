@@ -2107,7 +2107,7 @@ function sendBatchApprovalEmail_(approverRole, voucherList) {
  * Skips signature verification (batch admin operation).
  * Returns { success, error, voucherData } — does NOT send next-step email (caller does that).
  */
-function _approveVoucherCore_(voucherNumber, approverEmail, approverRole) {
+function _approveVoucherCore_(voucherNumber, approverEmail, approverRole, signatureData) {
   const existing = getVoucherFromHistory(voucherNumber);
   if (!existing) return { success: false, error: 'Không tìm thấy phiếu: ' + voucherNumber };
 
@@ -2133,9 +2133,37 @@ function _approveVoucherCore_(voucherNumber, approverEmail, approverRole) {
 
   // Mark this approver as approved
   const nowIso = new Date().toISOString();
-  companyApprovers.approvers[approverRole].status = 'approved';
+  const sigData = signatureData || {};
+  const approverSig  = sigData.approverSignature   || '';
+  const approverNm   = sigData.approverName        || (IMPORT_APPROVERS[approverRole] ? IMPORT_APPROVERS[approverRole].name : approverRole);
+  const sigVerResult = sigData.signatureVerification || null;
+
+  companyApprovers.approvers[approverRole].status     = 'approved';
   companyApprovers.approvers[approverRole].approvedAt = nowIso;
-  companyApprovers.approvers[approverRole].signature = ''; // no signature for bulk
+  companyApprovers.approvers[approverRole].signature  = approverSig;
+
+  // Store role-specific signature and name in meta (same fields as handleApproveVoucher)
+  if (approverRole === 'accountant') {
+    meta.accountantSignature = approverSig;
+    meta.accountantName      = approverNm;
+  } else if (approverRole === 'legalRep') {
+    meta.legalRepSignature = approverSig;
+    meta.legalRepName      = approverNm;
+  } else if (approverRole === 'treasurer') {
+    meta.treasurerSignature = approverSig;
+    meta.treasurerName      = approverNm;
+  }
+
+  // Store signature verification result for audit trail
+  if (sigVerResult) {
+    meta.signatureVerification = meta.signatureVerification || {};
+    meta.signatureVerification[approverRole] = {
+      verified:   sigVerResult.verified,
+      similarity: sigVerResult.similarity,
+      reason:     sigVerResult.reason,
+      verifiedAt: nowIso
+    };
+  }
 
   const approvalCount = countApprovals(companyApprovers.approvers);
   companyApprovers.approvalProgress = approvalCount + '/3';
@@ -2295,34 +2323,66 @@ function handleBulkApproveByToken(params) {
  * Triggers proper 3-tier flow — sends batch email to next approver.
  * requestBody.voucherNumbers: string[]
  * requestBody.approverEmail: string
+ * requestBody.approverName: string
+ * requestBody.approverRole: string (optional — falls back to IMPORT_APPROVERS lookup)
+ * requestBody.approverSignature: string (base64)
+ * requestBody.signatureVerification: object
  */
 function handleBulkApprove(requestBody) {
   try {
-    const voucherNumbers = requestBody.voucherNumbers || [];
-    const approverEmail  = requestBody.approverEmail  || '';
+    const voucherNumbers      = requestBody.voucherNumbers      || [];
+    const approverEmail       = requestBody.approverEmail       || '';
+    const approverName        = requestBody.approverName        || '';
+    const approverSignature   = requestBody.approverSignature   || '';
+    const signatureVerification = requestBody.signatureVerification || null;
 
     if (!voucherNumbers.length) return createResponse(false, 'Không có phiếu nào được chọn.');
     if (!approverEmail)         return createResponse(false, 'Thiếu thông tin người duyệt.');
 
+    // Validate signature
+    if (!approverSignature || approverSignature.trim() === '') {
+      return createResponse(false, 'Vui lòng tải lên chữ ký trước khi phê duyệt');
+    }
+    if (!signatureVerification || typeof signatureVerification !== 'object') {
+      return createResponse(false, 'Thiếu dữ liệu xác thực chữ ký. Vui lòng thử lại.');
+    }
+    if (signatureVerification.verified !== true) {
+      return createResponse(false,
+        'Chữ ký không hợp lệ. ' +
+        'Lý do: ' + (signatureVerification.reason || 'unknown') + '. ' +
+        (signatureVerification.similarity ?
+          'Độ tương đồng: ' + signatureVerification.similarity + '% (yêu cầu: 75%)' :
+          'Vui lòng sử dụng chữ ký mẫu đã đăng ký.')
+      );
+    }
+
     // Determine approver role from email
-    let approverRole = null;
-    const roles = Object.keys(IMPORT_APPROVERS);
-    for (let ri = 0; ri < roles.length; ri++) {
-      if (IMPORT_APPROVERS[roles[ri]].email.toLowerCase() === approverEmail.toLowerCase()) {
-        approverRole = roles[ri];
-        break;
+    let approverRole = requestBody.approverRole || null;
+    if (!approverRole) {
+      const roles = Object.keys(IMPORT_APPROVERS);
+      for (let ri = 0; ri < roles.length; ri++) {
+        if (IMPORT_APPROVERS[roles[ri]].email.toLowerCase() === approverEmail.toLowerCase()) {
+          approverRole = roles[ri];
+          break;
+        }
       }
     }
     if (!approverRole) {
       return createResponse(false, 'Email ' + approverEmail + ' không có trong danh sách người phê duyệt.');
     }
 
+    const signatureData = {
+      approverSignature: approverSignature,
+      approverName: approverName,
+      signatureVerification: signatureVerification
+    };
+
     const approved = [];
     const failed   = [];
     const nextStepVouchers = [];
 
     for (let vi = 0; vi < voucherNumbers.length; vi++) {
-      const result = _approveVoucherCore_(voucherNumbers[vi], approverEmail, approverRole);
+      const result = _approveVoucherCore_(voucherNumbers[vi], approverEmail, approverRole, signatureData);
       if (result.success) {
         approved.push(voucherNumbers[vi]);
         if (!result.isFinal) {

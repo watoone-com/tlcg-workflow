@@ -2783,7 +2783,7 @@
             <div class="bulk-action-bar" id="bulk-action-bar">
                 <span id="bulk-selected-count">0 phiếu được chọn</span>
                 <div style="display:flex;gap:0.5rem;align-items:center;">
-                    <button class="bulk-approve-btn" id="bulk-approve-btn" onclick="bulkApproveSelected()">
+                    <button class="bulk-approve-btn" id="bulk-approve-btn" onclick="openBulkApproveModal()">
                         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
                         Duyệt hàng loạt
                     </button>
@@ -2852,6 +2852,46 @@
             </div>
         </div>
     </div>
+
+    <!-- Bulk Approve Modal -->
+    <div class="voucher-modal-overlay" id="bulk-approve-modal-overlay" onclick="closeBulkApproveModal(event)">
+        <div class="voucher-modal" style="max-width:480px;" onclick="event.stopPropagation()">
+            <div class="voucher-modal-header">
+                <h2>✍️ Duyệt hàng loạt (<span id="bulk-modal-count">0</span> phiếu)</h2>
+                <button class="modal-close-btn" onclick="closeBulkApproveModal()">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                </button>
+            </div>
+            <div class="voucher-modal-body">
+                <p style="color:#64748b;font-size:0.875rem;margin-bottom:1.25rem;">Vui lòng tải lên chữ ký của bạn để xác nhận phê duyệt tất cả các phiếu đã chọn.</p>
+                <div class="approver-signature-section" id="bulk-signature-section">
+                    <h4>✍️ Chữ ký người phê duyệt</h4>
+                    <div class="approver-signature-preview" id="bulk-approver-signature-preview">
+                        <span style="color:#94a3b8;font-size:0.875rem;" id="bulk-approver-signature-placeholder">Chưa có chữ ký</span>
+                    </div>
+                    <div class="signature-actions">
+                        <label class="btn-secondary signature-upload-btn" style="padding:0.5rem 1rem;font-size:0.8125rem;">
+                            <input type="file" accept="image/png,image/jpeg,image/jpg" style="display:none;" onchange="handleApproverSignatureUpload(event, true)">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                            <span id="bulk-sig-upload-label">Tải lên chữ ký</span>
+                        </label>
+                        <button type="button" class="btn-secondary" id="bulk-sig-clear-btn" style="display:none;padding:0.5rem 1rem;font-size:0.8125rem;color:#ef4444;" onclick="clearBulkApproverSignature()">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                            Xóa
+                        </button>
+                    </div>
+                    <div class="signature-note">
+                        <small>💡 Chữ ký sẽ được lưu để sử dụng cho các phê duyệt sau</small>
+                    </div>
+                </div>
+            </div>
+            <div class="voucher-modal-footer">
+                <button class="modal-btn modal-btn-secondary" onclick="closeBulkApproveModal()">Hủy</button>
+                <button class="modal-btn modal-btn-primary" id="bulk-modal-confirm-btn" onclick="bulkApproveSelected()" style="background:#2563eb;color:white;border:none;">Xác nhận Duyệt</button>
+            </div>
+        </div>
+    </div>
+
     </main><!-- Close page-voucher-form -->
     
     <script>
@@ -5107,17 +5147,73 @@
                 return;
             }
 
-            const btn = document.getElementById('bulk-approve-btn');
-            btn.disabled = true;
-            btn.textContent = 'Đang duyệt...';
+            // 1. Require signature
+            if (!approverSignatureData) {
+                showToast('Vui lòng tải lên chữ ký trước khi phê duyệt', 'error');
+                return;
+            }
+
+            // 2. Confirm
+            if (!confirm(`Bạn có chắc muốn PHÊ DUYỆT ${voucherNumbers.length} phiếu?`)) return;
+
+            const confirmBtn = document.getElementById('bulk-modal-confirm-btn');
+            if (confirmBtn) { confirmBtn.disabled = true; confirmBtn.textContent = 'Đang duyệt...'; }
 
             try {
+                // 3. Compress signature
+                let finalSignature = await ensureSignatureCompressed(approverSignatureData);
+                if (!finalSignature || finalSignature.trim() === '') {
+                    finalSignature = approverSignatureData;
+                    if (!finalSignature || finalSignature.trim() === '') {
+                        showToast('Lỗi: Chữ ký không hợp lệ. Vui lòng upload lại chữ ký.', 'error');
+                        if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = 'Xác nhận Duyệt'; }
+                        return;
+                    }
+                } else {
+                    approverSignatureData = finalSignature;
+                }
+
+                // 4. Validate size
+                const signatureSizeKB = finalSignature.length / 1024;
+                if (signatureSizeKB > 400) {
+                    showToast('Chữ ký vẫn quá lớn sau khi nén (' + signatureSizeKB.toFixed(2) + 'KB). Vui lòng upload lại chữ ký nhỏ hơn.', 'error');
+                    if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = 'Xác nhận Duyệt'; }
+                    return;
+                }
+
+                // 5. Signature verification
+                let verificationResult = { verified: true, reason: 'no_sample', similarity: '0' };
+                const approverRole = getCurrentUserApproverRole();
+                let sampleSignatureUrl = null;
+                if (approverRole && data.selectedCompanyApprovers && data.selectedCompanyApprovers[approverRole]) {
+                    sampleSignatureUrl = data.selectedCompanyApprovers[approverRole].signature;
+                }
+                if (sampleSignatureUrl && sampleSignatureUrl.trim() !== '') {
+                    console.log('🔍 Bulk: verifying signature against sample for role:', approverRole);
+                    verificationResult = await compareSignatures(finalSignature, sampleSignatureUrl);
+                    console.log('🔍 Bulk verification result:', verificationResult);
+                    if (!verificationResult.verified && verificationResult.reason === 'mismatch') {
+                        alert(
+                            `❌ KHÔNG THỂ PHÊ DUYỆT: Chữ ký không khớp!\n\n` +
+                            `📊 Độ tương đồng: ${verificationResult.similarity}%\n` +
+                            `📏 Ngưỡng yêu cầu: ${verificationResult.threshold}%\n\n` +
+                            `Vui lòng tải lên chữ ký đã đăng ký trong hệ thống.`
+                        );
+                        if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = 'Xác nhận Duyệt'; }
+                        return;
+                    }
+                }
+
+                // 6. Send to backend
                 const formData = new FormData();
                 formData.append('data', JSON.stringify({
                     action: 'bulkApprove',
                     voucherNumbers: voucherNumbers,
                     approverEmail: user.email,
-                    approverName: user.name || user.email
+                    approverName: user.name || user.email,
+                    approverRole: approverRole,
+                    approverSignature: finalSignature,
+                    signatureVerification: verificationResult
                 }));
                 const response = await fetch(GOOGLE_APPS_SCRIPT_WEB_APP_URL, {
                     method: 'POST', mode: 'cors', redirect: 'follow', body: formData
@@ -5128,16 +5224,17 @@
                     showToast(`Đã duyệt ${(d.approved || []).length} phiếu.` +
                         (d.failed && d.failed.length ? ` Thất bại: ${d.failed.length}.` : ''), 'success');
                     clearBulkSelection();
+                    // Close modal without confirm dialog (called programmatically)
+                    document.getElementById('bulk-approve-modal-overlay').classList.remove('show');
                     loadRecentVouchers();
                 } else {
                     showToast(result.message || 'Lỗi duyệt hàng loạt', 'error');
+                    if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = 'Xác nhận Duyệt'; }
                 }
             } catch (err) {
                 console.error('bulkApproveSelected error:', err);
                 showToast('Lỗi kết nối khi duyệt: ' + err.message, 'error');
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg> Duyệt hàng loạt`;
+                if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = 'Xác nhận Duyệt'; }
             }
         }
 
@@ -5677,68 +5774,124 @@
         }
         
         // Handle approver signature upload
-        async function handleApproverSignatureUpload(event) {
+        async function handleApproverSignatureUpload(event, forBulkModal = false) {
             const file = event.target.files[0];
             if (!file) return;
-            
+
             // Validate file type
             if (!file.type.match(/^image\/(png|jpeg|jpg)$/)) {
                 showToast('Chỉ hỗ trợ file PNG, JPG, JPEG', 'error');
                 return;
             }
-            
+
             // Validate file size (max 2MB)
             if (file.size > 2 * 1024 * 1024) {
                 showToast('File quá lớn. Tối đa 2MB', 'error');
                 return;
             }
-            
+
             try {
                 // Compress image before converting to base64 to reduce payload size
                 const base64Data = await compressImageSignature(file, 800, 400, 0.7);
-                
+
                 // Check if compressed signature is still too large (max 500KB for signature)
                 if (base64Data.length > 500 * 1024) {
                     showToast('Chữ ký vẫn quá lớn sau khi nén. Vui lòng chọn ảnh nhỏ hơn.', 'error');
                     return;
                 }
-                
+
                 approverSignatureData = base64Data;
                 localStorage.setItem(APPROVER_SIGNATURE_KEY, base64Data);
-                
-                // Update preview
-                const preview = document.getElementById('approver-signature-preview');
-                preview.innerHTML = `<img src="${base64Data}" alt="Chữ ký" id="approver-signature-img">`;
-                
+
                 showToast('Đã tải lên chữ ký (đã nén)', 'success');
-                
-                // Refresh modal content to show clear button
-                if (currentModalVoucher) {
-                    openVoucherDetail(currentModalVoucher.voucherNumber);
+
+                if (forBulkModal) {
+                    refreshBulkSignaturePreview();
+                } else {
+                    // Update preview in single-approval modal
+                    const preview = document.getElementById('approver-signature-preview');
+                    if (preview) preview.innerHTML = `<img src="${base64Data}" alt="Chữ ký" id="approver-signature-img">`;
+                    // Refresh modal content to show clear button
+                    if (currentModalVoucher) {
+                        openVoucherDetail(currentModalVoucher.voucherNumber);
+                    }
                 }
             } catch (error) {
                 showToast('Lỗi tải file: ' + error.message, 'error');
             }
         }
-        
+
+        function refreshBulkSignaturePreview() {
+            const preview = document.getElementById('bulk-approver-signature-preview');
+            const label = document.getElementById('bulk-sig-upload-label');
+            const clearBtn = document.getElementById('bulk-sig-clear-btn');
+            if (!preview) return;
+            if (approverSignatureData) {
+                preview.innerHTML = `<img src="${approverSignatureData}" alt="Chữ ký" style="max-width:100%;max-height:80px;">`;
+                if (label) label.textContent = 'Đổi chữ ký';
+                if (clearBtn) clearBtn.style.display = '';
+            } else {
+                preview.innerHTML = `<span style="color:#94a3b8;font-size:0.875rem;">Chưa có chữ ký</span>`;
+                if (label) label.textContent = 'Tải lên chữ ký';
+                if (clearBtn) clearBtn.style.display = 'none';
+            }
+        }
+
+        function clearBulkApproverSignature() {
+            if (confirm('Bạn có chắc muốn xóa chữ ký?')) {
+                approverSignatureData = null;
+                localStorage.removeItem(APPROVER_SIGNATURE_KEY);
+                refreshBulkSignaturePreview();
+                showToast('Đã xóa chữ ký', 'info');
+            }
+        }
+
         // Clear approver signature
         function clearApproverSignature() {
             if (confirm('Bạn có chắc muốn xóa chữ ký?')) {
                 approverSignatureData = null;
                 localStorage.removeItem(APPROVER_SIGNATURE_KEY);
-                
+
                 const preview = document.getElementById('approver-signature-preview');
                 if (preview) {
                     preview.innerHTML = `<span style="color: #94a3b8; font-size: 0.875rem;" id="approver-signature-placeholder">Chưa có chữ ký</span>`;
                 }
-                
+
                 showToast('Đã xóa chữ ký', 'info');
-                
+
                 // Refresh modal content
                 if (currentModalVoucher) {
                     openVoucherDetail(currentModalVoucher.voucherNumber);
                 }
             }
+        }
+
+        // ── Bulk approve modal helpers ───────────────────────────────────────
+        function getCurrentUserApproverRole() {
+            const email = currentUser && currentUser.email ? currentUser.email.toLowerCase() : null;
+            if (!email || !data.selectedCompanyApprovers) return null;
+            const a = data.selectedCompanyApprovers;
+            if (a.accountant && a.accountant.email && a.accountant.email.toLowerCase() === email) return 'accountant';
+            if (a.legalRep  && a.legalRep.email  && a.legalRep.email.toLowerCase()  === email) return 'legalRep';
+            if (a.treasurer && a.treasurer.email && a.treasurer.email.toLowerCase() === email) return 'treasurer';
+            return null;
+        }
+
+        function openBulkApproveModal() {
+            const checked = document.querySelectorAll('.voucher-select-cb:checked');
+            if (!checked.length) return;
+            document.getElementById('bulk-modal-count').textContent = checked.length;
+            refreshBulkSignaturePreview();
+            const overlay = document.getElementById('bulk-approve-modal-overlay');
+            overlay.classList.add('show');
+        }
+
+        function closeBulkApproveModal(event) {
+            if (event && event.target !== document.getElementById('bulk-approve-modal-overlay')) return;
+            const overlay = document.getElementById('bulk-approve-modal-overlay');
+            overlay.classList.remove('show');
+            const confirmBtn = document.getElementById('bulk-modal-confirm-btn');
+            if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = 'Xác nhận Duyệt'; }
         }
         
         // Compress signature if it's too large (e.g., loaded from old localStorage)
