@@ -5074,8 +5074,12 @@
                 const result = await response.json();
                 if (result.success) {
                     const d = result.data || {};
-                    showToast(`Đã nhập ${d.imported || 0} phiếu. Email phê duyệt đã gửi tới Kế toán trưởng.` +
-                        (d.errors && d.errors.length ? ` Lỗi: ${d.errors.length} dòng.` : ''), 'success');
+                    if (!d.imported) {
+                        showToast(result.message || 'Không có phiếu mới để nhập.', 'info');
+                    } else {
+                        showToast(`Đã nhập ${d.imported} phiếu. Email phê duyệt đã gửi tới Kế toán trưởng.` +
+                            (d.errors && d.errors.length ? ` Lỗi: ${d.errors.length} dòng.` : ''), 'success');
+                    }
                     loadRecentVouchers();
                 } else if (result.data && result.data.invalid && result.data.invalid.length) {
                     // Show validation error modal
@@ -5360,32 +5364,32 @@
                         currentModalMeta = { ...currentModalMeta, ...voucher.meta };
                     }
                     
-                    // Fallback: Get signatures from localStorage if not in meta
-                    if (!currentModalMeta.requesterSignature) {
+                    // Store merged attachments URL back to voucher object
+                    voucher.attachments = mergedAttachments;
+
+                    // Check if current user is the requester
+                    const isRequester = isCurrentUserRequester(voucher);
+
+                    // Fallback: only load requester signature from localStorage if this user submitted the voucher
+                    if (!currentModalMeta.requesterSignature && isRequester) {
                         const savedRequesterSig = localStorage.getItem(SIGNATURE_STORAGE_KEY);
                         if (savedRequesterSig) {
                             currentModalMeta.requesterSignature = savedRequesterSig;
                         }
                     }
-                    if (!currentModalMeta.approverSignature) {
+                    // approverSignature fallback: only if meta genuinely has none (old-format vouchers)
+                    if (!currentModalMeta.approverSignature && !isRequester) {
                         const savedApproverSig = localStorage.getItem(APPROVER_SIGNATURE_KEY);
                         if (savedApproverSig) {
                             currentModalMeta.approverSignature = savedApproverSig;
                         }
                     }
-                    
-                    // Store merged attachments URL back to voucher object
-                    voucher.attachments = mergedAttachments;
-                    
+
                     console.log('Current voucher:', voucher);
                     console.log('Voucher status:', voucher.status);
                     console.log('Voucher attachments:', voucher.attachments);
                     console.log('Merged modal meta:', currentModalMeta);
-                    
-                    // Check if current user is the requester
-                    const isRequester = isCurrentUserRequester(voucher);
                     console.log('Is current user the requester:', isRequester);
-                    
                     document.getElementById('modal-title').textContent = `Phiếu ${voucher.voucherNumber}`;
 
                     // Render voucher details (pass isRequester to hide approver signature section)

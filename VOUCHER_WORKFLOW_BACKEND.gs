@@ -2006,9 +2006,10 @@ function handleImportFromVHImport(requestBody) {
     }
 
     Logger.log('✅ VH_import: imported=' + importedVouchers.length + ', errors=' + errors.length);
-    return createResponse(true,
-      'Đã nhập ' + importedVouchers.length + ' phiếu từ VH_import. Email phê duyệt đã gửi tới Kế toán trưởng.' +
-      (errors.length ? ' Lỗi: ' + errors.length + ' dòng.' : ''),
+    let importMsg = 'Đã nhập ' + importedVouchers.length + ' phiếu từ VH_import.';
+    if (importedVouchers.length > 0) importMsg += ' Email phê duyệt đã gửi tới Kế toán trưởng.';
+    if (errors.length) importMsg += ' Lỗi: ' + errors.length + ' dòng.';
+    return createResponse(true, importMsg,
       { imported: importedVouchers.length, skipped: pendingRows.length - importedVouchers.length, errors: errors }
     );
   } catch (error) {
