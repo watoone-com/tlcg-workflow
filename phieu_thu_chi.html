@@ -5662,22 +5662,11 @@
                     </div>
                 </div>
                 
-                ${(meta.reason || voucher.note) ? `
+                ${(voucher.description || meta.reason) ? `
                 <div class="voucher-detail-section">
                     <h4>📝 Nội dung / Lý do</h4>
                     <div style="background: #f8fafc; padding: 1rem; border-radius: 8px; color: #334155; line-height: 1.6;">
-                        ${(function() {
-                            // Extract reason: if meta.reason exists, use it; otherwise extract from note before "Meta:"
-                            if (meta.reason) return meta.reason;
-                            if (voucher.note) {
-                                const metaIndex = voucher.note.indexOf('\\nMeta:');
-                                if (metaIndex > 0) {
-                                    return voucher.note.substring(0, metaIndex).trim();
-                                }
-                                return voucher.note;
-                            }
-                            return 'N/A';
-                        })()}
+                        ${voucher.description || meta.reason || 'N/A'}
                     </div>
                 </div>
                 ` : ''}
