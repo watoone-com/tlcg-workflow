@@ -6554,7 +6554,7 @@
                         <div class="info-row">
                             <span class="info-label">Nội dung</span>
                             <span class="info-colon">:</span>
-                            <span class="info-value">${meta.reason || voucher.description || 'N/A'}</span>
+                            <span class="info-value">${voucher.description || meta.reason || 'N/A'}</span>
                         </div>
                         
                         ${meta.expenseItems && Array.isArray(meta.expenseItems) && meta.expenseItems.length > 0 ? `
