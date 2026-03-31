@@ -4952,17 +4952,10 @@
          */
         async function loadVoucherApprovalStatus(voucher, voucherElementId) {
             try {
-                const statusResponse = await fetch('/api/voucher', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: new URLSearchParams({
-                        action: 'getApprovalStatus',
-                        voucherNumber: voucher.voucherNumber
-                    })
-                });
-                const statusResult = await statusResponse.json();
+                // Read approval status directly from voucher meta — no separate API call needed
+                const statusData = voucher.meta?.companyApprovers || null;
 
-                console.log('🔍 Approval Status API Response for', voucher.voucherNumber, ':', statusResult);
+                console.log('🔍 Approval Status from meta for', voucher.voucherNumber, ':', statusData);
 
                 const voucherElement = document.getElementById(voucherElementId);
                 if (!voucherElement) return;
@@ -4972,14 +4965,12 @@
                 const approvalDetail = voucherElement.querySelector('.voucher-approval-detail');
                 const voucherIcon = voucherElement.querySelector('.voucher-icon');
 
-                if (statusResult.success && statusResult.data) {
-                    const statusData = statusResult.data;
+                if (statusData) {
                     const formattedStatus = formatApprovalStatusText(statusData);
                     console.log('✅ Formatted status:', formattedStatus.status, 'detail:', formattedStatus.detail);
 
                     const badgeText = formattedStatus.status;
 
-                    // Determine status class and icon based on status text
                     let statusClass = 'pending';
                     let statusIcon = 'fa-clock';
 
@@ -4997,7 +4988,6 @@
                         statusIcon = 'fa-times-circle';
                     }
 
-                    // Update status badge
                     if (statusBadge) {
                         statusBadge.className = `voucher-status ${statusClass}`;
                         if (statusTextSpan) {
@@ -5005,42 +4995,17 @@
                         }
                     }
 
-                    // Update approval detail
                     if (approvalDetail) {
-                        if (formattedStatus.detail) {
-                            approvalDetail.textContent = formattedStatus.detail;
-                        } else {
-                            approvalDetail.textContent = '';
-                        }
+                        approvalDetail.textContent = formattedStatus.detail || '';
                     }
 
-                    // Update voucher icon
                     if (voucherIcon) {
                         voucherIcon.className = `voucher-icon ${statusClass}`;
                         voucherIcon.innerHTML = `<i class="fas ${statusIcon}"></i>`;
                     }
-                } else {
-                    // API failed - show fallback
-                    if (statusTextSpan) {
-                        statusTextSpan.innerHTML = `<i class="fas fa-clock mr-1"></i>Chờ Duyệt (0/3)`;
-                    }
-                    if (approvalDetail) {
-                        approvalDetail.textContent = 'Không thể tải thông tin';
-                    }
                 }
             } catch (error) {
                 console.error('❌ Error loading approval status for', voucher.voucherNumber, ':', error);
-                const voucherElement = document.getElementById(voucherElementId);
-                if (voucherElement) {
-                    const statusTextSpan = voucherElement.querySelector('.status-text');
-                    const approvalDetail = voucherElement.querySelector('.voucher-approval-detail');
-                    if (statusTextSpan) {
-                        statusTextSpan.innerHTML = `<i class="fas fa-clock mr-1"></i>Chờ Duyệt (0/3)`;
-                    }
-                    if (approvalDetail) {
-                        approvalDetail.textContent = 'Lỗi kết nối';
-                    }
-                }
             }
         }
         
@@ -5484,20 +5449,27 @@
         // Render voucher details HTML
         // isRequester: boolean - if true, hide approver signature upload section
         async function renderVoucherDetails(voucher, historyList, isRequester = false) {
-            // ✅ PHASE 2: Load approval status for sequential approval
+            // ✅ PHASE 2: Load approval status from history meta (no separate API call)
             let approvalStatusHtml = '';
             try {
-                const statusResponse = await fetch('/api/voucher', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: new URLSearchParams({
-                        action: 'getApprovalStatus',
-                        voucherNumber: voucher.voucherNumber
-                    })
+                // Find the history entry with the highest approvalProgress
+                let statusData = null;
+                let bestProgress = -1;
+                (historyList || []).forEach(h => {
+                    const cp = h.meta?.companyApprovers;
+                    if (cp) {
+                        const p = parseInt((cp.approvalProgress || '0/3').split('/')[0]);
+                        if (p > bestProgress) { bestProgress = p; statusData = cp; }
+                    }
                 });
-                const statusResult = await statusResponse.json();
-                if (statusResult.success && statusResult.data && statusResult.data.approvers) {
-                    const statusData = statusResult.data;
+                // Also check voucher.meta directly
+                const vcp = voucher.meta?.companyApprovers;
+                if (vcp) {
+                    const p = parseInt((vcp.approvalProgress || '0/3').split('/')[0]);
+                    if (p > bestProgress) statusData = vcp;
+                }
+
+                if (statusData && statusData.approvers) {
                     const progress = statusData.approvalProgress || '0/3';
                     const progressNum = parseInt(progress.split('/')[0]);
 
@@ -5505,7 +5477,7 @@
                     if (progressNum === 0) currentApproverRole = 'accountant';
                     else if (progressNum === 1) currentApproverRole = 'legalRep';
                     else if (progressNum === 2) currentApproverRole = 'treasurer';
-                    else currentApproverRole = null; // Fully approved
+                    else currentApproverRole = null;
                     console.log('Current approver role detected:', currentApproverRole, 'Progress:', progress);
 
                     approvalStatusHtml = `
@@ -5526,7 +5498,7 @@
                     `;
                 }
             } catch (e) {
-                console.warn('Could not load approval status:', e);
+                console.warn('Could not build approval status:', e);
             }
             
             const statusClass = (voucher.status || 'Pending').toLowerCase();
@@ -6312,29 +6284,10 @@
                 // Get company approvers from voucher data (stored when submitted)
                 const companyApprovers = voucher.companyApprovers || meta.companyApprovers || null;
 
-                // If approver uploaded signature in this session (not yet saved to backend),
-                // map it to the correct role-specific key so it appears in print
-                if (approverSignatureData) {
-                    if (currentApproverRole === 'accountant' && !meta.accountantSignature) {
-                        meta.accountantSignature = approverSignatureData;
-                    } else if (currentApproverRole === 'legalRep' && !meta.legalRepSignature) {
-                        meta.legalRepSignature = approverSignatureData;
-                    } else if (currentApproverRole === 'treasurer' && !meta.treasurerSignature) {
-                        meta.treasurerSignature = approverSignatureData;
-                    }
-                }
+                // Signatures come from Google Sheet data (companyApprovers.*.signature and meta.requesterSignature)
+                // No local/session overrides needed — approver's uploaded signature is saved to sheet on approval
 
-                // If requester signature not in meta, try localStorage (for requester viewing own voucher)
-                if (!meta.requesterSignature) {
-                    const localSig = localStorage.getItem(SIGNATURE_STORAGE_KEY);
-                    if (localSig) meta.requesterSignature = localSig;
-                }
-
-            // DO NOT use localStorage for signatures in print view
-            // Signatures should ONLY come from the backend (meta) to ensure we show
-            // the correct signature of the person who created/approved the voucher,
-            // not the signature of the current user viewing the voucher
-            // === PRINT DEBUG - Check what signature data is available ===
+                // === PRINT DEBUG - Check what signature data is available ===
             console.log('=== PRINT DEBUG ===');
             console.log('Full meta object:', JSON.stringify(meta, null, 2));
             console.log('Full voucher object keys:', Object.keys(voucher));
@@ -6668,14 +6621,14 @@
                                 <div class="signature-box">
                                     <div class="signature-title">Người lập <span class="signature-required">*</span></div>
                                     <div class="signature-image-container">
-                                        ${meta.requesterSignature 
+                                        ${meta.requesterSignature
                                             ? `<img src="${meta.requesterSignature}" alt="Chữ ký" class="signature-img">`
-                                            : ''
+                                            : '<span style="color:#94a3b8;font-size:9pt;">Chưa có chữ ký</span>'
                                         }
                                     </div>
                                     <div class="signature-name">${voucher.employee || ''}</div>
                                 </div>
-                                
+
                                 <div class="signature-box">
                                     <div class="signature-title">${companyApprovers?.accountant?.role || 'Kế toán trưởng'} <span class="signature-required">*</span></div>
                                     <div class="signature-image-container">
@@ -6683,12 +6636,12 @@
                                             ? `<img src="${meta.accountantSignature}" alt="Chữ ký" class="signature-img">`
                                             : (companyApprovers?.accountant?.signature)
                                                 ? `<img src="${companyApprovers.accountant.signature}" alt="Chữ ký" class="signature-img">`
-                                                : ''
+                                                : '<span style="color:#94a3b8;font-size:9pt;">Chưa có chữ ký</span>'
                                         }
                                     </div>
                                     <div class="signature-name">${meta.accountantName || companyApprovers?.accountant?.name || ''}</div>
                                 </div>
-                                
+
                                 <div class="signature-box">
                                     <div class="signature-title">${companyApprovers?.legalRep?.role || 'Giám đốc'} <span class="signature-required">*</span></div>
                                     <div class="signature-image-container">
@@ -6696,12 +6649,12 @@
                                             ? `<img src="${meta.legalRepSignature}" alt="Chữ ký" class="signature-img">`
                                             : (companyApprovers?.legalRep?.signature)
                                                 ? `<img src="${companyApprovers.legalRep.signature}" alt="Chữ ký" class="signature-img">`
-                                                : ''
+                                                : '<span style="color:#94a3b8;font-size:9pt;">Chưa có chữ ký</span>'
                                         }
                                     </div>
                                     <div class="signature-name">${meta.legalRepName || companyApprovers?.legalRep?.name || ''}</div>
                                 </div>
-                                
+
                                 <div class="signature-box">
                                     <div class="signature-title">${companyApprovers?.treasurer?.role || 'Thủ quỹ'} <span class="signature-required">*</span></div>
                                     <div class="signature-image-container">
@@ -6709,18 +6662,18 @@
                                             ? `<img src="${meta.treasurerSignature}" alt="Chữ ký" class="signature-img">`
                                             : (companyApprovers?.treasurer?.signature)
                                                 ? `<img src="${companyApprovers.treasurer.signature}" alt="Chữ ký" class="signature-img">`
-                                                : ''
+                                                : '<span style="color:#94a3b8;font-size:9pt;">Chưa có chữ ký</span>'
                                         }
                                     </div>
                                     <div class="signature-name">${meta.treasurerName || companyApprovers?.treasurer?.name || ''}</div>
                                 </div>
-                                
+
                                 <div class="signature-box">
                                     <div class="signature-title">Người nộp/nhận tiền <span class="signature-required">*</span></div>
                                     <div class="signature-image-container">
-                                        ${meta.requesterSignature 
+                                        ${meta.requesterSignature
                                             ? `<img src="${meta.requesterSignature}" alt="Chữ ký" class="signature-img">`
-                                            : ''
+                                            : '<span style="color:#94a3b8;font-size:9pt;">Chưa có chữ ký</span>'
                                         }
                                     </div>
                                     <div class="signature-name">${meta.payeeName || voucher.employee || ''}</div>
