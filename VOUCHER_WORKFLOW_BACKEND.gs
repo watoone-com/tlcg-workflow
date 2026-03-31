@@ -3049,63 +3049,67 @@ function handleGetVoucherSummary(requestBody) {
     
     Logger.log('Total rows in sheet (excluding header): ' + rows.length);
     
-    // Get latest entry for each voucher number
+    // Get latest entry for each voucher number, and best companyApprovers (highest approvalProgress)
     const voucherMap = new Map();
+    const metaMap = new Map(); // tracks best companyApprovers per voucher
+
     rows.forEach(row => {
       const voucherNumber = row[0]; // Column A
-      if (!voucherNumber || voucherNumber.toString().trim() === '') return; // Skip empty voucher numbers
-      
+      if (!voucherNumber || voucherNumber.toString().trim() === '') return;
+
+      const vNum = voucherNumber.toString().trim();
       const timestamp = row[7] || new Date(0); // H(7) = submitted_at
-      // Convert timestamp to Date for comparison
       const timestampDate = timestamp instanceof Date ? timestamp : new Date(timestamp);
-      
-      if (!voucherMap.has(voucherNumber)) {
-        // First occurrence of this voucher number
-        voucherMap.set(voucherNumber, {
-          voucherNumber: voucherNumber.toString().trim(),
-          voucherType: row[1] || '',     // B
-          company: row[2] || '',         // C
-          companyKey: row[3] || '',      // D
-          employee: row[4] || '',        // E
-          requestorEmail: row[5] || '',  // F
-          submittedBy: row[6] || '',     // G
-          amount: row[8] || 0,           // I
-          status: row[9] || '',          // J
-          dueDate: row[10] || '',        // K
-          action: row[11] || '',         // L
-          attachments: row[12] || '',    // M
-          description: row[13] || '',    // N
-          note: row[14] || '',           // O
-          approverEmail: row[15] || '',  // P
-          approvedAt: row[16] || '',     // Q
-          timestamp: timestampDate
-        });
+
+      // Parse MetaJSON (column R = index 17) to extract companyApprovers
+      const metaJsonStr = (row[17] || '').toString();
+      let rowCompanyApprovers = null;
+      if (metaJsonStr) {
+        try {
+          const parsedMeta = JSON.parse(metaJsonStr);
+          rowCompanyApprovers = parsedMeta.companyApprovers || null;
+        } catch (e) { /* ignore parse errors */ }
+      }
+
+      // Track companyApprovers with highest approvalProgress across all rows for this voucher
+      if (rowCompanyApprovers) {
+        const rowProgress = parseInt(((rowCompanyApprovers.approvalProgress || '0/3').split('/')[0]), 10) || 0;
+        const existing = metaMap.get(vNum);
+        const existingProgress = existing
+          ? parseInt(((existing.approvalProgress || '0/3').split('/')[0]), 10) || 0
+          : -1;
+        if (rowProgress > existingProgress) {
+          metaMap.set(vNum, rowCompanyApprovers);
+        }
+      }
+
+      const entry = {
+        voucherNumber: vNum,
+        voucherType: row[1] || '',     // B
+        company: row[2] || '',         // C
+        companyKey: row[3] || '',      // D
+        employee: row[4] || '',        // E
+        requestorEmail: row[5] || '',  // F
+        submittedBy: row[6] || '',     // G
+        amount: row[8] || 0,           // I
+        status: row[9] || '',          // J
+        dueDate: row[10] || '',        // K
+        action: row[11] || '',         // L
+        attachments: row[12] || '',    // M
+        description: row[13] || '',    // N
+        note: row[14] || '',           // O
+        approverEmail: row[15] || '',  // P
+        approvedAt: row[16] || '',     // Q
+        timestamp: timestampDate
+      };
+
+      if (!voucherMap.has(vNum)) {
+        voucherMap.set(vNum, entry);
       } else {
-        // Compare timestamps to keep the latest one
-        const existingTimestamp = voucherMap.get(voucherNumber).timestamp;
-        const existingTimestampDate = existingTimestamp instanceof Date ? existingTimestamp : new Date(existingTimestamp);
-        
-        if (timestampDate.getTime() > existingTimestampDate.getTime()) {
-          // This row is newer, replace the existing entry
-          voucherMap.set(voucherNumber, {
-            voucherNumber: voucherNumber.toString().trim(),
-            voucherType: row[1] || '',     // B
-            company: row[2] || '',         // C
-            companyKey: row[3] || '',      // D
-            employee: row[4] || '',        // E
-            requestorEmail: row[5] || '',  // F
-            submittedBy: row[6] || '',     // G
-            amount: row[8] || 0,           // I
-            status: row[9] || '',          // J
-            dueDate: row[10] || '',        // K
-            action: row[11] || '',         // L
-            attachments: row[12] || '',    // M
-            description: row[13] || '',    // N
-            note: row[14] || '',           // O
-            approverEmail: row[15] || '',  // P
-            approvedAt: row[16] || '',     // Q
-            timestamp: timestampDate
-          });
+        const existingTimestamp = voucherMap.get(vNum).timestamp;
+        const existingDate = existingTimestamp instanceof Date ? existingTimestamp : new Date(existingTimestamp);
+        if (timestampDate.getTime() > existingDate.getTime()) {
+          voucherMap.set(vNum, entry);
         }
       }
     });
@@ -3130,18 +3134,22 @@ function handleGetVoucherSummary(requestBody) {
     Logger.log('Vouchers by status - Pending: ' + pending + ', Approved: ' + approved + ', Rejected: ' + rejected);
     
     // Get all vouchers (no limit)
-    const recent = vouchers.map(v => ({
-      voucherNumber: v.voucherNumber,
-      voucherType: v.voucherType,
-      company: v.company,
-      employee: v.employee,
-      amount: v.amount,
-      status: v.status,
-      action: v.action,
-      by: v.by,
-      timestamp: v.timestamp instanceof Date ? v.timestamp.toISOString() : v.timestamp,
-      timestampFormatted: formatTimestamp(v.timestamp)
-    }));
+    const recent = vouchers.map(v => {
+      const companyApprovers = metaMap.get(v.voucherNumber) || null;
+      return {
+        voucherNumber: v.voucherNumber,
+        voucherType: v.voucherType,
+        company: v.company,
+        employee: v.employee,
+        amount: v.amount,
+        status: v.status,
+        action: v.action,
+        by: v.by,
+        timestamp: v.timestamp instanceof Date ? v.timestamp.toISOString() : v.timestamp,
+        timestampFormatted: formatTimestamp(v.timestamp),
+        meta: companyApprovers ? { companyApprovers: companyApprovers } : null
+      };
+    });
     
     return createResponse(true, 'Thành công', {
       total: vouchers.length,

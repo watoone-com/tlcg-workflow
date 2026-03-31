@@ -6300,13 +6300,12 @@
                         });
                         const result = await resp.json();
                         if (result.success && result.data?.approvers) {
-                            // Merge master signatures into companyApprovers, keeping name/role from saved data
                             const master = result.data.approvers;
                             companyApprovers = {
                                 ...(companyApprovers || {}),
-                                accountant: { ...(companyApprovers?.accountant || {}), signature: master.accountant?.signature || companyApprovers?.accountant?.signature || '' },
-                                legalRep:   { ...(companyApprovers?.legalRep   || {}), signature: master.legalRep?.signature   || companyApprovers?.legalRep?.signature   || '' },
-                                treasurer:  { ...(companyApprovers?.treasurer  || {}), signature: master.treasurer?.signature  || companyApprovers?.treasurer?.signature  || '' }
+                                accountant: { ...(companyApprovers?.accountant || {}), name: master.accountant?.name || '', role: master.accountant?.role || 'Kế toán trưởng', signature: master.accountant?.signature || '' },
+                                legalRep:   { ...(companyApprovers?.legalRep   || {}), name: master.legalRep?.name   || '', role: master.legalRep?.role   || 'Giám đốc',        signature: master.legalRep?.signature   || '' },
+                                treasurer:  { ...(companyApprovers?.treasurer  || {}), name: master.treasurer?.name  || '', role: master.treasurer?.role  || 'Thủ quỹ',         signature: master.treasurer?.signature  || '' }
                             };
                             console.log('✅ Master signatures loaded for print');
                         }
@@ -6330,6 +6329,20 @@
             console.log('Treasurer signature:', !!meta.treasurerSignature);
             console.log('===================');
             
+            // Convert Google Drive sharing URL to direct image URL
+            function toDirectImgUrl(url) {
+                if (!url) return '';
+                const m = url.match(/\/file\/d\/([^/]+)\//);
+                if (m) return `https://drive.google.com/uc?export=view&id=${m[1]}`;
+                return url;
+            }
+
+            // Prepare per-role signature — only show if that approver has already approved
+            const approversStatus = companyApprovers?.approvers || {};
+            const accountantSig = approversStatus.accountant?.status === 'approved' ? toDirectImgUrl(companyApprovers?.accountant?.signature) : '';
+            const legalRepSig   = approversStatus.legalRep?.status   === 'approved' ? toDirectImgUrl(companyApprovers?.legalRep?.signature)   : '';
+            const treasurerSig  = approversStatus.treasurer?.status  === 'approved' ? toDirectImgUrl(companyApprovers?.treasurer?.signature)   : '';
+
             // Determine voucher type title
             const voucherTypeUpper = (voucher.voucherType || '').toUpperCase();
             const isPhieuChi = voucherTypeUpper.includes('CHI') || voucherTypeUpper.includes('PAYMENT');
@@ -6662,40 +6675,34 @@
                                 <div class="signature-box">
                                     <div class="signature-title">${companyApprovers?.accountant?.role || 'Kế toán trưởng'} <span class="signature-required">*</span></div>
                                     <div class="signature-image-container">
-                                        ${meta.accountantSignature
-                                            ? `<img src="${meta.accountantSignature}" alt="Chữ ký" class="signature-img">`
-                                            : (companyApprovers?.accountant?.signature)
-                                                ? `<img src="${companyApprovers.accountant.signature}" alt="Chữ ký" class="signature-img">`
-                                                : '<span style="color:#94a3b8;font-size:9pt;">Chưa có chữ ký</span>'
+                                        ${accountantSig
+                                            ? `<img src="${accountantSig}" alt="Chữ ký" class="signature-img">`
+                                            : '<span style="color:#94a3b8;font-size:9pt;">Chưa có chữ ký</span>'
                                         }
                                     </div>
-                                    <div class="signature-name">${meta.accountantName || companyApprovers?.accountant?.name || ''}</div>
+                                    <div class="signature-name">${companyApprovers?.accountant?.name || ''}</div>
                                 </div>
 
                                 <div class="signature-box">
                                     <div class="signature-title">${companyApprovers?.legalRep?.role || 'Giám đốc'} <span class="signature-required">*</span></div>
                                     <div class="signature-image-container">
-                                        ${meta.legalRepSignature
-                                            ? `<img src="${meta.legalRepSignature}" alt="Chữ ký" class="signature-img">`
-                                            : (companyApprovers?.legalRep?.signature)
-                                                ? `<img src="${companyApprovers.legalRep.signature}" alt="Chữ ký" class="signature-img">`
-                                                : '<span style="color:#94a3b8;font-size:9pt;">Chưa có chữ ký</span>'
+                                        ${legalRepSig
+                                            ? `<img src="${legalRepSig}" alt="Chữ ký" class="signature-img">`
+                                            : '<span style="color:#94a3b8;font-size:9pt;">Chưa có chữ ký</span>'
                                         }
                                     </div>
-                                    <div class="signature-name">${meta.legalRepName || companyApprovers?.legalRep?.name || ''}</div>
+                                    <div class="signature-name">${companyApprovers?.legalRep?.name || ''}</div>
                                 </div>
 
                                 <div class="signature-box">
                                     <div class="signature-title">${companyApprovers?.treasurer?.role || 'Thủ quỹ'} <span class="signature-required">*</span></div>
                                     <div class="signature-image-container">
-                                        ${meta.treasurerSignature
-                                            ? `<img src="${meta.treasurerSignature}" alt="Chữ ký" class="signature-img">`
-                                            : (companyApprovers?.treasurer?.signature)
-                                                ? `<img src="${companyApprovers.treasurer.signature}" alt="Chữ ký" class="signature-img">`
-                                                : '<span style="color:#94a3b8;font-size:9pt;">Chưa có chữ ký</span>'
+                                        ${treasurerSig
+                                            ? `<img src="${treasurerSig}" alt="Chữ ký" class="signature-img">`
+                                            : '<span style="color:#94a3b8;font-size:9pt;">Chưa có chữ ký</span>'
                                         }
                                     </div>
-                                    <div class="signature-name">${meta.treasurerName || companyApprovers?.treasurer?.name || ''}</div>
+                                    <div class="signature-name">${companyApprovers?.treasurer?.name || ''}</div>
                                 </div>
 
                                 <div class="signature-box">
