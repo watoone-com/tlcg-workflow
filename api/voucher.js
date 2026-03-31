@@ -104,7 +104,7 @@ export default async function handler(req, res) {
   // Smart routing: Route to appropriate backend based on action
   // PHIEU_THU_CHI_BACKEND - For voucher operations
   const PHIEU_THU_CHI_BACKEND = process.env.PHIEU_THU_CHI_BACKEND_URL ||
-    'https://script.google.com/macros/s/AKfycbzFRZd09TYfyHRcQ0_BxjnvOjRiHQQNXO5PgI0B7zoxWpFfySFuU1EIKDKVj2nk2FOB/exec';
+    'https://script.google.com/macros/s/AKfycbxhaInTbJKzU7BdgfgHShqKzKeslq-HG-ZTS3kXKngWVn_RqOxogLY_-NiALiEE2bHm/exec';
   
   // TLCGROUP_BACKEND - For intranet operations (login, getMasterData, etc.)
   const TLCGROUP_BACKEND = process.env.TLCGROUP_BACKEND_URL ||

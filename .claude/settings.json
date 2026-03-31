@@ -5,7 +5,9 @@
       "mcp__claude_ai_Firecrawl__firecrawl_interact",
       "Bash(screencapture -x /tmp/voucher_check.png)",
       "Bash(screencapture /tmp/voucher_check.png)",
-      "Bash(echo \"exit: $?\")"
+      "Bash(echo \"exit: $?\")",
+      "Bash(kill 93159)",
+      "Bash(pkill -f \"python3 -m http.server 8899\")"
     ]
   }
 }
