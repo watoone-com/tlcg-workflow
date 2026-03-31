@@ -1836,7 +1836,7 @@
         .stat-item.rejected .stat-value { color: #ef4444; }
 
         .voucher-list {
-            max-height: 400px;
+            max-height: 520px;
             overflow-y: auto;
         }
 
@@ -2804,6 +2804,33 @@
                     <span class="stat-label">Từ chối</span>
                 </div>
             </div>
+            <!-- Voucher Filter Bar -->
+            <div id="voucher-filter-bar" style="display:flex;flex-wrap:wrap;gap:0.5rem;padding:0.75rem 1rem;background:var(--ios-gray-6);border-bottom:0.5px solid var(--ios-separator);">
+                <input id="vf-search" type="search" placeholder="🔍 Tìm số phiếu, nhân viên, công ty..."
+                    style="flex:1;min-width:180px;padding:0.5rem 0.75rem;border:1px solid var(--ios-gray-4);border-radius:var(--ios-radius-sm);font-size:0.875rem;background:white;outline:none;">
+                <select id="vf-status"
+                    style="padding:0.5rem 0.75rem;border:1px solid var(--ios-gray-4);border-radius:var(--ios-radius-sm);font-size:0.875rem;background:white;color:var(--text-primary);outline:none;">
+                    <option value="">Tất cả trạng thái</option>
+                    <option value="Pending">Chờ duyệt</option>
+                    <option value="InProgress">Đang duyệt</option>
+                    <option value="Approved">Đã duyệt</option>
+                    <option value="Rejected">Từ chối</option>
+                </select>
+                <select id="vf-type"
+                    style="padding:0.5rem 0.75rem;border:1px solid var(--ios-gray-4);border-radius:var(--ios-radius-sm);font-size:0.875rem;background:white;color:var(--text-primary);outline:none;">
+                    <option value="">Tất cả loại</option>
+                    <option value="Thu">Phiếu Thu</option>
+                    <option value="Chi">Phiếu Chi</option>
+                </select>
+                <input id="vf-date-from" type="date" title="Từ ngày"
+                    style="padding:0.5rem 0.75rem;border:1px solid var(--ios-gray-4);border-radius:var(--ios-radius-sm);font-size:0.875rem;background:white;outline:none;">
+                <input id="vf-date-to" type="date" title="Đến ngày"
+                    style="padding:0.5rem 0.75rem;border:1px solid var(--ios-gray-4);border-radius:var(--ios-radius-sm);font-size:0.875rem;background:white;outline:none;">
+                <button onclick="resetVoucherFilter()"
+                    style="padding:0.5rem 0.875rem;border:1px solid var(--ios-gray-4);border-radius:var(--ios-radius-sm);font-size:0.875rem;background:white;color:var(--ios-red);cursor:pointer;white-space:nowrap;">✕ Xóa lọc</button>
+            </div>
+            <div id="vf-count" style="font-size:0.75rem;color:var(--text-secondary);padding:0.375rem 1rem 0.25rem;background:var(--ios-gray-6);border-bottom:0.5px solid var(--ios-separator);"></div>
+
             <div class="voucher-list" id="voucher-list">
                 <div class="no-vouchers">
                     <svg xmlns="http://www.w3.org/2000/svg" width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-linejoin="round" style="margin-bottom: 1rem; opacity: 0.5;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
@@ -4007,6 +4034,15 @@
                 });
 
                 renderApprovalHistory();
+
+                // Wire up voucher filter bar
+                ['vf-search','vf-status','vf-type','vf-date-from','vf-date-to'].forEach(id => {
+                    const el = document.getElementById(id);
+                    if (el) {
+                        el.addEventListener('input', applyVoucherFilter);
+                        el.addEventListener('change', applyVoucherFilter);
+                    }
+                });
             });
         });
         
@@ -4756,6 +4792,7 @@
         let currentApproverRole = null; // 'accountant', 'legalRep', or 'treasurer'
         let approverSignatureData = null;
         const APPROVER_SIGNATURE_KEY = 'tlcg_approver_signature';
+        let allLoadedVouchers = []; // cache for client-side filter
         
         // Get current LOGGED-IN user's email from localStorage
         function getCurrentUserEmail() {
@@ -4881,40 +4918,20 @@
                             </div>
                         `;
                     } else {
-                        // Step 1: Render vouchers with placeholder status (like index.html)
-                        voucherList.innerHTML = vouchers.map((voucher, index) => {
-                            const voucherId = `voucher-${voucher.voucherNumber || index}`;
-                            const amount = typeof voucher.amount === 'number'
-                                ? voucher.amount.toLocaleString('vi-VN') + ' ₫'
-                                : voucher.amount || '0 ₫';
-                            const formattedTimestamp = formatTimestamp(voucher.timestamp);
+                        // Cache for client-side filtering
+                        allLoadedVouchers = vouchers;
+                        // Reset filter bar
+                        ['vf-search','vf-status','vf-type','vf-date-from','vf-date-to'].forEach(id => {
+                            const el = document.getElementById(id);
+                            if (el) el.value = '';
+                        });
+                        const countEl = document.getElementById('vf-count');
+                        if (countEl) countEl.textContent = `${vouchers.length} phiếu`;
 
-                            const safeVNum = (voucher.voucherNumber || '').replace(/'/g, "\\'");
-                            return `
-                                <div id="${voucherId}" class="voucher-item" onclick="openVoucherDetail('${safeVNum}')">
-                                    <div class="voucher-checkbox-wrap" onclick="event.stopPropagation()">
-                                        <input type="checkbox" class="voucher-select-cb" data-voucher-number="${voucher.voucherNumber || ''}" onchange="updateBulkSelection()">
-                                    </div>
-                                    <div class="voucher-icon pending">
-                                        <i class="fas fa-clock"></i>
-                                    </div>
-                                    <div class="voucher-info">
-                                        <div class="voucher-title">${voucher.voucherNumber || 'N/A'} - ${voucher.voucherType || ''}</div>
-                                        <div class="voucher-meta">${voucher.employee || ''} • ${voucher.company || ''} • ${formattedTimestamp}</div>
-                                    </div>
-                                    <div class="voucher-amount">${amount}</div>
-                                    <div class="voucher-status-container">
-                                        <span class="voucher-status pending">
-                                            <i class="fas fa-circle mr-1"></i>
-                                            <span class="status-text">Đang tải...</span>
-                                        </span>
-                                        <p class="voucher-approval-detail">Đang tải thông tin...</p>
-                                    </div>
-                                </div>
-                            `;
-                        }).join('');
+                        // Step 1: Render vouchers with placeholder status
+                        voucherList.innerHTML = vouchers.map((voucher, index) => renderVoucherItem(voucher, index)).join('');
 
-                        // Step 2: Load detailed approval status for each voucher (like index.html)
+                        // Step 2: Load detailed approval status for each voucher
                         vouchers.forEach((voucher, index) => {
                             loadVoucherApprovalStatus(voucher, `voucher-${voucher.voucherNumber || index}`);
                         });
@@ -4947,6 +4964,103 @@
             }
         }
         
+        // ============ VOUCHER ITEM RENDERER ============
+        function renderVoucherItem(voucher, index) {
+            const voucherId = `voucher-${voucher.voucherNumber || index}`;
+            const amount = typeof voucher.amount === 'number'
+                ? voucher.amount.toLocaleString('vi-VN') + ' ₫'
+                : voucher.amount || '0 ₫';
+            const formattedTimestamp = formatTimestamp(voucher.timestamp);
+            const safeVNum = (voucher.voucherNumber || '').replace(/'/g, "\\'");
+            return `
+                <div id="${voucherId}" class="voucher-item" onclick="openVoucherDetail('${safeVNum}')">
+                    <div class="voucher-checkbox-wrap" onclick="event.stopPropagation()">
+                        <input type="checkbox" class="voucher-select-cb" data-voucher-number="${voucher.voucherNumber || ''}" onchange="updateBulkSelection()">
+                    </div>
+                    <div class="voucher-icon pending">
+                        <i class="fas fa-clock"></i>
+                    </div>
+                    <div class="voucher-info">
+                        <div class="voucher-title">${voucher.voucherNumber || 'N/A'} - ${voucher.voucherType || ''}</div>
+                        <div class="voucher-meta">${voucher.employee || ''} • ${voucher.company || ''} • ${formattedTimestamp}</div>
+                    </div>
+                    <div class="voucher-amount">${amount}</div>
+                    <div class="voucher-status-container">
+                        <span class="voucher-status pending">
+                            <i class="fas fa-circle mr-1"></i>
+                            <span class="status-text">Đang tải...</span>
+                        </span>
+                        <p class="voucher-approval-detail">Đang tải thông tin...</p>
+                    </div>
+                </div>
+            `;
+        }
+
+        // ============ VOUCHER FILTER FUNCTIONS ============
+        function applyVoucherFilter() {
+            const search   = (document.getElementById('vf-search')?.value || '').trim().toLowerCase();
+            const status   = document.getElementById('vf-status')?.value || '';
+            const type     = document.getElementById('vf-type')?.value || '';
+            const dateFrom = document.getElementById('vf-date-from')?.value || '';
+            const dateTo   = document.getElementById('vf-date-to')?.value || '';
+
+            const filtered = allLoadedVouchers.filter(v => {
+                // Text search: voucher number, employee, company
+                if (search) {
+                    const hay = `${v.voucherNumber || ''} ${v.employee || ''} ${v.company || ''}`.toLowerCase();
+                    if (!hay.includes(search)) return false;
+                }
+                // Status filter
+                if (status === 'InProgress') {
+                    const prog = parseInt((v.meta?.companyApprovers?.approvalProgress || '0/3').split('/')[0]);
+                    if (v.status !== 'Pending' || prog === 0) return false;
+                } else if (status === 'Pending') {
+                    const prog = parseInt((v.meta?.companyApprovers?.approvalProgress || '0/3').split('/')[0]);
+                    if (v.status !== 'Pending' || prog !== 0) return false;
+                } else if (status === 'Approved') {
+                    if (v.status !== 'Approved') return false;
+                } else if (status === 'Rejected') {
+                    if (v.status !== 'Rejected') return false;
+                }
+                // Voucher type
+                if (type) {
+                    if (!(v.voucherType || '').toUpperCase().includes(type.toUpperCase())) return false;
+                }
+                // Date range
+                if (dateFrom || dateTo) {
+                    const d = new Date(v.timestamp || v.meta?.voucherDate || 0);
+                    if (dateFrom && d < new Date(dateFrom)) return false;
+                    if (dateTo   && d > new Date(dateTo + 'T23:59:59')) return false;
+                }
+                return true;
+            });
+
+            const voucherList = document.getElementById('voucher-list');
+            if (filtered.length === 0) {
+                voucherList.innerHTML = '<div style="padding:2rem;text-align:center;color:#6b7280;">Không tìm thấy phiếu nào phù hợp.</div>';
+            } else {
+                voucherList.innerHTML = filtered.map((v, i) => renderVoucherItem(v, i)).join('');
+                filtered.forEach((v, i) => loadVoucherApprovalStatus(v, `voucher-${v.voucherNumber || i}`));
+            }
+
+            const countEl = document.getElementById('vf-count');
+            if (countEl) {
+                const isFiltered = search || status || type || dateFrom || dateTo;
+                countEl.textContent = isFiltered
+                    ? `Hiển thị ${filtered.length} / ${allLoadedVouchers.length} phiếu`
+                    : `${allLoadedVouchers.length} phiếu`;
+            }
+        }
+
+        function resetVoucherFilter() {
+            ['vf-search','vf-status','vf-type','vf-date-from','vf-date-to'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            applyVoucherFilter();
+        }
+        // ============ END VOUCHER FILTER FUNCTIONS ============
+
         /**
          * Load and display approval status for a voucher (same approach as index.html)
          */
