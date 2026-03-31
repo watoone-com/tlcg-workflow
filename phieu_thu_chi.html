@@ -6264,7 +6264,7 @@
         }
         
         // Print voucher - opens print-friendly view matching Vietnamese voucher format
-        function printVoucher() {
+        async function printVoucher() {
             try {
                 console.log('printVoucher called, currentModalVoucher:', currentModalVoucher);
 
@@ -6282,10 +6282,40 @@
                 const approvalStatusHtml = '';
 
                 // Get company approvers from voucher data (stored when submitted)
-                const companyApprovers = voucher.companyApprovers || meta.companyApprovers || null;
+                let companyApprovers = voucher.companyApprovers || meta.companyApprovers || null;
 
-                // Signatures come from Google Sheet data (companyApprovers.*.signature and meta.requesterSignature)
-                // No local/session overrides needed — approver's uploaded signature is saved to sheet on approval
+                // Always fetch master signatures from GG Sheet (per-voucher signatures are empty "")
+                // Master signatures are stored in the company approvers config sheet
+                if (voucher.company) {
+                    try {
+                        const params = new URLSearchParams({
+                            action: 'getCompanyApprovers',
+                            companyName: voucher.company,
+                            companyKey: meta.companyKey || ''
+                        });
+                        const resp = await fetch('/api/voucher', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                            body: params.toString()
+                        });
+                        const result = await resp.json();
+                        if (result.success && result.data?.approvers) {
+                            // Merge master signatures into companyApprovers, keeping name/role from saved data
+                            const master = result.data.approvers;
+                            companyApprovers = {
+                                ...(companyApprovers || {}),
+                                accountant: { ...(companyApprovers?.accountant || {}), signature: master.accountant?.signature || companyApprovers?.accountant?.signature || '' },
+                                legalRep:   { ...(companyApprovers?.legalRep   || {}), signature: master.legalRep?.signature   || companyApprovers?.legalRep?.signature   || '' },
+                                treasurer:  { ...(companyApprovers?.treasurer  || {}), signature: master.treasurer?.signature  || companyApprovers?.treasurer?.signature  || '' }
+                            };
+                            console.log('✅ Master signatures loaded for print');
+                        }
+                    } catch (e) {
+                        console.warn('⚠️ Could not fetch master signatures, using saved data:', e.message);
+                    }
+                }
+
+                // Signatures come from GG Sheet master approver config
 
                 // === PRINT DEBUG - Check what signature data is available ===
             console.log('=== PRINT DEBUG ===');
