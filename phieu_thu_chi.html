@@ -6339,11 +6339,22 @@
 
             // Prepare per-role signature based on approvalProgress:
             // (1/3) → Kế toán trưởng only; (2/3) → Kế toán trưởng + Đại diện pháp luật; (3/3) → all 3
-            const rawProgress = meta.approvalProgress || voucher.approvalProgress || '0/3';
+            // approvalProgress is nested inside companyApprovers, not at top-level meta
+            const rawProgress = meta.companyApprovers?.approvalProgress
+                || voucher.meta?.companyApprovers?.approvalProgress
+                || meta.approvalProgress || voucher.approvalProgress || '0/3';
             const progressNum = parseInt(rawProgress.split('/')[0]) || 0;
-            const accountantSig = progressNum >= 1 ? toDirectImgUrl(companyApprovers?.accountant?.signature) : '';
-            const legalRepSig   = progressNum >= 2 ? toDirectImgUrl(companyApprovers?.legalRep?.signature)   : '';
-            const treasurerSig  = progressNum >= 3 ? toDirectImgUrl(companyApprovers?.treasurer?.signature)   : '';
+            console.log('printVoucher: progressNum =', progressNum, 'rawProgress =', rawProgress);
+
+            // Use actual approval signatures from meta (uploaded during approval), fallback to master config
+            function getSig(metaKey, masterSig) {
+                if (meta[metaKey]) return meta[metaKey]; // base64 or Drive URL from approval event
+                return toDirectImgUrl(masterSig || '');
+            }
+            const accountantSig = progressNum >= 1 ? getSig('accountantSignature', companyApprovers?.accountant?.signature) : '';
+            const legalRepSig   = progressNum >= 2 ? getSig('legalRepSignature',   companyApprovers?.legalRep?.signature)   : '';
+            const treasurerSig  = progressNum >= 3 ? getSig('treasurerSignature',  companyApprovers?.treasurer?.signature)  : '';
+            console.log('printVoucher: accountantSig =', !!accountantSig, '| legalRepSig =', !!legalRepSig, '| treasurerSig =', !!treasurerSig);
 
             // Determine voucher type title
             const voucherTypeUpper = (voucher.voucherType || '').toUpperCase();
