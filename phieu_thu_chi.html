@@ -6303,7 +6303,7 @@
                 }
 
                 const voucher = currentModalVoucher;
-                let meta = currentModalMeta || voucher.meta || {}; // Use merged meta
+                let meta = { ...(currentModalMeta || voucher.meta || {}) }; // Use merged meta
                 console.log('printVoucher: voucher data loaded', voucher.voucherNumber);
 
                 // Approval status HTML (not needed for print, but template references it)
@@ -6311,6 +6311,24 @@
 
                 // Get company approvers from voucher data (stored when submitted)
                 const companyApprovers = voucher.companyApprovers || meta.companyApprovers || null;
+
+                // If approver uploaded signature in this session (not yet saved to backend),
+                // map it to the correct role-specific key so it appears in print
+                if (approverSignatureData) {
+                    if (currentApproverRole === 'accountant' && !meta.accountantSignature) {
+                        meta.accountantSignature = approverSignatureData;
+                    } else if (currentApproverRole === 'legalRep' && !meta.legalRepSignature) {
+                        meta.legalRepSignature = approverSignatureData;
+                    } else if (currentApproverRole === 'treasurer' && !meta.treasurerSignature) {
+                        meta.treasurerSignature = approverSignatureData;
+                    }
+                }
+
+                // If requester signature not in meta, try localStorage (for requester viewing own voucher)
+                if (!meta.requesterSignature) {
+                    const localSig = localStorage.getItem(SIGNATURE_STORAGE_KEY);
+                    if (localSig) meta.requesterSignature = localSig;
+                }
 
             // DO NOT use localStorage for signatures in print view
             // Signatures should ONLY come from the backend (meta) to ensure we show
