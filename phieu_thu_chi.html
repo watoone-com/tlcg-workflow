@@ -6329,11 +6329,11 @@
             console.log('Treasurer signature:', !!meta.treasurerSignature);
             console.log('===================');
             
-            // Convert Google Drive sharing URL to direct image URL
+            // Convert Google Drive sharing URL to embeddable thumbnail URL
             function toDirectImgUrl(url) {
                 if (!url) return '';
                 const m = url.match(/\/file\/d\/([^/]+)\//);
-                if (m) return `https://drive.google.com/uc?export=view&id=${m[1]}`;
+                if (m) return `https://drive.google.com/thumbnail?id=${m[1]}&sz=w400`;
                 return url;
             }
 
