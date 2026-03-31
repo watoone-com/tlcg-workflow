@@ -5614,7 +5614,7 @@
                     </div>
                     <div class="voucher-detail-item">
                         <div class="label">Công ty</div>
-                        <div class="value">${voucher.company || 'N/A'}</div>
+                        <div class="value">${voucher.companyKey ? `${voucher.company} (${voucher.companyKey})` : (voucher.company || 'N/A')}</div>
                     </div>
                     <div class="voucher-detail-item">
                         <div class="label">Người đề nghị</div>
@@ -5622,7 +5622,7 @@
                     </div>
                     <div class="voucher-detail-item">
                         <div class="label">Phòng ban</div>
-                        <div class="value">${meta.department || 'N/A'}</div>
+                        <div class="value">${meta.department || data.employee_departments?.[voucher.employee] || 'N/A'}</div>
                     </div>
                     <div class="voucher-detail-item">
                         <div class="label">Người nhận tiền</div>
@@ -6556,7 +6556,7 @@
                         <!-- Header Section -->
                         <div class="header-section">
                             <div class="header-left">
-                                <div class="company-name">${voucher.company || 'CÔNG TY'}</div>
+                                <div class="company-name">${voucher.companyKey ? `${voucher.company} (${voucher.companyKey})` : (voucher.company || 'CÔNG TY')}</div>
                                 ${companyAddress ? `<div style="font-size: 11pt;">${companyAddress}</div>` : ''}
                                 <div class="voucher-number-line">Số: <strong>${voucher.voucherNumber}</strong></div>
                             </div>
@@ -6577,7 +6577,13 @@
                             <span class="info-colon">:</span>
                             <span class="info-value"><strong>${meta.payeeName || voucher.employee || 'N/A'}</strong></span>
                         </div>
-                        
+
+                        <div class="info-row">
+                            <span class="info-label">Phòng ban</span>
+                            <span class="info-colon">:</span>
+                            <span class="info-value">${meta.department || data.employee_departments?.[voucher.employee] || ''}</span>
+                        </div>
+
                         <div class="info-row">
                             <span class="info-label">Nội dung</span>
                             <span class="info-colon">:</span>
