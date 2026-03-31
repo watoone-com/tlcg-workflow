@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "mcp__claude_ai_Firecrawl__firecrawl_scrape",
-      "mcp__claude_ai_Firecrawl__firecrawl_interact"
+      "mcp__claude_ai_Firecrawl__firecrawl_interact",
+      "Bash(screencapture -x /tmp/voucher_check.png)",
+      "Bash(screencapture /tmp/voucher_check.png)",
+      "Bash(echo \"exit: $?\")"
     ]
   }
 }

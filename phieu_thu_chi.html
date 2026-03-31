@@ -2805,31 +2805,34 @@
                 </div>
             </div>
             <!-- Voucher Filter Bar -->
-            <div id="voucher-filter-bar" style="display:flex;flex-wrap:wrap;gap:0.5rem;padding:0.75rem 1rem;background:var(--ios-gray-6);border-bottom:0.5px solid var(--ios-separator);">
-                <input id="vf-search" type="search" placeholder="🔍 Tìm số phiếu, nhân viên, công ty..."
-                    style="flex:1;min-width:180px;padding:0.5rem 0.75rem;border:1px solid var(--ios-gray-4);border-radius:var(--ios-radius-sm);font-size:0.875rem;background:white;outline:none;">
-                <select id="vf-status"
-                    style="padding:0.5rem 0.75rem;border:1px solid var(--ios-gray-4);border-radius:var(--ios-radius-sm);font-size:0.875rem;background:white;color:var(--text-primary);outline:none;">
-                    <option value="">Tất cả trạng thái</option>
-                    <option value="Pending">Chờ duyệt</option>
-                    <option value="InProgress">Đang duyệt</option>
-                    <option value="Approved">Đã duyệt</option>
-                    <option value="Rejected">Từ chối</option>
-                </select>
-                <select id="vf-type"
-                    style="padding:0.5rem 0.75rem;border:1px solid var(--ios-gray-4);border-radius:var(--ios-radius-sm);font-size:0.875rem;background:white;color:var(--text-primary);outline:none;">
-                    <option value="">Tất cả loại</option>
-                    <option value="Thu">Phiếu Thu</option>
-                    <option value="Chi">Phiếu Chi</option>
-                </select>
-                <input id="vf-date-from" type="date" title="Từ ngày"
-                    style="padding:0.5rem 0.75rem;border:1px solid var(--ios-gray-4);border-radius:var(--ios-radius-sm);font-size:0.875rem;background:white;outline:none;">
-                <input id="vf-date-to" type="date" title="Đến ngày"
-                    style="padding:0.5rem 0.75rem;border:1px solid var(--ios-gray-4);border-radius:var(--ios-radius-sm);font-size:0.875rem;background:white;outline:none;">
-                <button onclick="resetVoucherFilter()"
-                    style="padding:0.5rem 0.875rem;border:1px solid var(--ios-gray-4);border-radius:var(--ios-radius-sm);font-size:0.875rem;background:white;color:var(--ios-red);cursor:pointer;white-space:nowrap;">✕ Xóa lọc</button>
+            <div id="voucher-filter-bar" style="padding:0.625rem 1rem;background:var(--ios-gray-6);border-bottom:0.5px solid var(--ios-separator);">
+                <div style="display:flex;gap:0.5rem;align-items:center;">
+                    <input id="vf-search" type="search" placeholder="🔍 Tìm số phiếu, nhân viên, công ty..."
+                        style="flex:1;min-width:0;padding:0.4375rem 0.75rem;border:1px solid var(--ios-gray-4);border-radius:var(--ios-radius-sm);font-size:0.8125rem;background:white;outline:none;">
+                    <select id="vf-status"
+                        style="flex:0 0 140px;padding:0.4375rem 0.5rem;border:1px solid var(--ios-gray-4);border-radius:var(--ios-radius-sm);font-size:0.8125rem;background:white;color:var(--text-primary);outline:none;">
+                        <option value="">Tất cả TT</option>
+                        <option value="Pending">Chờ duyệt</option>
+                        <option value="InProgress">Đang duyệt</option>
+                        <option value="Approved">Đã duyệt</option>
+                        <option value="Rejected">Từ chối</option>
+                    </select>
+                    <select id="vf-type"
+                        style="flex:0 0 110px;padding:0.4375rem 0.5rem;border:1px solid var(--ios-gray-4);border-radius:var(--ios-radius-sm);font-size:0.8125rem;background:white;color:var(--text-primary);outline:none;">
+                        <option value="">Tất cả loại</option>
+                        <option value="Thu">Phiếu Thu</option>
+                        <option value="Chi">Phiếu Chi</option>
+                    </select>
+                    <input id="vf-date-from" type="date" title="Từ ngày"
+                        style="flex:0 0 130px;padding:0.4375rem 0.5rem;border:1px solid var(--ios-gray-4);border-radius:var(--ios-radius-sm);font-size:0.8125rem;background:white;outline:none;">
+                    <span style="color:var(--text-secondary);font-size:0.75rem;flex-shrink:0;">→</span>
+                    <input id="vf-date-to" type="date" title="Đến ngày"
+                        style="flex:0 0 130px;padding:0.4375rem 0.5rem;border:1px solid var(--ios-gray-4);border-radius:var(--ios-radius-sm);font-size:0.8125rem;background:white;outline:none;">
+                    <button onclick="resetVoucherFilter()"
+                        style="flex:0 0 auto;padding:0.4375rem 0.75rem;border:1px solid var(--ios-gray-4);border-radius:var(--ios-radius-sm);font-size:0.8125rem;background:white;color:var(--ios-red);cursor:pointer;white-space:nowrap;">✕ Xóa lọc</button>
+                </div>
+                <div id="vf-count" style="font-size:0.75rem;color:var(--text-secondary);margin-top:0.375rem;min-height:1rem;"></div>
             </div>
-            <div id="vf-count" style="font-size:0.75rem;color:var(--text-secondary);padding:0.375rem 1rem 0.25rem;background:var(--ios-gray-6);border-bottom:0.5px solid var(--ios-separator);"></div>
 
             <div class="voucher-list" id="voucher-list">
                 <div class="no-vouchers">
