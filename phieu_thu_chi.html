@@ -6181,7 +6181,7 @@
                         employee: currentModalVoucher.employee || '',
                         amount: currentModalVoucher.amount || '',
                         requestorEmail: currentModalVoucher.requestorEmail || '',
-                        approverEmail: currentModalVoucher.approverEmail || '',
+                        approverEmail: getCurrentUserEmail() || currentModalVoucher.approverEmail || '',
                         approvedBy: approverName,
                         approverRole: currentApproverRole, // 'accountant', 'legalRep', or 'treasurer'
                         approverName: approverName, // Store approver name with role-specific key in backend
