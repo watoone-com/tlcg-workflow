@@ -6128,8 +6128,8 @@
                 // ============ SIGNATURE VERIFICATION ============
                 // Get sample signature URL from company approvers data
                 let sampleSignatureUrl = null;
-                const companyApprovers = currentModalMeta?.companyApprovers?.approvers ||
-                                         currentModalVoucher?.companyApprovers?.approvers;
+                const companyApprovers = currentModalMeta?.companyApprovers ||
+                                         currentModalVoucher?.companyApprovers;
 
                 if (companyApprovers && currentApproverRole) {
                     if (currentApproverRole === 'accountant' && companyApprovers.accountant) {
@@ -6169,7 +6169,7 @@
                 // ============ END SIGNATURE VERIFICATION ============
 
                 // Get current user name for approval
-                const approverName = currentUser?.name || 'Approver';
+                const approverName = getCurrentUserName() || 'Approver';
 
                 // Use POST request because approverSignature is too long for URL
                 const requestData = {
@@ -6293,7 +6293,7 @@
                         amount: currentModalVoucher.amount || '',
                         requestorEmail: currentModalVoucher.requestorEmail || '',
                         approverEmail: currentModalVoucher.approverEmail || '',
-                        rejectedBy: 'Approver',
+                        rejectedBy: getCurrentUserName() || 'Approver',
                         rejectReason: reason.trim(),  // Backend expects 'rejectReason', not 'reason'
                         approverSignature: approverSignatureData || ''
                     }
