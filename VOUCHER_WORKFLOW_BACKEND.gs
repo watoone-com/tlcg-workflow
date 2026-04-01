@@ -308,6 +308,7 @@ function doPost(e) {
         return handleSendEmail(requestBody);
       case 'approveVoucher': return handleApproveVoucher(requestBody);
       case 'rejectVoucher': return handleRejectVoucher(requestBody);
+      case 'acknowledgeReceipt': return handleAcknowledgeReceipt(requestBody);
       case 'importFromVHImport': return handleImportFromVHImport(requestBody);
       case 'bulkApprove': return handleBulkApprove(requestBody);
       case 'getVoucherSummary': return handleGetVoucherSummary(requestBody);
@@ -1483,37 +1484,37 @@ function sendProgressEmail(voucher, approvalCount, meta, voucherNumber, existing
     const sequence = ['accountant', 'legalRep', 'treasurer'];
     for (let i = sequence.length - 1; i >= 0; i--) {
       const role = sequence[i];
-      if (meta.approvers[role] && meta.approvers[role].status === 'approved') {
-        lastApprover = meta.approvers[role];
+      if (meta[role] && meta[role].status === 'approved') {
+        lastApprover = meta[role];
         lastApproverRole = role;
         break;
       }
     }
-    
+
     // Build approvers status list
     let approversListHtml = '';
-    if (meta.approvers.accountant) {
-      const acc = meta.approvers.accountant;
-      const accStatus = acc.status === 'approved' ? '✅' : (meta.currentApprover === 'accountant' ? '⏳' : '⏳');
-      const accText = acc.status === 'approved' 
+    if (meta.accountant) {
+      const acc = meta.accountant;
+      const accStatus = acc.status === 'approved' ? '✅' : '⏳';
+      const accText = acc.status === 'approved'
         ? `Đã duyệt lúc: ${new Date(acc.approvedAt).toLocaleString('vi-VN')}`
         : (meta.currentApprover === 'accountant' ? 'Đang chờ phê duyệt...' : 'Chưa đến lượt');
       approversListHtml += `<li>${accStatus} <strong>Kế toán trưởng:</strong> ${acc.name}<br>${accText}</li>`;
     }
-    
-    if (meta.approvers.legalRep) {
-      const legal = meta.approvers.legalRep;
-      const legalStatus = legal.status === 'approved' ? '✅' : (meta.currentApprover === 'legalRep' ? '⏳' : '⏳');
-      const legalText = legal.status === 'approved' 
+
+    if (meta.legalRep) {
+      const legal = meta.legalRep;
+      const legalStatus = legal.status === 'approved' ? '✅' : '⏳';
+      const legalText = legal.status === 'approved'
         ? `Đã duyệt lúc: ${new Date(legal.approvedAt).toLocaleString('vi-VN')}`
         : (meta.currentApprover === 'legalRep' ? 'Đang chờ phê duyệt...' : 'Chưa đến lượt');
       approversListHtml += `<li>${legalStatus} <strong>Đại diện pháp luật:</strong> ${legal.name}<br>${legalText}</li>`;
     }
-    
-    if (meta.approvers.treasurer) {
-      const treas = meta.approvers.treasurer;
-      const treasStatus = treas.status === 'approved' ? '✅' : (meta.currentApprover === 'treasurer' ? '⏳' : '⏳');
-      const treasText = treas.status === 'approved' 
+
+    if (meta.treasurer) {
+      const treas = meta.treasurer;
+      const treasStatus = treas.status === 'approved' ? '✅' : '⏳';
+      const treasText = treas.status === 'approved'
         ? `Đã duyệt lúc: ${new Date(treas.approvedAt).toLocaleString('vi-VN')}`
         : (meta.currentApprover === 'treasurer' ? 'Đang chờ phê duyệt...' : 'Chưa đến lượt');
       approversListHtml += `<li>${treasStatus} <strong>Thủ quỹ:</strong> ${treas.name}<br>${treasText}</li>`;
@@ -1552,7 +1553,7 @@ function sendProgressEmail(voucher, approvalCount, meta, voucherNumber, existing
       </ul>
       
       ${meta.currentApprover ? `
-        <p>⏳ <strong>Đang chờ:</strong> ${meta.approvers[meta.currentApprover].name} (${roleName}) phê duyệt</p>
+        <p>⏳ <strong>Đang chờ:</strong> ${meta[meta.currentApprover] ? meta[meta.currentApprover].name : ''} (${roleName}) phê duyệt</p>
       ` : ''}
       
       <p>Thứ tự phê duyệt: Kế toán trưởng → Đại diện pháp luật → Thủ quỹ</p>
@@ -1576,6 +1577,93 @@ function sendProgressEmail(voucher, approvalCount, meta, voucherNumber, existing
 /**
  * Send final approval email to requester
  */
+function handleAcknowledgeReceipt(requestBody) {
+  try {
+    const voucherNumber = requestBody.voucherNumber || '';
+    const requesterEmail = requestBody.requesterEmail || '';
+    const requesterName = requestBody.requesterName || '';
+    const requesterSignature = requestBody.requesterSignature || '';
+
+    if (!voucherNumber) return createResponse(false, 'Thiếu số phiếu');
+    if (!requesterSignature) return createResponse(false, 'Vui lòng tải lên chữ ký xác nhận');
+
+    const existingVoucher = getVoucherFromHistory(voucherNumber);
+    if (!existingVoucher) return createResponse(false, 'Không tìm thấy phiếu: ' + voucherNumber);
+
+    // Only allow if voucher is fully approved
+    if (existingVoucher.status !== 'Approved') {
+      return createResponse(false, 'Phiếu chưa được duyệt hoàn toàn.');
+    }
+
+    const isThu = (existingVoucher.voucherType || '').toUpperCase().includes('THU');
+
+    // Parse meta
+    let meta = {};
+    try { meta = JSON.parse(existingVoucher.meta || '{}'); } catch(e) {}
+
+    // Prevent double acknowledgment
+    if (meta.requesterSignature) {
+      return createResponse(false, 'Phiếu này đã được xác nhận nhận tiền rồi.');
+    }
+
+    // Store acknowledgment in meta
+    meta.requesterSignature = requesterSignature;
+    meta.requesterName = requesterName || existingVoucher.employee || '';
+    meta.acknowledgedAt = new Date().toISOString();
+    meta.acknowledgedBy = requesterEmail;
+
+    // Append history row with status Received
+    appendHistory_({
+      voucherNumber: voucherNumber,
+      voucherType: existingVoucher.voucherType || '',
+      company: existingVoucher.company || '',
+      companyKey: existingVoucher.companyKey || '',
+      employee: existingVoucher.employee || '',
+      amount: existingVoucher.amount || 0,
+      status: 'Received',
+      action: 'Acknowledged Receipt',
+      requestorEmail: existingVoucher.requestorEmail || '',
+      submittedBy: existingVoucher.submittedBy || '',
+      approverEmail: requesterEmail,
+      attachments: '',
+      description: existingVoucher.description || '',
+      note: (isThu ? 'Người thu tiền đã xác nhận: ' : 'Người nhận tiền đã xác nhận: ') + (requesterName || requesterEmail),
+      approvedAt: new Date().toISOString(),
+      metaJson: JSON.stringify(meta)
+    });
+
+    // Send confirmation email to Kế toán trưởng
+    const companyApprovers = meta.companyApprovers || {};
+    const accountant = companyApprovers.accountant || {};
+    if (accountant.email) {
+      const actionLabel = isThu ? 'thu tiền' : 'nhận tiền';
+      const personLabel = isThu ? 'Người thu tiền' : 'Người nhận tiền';
+      const emailSubjectTag = isThu ? 'ĐÃ THU TIỀN' : 'ĐÃ NHẬN TIỀN';
+      const emailBody = `
+        <p>Kính gửi ${accountant.name || 'Kế toán trưởng'},</p>
+        <p>${personLabel} <strong>${requesterName || requesterEmail}</strong> đã xác nhận ${actionLabel} cho phiếu <strong>${voucherNumber}</strong>.</p>
+        <ul>
+          <li><strong>Số phiếu:</strong> ${voucherNumber}</li>
+          <li><strong>Người ${actionLabel}:</strong> ${requesterName || existingVoucher.employee || ''}</li>
+          <li><strong>Thời gian xác nhận:</strong> ${new Date().toLocaleString('vi-VN')}</li>
+          <li><strong>Số tiền:</strong> ${Number(existingVoucher.amount || 0).toLocaleString('vi-VN')} ₫</li>
+        </ul>
+        <p>Quy trình phiếu đã hoàn tất.</p>
+        <p>Trân trọng,<br>Hệ thống Workflow TLC Group</p>
+      `;
+      GmailApp.sendEmail(accountant.email, `[${emailSubjectTag}] Phiếu ${voucherNumber}`, '', { htmlBody: emailBody });
+      Logger.log('✅ Sent receipt acknowledgment email to accountant: ' + accountant.email);
+    }
+
+    Logger.log('✅ Receipt acknowledged for voucher: ' + voucherNumber + ' by ' + requesterEmail);
+    return createResponse(true, 'Đã xác nhận nhận tiền thành công. Quy trình phiếu hoàn tất.');
+
+  } catch (error) {
+    Logger.log('❌ Error in handleAcknowledgeReceipt: ' + error.toString());
+    return createResponse(false, 'Lỗi: ' + error.message);
+  }
+}
+
 function sendFinalApprovalEmail(voucher, meta, voucherNumber) {
   try {
     const requesterEmail = voucher.requestorEmail;
@@ -1587,14 +1675,14 @@ function sendFinalApprovalEmail(voucher, meta, voucherNumber) {
     const emailSubject = `[ĐÃ DUYỆT HOÀN TOÀN] Phiếu ${voucherNumber}`;
     
     let approversListHtml = '';
-    if (meta.approvers.accountant && meta.approvers.accountant.status === 'approved') {
-      approversListHtml += `<li>✅ <strong>Bước 1: Kế toán trưởng</strong> - ${meta.approvers.accountant.name}<br>Đã duyệt lúc: ${new Date(meta.approvers.accountant.approvedAt).toLocaleString('vi-VN')}</li>`;
+    if (meta.accountant && meta.accountant.status === 'approved') {
+      approversListHtml += `<li>✅ <strong>Bước 1: Kế toán trưởng</strong> - ${meta.accountant.name}<br>Đã duyệt lúc: ${new Date(meta.accountant.approvedAt).toLocaleString('vi-VN')}</li>`;
     }
-    if (meta.approvers.legalRep && meta.approvers.legalRep.status === 'approved') {
-      approversListHtml += `<li>✅ <strong>Bước 2: Đại diện pháp luật</strong> - ${meta.approvers.legalRep.name}<br>Đã duyệt lúc: ${new Date(meta.approvers.legalRep.approvedAt).toLocaleString('vi-VN')}</li>`;
+    if (meta.legalRep && meta.legalRep.status === 'approved') {
+      approversListHtml += `<li>✅ <strong>Bước 2: Đại diện pháp luật</strong> - ${meta.legalRep.name}<br>Đã duyệt lúc: ${new Date(meta.legalRep.approvedAt).toLocaleString('vi-VN')}</li>`;
     }
-    if (meta.approvers.treasurer && meta.approvers.treasurer.status === 'approved') {
-      approversListHtml += `<li>✅ <strong>Bước 3: Thủ quỹ</strong> - ${meta.approvers.treasurer.name}<br>Đã duyệt lúc: ${new Date(meta.approvers.treasurer.approvedAt).toLocaleString('vi-VN')} (Duyệt cuối cùng)</li>`;
+    if (meta.treasurer && meta.treasurer.status === 'approved') {
+      approversListHtml += `<li>✅ <strong>Bước 3: Thủ quỹ</strong> - ${meta.treasurer.name}<br>Đã duyệt lúc: ${new Date(meta.treasurer.approvedAt).toLocaleString('vi-VN')} (Duyệt cuối cùng)</li>`;
     }
     
     const emailBody = `
