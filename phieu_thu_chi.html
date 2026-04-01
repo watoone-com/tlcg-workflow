@@ -5953,7 +5953,7 @@
 
         // ── Bulk approve modal helpers ───────────────────────────────────────
         function getCurrentUserApproverRole() {
-            const email = currentUser && currentUser.email ? currentUser.email.toLowerCase() : null;
+            const email = getCurrentUserEmail().toLowerCase() || null;
             if (!email || !data.selectedCompanyApprovers) return null;
             const a = data.selectedCompanyApprovers;
             if (a.accountant && a.accountant.email && a.accountant.email.toLowerCase() === email) return 'accountant';
