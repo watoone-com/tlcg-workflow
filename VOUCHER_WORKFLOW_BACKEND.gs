@@ -518,7 +518,7 @@ function getVoucherFromHistory(voucherNumber) {
               const rowMetaJson = (data[i][17] || '').toString(); // R(17) = MetaJSON
 
               // Check if this row is an approval
-              if (rowAction.includes('Approved')) {
+              if (rowAction.includes('Duyệt') || rowAction.includes('Approved')) {
                 // Extract approvedBy email from MetaJSON column
                 let rowApproverEmail = null;
                 let rowMeta = null;
@@ -672,7 +672,7 @@ function handleSendEmail(requestBody) {
       const rowVoucherNo = rows[i][0]; // A(0) = voucher_number
       const rowAction = rows[i][11];   // L(11) = action
       
-      if (rowVoucherNo === voucherNo && rowAction === 'Submit') {
+      if (rowVoucherNo === voucherNo && (rowAction === 'Đã nộp phiếu' || rowAction === 'Submit')) {
         Logger.log('⚠️ DUPLICATE SUBMISSION DETECTED: ' + voucherNo);
         Logger.log('⚠️ Found existing submission at row: ' + (i + 2)); // +2 for header and 0-index
         return createResponse(false, 'Phiếu này đã được gửi trước đó (số phiếu: ' + voucherNo + '). Vui lòng kiểm tra lại lịch sử phiếu.');
@@ -936,8 +936,8 @@ function handleSendEmail(requestBody) {
       companyKey: verifiedCompanyKey,
       employee: voucher.employee || '',
       amount: voucher.amount || 0,
-      status: 'Pending',
-      action: 'Submit',
+      status: 'Đang treo',
+      action: 'Đã nộp phiếu',
       requestorEmail: voucher.requestorEmail || '',
       submittedBy: voucher.submittedBy || voucher.employee || '',
       approverEmail: emailData.to,
@@ -1175,8 +1175,8 @@ function handleApproveVoucher(requestBody) {
         companyKey: v.companyKey || existingVoucher.companyKey || '',
         employee: v.employee || existingVoucher.employee || '',
         amount: v.amount || existingVoucher.amount || 0,
-        status: 'Approved',
-        action: 'Fully Approved',
+        status: 'Đã duyệt',
+        action: 'Duyệt bởi ' + (companyApprovers.approvers[approverRole].name || approverEmail),
         requestorEmail: v.requestorEmail || existingVoucher.requestorEmail || '',
         submittedBy: v.submittedBy || existingVoucher.submittedBy || '',
         approverEmail: approverEmail,
@@ -1213,7 +1213,7 @@ function handleApproveVoucher(requestBody) {
         employee: v.employee || existingVoucher.employee || '',
         amount: v.amount || existingVoucher.amount || 0,
         status: companyApprovers.displayStatus,
-        action: 'Approved by ' + companyApprovers.approvers[approverRole].name,
+        action: 'Duyệt bởi ' + companyApprovers.approvers[approverRole].name,
         requestorEmail: v.requestorEmail || existingVoucher.requestorEmail || '',
         submittedBy: v.submittedBy || existingVoucher.submittedBy || '',
         approverEmail: approverEmail,
@@ -1314,7 +1314,7 @@ function handleApproveVoucherLegacy(requestBody, existingVoucher) {
     employee: v.employee || existingVoucher.employee || '',
     amount: v.amount || existingVoucher.amount || 0,
     status: 'Approved',
-    action: 'Approved',
+    action: 'Đã duyệt',
     requestorEmail: v.requestorEmail || existingVoucher.requestorEmail || '',
     approverEmail: v.approverEmail || '',
     attachments: "",
@@ -1621,7 +1621,7 @@ function handleAcknowledgeReceipt(requestBody) {
       employee: existingVoucher.employee || '',
       amount: existingVoucher.amount || 0,
       status: 'Received',
-      action: 'Acknowledged Receipt',
+      action: isThu ? 'Đã xác nhận thu tiền' : 'Đã xác nhận nhận tiền',
       requestorEmail: existingVoucher.requestorEmail || '',
       submittedBy: existingVoucher.submittedBy || '',
       approverEmail: requesterEmail,
@@ -1685,6 +1685,12 @@ function sendFinalApprovalEmail(voucher, meta, voucherNumber) {
       approversListHtml += `<li>✅ <strong>Bước 3: Thủ quỹ</strong> - ${meta.treasurer.name}<br>Đã duyệt lúc: ${new Date(meta.treasurer.approvedAt).toLocaleString('vi-VN')} (Duyệt cuối cùng)</li>`;
     }
     
+    const isThu = (voucher.voucherType || '').toUpperCase().includes('THU');
+    const receiptUrl = 'https://workflow.egg-ventures.com/phieu_thu_chi.html'
+      + '?acknowledgeReceipt=' + encodeURIComponent(voucherNumber)
+      + '&voucherType=' + encodeURIComponent(voucher.voucherType || '');
+    const receiptLabel = isThu ? '✅ Xác nhận đã thu tiền' : '✅ Xác nhận đã nhận tiền';
+
     const emailBody = `
       <p>Kính gửi Anh/Chị,</p>
       <p>Phiếu <strong>${voucherNumber}</strong> của Anh/Chị đã được tất cả 3 người phê duyệt theo thứ tự:</p>
@@ -1694,6 +1700,13 @@ function sendFinalApprovalEmail(voucher, meta, voucherNumber) {
       </ul>
       
       <p><strong>Phiếu đã được duyệt hoàn toàn và sẵn sàng để xử lý.</strong></p>
+
+      <p style="margin-top:20px;">Vui lòng xác nhận đã ${isThu ? 'thu' : 'nhận'} tiền bằng cách nhấn nút bên dưới:</p>
+      <p>
+        <a href="${receiptUrl}" style="background:#10b981;color:white;padding:12px 28px;text-decoration:none;border-radius:6px;display:inline-block;font-weight:500;">
+          ${receiptLabel}
+        </a>
+      </p>
       
       <p>Trân trọng,<br>Hệ thống Workflow TLC Group</p>
     `;
@@ -1792,8 +1805,8 @@ function handleRejectVoucher(requestBody) {
         companyKey: v.companyKey || existingVoucher.companyKey || '',
         employee: v.employee || existingVoucher.employee || '',
         amount: v.amount || existingVoucher.amount || 0,
-        status: 'Rejected',
-        action: 'Rejected by ' + companyApprovers.approvers[approverRole].name,
+        status: 'Đã từ chối',
+        action: 'Từ chối bởi ' + companyApprovers.approvers[approverRole].name,
         requestorEmail: v.requestorEmail || existingVoucher.requestorEmail || '',
         submittedBy: v.submittedBy || existingVoucher.submittedBy || '',
         approverEmail: approverEmail,
@@ -1861,8 +1874,8 @@ function handleRejectVoucher(requestBody) {
         company: v.company || '',
         employee: v.employee || '',
         amount: v.amount || 0,
-        status: 'Rejected',
-        action: 'Rejected',
+        status: 'Đã từ chối',
+        action: 'Đã từ chối',
         requestorEmail: v.requestorEmail || '',
         approverEmail: v.approverEmail || '',
         attachments: "",
@@ -2056,9 +2069,9 @@ function handleImportFromVHImport(requestBody) {
           requestorEmail: requestorEmail,                       // F (resolved)
           submittedBy:    (row[6]  || 'Import').toString().trim() || 'Import', // G
           amount:         amountRaw,                            // I
-          status:         'Pending',
+          status:         'Đang treo',
           dueDate:        (row[10] || '').toString().trim(),    // K
-          action:         'Submit',
+          action:         'Đã nộp phiếu',
           attachments:    (row[12] || '').toString().trim(),    // M
           description:    (row[13] || '').toString().trim(),    // N
           note:           (row[14] || '').toString().trim(),    // O
@@ -2278,7 +2291,7 @@ function _approveVoucherCore_(voucherNumber, approverEmail, approverRole, signat
       amount:         existing.amount       || 0,
       status:         'Approved',
       dueDate:        existing.dueDate      || '',
-      action:         'Fully Approved',
+      action:         'Duyệt bởi ' + (IMPORT_APPROVERS[approverRole] ? IMPORT_APPROVERS[approverRole].name : approverRole),
       attachments:    existing.attachments  || '',
       description:    existing.description  || '',
       note:           'Duyệt hàng loạt — tất cả 3 bước',
@@ -2304,7 +2317,7 @@ function _approveVoucherCore_(voucherNumber, approverEmail, approverRole, signat
       amount:         existing.amount       || 0,
       status:         'Pending',
       dueDate:        existing.dueDate      || '',
-      action:         'Approved by ' + (IMPORT_APPROVERS[approverRole] ? IMPORT_APPROVERS[approverRole].name : approverRole),
+      action:         'Duyệt bởi ' + (IMPORT_APPROVERS[approverRole] ? IMPORT_APPROVERS[approverRole].name : approverRole),
       attachments:    existing.attachments  || '',
       description:    existing.description  || '',
       note:           'Duyệt hàng loạt — bước ' + approvalCount + '/3',
@@ -3615,11 +3628,12 @@ function handleRefreshApproverEmails(requestBody) {
       const metaJson = (row[17] || '').toString().trim(); // R(17): MetaJSON
 
       // Only process pending/partially approved vouchers (not fully approved or rejected)
-      const isPending = status === 'Pending' ||
+      const isPending = status === 'Pending' || status === 'Đang treo' ||
                        status === 'Chờ Duyệt' ||
                        status.includes('Đang duyệt') ||
                        status.includes('Partially');
-      const isRejectedOrApproved = status === 'Approved' || status === 'Rejected' ||
+      const isRejectedOrApproved = status === 'Approved' || status === 'Đã duyệt' ||
+                                   status === 'Rejected' || status === 'Đã từ chối' ||
                                    action === 'Fully Approved' || action === 'Rejected';
 
       if (!isPending || isRejectedOrApproved) {

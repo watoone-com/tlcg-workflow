@@ -3933,6 +3933,25 @@
                 loadAndDisplayApprovalStatus(viewStatusVoucher);
             }
 
+            // ✅ PHASE 2b: Check for acknowledgeReceipt URL parameter (from email link)
+            const acknowledgeReceiptVoucher = urlParams.get('acknowledgeReceipt');
+            if (acknowledgeReceiptVoucher) {
+                const ackVoucherType = urlParams.get('voucherType') || '';
+                // Wait for auth + page init to complete before opening modal
+                setTimeout(() => {
+                    currentModalVoucher = {
+                        voucherNumber: acknowledgeReceiptVoucher,
+                        voucherType: ackVoucherType
+                    };
+                    openAcknowledgeModal();
+                    // Clean URL without reloading
+                    const cleanUrl = new URL(window.location.href);
+                    cleanUrl.searchParams.delete('acknowledgeReceipt');
+                    cleanUrl.searchParams.delete('voucherType');
+                    window.history.replaceState({}, '', cleanUrl.toString());
+                }, 1200);
+            }
+
             // ==================== AUTHENTICATION CHECK ====================
             console.log('🔍 PHIEU AUTH DEBUG: Page loaded at', new Date().toISOString());
             console.log('🔍 PHIEU AUTH DEBUG: Checking authentication...');
