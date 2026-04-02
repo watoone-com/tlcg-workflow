@@ -3101,45 +3101,48 @@ function handleGetVoucherSummary(requestBody) {
     const sheet = safeGetSheet(ss, VH_SHEET_NAME, 'handleGetVoucherSummary');
     
     // Get data with error handling
+    // Read only columns A-Q (1-17) — skip column R (MetaJSON) which contains large base64 signatures
     let data;
     try {
-      const range = sheet.getDataRange();
-      if (!range) {
+      const lastRow = sheet.getLastRow();
+      if (lastRow <= 1) {
         return createResponse(true, 'Thành công', {
-          total: 0,
-          pending: 0,
-          approved: 0,
-          rejected: 0,
-          recent: []
+          total: 0, pending: 0, approved: 0, rejected: 0, recent: []
         });
       }
-      data = range.getValues();
+      data = sheet.getRange(1, 1, lastRow, 17).getValues();
     } catch (dataError) {
       Logger.log('Error getting data: ' + dataError.toString());
       return createResponse(false, 'Không thể đọc dữ liệu từ sheet: ' + dataError.message);
     }
-    
+
     if (!data || data.length <= 1) {
       return createResponse(true, 'Thành công', {
-        total: 0,
-        pending: 0,
-        approved: 0,
-        rejected: 0,
-        recent: []
+        total: 0, pending: 0, approved: 0, rejected: 0, recent: []
       });
     }
-    
+
     // Column structure: A=voucher_number, B=voucher_type, C=company_name, D=company_key_or_taxid,
     //   E=employee_name, F=submited_email, G=submitted_by, H=submitted_at, I=amount, J=status,
-    //   K=due_date, L=action, M=attachments, N=description, O=note, P=approver_email, Q=approved_at, R=MetaJSON
+    //   K=due_date, L=action, M=attachments, N=description, O=note, P=approver_email, Q=approved_at
     const headers = data[0];
-    const rows = data.slice(1);
-    
-    Logger.log('Total rows in sheet (excluding header): ' + rows.length);
-    
-    // Get latest entry for each voucher number, and best companyApprovers (highest approvalProgress)
+    // Process only the last 5000 rows to avoid timeout with very large sheets
+    const allRows = data.slice(1);
+    const rows = allRows.length > 5000 ? allRows.slice(allRows.length - 5000) : allRows;
+
+    Logger.log('Total rows in sheet: ' + allRows.length + ', processing: ' + rows.length);
+
+    // Helper: derive approvalProgress from status string (avoids reading MetaJSON)
+    function progressFromStatus(status) {
+      const s = (status || '').toString();
+      if (s === 'Approved') return 3;
+      const m = s.match(/\((\d)\/3\)/);
+      return m ? parseInt(m[1]) : 0;
+    }
+
+    // Get latest entry for each voucher number, and track highest approvalProgress
     const voucherMap = new Map();
-    const metaMap = new Map(); // tracks best companyApprovers per voucher
+    const progressMap = new Map(); // tracks best approvalProgress per voucher
 
     rows.forEach(row => {
       const voucherNumber = row[0]; // Column A
@@ -3149,26 +3152,13 @@ function handleGetVoucherSummary(requestBody) {
       const timestamp = row[7] || new Date(0); // H(7) = submitted_at
       const timestampDate = timestamp instanceof Date ? timestamp : new Date(timestamp);
 
-      // Parse MetaJSON (column R = index 17) to extract companyApprovers
-      const metaJsonStr = (row[17] || '').toString();
-      let rowCompanyApprovers = null;
-      if (metaJsonStr) {
-        try {
-          const parsedMeta = JSON.parse(metaJsonStr);
-          rowCompanyApprovers = parsedMeta.companyApprovers || null;
-        } catch (e) { /* ignore parse errors */ }
-      }
+      // Derive approvalProgress from status column (J = index 9)
+      const rowProgress = progressFromStatus(row[9]);
 
-      // Track companyApprovers with highest approvalProgress across all rows for this voucher
-      if (rowCompanyApprovers) {
-        const rowProgress = parseInt(((rowCompanyApprovers.approvalProgress || '0/3').split('/')[0]), 10) || 0;
-        const existing = metaMap.get(vNum);
-        const existingProgress = existing
-          ? parseInt(((existing.approvalProgress || '0/3').split('/')[0]), 10) || 0
-          : -1;
-        if (rowProgress > existingProgress) {
-          metaMap.set(vNum, rowCompanyApprovers);
-        }
+      // Track highest approvalProgress across all rows for this voucher
+      const existingProgress = progressMap.get(vNum) || -1;
+      if (rowProgress > existingProgress) {
+        progressMap.set(vNum, rowProgress);
       }
 
       const entry = {
@@ -3205,7 +3195,6 @@ function handleGetVoucherSummary(requestBody) {
     const vouchers = Array.from(voucherMap.values());
     
     Logger.log('Total unique vouchers found: ' + vouchers.length);
-    Logger.log('Voucher numbers: ' + Array.from(voucherMap.keys()).join(', '));
     
     // Sort by timestamp descending (newest first)
     vouchers.sort((a, b) => {
@@ -3222,8 +3211,14 @@ function handleGetVoucherSummary(requestBody) {
     Logger.log('Vouchers by status - Pending: ' + pending + ', Approved: ' + approved + ', Rejected: ' + rejected);
     
     // Get all vouchers (no limit)
+    const seqLabels = ['accountant', 'legalRep', 'treasurer'];
     const recent = vouchers.map(v => {
-      const companyApprovers = metaMap.get(v.voucherNumber) || null;
+      const bestProgress = progressMap.get(v.voucherNumber) || 0;
+      // Build a lightweight companyApprovers with just approvalProgress & currentApprover
+      const companyApprovers = {
+        approvalProgress: bestProgress + '/3',
+        currentApprover: bestProgress < 3 ? (seqLabels[bestProgress] || null) : null
+      };
       return {
         voucherNumber: v.voucherNumber,
         voucherType: v.voucherType,
@@ -3235,7 +3230,7 @@ function handleGetVoucherSummary(requestBody) {
         by: v.by,
         timestamp: v.timestamp instanceof Date ? v.timestamp.toISOString() : v.timestamp,
         timestampFormatted: formatTimestamp(v.timestamp),
-        meta: companyApprovers ? { companyApprovers: companyApprovers } : null
+        meta: { companyApprovers: companyApprovers }
       };
     });
     
@@ -3791,4 +3786,168 @@ function handleFetchSignatureImage(requestBody) {
     Logger.log('❌ Error stack: ' + error.stack);
     return createResponse(false, 'Error: ' + error.message);
   }
+}
+
+/**
+ * ONE-SHOT PATCH — run once from the Apps Script editor to mark the 44 stuck
+ * vouchers as "Fully Approved".
+ *
+ * These vouchers were approved by accountant (Nhanh Nguyễn) and legalRep
+ * (Anh Lê) but never received the treasurer (Linh Lê) step, leaving them
+ * at 2/3.  This function reads each voucher's latest MetaJSON from the sheet,
+ * promotes the treasurer slot to 'approved', updates companyApprovers, and
+ * appends a final "Fully Approved" history row.
+ *
+ * Safe to run multiple times — it skips any voucher whose latest action is
+ * already 'Fully Approved'.
+ */
+function patchFullyApprove44Vouchers() {
+  const VOUCHER_NUMBERS = [
+    'EV-PC20251120000075', 'EV-PT20251120000003', 'EV-PC20251121000076',
+    'EV-PC20251122000077', 'EV-PC20251122000078', 'EV-PC20251122000079',
+    'EV-PC20251123000080', 'EV-PC20251124000081', 'EV-PC20251124000082',
+    'EV-PC20251126000083', 'EV-PC20251126000084', 'EV-PC20251127000085',
+    'EV-PC20251127000086', 'EV-PC20251128000087', 'EV-PC20251129000088',
+    'EV-PC20251129000089', 'EV-PC20251130000090', 'EV-PC20251130000091',
+    'EV-PC20251130000092', 'EV-PC20251201000073', 'EV-PC20251202000072',
+    'EV-PC20251203000070', 'EV-PC20251203000071', 'EV-PC20251204000068',
+    'EV-PC20251204000069', 'EV-PC20251205000066', 'EV-PC20251205000067',
+    'EV-PC20251206000065', 'EV-PC20251207000064', 'EV-PC20251208000063',
+    'EV-PC20251209000061', 'EV-PC20251209000062', 'EV-PC20251210000060',
+    'EV-PC20251211000059', 'EV-PC20251212000057', 'EV-PC20251212000058',
+    'EV-PC20251213000055', 'EV-PC20251213000056', 'EV-PC20251214000054',
+    'EV-PC20251215000052', 'EV-PC20251215000053', 'EV-PC20251216000050',
+    'EV-PC20251216000051', 'EV-PC20260129000133'
+  ];
+
+  const sheet = SpreadsheetApp.openById(VOUCHER_HISTORY_SHEET_ID).getSheetByName(VH_SHEET_NAME);
+  if (!sheet) { Logger.log('❌ Sheet not found'); return; }
+
+  const data = sheet.getDataRange().getValues();
+  const nowIso = new Date().toISOString();
+  const TREASURER = IMPORT_APPROVERS.treasurer; // { email, name, order }
+
+  let patched = 0;
+  let skipped = 0;
+  let errors = 0;
+
+  VOUCHER_NUMBERS.forEach(function(vNo) {
+    try {
+      // ── 1. Collect all rows for this voucher ──────────────────────────────
+      const rows = [];
+      for (let i = 1; i < data.length; i++) {
+        if ((data[i][0] || '').toString().trim() === vNo) rows.push(data[i]);
+      }
+
+      if (rows.length === 0) {
+        Logger.log('⚠️  ' + vNo + ' — not found in sheet, skipping');
+        skipped++;
+        return;
+      }
+
+      // ── 2. Skip if already fully approved ────────────────────────────────
+      const latestAction = (rows[rows.length - 1][11] || '').toString().trim();
+      if (latestAction === 'Fully Approved') {
+        Logger.log('✅ ' + vNo + ' — already Fully Approved, skipping');
+        skipped++;
+        return;
+      }
+
+      // ── 3. Grab base fields from the first (Submit) row ──────────────────
+      const base = rows[0];
+      const voucherType    = (base[1]  || '').toString();
+      const company        = (base[2]  || '').toString();
+      const companyKey     = (base[3]  || '').toString();
+      const employee       = (base[4]  || '').toString();
+      const requestorEmail = (base[5]  || '').toString();
+      const submittedBy    = (base[6]  || '').toString();
+      const amount         = base[8]   || 0;
+      const dueDate        = (base[10] || '').toString();
+      const attachments    = (base[12] || '').toString();
+      const description    = (base[13] || '').toString();
+
+      // ── 4. Parse the most recent MetaJSON that is valid ──────────────────
+      let meta = null;
+      for (let r = rows.length - 1; r >= 0; r--) {
+        const raw = (rows[r][17] || '').toString().trim();
+        if (!raw) continue;
+        try { meta = JSON.parse(raw); break; } catch (e) { /* try older row */ }
+      }
+
+      // ── 5. Build / repair companyApprovers ───────────────────────────────
+      if (!meta) meta = {};
+      if (!meta.companyApprovers) {
+        meta.companyApprovers = {
+          approvalSequence: ['accountant', 'legalRep', 'treasurer'],
+          approvers: {
+            accountant: { email: IMPORT_APPROVERS.accountant.email, name: IMPORT_APPROVERS.accountant.name, status: 'approved', approvedAt: nowIso },
+            legalRep:   { email: IMPORT_APPROVERS.legalRep.email,   name: IMPORT_APPROVERS.legalRep.name,   status: 'approved', approvedAt: nowIso },
+            treasurer:  { email: TREASURER.email, name: TREASURER.name, status: 'pending', approvedAt: null }
+          }
+        };
+      }
+
+      const ca = meta.companyApprovers;
+      if (!ca.approvers) ca.approvers = {};
+
+      // Ensure accountant & legalRep are marked approved (they already are in practice)
+      ['accountant', 'legalRep'].forEach(function(role) {
+        if (!ca.approvers[role]) {
+          ca.approvers[role] = { email: IMPORT_APPROVERS[role].email, name: IMPORT_APPROVERS[role].name, status: 'approved', approvedAt: nowIso };
+        } else {
+          ca.approvers[role].status = 'approved';
+        }
+      });
+
+      // Mark treasurer as approved (the missing step)
+      if (!ca.approvers.treasurer) {
+        ca.approvers.treasurer = { email: TREASURER.email, name: TREASURER.name, status: 'approved', approvedAt: nowIso };
+      } else {
+        ca.approvers.treasurer.status   = 'approved';
+        ca.approvers.treasurer.approvedAt = nowIso;
+      }
+
+      ca.overallStatus    = 'Approved';
+      ca.displayStatus    = 'Đã duyệt';
+      ca.currentApprover  = null;
+      ca.approvalProgress = '3/3';
+      ca.fullyApprovedAt  = nowIso;
+      if (!ca.approvalSequence) ca.approvalSequence = ['accountant', 'legalRep', 'treasurer'];
+
+      meta.companyApprovers = ca;
+      meta.approvedBy       = TREASURER.email;
+
+      // ── 6. Append the "Fully Approved" history row ───────────────────────
+      sheet.appendRow([
+        vNo,                                   // A: voucher_number
+        voucherType,                           // B: voucher_type
+        company,                               // C: company_name
+        companyKey,                            // D: company_key_or_taxid
+        employee,                              // E: employee_name
+        requestorEmail,                        // F: submited_email
+        submittedBy || employee,               // G: submitted_by
+        new Date(),                            // H: submitted_at
+        amount,                                // I: amount
+        'Approved',                            // J: status
+        dueDate,                               // K: due_date
+        'Fully Approved',                      // L: action
+        attachments,                           // M: attachments
+        description,                           // N: description
+        'Vá lỗi hàng loạt — đủ 3 bước duyệt', // O: note
+        TREASURER.email,                       // P: approver_email
+        nowIso,                                // Q: approved_at
+        JSON.stringify(meta)                   // R: MetaJSON
+      ]);
+
+      Logger.log('✅ Patched: ' + vNo);
+      patched++;
+
+    } catch (err) {
+      Logger.log('❌ Error patching ' + vNo + ': ' + err.toString());
+      errors++;
+    }
+  });
+
+  Logger.log('=== PATCH COMPLETE: patched=' + patched + ', skipped=' + skipped + ', errors=' + errors + ' ===');
+  SpreadsheetApp.flush();
 }
