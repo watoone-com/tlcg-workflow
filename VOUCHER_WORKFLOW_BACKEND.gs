@@ -518,7 +518,7 @@ function getVoucherFromHistory(voucherNumber) {
               const rowMetaJson = (data[i][17] || '').toString(); // R(17) = MetaJSON
 
               // Check if this row is an approval
-              if (rowAction.includes('Duyệt') || rowAction.includes('Approved')) {
+              if (rowAction.includes('Duyệt') || rowAction.includes('duyệt') || rowAction.includes('Approved')) {
                 // Extract approvedBy email from MetaJSON column
                 let rowApproverEmail = null;
                 let rowMeta = null;
@@ -1313,7 +1313,7 @@ function handleApproveVoucherLegacy(requestBody, existingVoucher) {
     companyKey: v.companyKey || existingVoucher.companyKey || '',
     employee: v.employee || existingVoucher.employee || '',
     amount: v.amount || existingVoucher.amount || 0,
-    status: 'Approved',
+    status: 'Đã duyệt',
     action: 'Đã duyệt',
     requestorEmail: v.requestorEmail || existingVoucher.requestorEmail || '',
     approverEmail: v.approverEmail || '',
@@ -2289,7 +2289,7 @@ function _approveVoucherCore_(voucherNumber, approverEmail, approverRole, signat
       requestorEmail: existing.requestorEmail || '',
       submittedBy:    existing.submittedBy  || '',
       amount:         existing.amount       || 0,
-      status:         'Approved',
+      status:         'Đã duyệt',
       dueDate:        existing.dueDate      || '',
       action:         'Duyệt bởi ' + (IMPORT_APPROVERS[approverRole] ? IMPORT_APPROVERS[approverRole].name : approverRole),
       attachments:    existing.attachments  || '',
@@ -2315,7 +2315,7 @@ function _approveVoucherCore_(voucherNumber, approverEmail, approverRole, signat
       requestorEmail: existing.requestorEmail || '',
       submittedBy:    existing.submittedBy  || '',
       amount:         existing.amount       || 0,
-      status:         'Pending',
+      status:         'Đang duyệt (' + approvalCount + '/3)',
       dueDate:        existing.dueDate      || '',
       action:         'Duyệt bởi ' + (IMPORT_APPROVERS[approverRole] ? IMPORT_APPROVERS[approverRole].name : approverRole),
       attachments:    existing.attachments  || '',
