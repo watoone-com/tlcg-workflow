@@ -7,7 +7,9 @@
     "build": "echo 'No build step required for static files'"
   },
   "dependencies": {
-    "busboy": "^1.6.0"
+    "@tailwindcss/cli": "^4.2.2",
+    "busboy": "^1.6.0",
+    "tailwindcss": "^4.2.2"
   },
   "engines": {
     "node": ">=18.0.0"
