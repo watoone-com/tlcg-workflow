@@ -5060,17 +5060,19 @@
                     const hay = `${v.voucherNumber || ''} ${v.employee || ''} ${v.company || ''}`.toLowerCase();
                     if (!hay.includes(search)) return false;
                 }
-                // Status filter
+                // Status filter — use approvalProgress (works for both sequential & legacy)
                 if (status === 'InProgress') {
                     const prog = parseInt((v.meta?.companyApprovers?.approvalProgress || '0/3').split('/')[0]);
-                    if (v.status !== 'Pending' || prog === 0) return false;
+                    if (prog === 0 || prog >= 3) return false;
                 } else if (status === 'Pending') {
                     const prog = parseInt((v.meta?.companyApprovers?.approvalProgress || '0/3').split('/')[0]);
-                    if (v.status !== 'Pending' || prog !== 0) return false;
+                    const isRejected = v.status === 'Rejected' || v.status === 'Đã từ chối';
+                    if (prog !== 0 || isRejected) return false;
                 } else if (status === 'Approved') {
-                    if (v.status !== 'Approved') return false;
+                    const prog = parseInt((v.meta?.companyApprovers?.approvalProgress || '0/3').split('/')[0]);
+                    if (prog < 3 && v.status !== 'Approved' && v.status !== 'Received') return false;
                 } else if (status === 'Rejected') {
-                    if (v.status !== 'Rejected') return false;
+                    if (v.status !== 'Rejected' && v.status !== 'Đã từ chối') return false;
                 }
                 // Voucher type
                 if (type) {
