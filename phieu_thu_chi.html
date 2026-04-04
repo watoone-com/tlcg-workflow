@@ -5208,10 +5208,25 @@
          */
         async function loadVoucherApprovalStatus(voucher, voucherElementId) {
             try {
-                // Read approval status directly from voucher meta — no separate API call needed
-                const statusData = voucher.meta?.companyApprovers || null;
+                // PRIMARY: Read approval status from meta.companyApprovers (new GAS response format)
+                let statusData = voucher.meta?.companyApprovers || null;
 
-                console.log('🔍 Approval Status from meta for', voucher.voucherNumber, ':', statusData);
+                // FALLBACK: If meta not present (older GAS deployment), derive progress from voucher.status
+                if (!statusData) {
+                    const s = (voucher.status || '').toString();
+                    let progress = 0;
+                    if (s === 'Approved' || s === 'Đã duyệt' || s === 'Received') {
+                        progress = 3;
+                    } else if (s === 'Rejected' || s === 'Đã từ chối') {
+                        progress = -1; // special marker for rejected
+                    } else {
+                        const m = s.match(/\((\d)\/3\)/);
+                        if (m) progress = parseInt(m[1]);
+                    }
+                    statusData = { approvalProgress: (progress >= 0 ? progress : 0) + '/3', _rejected: progress === -1 };
+                }
+
+                console.log('🔍 Approval Status for', voucher.voucherNumber, ':', statusData);
 
                 const voucherElement = document.getElementById(voucherElementId);
                 if (!voucherElement) return;
@@ -5225,12 +5240,19 @@
                     const formattedStatus = formatApprovalStatusText(statusData);
                     console.log('✅ Formatted status:', formattedStatus.status, 'detail:', formattedStatus.detail);
 
-                    const badgeText = formattedStatus.status;
+                    // Detect rejection from fallback path (_rejected flag) or from voucher.status
+                    const isRejected = statusData._rejected
+                        || voucher.status === 'Rejected'
+                        || voucher.status === 'Đã từ chối';
 
+                    let badgeText = isRejected ? 'Đã Từ Chối' : formattedStatus.status;
                     let statusClass = 'pending';
                     let statusIcon = 'fa-clock';
 
-                    if (badgeText.includes('Đã Duyệt')) {
+                    if (isRejected) {
+                        statusClass = 'rejected';
+                        statusIcon = 'fa-times-circle';
+                    } else if (badgeText.includes('Đã Duyệt')) {
                         statusClass = 'approved';
                         statusIcon = 'fa-check-circle';
                     } else if (badgeText.includes('Đang Duyệt')) {
@@ -5239,9 +5261,6 @@
                     } else if (badgeText.includes('Chờ Duyệt')) {
                         statusClass = 'pending';
                         statusIcon = 'fa-clock';
-                    } else if (badgeText.includes('Từ chối')) {
-                        statusClass = 'rejected';
-                        statusIcon = 'fa-times-circle';
                     }
 
                     if (statusBadge) {
