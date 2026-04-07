@@ -1818,32 +1818,37 @@ function sendFinalApprovalEmail(voucher, meta, voucherNumber) {
     const amountFormatted = Number(voucher.amount || 0).toLocaleString('vi-VN') + ' ₫';
     const descriptionText = voucher.description || voucher.reason || '';
 
-    const emailBody = `
+    // Email 1: Notification only (no button)
+    const notificationBody = `
       <p>Kính gửi Anh/Chị,</p>
       <p>Phiếu <strong>${voucherNumber}</strong> của Anh/Chị đã được tất cả 3 người phê duyệt theo thứ tự:</p>
-
       <ul>
         ${approversListHtml}
       </ul>
-
       <p><strong>Phiếu đã được duyệt hoàn toàn và sẵn sàng để xử lý.</strong></p>
       <ul>
         <li><strong>Số tiền:</strong> ${amountFormatted}</li>
         ${descriptionText ? `<li><strong>Nội dung:</strong> ${descriptionText}</li>` : ''}
       </ul>
+      <p>Trân trọng,<br>Hệ thống Workflow TLC Group</p>
+    `;
+    GmailApp.sendEmail(requesterEmail, emailSubject, '', { htmlBody: notificationBody });
+    Logger.log('✅ Sent final approval notification email to requester: ' + requesterEmail);
 
-      <p style="margin-top:20px;">Vui lòng xác nhận đã ${isThu ? 'thu' : 'nhận'} tiền bằng cách nhấn nút bên dưới:</p>
-      <p>
+    // Email 2: Acknowledge action email (with button)
+    const actionSubject = `[XÁC NHẬN ${isThu ? 'THU' : 'NHẬN'} TIỀN] Phiếu ${voucherNumber}`;
+    const actionBody = `
+      <p>Kính gửi Anh/Chị,</p>
+      <p>Vui lòng xác nhận đã ${isThu ? 'thu' : 'nhận'} tiền cho phiếu <strong>${voucherNumber}</strong> (${amountFormatted}) bằng cách nhấn nút bên dưới:</p>
+      <p style="margin-top:20px;">
         <a href="${receiptUrl}" style="background:#10b981;color:white;padding:12px 28px;text-decoration:none;border-radius:6px;display:inline-block;font-weight:500;">
           ${receiptLabel}
         </a>
       </p>
-
       <p>Trân trọng,<br>Hệ thống Workflow TLC Group</p>
     `;
-    
-    GmailApp.sendEmail(requesterEmail, emailSubject, '', { htmlBody: emailBody });
-    Logger.log('✅ Sent final approval email to requester: ' + requesterEmail);
+    GmailApp.sendEmail(requesterEmail, actionSubject, '', { htmlBody: actionBody });
+    Logger.log('✅ Sent acknowledge action email to requester: ' + requesterEmail);
   } catch (error) {
     Logger.log('❌ Error sending final approval email: ' + error.toString());
   }

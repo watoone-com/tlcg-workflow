@@ -5,211 +5,188 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Trả lại / Từ chối Phiếu</title>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg-1: #0b1220;
+            --bg-2: #111827;
+            --surface: rgba(15, 23, 42, 0.9);
+            --surface-soft: rgba(30, 41, 59, 0.92);
+            --line: rgba(148, 163, 184, 0.25);
+            --text-main: #e2e8f0;
+            --text-soft: #94a3b8;
+            --danger: #f43f5e;
+            --danger-soft: rgba(244, 63, 94, 0.2);
         }
-
         body {
-            font-family: 'Roboto', Arial, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: "Segoe UI", "SF Pro Text", "Helvetica Neue", sans-serif;
+            background:
+                radial-gradient(circle at 15% 15%, rgba(244, 63, 94, 0.2), transparent 35%),
+                radial-gradient(circle at 86% 80%, rgba(14, 165, 233, 0.18), transparent 30%),
+                linear-gradient(150deg, var(--bg-1), var(--bg-2));
             min-height: 100vh;
             display: flex;
             align-items: center;
             justify-content: center;
-            padding: 20px;
+            padding: 24px;
+            color: var(--text-main);
         }
-
         .container {
-            background: white;
-            border-radius: 12px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.2);
-            max-width: 600px;
             width: 100%;
-            padding: 40px;
+            max-width: 760px;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            overflow: hidden;
+            box-shadow: 0 26px 65px rgba(2, 6, 23, 0.58);
         }
-
-        h1 {
-            color: #EA4335;
-            margin-bottom: 10px;
-            font-size: 28px;
+        .panel-head {
+            padding: 1.2rem 1.4rem;
+            border-bottom: 1px solid var(--line);
+            background: rgba(15, 23, 42, 0.78);
         }
-
-        .subtitle {
-            color: #666;
-            margin-bottom: 30px;
-            font-size: 14px;
-        }
-
+        h1 { color: #fecdd3; font-size: 1.4rem; margin-bottom: 0.35rem; }
+        .subtitle { color: var(--text-soft); font-size: 0.84rem; }
+        .panel-body { padding: 1.2rem 1.4rem 1.35rem; display: grid; gap: 0.95rem; }
         .voucher-info {
-            background: #f8f9fa;
-            padding: 20px;
-            border-radius: 8px;
-            margin-bottom: 25px;
-            border-left: 4px solid #EA4335;
+            background: var(--surface-soft);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 0.95rem;
         }
-
-        .voucher-info p {
-            margin: 8px 0;
-            color: #333;
-        }
-
-        .voucher-info strong {
-            color: #555;
-            display: inline-block;
-            min-width: 120px;
-        }
-
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 8px;
-            color: #333;
-            font-weight: 500;
-        }
-
+        .voucher-info p { margin: 0.38rem 0; color: #dbeafe; font-size: 0.88rem; }
+        .voucher-info strong { color: #fda4af; display: inline-block; min-width: 124px; }
+        .form-group { margin-bottom: 0.4rem; }
+        label { display: block; margin-bottom: 8px; color: #f1f5f9; font-weight: 600; font-size: 0.9rem; }
         textarea {
             width: 100%;
-            padding: 12px;
-            border: 2px solid #ddd;
-            border-radius: 6px;
-            font-size: 14px;
+            padding: 11px 12px;
+            border: 1px solid rgba(148, 163, 184, 0.35);
+            border-radius: 10px;
+            background: rgba(15, 23, 42, 0.55);
+            color: #e2e8f0;
+            font-size: 0.9rem;
             font-family: inherit;
             resize: vertical;
             min-height: 120px;
         }
+        textarea::placeholder { color: #94a3b8; }
+        textarea:focus-visible { outline: 2px solid rgba(244, 63, 94, 0.52); outline-offset: 2px; border-color: var(--danger); }
 
-        textarea:focus-visible {
-            outline: 2px solid #EA4335;
-            outline-offset: 2px;
-            border-color: #EA4335;
+        .reason-chips {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.45rem;
+            margin: 0.25rem 0 0.6rem;
+        }
+        .reason-chip {
+            border: 1px solid rgba(244, 63, 94, 0.35);
+            background: rgba(244, 63, 94, 0.1);
+            color: #fecdd3;
+            border-radius: 999px;
+            font-size: 0.75rem;
+            padding: 0.32rem 0.62rem;
+            cursor: pointer;
+        }
+        .reason-note {
+            font-size: 0.76rem;
+            color: #94a3b8;
+            margin-top: 0.4rem;
         }
 
         .button-group {
-            display: flex;
-            gap: 15px;
-            margin-top: 30px;
+            display: grid;
+            grid-template-columns: 1fr 1.3fr;
+            gap: 0.7rem;
+            margin-top: 0.3rem;
         }
-
         button {
-            flex: 1;
-            padding: 14px 24px;
             border: none;
-            border-radius: 6px;
-            font-size: 16px;
-            font-weight: 500;
+            border-radius: 10px;
+            padding: 0.78rem 1rem;
+            font-size: 0.93rem;
+            font-weight: 700;
             cursor: pointer;
-            transition: all 0.3s;
+            transition: transform 0.14s ease, box-shadow 0.14s ease, background 0.14s ease;
         }
-
         .btn-reject {
-            background: #EA4335;
-            color: white;
+            background: linear-gradient(135deg, #f43f5e, #e11d48);
+            color: #fff1f2;
+            box-shadow: 0 8px 20px rgba(244, 63, 94, 0.3);
         }
-
-        .btn-reject:hover {
-            background: #d33b2c;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(234, 67, 53, 0.3);
-        }
-
-        .btn-cancel {
-            background: #f0f0f0;
-            color: #333;
-        }
-
-        .btn-cancel:hover {
-            background: #e0e0e0;
-        }
+        .btn-reject:hover { transform: translateY(-1px); }
+        .btn-cancel { background: rgba(100, 116, 139, 0.2); color: #dbeafe; border: 1px solid var(--line); }
 
         .message {
-            padding: 15px;
-            border-radius: 6px;
-            margin-bottom: 20px;
+            padding: 0.75rem 0.85rem;
+            border-radius: 9px;
+            margin-bottom: 0.15rem;
             display: none;
+            font-size: 0.84rem;
         }
+        .message.success { background: rgba(34, 197, 94, 0.18); color: #dcfce7; border: 1px solid rgba(34, 197, 94, 0.3); }
+        .message.error { background: var(--danger-soft); color: #fecdd3; border: 1px solid rgba(244, 63, 94, 0.38); }
+        .message.show { display: block; }
 
-        .message.success {
-            background: #d4edda;
-            color: #155724;
-            border: 1px solid #c3e6cb;
-        }
-
-        .message.error {
-            background: #f8d7da;
-            color: #721c24;
-            border: 1px solid #f5c6cb;
-        }
-
-        .message.show {
-            display: block;
-        }
-
-        .loading {
-            display: none;
-            text-align: center;
-            padding: 20px;
-        }
-
-        .loading.show {
-            display: block;
-        }
-
+        .loading { display: none; text-align: center; padding: 0.5rem 0 0.3rem; color: #fecdd3; font-size: 0.84rem; }
+        .loading.show { display: block; }
         .spinner {
-            border: 3px solid #f3f3f3;
-            border-top: 3px solid #EA4335;
+            border: 3px solid rgba(148, 163, 184, 0.35);
+            border-top: 3px solid var(--danger);
             border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
+            width: 34px;
+            height: 34px;
+            animation: spin 0.95s linear infinite;
             margin: 0 auto 10px;
         }
-
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-
-        .required {
-            color: #EA4335;
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        .required { color: var(--danger); }
+        @media (max-width: 700px) {
+            .button-group { grid-template-columns: 1fr; }
+            .voucher-info strong { min-width: 110px; }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <h1>❌ Trả lại / Từ chối Phiếu</h1>
-        <p class="subtitle">Vui lòng điền lý do trả lại phiếu này</p>
-
-        <div id="message" class="message"></div>
-        <div id="loading" class="loading">
-            <div class="spinner"></div>
-            <p>Đang xử lý...</p>
+        <div class="panel-head">
+            <h1>Trả lại / Từ chối phiếu</h1>
+            <p class="subtitle">Chọn lý do rõ ràng để người nộp chỉnh sửa nhanh và gửi lại đúng.</p>
         </div>
-
-        <div id="voucher-info" class="voucher-info">
-            <!-- Voucher info will be populated from URL params -->
-        </div>
-
-        <form id="reject-form">
-            <div class="form-group">
-                <label for="reject-reason">Lý do trả lại <span class="required">*</span></label>
-                <textarea 
-                    id="reject-reason" 
-                    name="reject-reason" 
-                    placeholder="Vui lòng nhập lý do trả lại phiếu này. Ví dụ: Thiếu thông tin, Số tiền không đúng, Cần bổ sung tài liệu..."
-                    required
-                ></textarea>
+        <div class="panel-body">
+            <div id="message" class="message"></div>
+            <div id="loading" class="loading">
+                <div class="spinner"></div>
+                <p>Đang xử lý...</p>
             </div>
 
-            <div class="button-group">
-                <button type="button" class="btn-cancel" onclick="window.close()">Hủy</button>
-                <button type="submit" class="btn-reject">Xác nhận trả lại</button>
+            <div id="voucher-info" class="voucher-info">
+                <!-- Voucher info will be populated from URL params -->
             </div>
-        </form>
+
+            <form id="reject-form">
+                <div class="form-group">
+                    <label for="reject-reason">Lý do trả lại <span class="required">*</span></label>
+                    <div class="reason-chips" id="quick-reason-chips">
+                        <button type="button" class="reason-chip" data-reason="Thiếu chứng từ đính kèm cần thiết.">Thiếu chứng từ</button>
+                        <button type="button" class="reason-chip" data-reason="Thông tin số tiền/chỉ tiêu chi chưa chính xác.">Sai số tiền</button>
+                        <button type="button" class="reason-chip" data-reason="Nội dung chi chưa rõ mục đích, cần bổ sung mô tả cụ thể.">Mô tả chưa rõ</button>
+                        <button type="button" class="reason-chip" data-reason="Cần cập nhật lại thông tin công ty/người nhận để khớp hồ sơ.">Sai thông tin hồ sơ</button>
+                    </div>
+                    <textarea
+                        id="reject-reason"
+                        name="reject-reason"
+                        placeholder="Mô tả ngắn gọn nhưng đủ hành động: thiếu gì, cần chỉnh gì, và cách gửi lại."
+                        required
+                    ></textarea>
+                    <div class="reason-note">Mẹo: lý do từ 12 ký tự trở lên sẽ giúp người nộp xử lý nhanh hơn.</div>
+                </div>
+
+                <div class="button-group">
+                    <button type="button" class="btn-cancel" onclick="window.close()">Hủy</button>
+                    <button type="submit" class="btn-reject">Xác nhận trả lại</button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <script>
@@ -259,13 +236,31 @@
         // Use proxy URL to avoid CORS issues
         // For direct URL, use: 'https://script.google.com/macros/s/AKfycbyltkunEjTHhFSRH6evpwDAxZk74QouLTG-FSlCOQtLJGts8guLhFYuBq9n1h0fJvyd/exec'
         const GOOGLE_APPS_SCRIPT_WEB_APP_URL = '/api/voucher';
+        const rejectReasonInput = document.getElementById('reject-reason');
+        document.querySelectorAll('.reason-chip').forEach(chip => {
+            chip.addEventListener('click', function() {
+                const text = this.dataset.reason || '';
+                if (!rejectReasonInput.value.trim()) {
+                    rejectReasonInput.value = text;
+                } else if (!rejectReasonInput.value.includes(text)) {
+                    rejectReasonInput.value = `${rejectReasonInput.value.trim()} ${text}`.trim();
+                }
+                rejectReasonInput.focus();
+            });
+        });
+
         document.getElementById('reject-form').addEventListener('submit', async (e) => {
             e.preventDefault();
 
-            const reason = document.getElementById('reject-reason').value.trim();
+            const reason = rejectReasonInput.value.trim();
             
             if (!reason) {
                 showMessage('Vui lòng nhập lý do trả lại', 'error');
+                return;
+            }
+            if (reason.length < 12) {
+                showMessage('Lý do quá ngắn. Vui lòng mô tả rõ để người nộp xử lý nhanh.', 'error');
+                rejectReasonInput.focus();
                 return;
             }
 
