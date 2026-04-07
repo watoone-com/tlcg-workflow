@@ -5181,8 +5181,8 @@
             }
         }
 
-        async function fetchVoucherSummaryFromBackend() {
-            return dedupedRequest('getVoucherSummary', async () => {
+        async function fetchVoucherSummaryFromBackend(forceRefresh = false) {
+            const fetcher = async () => {
                 const formData = new FormData();
                 formData.append('action', 'getVoucherSummary');
                 const response = await fetch(GOOGLE_APPS_SCRIPT_WEB_APP_URL, {
@@ -5204,7 +5204,12 @@
                     throw new Error(result.message || 'Không thể tải dữ liệu phiếu');
                 }
                 return result.data.recent || [];
-            });
+            };
+            if (forceRefresh) {
+                requestDedupMap.delete('getVoucherSummary');
+                return fetcher();
+            }
+            return dedupedRequest('getVoucherSummary', fetcher);
         }
 
         function normalizeVoucherState(voucher) {
@@ -5357,7 +5362,7 @@
                     vouchers = loadVoucherSummaryFromCache() || [];
                 }
                 if (!vouchers.length || forceRefresh) {
-                    vouchers = await fetchVoucherSummaryFromBackend();
+                    vouchers = await fetchVoucherSummaryFromBackend(forceRefresh);
                     saveVoucherSummaryToCache(vouchers);
                 }
 
