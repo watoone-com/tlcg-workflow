@@ -1606,12 +1606,14 @@ function handleAcknowledgeReceipt(requestBody) {
     const isThu = (existingVoucher.voucherType || '').toUpperCase().includes('THU');
 
     // Prevent double acknowledgment
-    if (meta.requesterSignature) {
+    if (meta.acknowledgedSignature) {
       return createResponse(false, 'Phiếu này đã được xác nhận nhận tiền rồi.');
     }
 
-    // Store acknowledgment in meta
-    meta.requesterSignature = requesterSignature;
+    // Store acknowledgment signature separately from the original submission signature
+    // meta.requesterSignature = submission-time signature (preserved, shown in "Người lập")
+    // meta.acknowledgedSignature = receipt-acknowledgment signature (shown in "Người nộp/nhận tiền")
+    meta.acknowledgedSignature = requesterSignature;
     meta.requesterName = requesterName || existingVoucher.employee || '';
     meta.acknowledgedAt = new Date().toISOString();
     meta.acknowledgedBy = requesterEmail;

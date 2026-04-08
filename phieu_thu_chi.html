@@ -6191,7 +6191,7 @@
                                 </button>
                             `;
                         }
-                    } else if ((voucher.status === 'Approved' || voucher.status === 'Đã duyệt' || voucher.status === 'Fully Approved') && isRequester && !currentModalMeta.requesterSignature) {
+                    } else if ((voucher.status === 'Approved' || voucher.status === 'Đã duyệt' || voucher.status === 'Fully Approved') && isRequester && !currentModalMeta.acknowledgedSignature) {
                         // Fully approved — submitter needs to acknowledge receipt
                         modalFooter.innerHTML = `
                             <button class="modal-btn modal-btn-secondary" onclick="closeVoucherModal()">Đóng</button>
@@ -6507,6 +6507,17 @@
                     <div style="background: #f8fafc; padding: 1rem; border-radius: 8px; text-align: center;">
                         <img src="${meta.requesterSignature}" alt="Chữ ký người đề nghị" style="max-height: 80px; max-width: 200px;">
                         <div style="font-size: 0.75rem; color: #64748b; margin-top: 0.5rem;">${voucher.employee || ''}</div>
+                    </div>
+                </div>
+                ` : ''}
+
+                ${meta.acknowledgedSignature ? `
+                <div class="voucher-detail-section">
+                    <h4>✅ Chữ ký xác nhận ${(voucher.voucherType || '').toUpperCase().includes('THU') ? 'thu tiền' : 'nhận tiền'}</h4>
+                    <div style="background: #f0fdf4; padding: 1rem; border-radius: 8px; text-align: center; border: 1px solid #bbf7d0;">
+                        <img src="${meta.acknowledgedSignature}" alt="Chữ ký xác nhận" style="max-height: 80px; max-width: 200px;">
+                        <div style="font-size: 0.75rem; color: #065f46; margin-top: 0.5rem;">${meta.requesterName || voucher.employee || ''}</div>
+                        ${meta.acknowledgedAt ? `<div style="font-size: 0.7rem; color: #64748b; margin-top: 0.25rem;">Xác nhận lúc: ${new Date(meta.acknowledgedAt).toLocaleString('vi-VN')}</div>` : ''}
                     </div>
                 </div>
                 ` : ''}
@@ -7472,7 +7483,7 @@
                                     <div class="signature-title">Người lập <span class="signature-required">*</span></div>
                                     <div class="signature-image-container">
                                         ${meta.requesterSignature
-                                            ? `<img src="${meta.requesterSignature}" alt="Chữ ký" class="signature-img">`
+                                            ? `<img src="${meta.requesterSignature}" alt="Chữ ký người lập" class="signature-img">`
                                             : '<span style="color:#94a3b8;font-size:9pt;">Chưa có chữ ký</span>'
                                         }
                                     </div>
@@ -7515,12 +7526,12 @@
                                 <div class="signature-box">
                                     <div class="signature-title">Người nộp/nhận tiền <span class="signature-required">*</span></div>
                                     <div class="signature-image-container">
-                                        ${meta.requesterSignature
-                                            ? `<img src="${meta.requesterSignature}" alt="Chữ ký" class="signature-img">`
-                                            : '<span style="color:#94a3b8;font-size:9pt;">Chưa có chữ ký</span>'
+                                        ${(meta.acknowledgedSignature || meta.requesterSignature)
+                                            ? `<img src="${meta.acknowledgedSignature || meta.requesterSignature}" alt="Chữ ký xác nhận" class="signature-img">`
+                                            : '<span style="color:#94a3b8;font-size:9pt;">Chưa xác nhận</span>'
                                         }
                                     </div>
-                                    <div class="signature-name">${meta.payeeName || voucher.employee || ''}</div>
+                                    <div class="signature-name">${meta.payeeName || meta.requesterName || voucher.employee || ''}</div>
                                 </div>
                             </div>
                         </div>
