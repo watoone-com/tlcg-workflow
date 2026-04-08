@@ -1813,7 +1813,8 @@ function sendFinalApprovalEmail(voucher, meta, voucherNumber) {
     const isThu = (voucher.voucherType || '').toUpperCase().includes('THU');
     const receiptUrl = 'https://workflow.egg-ventures.com/phieu_thu_chi.html'
       + '?acknowledgeReceipt=' + encodeURIComponent(voucherNumber)
-      + '&voucherType=' + encodeURIComponent(voucher.voucherType || '');
+      + '&voucherType=' + encodeURIComponent(voucher.voucherType || '')
+      + '&requestorEmail=' + encodeURIComponent(requesterEmail);
     const receiptLabel = isThu ? '✅ Xác nhận đã thu tiền' : '✅ Xác nhận đã nhận tiền';
     const amountFormatted = Number(voucher.amount || 0).toLocaleString('vi-VN') + ' ₫';
     const descriptionText = voucher.description || voucher.reason || '';
@@ -3293,14 +3294,28 @@ function handleGetVoucherSummary(requestBody) {
     // Helper: derive approvalProgress from status string (avoids reading MetaJSON)
     function progressFromStatus(status) {
       const s = (status || '').toString();
-      if (s === 'Approved' || s === 'Đã duyệt' || s === 'Received') return 3;
+      // Fully approved states
+      if (s === 'Approved' || s === 'Đã duyệt' || s === 'Received' || s === 'Fully Approved') return 3;
+      // Explicit "(N/3)" pattern — works for both old English and new Vietnamese formats
       const m = s.match(/\((\d)\/3\)/);
-      return m ? parseInt(m[1]) : 0;
+      if (m) return parseInt(m[1]);
+      // Legacy partial-approval English status strings (before Vietnamese translation)
+      if (s === 'Partially Approved' || s === 'In Progress' || s.startsWith('Approved ')) return 1; // minimum partial
+      return 0;
+    }
+
+    // Helper: detect approval action rows from the Action column (L = index 11)
+    // Counts rows where an approver actually signed off — used as fallback when
+    // the status column doesn't carry a progress indicator (old data).
+    function isApprovalAction(action) {
+      const a = (action || '').toString();
+      return a.includes('Duyệt bởi') || a === 'Approved' || a.startsWith('Approved by');
     }
 
     // Get latest entry for each voucher number, and track highest approvalProgress
     const voucherMap = new Map();
     const progressMap = new Map(); // tracks best approvalProgress per voucher
+    const approvalActionCountMap = new Map(); // tracks # of approval-action rows per voucher
 
     rows.forEach(row => {
       const voucherNumber = row[0]; // Column A
@@ -3317,6 +3332,11 @@ function handleGetVoucherSummary(requestBody) {
       const existingProgress = progressMap.get(vNum) || -1;
       if (rowProgress > existingProgress) {
         progressMap.set(vNum, rowProgress);
+      }
+
+      // Count approval action rows (fallback for old data where status didn't carry progress)
+      if (isApprovalAction(row[11])) {
+        approvalActionCountMap.set(vNum, Math.min((approvalActionCountMap.get(vNum) || 0) + 1, 3));
       }
 
       const entry = {
@@ -3361,17 +3381,44 @@ function handleGetVoucherSummary(requestBody) {
       return timeB - timeA;
     });
     
-    // Count by status — check both English (legacy) and Vietnamese (sequential) strings
-    const pending = vouchers.filter(v => v.status === 'Pending' || v.status === 'Đang treo').length;
-    const approved = vouchers.filter(v => v.status === 'Approved' || v.status === 'Đã duyệt' || v.status === 'Received').length;
-    const rejected = vouchers.filter(v => v.status === 'Rejected' || v.status === 'Đã từ chối').length;
-    
+    // Count by effective status — combine status column AND action-count fallback
+    // so that old vouchers (without "(N/3)" in status) are counted correctly.
+    function getEffectiveProgress(vNum, status) {
+      const sp = progressMap.get(vNum) || 0;
+      const ap = approvalActionCountMap.get(vNum) || 0;
+      const best = Math.max(sp, ap);
+      // If status says fully approved/received/rejected, honour that regardless of best
+      const s = (status || '').toString();
+      if (s === 'Approved' || s === 'Đã duyệt' || s === 'Fully Approved') return 3;
+      if (s === 'Received') return 3;
+      return best;
+    }
+    const pending = vouchers.filter(v => {
+      const ep = getEffectiveProgress(v.voucherNumber, v.status);
+      const s = (v.status || '').toString();
+      return ep === 0 && s !== 'Rejected' && s !== 'Đã từ chối';
+    }).length;
+    const approved = vouchers.filter(v => {
+      const ep = getEffectiveProgress(v.voucherNumber, v.status);
+      const s = (v.status || '').toString();
+      return ep === 3 || s === 'Received';
+    }).length;
+    const rejected = vouchers.filter(v => {
+      const s = (v.status || '').toString();
+      return s === 'Rejected' || s === 'Đã từ chối';
+    }).length;
+
     Logger.log('Vouchers by status - Pending: ' + pending + ', Approved: ' + approved + ', Rejected: ' + rejected);
     
     // Get all vouchers (no limit)
     const seqLabels = ['accountant', 'legalRep', 'treasurer'];
     const recent = vouchers.map(v => {
-      const bestProgress = progressMap.get(v.voucherNumber) || 0;
+      // Use the highest progress we can determine:
+      // 1. From the status column "(N/3)" pattern (new format)
+      // 2. Fallback: count approval-action rows (old data without progress in status)
+      const statusProgress = progressMap.get(v.voucherNumber) || 0;
+      const actionProgress = approvalActionCountMap.get(v.voucherNumber) || 0;
+      const bestProgress = Math.max(statusProgress, actionProgress);
       // Build a lightweight companyApprovers with just approvalProgress & currentApprover
       const companyApprovers = {
         approvalProgress: bestProgress + '/3',

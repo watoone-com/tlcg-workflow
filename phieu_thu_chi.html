@@ -4168,18 +4168,33 @@
             const acknowledgeReceiptVoucher = urlParams.get('acknowledgeReceipt');
             if (acknowledgeReceiptVoucher) {
                 const ackVoucherType = urlParams.get('voucherType') || '';
+                const ackRequestorEmail = (urlParams.get('requestorEmail') || '').toLowerCase().trim();
                 // Wait for auth + page init to complete before opening modal
                 setTimeout(() => {
+                    // Clean URL without reloading (always, to avoid re-trigger on refresh)
+                    const cleanUrl = new URL(window.location.href);
+                    cleanUrl.searchParams.delete('acknowledgeReceipt');
+                    cleanUrl.searchParams.delete('voucherType');
+                    cleanUrl.searchParams.delete('requestorEmail');
+                    window.history.replaceState({}, '', cleanUrl.toString());
+
+                    // Guard: only the actual submitter may acknowledge
+                    if (ackRequestorEmail) {
+                        const loggedInEmail = getCurrentUserEmail().toLowerCase().trim();
+                        if (loggedInEmail && loggedInEmail !== ackRequestorEmail) {
+                            showToast(
+                                'Liên kết xác nhận này dành cho người nộp phiếu (' + ackRequestorEmail + '). Bạn không có quyền xác nhận.',
+                                'error'
+                            );
+                            return;
+                        }
+                    }
+
                     currentModalVoucher = {
                         voucherNumber: acknowledgeReceiptVoucher,
                         voucherType: ackVoucherType
                     };
                     openAcknowledgeModal();
-                    // Clean URL without reloading
-                    const cleanUrl = new URL(window.location.href);
-                    cleanUrl.searchParams.delete('acknowledgeReceipt');
-                    cleanUrl.searchParams.delete('voucherType');
-                    window.history.replaceState({}, '', cleanUrl.toString());
                 }, 1200);
             }
 
