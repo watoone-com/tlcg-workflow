@@ -5199,13 +5199,13 @@
 
         async function fetchVoucherSummaryFromBackend(forceRefresh = false) {
             const fetcher = async () => {
-                const formData = new FormData();
-                formData.append('action', 'getVoucherSummary');
-                const response = await fetch(GOOGLE_APPS_SCRIPT_WEB_APP_URL, {
-                    method: 'POST',
+                // Use GET to avoid POST→GET redirect conversion by Node.js fetch in the proxy layer.
+                // doGet already handles getVoucherSummary and returns the same response shape.
+                const url = `${GOOGLE_APPS_SCRIPT_WEB_APP_URL}?action=getVoucherSummary`;
+                const response = await fetch(url, {
+                    method: 'GET',
                     mode: 'cors',
-                    redirect: 'follow',
-                    body: formData
+                    redirect: 'follow'
                 });
                 if (!response.ok) {
                     const errorText = await response.text();
@@ -5213,7 +5213,7 @@
                 }
                 const responseText = await response.text();
                 if (responseText.trim().toLowerCase().startsWith('<!doctype') || responseText.trim().toLowerCase().startsWith('<html')) {
-                    throw new Error('Backend trả về HTML thay vì JSON.');
+                    throw new Error('Backend trả về HTML thay vì JSON. Kiểm tra cấu hình Google Apps Script.');
                 }
                 const result = JSON.parse(responseText);
                 if (!result.success || !result.data) {

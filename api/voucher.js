@@ -237,15 +237,40 @@ export default async function handler(req, res) {
         }
       });
       
+      const responseText = await response.text();
+      const getAction = req.query.action || 'unknown';
+
       if (!response.ok) {
         console.error(`[Proxy GET Error] ${response.status}: ${response.statusText}`);
-        throw new Error(`GAS returned ${response.status}: ${response.statusText}`);
+        console.error(`[Proxy GET Error] Body: ${responseText.substring(0, 500)}`);
+        return res.status(500).json({
+          success: false,
+          message: `Backend error (HTTP ${response.status}) for action "${getAction}". Check Google Apps Script deployment.`
+        });
       }
-      
-      const data = await response.json();
-      const getAction = req.query.action || 'unknown';
+
+      if (responseText.trim().toLowerCase().startsWith('<!doctype') || responseText.trim().toLowerCase().startsWith('<html')) {
+        console.error(`[Proxy GET Error] GAS returned HTML instead of JSON for action "${getAction}"`);
+        console.error(`[Proxy GET Error] HTML preview: ${responseText.substring(0, 500)}`);
+        return res.status(500).json({
+          success: false,
+          message: `Backend returned HTML instead of JSON for action "${getAction}". The Google Apps Script deployment may need re-authorization or re-deployment.`
+        });
+      }
+
+      let data;
+      try {
+        data = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error(`[Proxy GET Error] Failed to parse JSON for action "${getAction}":`, parseError.message);
+        console.error(`[Proxy GET Error] Response: ${responseText.substring(0, 300)}`);
+        return res.status(500).json({
+          success: false,
+          message: `Backend returned invalid JSON for action "${getAction}".`
+        });
+      }
+
       console.log(`[Proxy GET Success] action: ${getAction}`);
-      
       return res.status(200).json(data);
     }
     

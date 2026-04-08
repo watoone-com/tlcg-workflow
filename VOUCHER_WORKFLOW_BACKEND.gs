@@ -1645,9 +1645,10 @@ function handleAcknowledgeReceipt(requestBody) {
 
     // Send confirmation email to Kế toán trưởng, CC: Đại diện pháp luật + Thủ quỹ
     const companyApprovers = meta.companyApprovers || {};
-    const accountant = companyApprovers.accountant || {};
-    const legalRep = (companyApprovers.approvers || {}).legalRep || {};
-    const treasurer = (companyApprovers.approvers || {}).treasurer || {};
+    const approvers = companyApprovers.approvers || {};
+    const accountant = approvers.accountant || {};
+    const legalRep = approvers.legalRep || {};
+    const treasurer = approvers.treasurer || {};
     if (accountant.email) {
       const actionLabel = isThu ? 'thu tiền' : 'nhận tiền';
       const personLabel = isThu ? 'Người thu tiền' : 'Người nhận tiền';
