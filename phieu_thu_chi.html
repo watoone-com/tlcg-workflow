@@ -6191,7 +6191,7 @@
                                 </button>
                             `;
                         }
-                    } else if (voucher.status === 'Approved' && isRequester && !currentModalMeta.requesterSignature) {
+                    } else if ((voucher.status === 'Approved' || voucher.status === 'Đã duyệt' || voucher.status === 'Fully Approved') && isRequester && !currentModalMeta.requesterSignature) {
                         // Fully approved — submitter needs to acknowledge receipt
                         modalFooter.innerHTML = `
                             <button class="modal-btn modal-btn-secondary" onclick="closeVoucherModal()">Đóng</button>
@@ -7457,7 +7457,7 @@
                             <span class="info-colon">:</span>
                             <span class="info-value">
                                 <span class="status-badge status-${(voucher.status || 'pending').toLowerCase()}">
-                                    ${voucher.status === 'Approved' ? 'Đã duyệt' : voucher.status === 'Rejected' ? 'Từ chối' : 'Chờ duyệt'}
+                                    ${(voucher.status === 'Approved' || voucher.status === 'Đã duyệt' || voucher.status === 'Fully Approved') ? 'Đã duyệt' : (voucher.status === 'Rejected' || voucher.status === 'Đã từ chối') ? 'Từ chối' : (voucher.status === 'Received' || (voucher.status || '').includes('xác nhận')) ? 'Đã xác nhận' : 'Chờ duyệt'}
                                 </span>
                             </span>
                         </div>
