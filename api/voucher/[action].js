@@ -10,7 +10,7 @@ export default async function handler(req, res) {
   // If undefined, log warning and use fallback
   // PHIEU_THU_CHI_BACKEND - For voucher operations (getVoucherSummary, getVoucherHistory, approveVoucher, rejectVoucher, sendApprovalEmail)
   const GAS_URL = process.env.GOOGLE_APPS_SCRIPT_URL ||
-    'https://script.google.com/macros/s/AKfycbzFRZd09TYfyHRcQ0_BxjnvOjRiHQQNXO5PgI0B7zoxWpFfySFuU1EIKDKVj2nk2FOB/exec';
+    'https://script.google.com/macros/s/AKfycby8ed1o2d7Cf6dU0zZwnDnHYpuoQEo4wVQ99UmgMY0btzTolsC_90QBvb056UZyXMG7/exec';
   
   // Log warning if using fallback (environment variable not set)
   if (!process.env.GOOGLE_APPS_SCRIPT_URL) {
