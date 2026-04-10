@@ -1,0 +1,1164 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>TLCG Design System — Demo</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    /* ─── Design Tokens ─────────────────────────────── */
+    :root {
+      --color-primary:        #007AFF;
+      --color-primary-hover:  #0056CC;
+      --color-primary-light:  rgba(0, 122, 255, 0.10);
+
+      --color-success:        #34C759;
+      --color-success-hover:  #28A745;
+      --color-warning:        #FF9500;
+      --color-danger:         #FF3B30;
+      --color-danger-hover:   #D63025;
+
+      --color-bg:             #F2F2F7;
+      --color-surface:        #FFFFFF;
+      --color-surface-2:      rgba(255,255,255,0.80);
+      --color-border:         rgba(0, 0, 0, 0.10);
+      --color-border-strong:  rgba(0, 0, 0, 0.16);
+      --color-text:           #000000;
+      --color-text-secondary: rgba(60, 60, 67, 0.60);
+      --color-text-tertiary:  rgba(60, 60, 67, 0.36);
+
+      --color-gray-1: #8E8E93;
+      --color-gray-2: #AEAEB2;
+      --color-gray-3: #C7C7CC;
+      --color-gray-4: #D1D1D6;
+      --color-gray-5: #E5E5EA;
+      --color-gray-6: #F2F2F7;
+
+      /* old — for before/after comparisons */
+      --old-primary-blue: #3b82f6;
+      --old-accent-purple: #667eea;
+
+      --font-display: 'Plus Jakarta Sans', sans-serif;
+      --font-body:    'DM Sans', sans-serif;
+      --font-system:  -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+
+      --radius-sm:  8px;
+      --radius-md:  10px;
+      --radius-lg:  14px;
+      --radius-xl:  20px;
+
+      --shadow-sm:  0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+      --shadow-md:  0 2px 8px rgba(0,0,0,0.07), 0 1px 3px rgba(0,0,0,0.05);
+      --shadow-lg:  0 8px 24px rgba(0,0,0,0.09), 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    /* ─── Reset ─────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: var(--font-body);
+      font-size: 15px;
+      line-height: 1.6;
+      color: var(--color-text);
+      background: var(--color-bg);
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ─── Sticky Nav Demo ───────────────────────────── */
+    .demo-nav {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      height: 52px;
+      display: flex;
+      align-items: center;
+      padding: 0 24px;
+      background: rgba(255, 255, 255, 0.80);
+      backdrop-filter: saturate(180%) blur(20px);
+      -webkit-backdrop-filter: saturate(180%) blur(20px);
+      border-bottom: 0.5px solid var(--color-border);
+    }
+    .demo-nav-logo {
+      font-family: var(--font-display);
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--color-text);
+      letter-spacing: -0.2px;
+    }
+    .demo-nav-logo span { color: var(--color-primary); }
+    .demo-nav-links {
+      display: flex;
+      gap: 2px;
+      margin-left: auto;
+      list-style: none;
+    }
+    .demo-nav-links a {
+      display: block;
+      padding: 6px 12px;
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--color-text-secondary);
+      text-decoration: none;
+      transition: all 0.15s ease;
+    }
+    .demo-nav-links a:hover { background: var(--color-primary-light); color: var(--color-primary); }
+    .demo-nav-links a.active { background: var(--color-primary-light); color: var(--color-primary); font-weight: 600; }
+
+    /* ─── Layout ─────────────────────────────────────── */
+    .page { max-width: 960px; margin: 0 auto; padding: 48px 24px 96px; }
+
+    .section {
+      margin-bottom: 64px;
+    }
+    .section-label {
+      font-family: var(--font-body);
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--color-text-tertiary);
+      margin-bottom: 16px;
+    }
+    .section-title {
+      font-family: var(--font-display);
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--color-text);
+      margin-bottom: 6px;
+      letter-spacing: -0.3px;
+    }
+    .section-desc {
+      font-size: 14px;
+      color: var(--color-text-secondary);
+      margin-bottom: 28px;
+      line-height: 1.5;
+    }
+
+    /* ─── Hero ───────────────────────────────────────── */
+    .hero {
+      padding: 56px 0 16px;
+      margin-bottom: 16px;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--color-primary-light);
+      color: var(--color-primary);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      padding: 5px 12px;
+      border-radius: 100px;
+      margin-bottom: 20px;
+    }
+    .hero-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--color-primary); }
+    .hero h1 {
+      font-family: var(--font-display);
+      font-size: 38px;
+      font-weight: 800;
+      letter-spacing: -0.8px;
+      line-height: 1.2;
+      color: var(--color-text);
+      margin-bottom: 12px;
+    }
+    .hero h1 em { font-style: normal; color: var(--color-primary); }
+    .hero p {
+      font-size: 16px;
+      color: var(--color-text-secondary);
+      max-width: 540px;
+      line-height: 1.7;
+    }
+
+    /* ─── Card ───────────────────────────────────────── */
+    .card {
+      background: var(--color-surface);
+      border-radius: var(--radius-lg);
+      border: 0.5px solid var(--color-border);
+      box-shadow: var(--shadow-md);
+      padding: 24px;
+      overflow: hidden;
+    }
+
+    /* ─── Color Swatches ─────────────────────────────── */
+    .swatch-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+      gap: 12px;
+    }
+    .swatch {
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      border: 0.5px solid var(--color-border);
+    }
+    .swatch-color {
+      height: 56px;
+    }
+    .swatch-info {
+      background: var(--color-surface);
+      padding: 8px 10px;
+    }
+    .swatch-name {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--color-text);
+      display: block;
+    }
+    .swatch-hex {
+      font-size: 10px;
+      color: var(--color-text-secondary);
+      font-family: 'SF Mono', 'Fira Code', monospace;
+    }
+
+    .swatch-group { margin-bottom: 20px; }
+    .swatch-group-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: var(--color-text-tertiary);
+      margin-bottom: 10px;
+    }
+
+    /* ─── Typography Specimens ───────────────────────── */
+    .type-row {
+      display: flex;
+      align-items: baseline;
+      gap: 20px;
+      padding: 16px 0;
+      border-bottom: 0.5px solid var(--color-border);
+    }
+    .type-row:last-child { border-bottom: none; }
+    .type-meta {
+      min-width: 120px;
+      flex-shrink: 0;
+    }
+    .type-meta-name {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--color-text-secondary);
+    }
+    .type-meta-spec {
+      font-size: 10px;
+      color: var(--color-text-tertiary);
+      font-family: 'SF Mono', 'Fira Code', monospace;
+    }
+    .type-sample-display { font-family: var(--font-display); }
+    .type-sample-body    { font-family: var(--font-body); }
+
+    /* ─── Comparison Grid ────────────────────────────── */
+    .compare-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 16px;
+    }
+    @media (max-width: 600px) { .compare-grid { grid-template-columns: 1fr; } }
+
+    .compare-pane {
+      border-radius: var(--radius-lg);
+      padding: 20px;
+      border: 0.5px solid var(--color-border);
+    }
+    .compare-pane.before { background: #fafafa; }
+    .compare-pane.after  { background: var(--color-surface); box-shadow: var(--shadow-md); }
+    .compare-tag {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      padding: 3px 8px;
+      border-radius: 4px;
+      margin-bottom: 14px;
+    }
+    .compare-tag.before { background: rgba(0,0,0,0.06); color: #666; }
+    .compare-tag.after  { background: var(--color-primary-light); color: var(--color-primary); }
+
+    /* ─── Buttons ────────────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      height: 44px;
+      padding: 0 20px;
+      border-radius: var(--radius-md);
+      font-family: var(--font-body);
+      font-size: 15px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      text-decoration: none;
+      transition: all 0.15s ease;
+      white-space: nowrap;
+      -webkit-font-smoothing: antialiased;
+    }
+    .btn:active { transform: scale(0.97); }
+    .btn-primary   { background: var(--color-primary);  color: #fff; }
+    .btn-primary:hover   { background: var(--color-primary-hover); }
+    .btn-secondary { background: var(--color-primary-light); color: var(--color-primary); }
+    .btn-secondary:hover { background: rgba(0,122,255,0.16); }
+    .btn-success   { background: var(--color-success);  color: #fff; }
+    .btn-success:hover   { background: var(--color-success-hover); }
+    .btn-danger    { background: rgba(255, 59, 48, 0.10); color: var(--color-danger); }
+    .btn-danger:hover    { background: var(--color-danger); color: #fff; }
+    .btn-ghost     { background: transparent; color: var(--color-text-secondary); border: 0.5px solid var(--color-border-strong); }
+    .btn-ghost:hover     { background: var(--color-gray-6); color: var(--color-text); }
+    .btn-sm { height: 34px; padding: 0 14px; font-size: 13px; border-radius: var(--radius-sm); }
+    .btn-lg { height: 52px; padding: 0 28px; font-size: 17px; border-radius: var(--radius-lg); }
+
+    .btn-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      align-items: center;
+      padding: 16px 0;
+      border-bottom: 0.5px solid var(--color-border);
+    }
+    .btn-row:last-child { border-bottom: none; }
+    .btn-row-label {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--color-text-tertiary);
+      min-width: 80px;
+    }
+
+    /* ─── Form Elements ─────────────────────────────── */
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 600px) { .form-grid { grid-template-columns: 1fr; } }
+
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field-full { grid-column: 1 / -1; }
+
+    .field label {
+      font-family: var(--font-body);
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.6px;
+      text-transform: uppercase;
+      color: var(--color-text-secondary);
+    }
+
+    .field input,
+    .field select,
+    .field textarea {
+      font-family: var(--font-body);
+      font-size: 15px;
+      font-weight: 400;
+      color: var(--color-text);
+      background: var(--color-surface);
+      border: 0.5px solid var(--color-border-strong);
+      border-radius: var(--radius-md);
+      padding: 10px 14px;
+      outline: none;
+      transition: border-color 0.15s ease, box-shadow 0.15s ease;
+      width: 100%;
+      appearance: none;
+      -webkit-appearance: none;
+    }
+    .field input::placeholder,
+    .field textarea::placeholder { color: var(--color-text-tertiary); }
+    .field input:focus,
+    .field select:focus,
+    .field textarea:focus {
+      border-color: var(--color-primary);
+      box-shadow: 0 0 0 3px var(--color-primary-light);
+    }
+    .field textarea { resize: vertical; min-height: 80px; line-height: 1.5; }
+    .field-hint {
+      font-size: 12px;
+      color: var(--color-text-tertiary);
+      line-height: 1.4;
+    }
+    .field-error input { border-color: var(--color-danger); }
+    .field-error .field-hint { color: var(--color-danger); }
+
+    /* select arrow */
+    .field-select { position: relative; }
+    .field-select::after {
+      content: '';
+      position: absolute;
+      right: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 0; height: 0;
+      border-left: 4px solid transparent;
+      border-right: 4px solid transparent;
+      border-top: 5px solid var(--color-text-secondary);
+      pointer-events: none;
+    }
+
+    /* ─── Card Radius Comparison ─────────────────────── */
+    .radius-compare {
+      display: flex;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .radius-card {
+      flex: 1;
+      min-width: 180px;
+      background: var(--color-surface);
+      border: 0.5px solid var(--color-border);
+      padding: 20px;
+    }
+    .radius-card-label {
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--color-text-secondary);
+      margin-bottom: 4px;
+    }
+    .radius-card-source {
+      font-size: 11px;
+      color: var(--color-text-tertiary);
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      margin-bottom: 14px;
+    }
+    .radius-card-body {
+      font-size: 14px;
+      color: var(--color-text);
+    }
+    .radius-card.proposed { box-shadow: var(--shadow-md); }
+    .radius-tag {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      padding: 2px 7px;
+      border-radius: 4px;
+      margin-top: 10px;
+    }
+    .radius-tag.old { background: rgba(0,0,0,0.05); color: #888; }
+    .radius-tag.new { background: var(--color-primary-light); color: var(--color-primary); }
+
+    /* ─── Color Token Table ──────────────────────────── */
+    .token-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    .token-table th {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+      color: var(--color-text-tertiary);
+      text-align: left;
+      padding: 8px 12px;
+      border-bottom: 0.5px solid var(--color-border);
+    }
+    .token-table td {
+      padding: 10px 12px;
+      border-bottom: 0.5px solid var(--color-border);
+      vertical-align: middle;
+    }
+    .token-table tr:last-child td { border-bottom: none; }
+    .token-name {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 12px;
+      color: var(--color-text);
+    }
+    .token-value {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 12px;
+      color: var(--color-text-secondary);
+    }
+    .token-dot {
+      width: 20px;
+      height: 20px;
+      border-radius: 50%;
+      display: inline-block;
+      border: 0.5px solid rgba(0,0,0,0.12);
+      vertical-align: middle;
+    }
+    .token-desc { color: var(--color-text-secondary); font-size: 12px; }
+
+    /* ─── Nav Comparison ─────────────────────────────── */
+    .nav-compare { display: flex; flex-direction: column; gap: 12px; }
+    .nav-mock {
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      border: 0.5px solid var(--color-border);
+    }
+    .nav-mock-bar {
+      height: 52px;
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      gap: 12px;
+    }
+    .nav-mock-bar.old-index   { background: rgba(249,249,249,0.94); backdrop-filter: saturate(180%) blur(20px); border-bottom: 0.5px solid rgba(0,0,0,0.1); }
+    .nav-mock-bar.old-phieu   { background: rgba(255,255,255,0.72); backdrop-filter: saturate(180%) blur(20px); border-bottom: 0.5px solid rgba(0,0,0,0.1); }
+    .nav-mock-bar.old-denghi  { background: rgba(255,255,255,0.95); backdrop-filter: blur(8px); box-shadow: 0 1px 2px rgba(0,0,0,0.05); }
+    .nav-mock-bar.new-unified { background: rgba(255,255,255,0.80); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); border-bottom: 0.5px solid rgba(0,0,0,0.10); }
+    .nav-mock-title {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--color-text);
+    }
+    .nav-mock-dot {
+      width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+    }
+    .nav-mock-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      color: var(--color-text-tertiary);
+      margin-left: auto;
+    }
+    .nav-mock-content {
+      background: var(--color-bg);
+      padding: 16px 20px;
+    }
+    .nav-mock-content p { font-size: 13px; color: var(--color-text-secondary); }
+
+    /* ─── Voucher Card Sample ─────────────────────────── */
+    .voucher-card {
+      background: var(--color-surface);
+      border-radius: var(--radius-lg);
+      border: 0.5px solid var(--color-border);
+      box-shadow: var(--shadow-sm);
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      margin-bottom: 8px;
+      transition: box-shadow 0.15s ease, transform 0.15s ease;
+      cursor: pointer;
+    }
+    .voucher-card:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); }
+    .voucher-icon {
+      width: 40px; height: 40px; border-radius: 10px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; flex-shrink: 0;
+    }
+    .voucher-icon.thu  { background: rgba(52, 199, 89, 0.12); }
+    .voucher-icon.chi  { background: rgba(255, 59, 48, 0.10); }
+    .voucher-icon.wait { background: rgba(255, 149, 0, 0.12); }
+    .voucher-info { flex: 1; min-width: 0; }
+    .voucher-name {
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--color-text);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .voucher-sub {
+      font-size: 12px;
+      color: var(--color-text-secondary);
+      margin-top: 1px;
+    }
+    .voucher-amount {
+      font-family: var(--font-display);
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--color-text);
+      text-align: right;
+      flex-shrink: 0;
+    }
+    .voucher-amount small {
+      display: block;
+      font-family: var(--font-body);
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--color-text-secondary);
+    }
+    .badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      padding: 2px 7px;
+      border-radius: 100px;
+      text-transform: uppercase;
+    }
+    .badge-pending  { background: rgba(255,149,0,0.12); color: #c67300; }
+    .badge-approved { background: rgba(52,199,89,0.12); color: #1a8c3a; }
+    .badge-rejected { background: rgba(255,59,48,0.10); color: var(--color-danger); }
+
+    /* ─── Divider ─────────────────────────────────────── */
+    .divider {
+      height: 0.5px;
+      background: var(--color-border);
+      margin: 48px 0;
+    }
+
+    /* ─── Footer ─────────────────────────────────────── */
+    .demo-footer {
+      text-align: center;
+      padding: 32px 0;
+      font-size: 13px;
+      color: var(--color-text-tertiary);
+    }
+    .demo-footer strong { color: var(--color-text-secondary); font-weight: 600; }
+  </style>
+</head>
+<body>
+
+<!-- ── Navbar ── -->
+<nav class="demo-nav">
+  <span class="demo-nav-logo">TLCG <span>Workflow</span></span>
+  <ul class="demo-nav-links">
+    <li><a href="#colors" class="active">Màu sắc</a></li>
+    <li><a href="#typography">Chữ</a></li>
+    <li><a href="#navbar">Navbar</a></li>
+    <li><a href="#cards">Cards</a></li>
+    <li><a href="#buttons">Buttons</a></li>
+    <li><a href="#forms">Forms</a></li>
+    <li><a href="#tokens">Tokens</a></li>
+  </ul>
+</nav>
+
+<div class="page">
+
+  <!-- ── Hero ── -->
+  <div class="hero">
+    <div class="hero-badge">Design System Demo</div>
+    <h1>TLCG Workflow<br><em>Đề xuất cải thiện UI</em></h1>
+    <p>Demo này trình bày các thay đổi được đề xuất về font chữ, màu sắc, card, button và form — trước khi áp dụng vào production.</p>
+  </div>
+
+  <div class="divider"></div>
+
+  <!-- ── Colors ── -->
+  <section class="section" id="colors">
+    <div class="section-label">01 — Màu sắc</div>
+    <div class="section-title">Bảng màu thống nhất</div>
+    <div class="section-desc">Thay vì 3 màu primary đang dùng song song (#007AFF, #3b82f6, #667eea), tất cả các trang dùng chung một bộ token duy nhất.</div>
+
+    <div class="card">
+      <div class="swatch-group">
+        <div class="swatch-group-label">Brand Primary</div>
+        <div class="swatch-grid" style="grid-template-columns: repeat(3, 1fr);">
+          <div class="swatch">
+            <div class="swatch-color" style="background:#007AFF;"></div>
+            <div class="swatch-info"><span class="swatch-name">Primary</span><span class="swatch-hex">#007AFF</span></div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:#0056CC;"></div>
+            <div class="swatch-info"><span class="swatch-name">Hover</span><span class="swatch-hex">#0056CC</span></div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:rgba(0,122,255,0.10); border: 0.5px solid #d0e4ff;"></div>
+            <div class="swatch-info"><span class="swatch-name">Light (10%)</span><span class="swatch-hex">rgba(0,122,255,.10)</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="swatch-group">
+        <div class="swatch-group-label">Semantic</div>
+        <div class="swatch-grid" style="grid-template-columns: repeat(3, 1fr);">
+          <div class="swatch">
+            <div class="swatch-color" style="background:#34C759;"></div>
+            <div class="swatch-info"><span class="swatch-name">Success</span><span class="swatch-hex">#34C759</span></div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:#FF9500;"></div>
+            <div class="swatch-info"><span class="swatch-name">Warning</span><span class="swatch-hex">#FF9500</span></div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:#FF3B30;"></div>
+            <div class="swatch-info"><span class="swatch-name">Danger</span><span class="swatch-hex">#FF3B30</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="swatch-group">
+        <div class="swatch-group-label">Surfaces & Grays</div>
+        <div class="swatch-grid">
+          <div class="swatch">
+            <div class="swatch-color" style="background:#000000;"></div>
+            <div class="swatch-info"><span class="swatch-name">Text</span><span class="swatch-hex">#000000</span></div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:rgba(60,60,67,0.60);"></div>
+            <div class="swatch-info"><span class="swatch-name">Secondary</span><span class="swatch-hex">rgba(60,60,67,.60)</span></div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:#8E8E93;"></div>
+            <div class="swatch-info"><span class="swatch-name">Gray 1</span><span class="swatch-hex">#8E8E93</span></div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:#E5E5EA; border: 0.5px solid #ddd;"></div>
+            <div class="swatch-info"><span class="swatch-name">Gray 5</span><span class="swatch-hex">#E5E5EA</span></div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:#F2F2F7; border: 0.5px solid #ddd;"></div>
+            <div class="swatch-info"><span class="swatch-name">BG</span><span class="swatch-hex">#F2F2F7</span></div>
+          </div>
+          <div class="swatch">
+            <div class="swatch-color" style="background:#FFFFFF; border: 0.5px solid #ddd;"></div>
+            <div class="swatch-info"><span class="swatch-name">Surface</span><span class="swatch-hex">#FFFFFF</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Before/After -->
+      <div class="swatch-group" style="margin-bottom:0;">
+        <div class="swatch-group-label">Before → After (màu primary)</div>
+        <div class="compare-grid">
+          <div class="compare-pane before">
+            <span class="compare-tag before">Hiện tại</span>
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+              <div style="text-align:center;">
+                <div style="width:48px;height:48px;border-radius:10px;background:#007AFF;margin:0 auto 4px;"></div>
+                <div style="font-size:10px;color:#555;font-family:monospace;">#007AFF<br><span style="color:#999;">index</span></div>
+              </div>
+              <div style="text-align:center;">
+                <div style="width:48px;height:48px;border-radius:10px;background:#3b82f6;margin:0 auto 4px;"></div>
+                <div style="font-size:10px;color:#555;font-family:monospace;">#3b82f6<br><span style="color:#999;">de_nghi</span></div>
+              </div>
+              <div style="text-align:center;">
+                <div style="width:48px;height:48px;border-radius:10px;background:#667eea;margin:0 auto 4px;"></div>
+                <div style="font-size:10px;color:#555;font-family:monospace;">#667eea<br><span style="color:#999;">nav/step</span></div>
+              </div>
+            </div>
+            <p style="font-size:12px;color:#888;margin-top:12px;">3 màu khác nhau, không nhất quán</p>
+          </div>
+          <div class="compare-pane after">
+            <span class="compare-tag after">Đề xuất</span>
+            <div style="text-align:center; display:inline-block;">
+              <div style="width:48px;height:48px;border-radius:10px;background:#007AFF;margin:0 auto 4px;"></div>
+              <div style="font-size:10px;color:#555;font-family:monospace;">#007AFF<br><span style="color:#007AFF;">tất cả trang</span></div>
+            </div>
+            <p style="font-size:12px;color:#888;margin-top:12px;">1 màu primary duy nhất xuyên suốt</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ── Typography ── -->
+  <section class="section" id="typography">
+    <div class="section-label">02 — Typography</div>
+    <div class="section-title">Cặp font mới</div>
+    <div class="section-desc">
+      <strong style="color:var(--color-text);">Plus Jakarta Sans</strong> cho tiêu đề — hiện đại, cá tính, có hỗ trợ dấu tiếng Việt tốt.<br>
+      <strong style="color:var(--color-text);">DM Sans</strong> cho body text — cân bằng, dễ đọc ở mọi kích thước form và bảng dữ liệu.
+    </div>
+
+    <div class="card" style="margin-bottom:16px;">
+      <div class="swatch-group-label" style="margin-bottom:16px;">Plus Jakarta Sans — Display Font</div>
+
+      <div class="type-row">
+        <div class="type-meta">
+          <div class="type-meta-name">H1 / Page Title</div>
+          <div class="type-meta-spec">26px · 700 · -0.4px</div>
+        </div>
+        <div class="type-sample-display" style="font-size:26px;font-weight:700;letter-spacing:-0.4px;line-height:1.2;">Phiếu Thu Chi</div>
+      </div>
+      <div class="type-row">
+        <div class="type-meta">
+          <div class="type-meta-name">H2 / Section</div>
+          <div class="type-meta-spec">20px · 600 · -0.2px</div>
+        </div>
+        <div class="type-sample-display" style="font-size:20px;font-weight:600;letter-spacing:-0.2px;">Thông tin phiếu</div>
+      </div>
+      <div class="type-row">
+        <div class="type-meta">
+          <div class="type-meta-name">H3 / Card Title</div>
+          <div class="type-meta-spec">17px · 600</div>
+        </div>
+        <div class="type-sample-display" style="font-size:17px;font-weight:600;">Công ty TNHH TLC Group</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="swatch-group-label" style="margin-bottom:16px;">DM Sans — Body Font</div>
+
+      <div class="type-row">
+        <div class="type-meta">
+          <div class="type-meta-name">Body</div>
+          <div class="type-meta-spec">15px · 400 · 1.6lh</div>
+        </div>
+        <div class="type-sample-body" style="font-size:15px;font-weight:400;line-height:1.6;">Đề nghị phê duyệt phiếu chi số VH-2024-0023 với tổng số tiền là 15.000.000 đồng cho chi phí vận hành tháng 12.</div>
+      </div>
+      <div class="type-row">
+        <div class="type-meta">
+          <div class="type-meta-name">Label</div>
+          <div class="type-meta-spec">12px · 600 · uppercase</div>
+        </div>
+        <div class="type-sample-body" style="font-size:12px;font-weight:600;letter-spacing:0.6px;text-transform:uppercase;color:var(--color-text-secondary);">Số tiền đề nghị</div>
+      </div>
+      <div class="type-row">
+        <div class="type-meta">
+          <div class="type-meta-name">Caption / Hint</div>
+          <div class="type-meta-spec">12px · 400</div>
+        </div>
+        <div class="type-sample-body" style="font-size:12px;color:var(--color-text-tertiary);">Nhập số tiền bằng chữ số, không có dấu phẩy</div>
+      </div>
+      <div class="type-row">
+        <div class="type-meta">
+          <div class="type-meta-name">Input Text</div>
+          <div class="type-meta-spec">15px · 400</div>
+        </div>
+        <div class="type-sample-body" style="font-size:15px;padding:10px 14px;border:0.5px solid var(--color-border-strong);border-radius:var(--radius-md);display:inline-block;min-width:220px;">15,000,000 VNĐ</div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ── Navbar ── -->
+  <section class="section" id="navbar">
+    <div class="section-label">03 — Navbar</div>
+    <div class="section-title">Frosted glass thống nhất</div>
+    <div class="section-desc">Ba trang đang dùng 3 cách implement navbar khác nhau. Dưới đây là before/after.</div>
+
+    <div class="nav-compare">
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;">
+        <div>
+          <div class="swatch-group-label" style="margin-bottom:8px;">index.html</div>
+          <div class="nav-mock">
+            <div class="nav-mock-bar old-index">
+              <div class="nav-mock-dot" style="background:#007AFF;"></div>
+              <span class="nav-mock-title" style="font-family:var(--font-system);">Trang chủ</span>
+              <span class="nav-mock-label">rgba(249,249,249,.94)</span>
+            </div>
+            <div class="nav-mock-content"><p>SF system font · blur 20px</p></div>
+          </div>
+        </div>
+        <div>
+          <div class="swatch-group-label" style="margin-bottom:8px;">phieu_thu_chi.html</div>
+          <div class="nav-mock">
+            <div class="nav-mock-bar old-phieu">
+              <div class="nav-mock-dot" style="background:#007AFF;"></div>
+              <span class="nav-mock-title" style="font-family:var(--font-system);">Phiếu Thu Chi</span>
+              <span class="nav-mock-label">rgba(255,255,255,.72)</span>
+            </div>
+            <div class="nav-mock-content"><p>System + Inter · blur 20px</p></div>
+          </div>
+        </div>
+        <div>
+          <div class="swatch-group-label" style="margin-bottom:8px;">de_nghi.html</div>
+          <div class="nav-mock">
+            <div class="nav-mock-bar old-denghi">
+              <div class="nav-mock-dot" style="background:#3b82f6;"></div>
+              <span class="nav-mock-title" style="font-family:'Inter',sans-serif;">Đề Nghị TT</span>
+              <span class="nav-mock-label">rgba(255,255,255,.95)</span>
+            </div>
+            <div class="nav-mock-content"><p>Inter · blur 8px · shadow</p></div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="swatch-group-label" style="margin-bottom:8px;">Đề xuất — thống nhất cho cả 3 trang</div>
+        <div class="nav-mock">
+          <div class="nav-mock-bar new-unified">
+            <div class="nav-mock-dot" style="background:#007AFF;"></div>
+            <span class="nav-mock-title" style="font-family:var(--font-display);font-weight:600;">TLCG Workflow</span>
+            <div style="margin-left:auto;display:flex;gap:16px;align-items:center;">
+              <span style="font-size:13px;font-weight:500;color:var(--color-primary);">Phiếu Thu Chi</span>
+              <span style="font-size:13px;font-weight:400;color:var(--color-text-secondary);">Đề Nghị TT</span>
+            </div>
+          </div>
+          <div class="nav-mock-content">
+            <p>Plus Jakarta Sans · rgba(255,255,255,.80) · saturate(180%) blur(20px) · border-bottom 0.5px</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ── Cards ── -->
+  <section class="section" id="cards">
+    <div class="section-label">04 — Cards</div>
+    <div class="section-title">Border-radius thống nhất: 14px</div>
+    <div class="section-desc">Hiện tại: 8px (de_nghi), 14–16px (index), 20px (phieu_thu_chi). Đề xuất: 14px cho tất cả.</div>
+
+    <div class="radius-compare" style="margin-bottom:24px;">
+      <div class="radius-card" style="border-radius:8px;">
+        <div class="radius-card-label">de_nghi_thanh_toan.html</div>
+        <div class="radius-card-source">border-radius: 8px</div>
+        <div class="radius-card-body">Card góc vuông — cảm giác khác app</div>
+        <div><span class="radius-tag old">Hiện tại</span></div>
+      </div>
+      <div class="radius-card" style="border-radius:16px;">
+        <div class="radius-card-label">index.html (form block)</div>
+        <div class="radius-card-source">border-radius: 1rem (16px)</div>
+        <div class="radius-card-body">Card góc tròn vừa</div>
+        <div><span class="radius-tag old">Hiện tại</span></div>
+      </div>
+      <div class="radius-card" style="border-radius:20px;">
+        <div class="radius-card-label">phieu_thu_chi.html</div>
+        <div class="radius-card-source">border-radius: 20px</div>
+        <div class="radius-card-body">Card góc rất tròn — iOS feel</div>
+        <div><span class="radius-tag old">Hiện tại</span></div>
+      </div>
+      <div class="radius-card proposed" style="border-radius:14px;">
+        <div class="radius-card-label">Đề xuất — tất cả trang</div>
+        <div class="radius-card-source">border-radius: 14px</div>
+        <div class="radius-card-body">Cân bằng giữa vuông và tròn, nhất quán</div>
+        <div><span class="radius-tag new">Đề xuất</span></div>
+      </div>
+    </div>
+
+    <div class="section-desc">Ví dụ danh sách phiếu với card style mới:</div>
+    <div>
+      <div class="voucher-card">
+        <div class="voucher-icon thu">💚</div>
+        <div class="voucher-info">
+          <div class="voucher-name">VH-2024-0087 — Phiếu thu tiền dịch vụ</div>
+          <div class="voucher-sub">Nguyễn Văn An · TLC Group · <span class="badge badge-approved">Đã duyệt</span></div>
+        </div>
+        <div class="voucher-amount">8,500,000<small>VNĐ</small></div>
+      </div>
+      <div class="voucher-card">
+        <div class="voucher-icon wait">🟠</div>
+        <div class="voucher-info">
+          <div class="voucher-name">VH-2024-0088 — Phiếu chi vận hành</div>
+          <div class="voucher-sub">Trần Thị Bình · Media Insider · <span class="badge badge-pending">Chờ duyệt (2/3)</span></div>
+        </div>
+        <div class="voucher-amount">15,200,000<small>VNĐ</small></div>
+      </div>
+      <div class="voucher-card">
+        <div class="voucher-icon chi">🔴</div>
+        <div class="voucher-info">
+          <div class="voucher-name">VH-2024-0086 — Chi phí marketing Q4</div>
+          <div class="voucher-sub">Lê Minh Châu · TLC Group · <span class="badge badge-rejected">Từ chối</span></div>
+        </div>
+        <div class="voucher-amount">42,000,000<small>VNĐ</small></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ── Buttons ── -->
+  <section class="section" id="buttons">
+    <div class="section-label">05 — Buttons</div>
+    <div class="section-title">Hệ thống button thống nhất</div>
+    <div class="section-desc">Height 44px (iOS tap target), border-radius 10px, font DM Sans 600.</div>
+
+    <div class="card">
+      <div class="btn-row">
+        <span class="btn-row-label">Kích thước</span>
+        <button class="btn btn-primary btn-sm">Nhỏ (34px)</button>
+        <button class="btn btn-primary">Chuẩn (44px)</button>
+        <button class="btn btn-primary btn-lg">Lớn (52px)</button>
+      </div>
+      <div class="btn-row">
+        <span class="btn-row-label">Primary</span>
+        <button class="btn btn-primary">Gửi phiếu</button>
+        <button class="btn btn-secondary">Xem chi tiết</button>
+        <button class="btn btn-ghost">Hủy bỏ</button>
+      </div>
+      <div class="btn-row">
+        <span class="btn-row-label">Semantic</span>
+        <button class="btn btn-success">✓ Phê duyệt</button>
+        <button class="btn btn-danger">✕ Từ chối</button>
+        <button class="btn btn-primary">↻ Làm mới</button>
+      </div>
+      <div class="btn-row">
+        <span class="btn-row-label">So sánh</span>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button style="background:#667eea;color:white;border:none;padding:8px 16px;border-radius:6px;font-size:14px;font-family:sans-serif;cursor:pointer;">Hiện tại (index #667eea r:6px)</button>
+            <span style="font-size:12px;color:var(--color-text-tertiary);">→</span>
+            <button class="btn btn-primary btn-sm">Đề xuất (#007AFF r:8px)</button>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <button style="background:#3b82f6;color:white;border:none;padding:8px 16px;border-radius:6px;font-size:14px;font-family:'Inter',sans-serif;cursor:pointer;">Hiện tại (de_nghi #3b82f6)</button>
+            <span style="font-size:12px;color:var(--color-text-tertiary);">→</span>
+            <button class="btn btn-primary btn-sm">Đề xuất (#007AFF)</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ── Forms ── -->
+  <section class="section" id="forms">
+    <div class="section-label">06 — Forms</div>
+    <div class="section-title">Form elements thống nhất</div>
+    <div class="section-desc">Label uppercase 12px · input 15px DM Sans · focus ring rgba(0,122,255,.10) · border-radius 10px.</div>
+
+    <div class="card">
+      <div class="form-grid">
+        <div class="field">
+          <label>Tên người đề nghị</label>
+          <input type="text" placeholder="Nguyễn Văn An" value="Nguyễn Văn An" />
+        </div>
+        <div class="field">
+          <label>Công ty</label>
+          <div class="field-select">
+            <select>
+              <option>TLC Group</option>
+              <option>Media Insider</option>
+            </select>
+          </div>
+        </div>
+        <div class="field">
+          <label>Số tiền (VNĐ)</label>
+          <input type="text" placeholder="0" value="15,000,000" />
+          <span class="field-hint">Nhập số tiền không có dấu chấm hoặc phẩy</span>
+        </div>
+        <div class="field field-error">
+          <label>Email người duyệt</label>
+          <input type="email" placeholder="approver@company.com" value="invalid-email" />
+          <span class="field-hint">Email không đúng định dạng</span>
+        </div>
+        <div class="field field-full">
+          <label>Mô tả / Lý do</label>
+          <textarea placeholder="Nhập mô tả chi tiết về khoản thu chi...">Chi phí vận hành văn phòng tháng 12/2024 bao gồm tiền thuê văn phòng và chi phí điện nước.</textarea>
+        </div>
+      </div>
+
+      <div style="display:flex;justify-content:flex-end;gap:10px;margin-top:20px;padding-top:20px;border-top:0.5px solid var(--color-border);">
+        <button class="btn btn-ghost">Hủy</button>
+        <button class="btn btn-success">Gửi phiếu →</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="divider"></div>
+
+  <!-- ── Token Table ── -->
+  <section class="section" id="tokens">
+    <div class="section-label">07 — Design Tokens</div>
+    <div class="section-title">CSS Variables cần áp dụng</div>
+    <div class="section-desc">Copy đoạn :root này vào tất cả 3 trang để thống nhất toàn bộ hệ thống.</div>
+
+    <div class="card">
+      <table class="token-table">
+        <thead>
+          <tr>
+            <th></th>
+            <th>Token</th>
+            <th>Value</th>
+            <th>Dùng cho</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="token-dot" style="background:#007AFF;"></span></td>
+            <td><span class="token-name">--color-primary</span></td>
+            <td><span class="token-value">#007AFF</span></td>
+            <td class="token-desc">Buttons, links, focus ring, active states</td>
+          </tr>
+          <tr>
+            <td><span class="token-dot" style="background:#0056CC;"></span></td>
+            <td><span class="token-name">--color-primary-hover</span></td>
+            <td><span class="token-value">#0056CC</span></td>
+            <td class="token-desc">Button hover state</td>
+          </tr>
+          <tr>
+            <td><span class="token-dot" style="background:rgba(0,122,255,0.12);border:0.5px solid #b3d4ff;"></span></td>
+            <td><span class="token-name">--color-primary-light</span></td>
+            <td><span class="token-value">rgba(0,122,255,.10)</span></td>
+            <td class="token-desc">Secondary buttons, nav active bg, focus shadow</td>
+          </tr>
+          <tr>
+            <td><span class="token-dot" style="background:#34C759;"></span></td>
+            <td><span class="token-name">--color-success</span></td>
+            <td><span class="token-value">#34C759</span></td>
+            <td class="token-desc">Approve button, success badge</td>
+          </tr>
+          <tr>
+            <td><span class="token-dot" style="background:#FF9500;"></span></td>
+            <td><span class="token-name">--color-warning</span></td>
+            <td><span class="token-value">#FF9500</span></td>
+            <td class="token-desc">Pending badge, warning toast</td>
+          </tr>
+          <tr>
+            <td><span class="token-dot" style="background:#FF3B30;"></span></td>
+            <td><span class="token-name">--color-danger</span></td>
+            <td><span class="token-value">#FF3B30</span></td>
+            <td class="token-desc">Reject button, error badge, destructive actions</td>
+          </tr>
+          <tr>
+            <td><span class="token-dot" style="background:#F2F2F7;border:0.5px solid #ddd;"></span></td>
+            <td><span class="token-name">--color-bg</span></td>
+            <td><span class="token-value">#F2F2F7</span></td>
+            <td class="token-desc">Page background (tất cả 3 trang)</td>
+          </tr>
+          <tr>
+            <td><span class="token-dot" style="background:#FFFFFF;border:0.5px solid #ddd;"></span></td>
+            <td><span class="token-name">--color-surface</span></td>
+            <td><span class="token-value">#FFFFFF</span></td>
+            <td class="token-desc">Card, input, modal background</td>
+          </tr>
+          <tr>
+            <td><span class="token-dot" style="background:rgba(0,0,0,0.10);border:0.5px solid #ddd;"></span></td>
+            <td><span class="token-name">--color-border</span></td>
+            <td><span class="token-value">rgba(0,0,0,.10)</span></td>
+            <td class="token-desc">Card border, divider, nav border</td>
+          </tr>
+          <tr>
+            <td><span class="token-dot" style="background:#000;"></span></td>
+            <td><span class="token-name">--color-text</span></td>
+            <td><span class="token-value">#000000</span></td>
+            <td class="token-desc">Primary text</td>
+          </tr>
+          <tr>
+            <td><span class="token-dot" style="background:rgba(60,60,67,0.60);"></span></td>
+            <td><span class="token-name">--color-text-secondary</span></td>
+            <td><span class="token-value">rgba(60,60,67,.60)</span></td>
+            <td class="token-desc">Subtext, labels, placeholders</td>
+          </tr>
+          <tr>
+            <td></td>
+            <td><span class="token-name">--font-display</span></td>
+            <td><span class="token-value">'Plus Jakarta Sans'</span></td>
+            <td class="token-desc">h1, h2, h3, nav logo, card titles, amounts</td>
+          </tr>
+          <tr>
+            <td></td>
+            <td><span class="token-name">--font-body</span></td>
+            <td><span class="token-value">'DM Sans'</span></td>
+            <td class="token-desc">body, labels, inputs, buttons, captions</td>
+          </tr>
+          <tr>
+            <td></td>
+            <td><span class="token-name">--radius-lg</span></td>
+            <td><span class="token-value">14px</span></td>
+            <td class="token-desc">Cards, panels, form sections</td>
+          </tr>
+          <tr>
+            <td></td>
+            <td><span class="token-name">--radius-md</span></td>
+            <td><span class="token-value">10px</span></td>
+            <td class="token-desc">Inputs, buttons, badges</td>
+          </tr>
+          <tr>
+            <td></td>
+            <td><span class="token-name">--radius-sm</span></td>
+            <td><span class="token-value">8px</span></td>
+            <td class="token-desc">Small buttons, chips, tags</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+</div>
+
+<footer class="demo-footer">
+  <strong>TLCG Workflow Design System Demo</strong> — File này chỉ để xem trước, không ảnh hưởng production.<br>
+  Mở <code style="font-size:11px;background:rgba(0,0,0,0.06);padding:2px 6px;border-radius:4px;">design-demo.html</code> trực tiếp trong trình duyệt.
+</footer>
+
+</body>
+</html>

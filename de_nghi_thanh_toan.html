@@ -6,6 +6,9 @@
     <title>Đề nghị thanh toán - TLCGroup Intranet</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="dist/output.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
     <script src="https://unpkg.com/xlsx/dist/xlsx.full.min.js"></script>
@@ -13,29 +16,48 @@
     <script src="https://accounts.google.com/gsi/client"></script>
     <style>
         :root {
-            --primary: #3b82f6;      /* Blue-500 */
-            --primary-hover: #2563eb; /* Blue-600 */
-            --success: #10b981;      /* Emerald-500 */
-            --warning: #f59e0b;      /* Amber-500 */
-            --error: #ef4444;        /* Red-500 */
-            --text-primary: #0f172a;  /* Slate-900 */
-            --text-secondary: #64748b; /* Slate-500 */
-            --border: #e2e8f0;       /* Slate-200 */
-            --background: #f8fafc;    /* Slate-50 */
-            --card-bg: #ffffff;      /* White */
+            --primary: #007AFF;
+            --primary-hover: #0056CC;
+            --success: #34C759;
+            --success-hover: #28A745;
+            --warning: #FF9500;
+            --error: #FF3B30;
+            --text-primary: #000000;
+            --text-secondary: rgba(60, 60, 67, 0.60);
+            --border: rgba(0, 0, 0, 0.10);
+            --background: #F2F2F7;
+            --card-bg: #ffffff;
+            /* Unified Design Tokens */
+            --color-primary:        #007AFF;
+            --color-primary-hover:  #0056CC;
+            --color-primary-light:  rgba(0, 122, 255, 0.10);
+            --color-success:        #34C759;
+            --color-warning:        #FF9500;
+            --color-danger:         #FF3B30;
+            --color-bg:             #F2F2F7;
+            --color-surface:        #FFFFFF;
+            --color-text:           #000000;
+            --color-text-secondary: rgba(60, 60, 67, 0.60);
             /* Legacy support */
-            --primary-color: #3b82f6;
-            --secondary-color: #10b981;
-            --accent-color: #f59e0b;
-            --text-color: #0f172a;
-            --light-gray: #f8fafc;
-            --border-color: #e2e8f0;
-            --shadow-color: rgba(0, 0, 0, 0.04);
-            --success-color: #10b981;
-            --error-color: #ef4444;
+            --primary-color: #007AFF;
+            --secondary-color: #34C759;
+            --accent-color: #FF9500;
+            --text-color: #000000;
+            --light-gray: #F2F2F7;
+            --border-color: rgba(0, 0, 0, 0.10);
+            --shadow-color: rgba(0, 0, 0, 0.06);
+            --success-color: #34C759;
+            --error-color: #FF3B30;
+            /* Fonts */
+            --font-display: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-body: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
             /* Sidebar variables */
             --sidebar-width: 280px;
-            --ios-font: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', Helvetica, Arial, sans-serif;
+            --ios-font: var(--font-body);
+            /* Radii */
+            --ios-radius-sm: 8px;
+            --ios-radius-md: 12px;
+            --ios-radius-lg: 14px;
         }
 
         /* iPad Sidebar Styles */
@@ -184,10 +206,8 @@
             padding: 0;
         }
         
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        
         body {
-            font-family: 'Inter', sans-serif;
+            font-family: var(--font-body);
             font-weight: 400;
             line-height: 1.6;
             color: var(--text-primary);
@@ -197,12 +217,13 @@
             padding: 0;
         }
         
-        /* Navigation Bar - Kissflow Style */
+        /* Navigation Bar */
         nav.sticky {
-            backdrop-filter: blur(8px);
-            -webkit-backdrop-filter: blur(8px);
-            background: rgba(255, 255, 255, 0.95);
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.05);
+            backdrop-filter: saturate(180%) blur(20px);
+            -webkit-backdrop-filter: saturate(180%) blur(20px);
+            background: rgba(255, 255, 255, 0.80);
+            border-bottom: 0.5px solid rgba(0, 0, 0, 0.10);
+            box-shadow: none;
         }
         
         .container {
@@ -213,12 +234,12 @@
         
         .form-section-container {
             background: var(--card-bg);
-            border-radius: 8px;
-            border: 1px solid var(--border);
+            border-radius: 14px;
+            border: 0.5px solid rgba(0, 0, 0, 0.10);
             overflow: hidden;
-            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 0 0 1px rgba(0, 0, 0, 0.02);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07), 0 1px 3px rgba(0, 0, 0, 0.04);
             transition: all 0.2s ease;
-            padding: 2rem;
+            padding: 24px;
         }
         
         .form-section-container:hover {
@@ -227,13 +248,13 @@
         }
         
         h1 {
+            font-family: var(--font-display);
             font-weight: 700;
             color: var(--text-primary);
             text-align: left;
             margin-bottom: 1.5rem;
-            font-size: 1.5rem; /* 20% larger than 1.25rem */
-            letter-spacing: -0.025em;
-            font-family: 'Inter', sans-serif;
+            font-size: 26px;
+            letter-spacing: -0.4px;
             line-height: 1.2;
         }
 
@@ -423,7 +444,7 @@
         }
         
         .step-navigation .btn-submit:hover:not(:disabled) {
-            background: #059669;
+            background: #28A745;
         }
 
         .step-headline {
@@ -543,7 +564,7 @@
             padding: 0.625rem 0.875rem;
             border: 1px solid var(--border);
             border-radius: 6px;
-            font-family: 'Inter', sans-serif;
+            font-family: var(--font-body);
             font-size: 0.9375rem;
             transition: all 0.15s ease;
             background-color: white;
@@ -575,7 +596,7 @@
         }
         
         input:read-only, textarea:read-only {
-            background-color: #f8fafc;
+            background-color: #F2F2F7;
             color: #64748b;
             cursor: default;
         }
@@ -661,7 +682,7 @@
         }
         
         .btn-success:hover:not(:disabled) {
-            background: #059669;
+            background: #28A745;
             box-shadow: 0 1px 2px rgba(16, 185, 129, 0.2);
         }
 
@@ -686,7 +707,7 @@
             letter-spacing: 0.025em;
             margin-top: 0.5rem;
             max-width: fit-content;
-            font-family: 'Inter', sans-serif;
+            font-family: var(--font-body);
         }
         
         .status-pending {
@@ -714,7 +735,7 @@
             margin-top: 20px;
             padding: 15px;
             background-color: var(--light-gray);
-            border-radius: 8px;
+            border-radius: 14px;
         }
         
         .amount-row {
@@ -752,7 +773,7 @@
             margin-top: 15px;
             padding: 15px;
             background-color: var(--light-gray);
-            border-radius: 8px;
+            border-radius: 14px;
             display: none;
         }
         
@@ -770,7 +791,7 @@
             margin-top: 20px;
             padding: 15px;
             background-color: var(--light-gray);
-            border-radius: 8px;
+            border-radius: 14px;
             font-size: 14px;
         }
 
@@ -795,7 +816,7 @@
         .product-table-container, .payment-table-container {
             margin-top: 30px;
             border: 1px solid var(--border-color);
-            border-radius: 8px;
+            border-radius: 14px;
             overflow-x: auto;
         }
 
@@ -975,7 +996,7 @@
             border: 1px solid #888;
             width: 80%;
             max-width: 600px;
-            border-radius: 8px;
+            border-radius: 14px;
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
             position: relative;
         }
@@ -1032,7 +1053,7 @@
             margin-top: 20px;
             padding: 15px;
             background-color: var(--light-gray);
-            border-radius: 8px;
+            border-radius: 14px;
             border: var(--section-border);
         }
 
@@ -1113,7 +1134,7 @@
             align-items: center;
             padding: 1.25rem 1.5rem;
             border-bottom: 1px solid #e2e8f0;
-            background: #f8fafc;
+            background: #F2F2F7;
         }
 
         .recent-requests-header h3 {
@@ -1128,7 +1149,7 @@
             align-items: center;
             gap: 0.5rem;
             padding: 0.5rem 1rem;
-            background: #3b82f6;
+            background: #007AFF;
             color: white;
             border: none;
             border-radius: 6px;
@@ -1139,14 +1160,14 @@
         }
 
         .refresh-btn:hover {
-            background: #2563eb;
+            background: #0056CC;
         }
 
         .request-stats {
             display: flex;
             gap: 1rem;
             padding: 1rem 1.5rem;
-            background: #f8fafc;
+            background: #F2F2F7;
             border-bottom: 1px solid #e2e8f0;
         }
 
@@ -1156,7 +1177,7 @@
             gap: 0.5rem;
             padding: 0.5rem 1rem;
             background: white;
-            border-radius: 8px;
+            border-radius: 14px;
             border: 1px solid #e2e8f0;
         }
 
@@ -1171,9 +1192,9 @@
             text-transform: uppercase;
         }
 
-        .stat-item.pending .stat-value { color: #f59e0b; }
-        .stat-item.approved .stat-value { color: #10b981; }
-        .stat-item.rejected .stat-value { color: #ef4444; }
+        .stat-item.pending .stat-value { color: #FF9500; }
+        .stat-item.approved .stat-value { color: #34C759; }
+        .stat-item.rejected .stat-value { color: #FF3B30; }
 
         .request-list {
             max-height: 400px;
@@ -1190,7 +1211,7 @@
         }
 
         .request-item:hover {
-            background: #f8fafc;
+            background: #F2F2F7;
         }
 
         .request-item:last-child {
@@ -1209,7 +1230,7 @@
         }
 
         .request-icon.pending { background: #fef3c7; color: #d97706; }
-        .request-icon.approved { background: #d1fae5; color: #059669; }
+        .request-icon.approved { background: #d1fae5; color: #28A745; }
         .request-icon.rejected { background: #fee2e2; color: #dc2626; }
 
         .request-info {
@@ -1313,7 +1334,7 @@
         .request-modal-close {
             width: 32px;
             height: 32px;
-            border-radius: 8px;
+            border-radius: 14px;
             border: none;
             background: #f1f5f9;
             color: #64748b;
@@ -1356,7 +1377,7 @@
 
         .toast {
             background: white;
-            border-radius: 8px;
+            border-radius: 14px;
             padding: 1rem 1.25rem;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
             display: flex;
@@ -1377,9 +1398,9 @@
             }
         }
 
-        .toast.success { border-left: 4px solid #10b981; }
-        .toast.error { border-left: 4px solid #ef4444; }
-        .toast.info { border-left: 4px solid #3b82f6; }
+        .toast.success { border-left: 4px solid #34C759; }
+        .toast.error { border-left: 4px solid #FF3B30; }
+        .toast.info { border-left: 4px solid #007AFF; }
 
         /* Reduced Motion Support */
         @media (prefers-reduced-motion: reduce) {
@@ -4259,7 +4280,7 @@
                 const row = tableBody.insertRow();
                 row.innerHTML = `
                     <td>${index + 1}</td>
-                    <td><textarea rows="2" style="width: 100%; min-width: 200px; resize: vertical; padding: 8px; border: 1px solid #e2e8f0; border-radius: 4px; font-family: 'Inter', sans-serif;" 
+                    <td><textarea rows="2" style="width: 100%; min-width: 200px; resize: vertical; padding: 8px; border: 1px solid #e2e8f0; border-radius: 4px; font-family: var(--font-body);" 
                         onchange="updateProductItem(${index}, 'description', this.value)" 
                         onblur="updateProductItem(${index}, 'description', this.value)">${item.description || ''}</textarea></td>
                     <td><input type="date" value="${item.implementationTime || ''}" 
@@ -4272,7 +4293,7 @@
                         onchange="updateProductItem(${index}, 'unitPrice', parseFloat(this.value) || 0)" 
                         onblur="updateGrandTotal()" 
                         style="width: 100%; min-width: 120px; text-align: right;"></td>
-                    <td><input type="text" value="${formatCurrency(item.totalAmount || 0)}" readonly style="width: 100%; min-width: 120px; text-align: right; background: #f8fafc;"></td>
+                    <td><input type="text" value="${formatCurrency(item.totalAmount || 0)}" readonly style="width: 100%; min-width: 120px; text-align: right; background: #F2F2F7;"></td>
                     <td class="attachment-cell">
                         <button type="button" class="attachment-button" onclick="triggerAttachmentInput(${index})">
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"></path></svg>
