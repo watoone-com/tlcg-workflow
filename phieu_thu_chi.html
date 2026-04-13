@@ -5979,11 +5979,11 @@
                     loadRecentVouchers();
                 } else {
                     showToast(result.message || 'Lỗi duyệt hàng loạt', 'error');
-                    if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = 'Xác nhận Duyệt'; }
                 }
             } catch (err) {
                 console.error('bulkApproveSelected error:', err);
                 showToast('Lỗi kết nối khi duyệt: ' + err.message, 'error');
+            } finally {
                 if (confirmBtn) { confirmBtn.disabled = false; confirmBtn.textContent = 'Xác nhận Duyệt'; }
             }
         }
