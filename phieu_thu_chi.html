@@ -1857,6 +1857,7 @@
         .stat-item.rejected .stat-value { color: var(--dashboard-danger); }
         .stat-item.in-progress .stat-value { color: var(--dashboard-accent); }
         .stat-item.awaiting-ack .stat-value { color: #f59e0b; }
+        .stat-item.acknowledged .stat-value { color: #10b981; }
         .stat-item.overdue .stat-value { color: #fb7185; }
 
         #voucher-filter-bar {
@@ -3020,6 +3021,10 @@
                 <div class="stat-item awaiting-ack">
                     <span class="stat-value" id="stat-awaiting-ack">0</span>
                     <span class="stat-label">Chờ xác nhận</span>
+                </div>
+                <div class="stat-item acknowledged">
+                    <span class="stat-value" id="stat-acknowledged">0</span>
+                    <span class="stat-label">Đã xác nhận</span>
                 </div>
                 <div class="stat-item overdue">
                     <span class="stat-value" id="stat-overdue">0</span>
@@ -5267,6 +5272,7 @@
                 approved: 0,
                 rejected: 0,
                 awaitingAck: 0,
+                acknowledged: 0,
                 overdue: 0
             };
             vouchers.forEach(v => {
@@ -5274,6 +5280,7 @@
                 if (s.bucket === 'pending') stats.pending += 1;
                 if (s.bucket === 'in-progress') stats.inProgress += 1;
                 if (s.bucket === 'approved') stats.approved += 1;
+                if (s.bucket === 'acknowledged') stats.acknowledged += 1;
                 if (s.bucket === 'rejected') stats.rejected += 1;
                 if (s.bucket === 'approved' && !s.isReceived) stats.awaitingAck += 1;
                 if (s.isOverdue) stats.overdue += 1;
@@ -5284,6 +5291,7 @@
                 ['stat-approved', stats.approved],
                 ['stat-rejected', stats.rejected],
                 ['stat-awaiting-ack', stats.awaitingAck],
+                ['stat-acknowledged', stats.acknowledged],
                 ['stat-overdue', stats.overdue]
             ];
             mappings.forEach(([id, value]) => {

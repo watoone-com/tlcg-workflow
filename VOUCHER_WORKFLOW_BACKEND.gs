@@ -2579,6 +2579,225 @@ function handleBulkApproveByToken(params) {
  * requestBody.approverSignature: string (base64)
  * requestBody.signatureVerification: object
  */
+/**
+ * Like getVoucherFromHistory but works on a pre-loaded data array (no openById).
+ * data = sheet.getDataRange().getValues()
+ */
+function _getVoucherFromData_(voucherNumber, data) {
+  let baseVoucher = null;
+  for (let i = 1; i < data.length; i++) {
+    if (data[i][0] === voucherNumber) {
+      baseVoucher = {
+        row: i + 1,
+        voucherNumber: data[i][0],
+        voucherType:   data[i][1],
+        company:       data[i][2],
+        companyKey:    data[i][3] || '',
+        employee:      data[i][4],
+        requestorEmail: data[i][5],
+        submittedBy:   data[i][6] || '',
+        timestamp:     data[i][7],
+        amount:        data[i][8],
+        status:        data[i][9],
+        dueDate:       data[i][10] || '',
+        action:        data[i][11],
+        attachments:   data[i][12] || '',
+        description:   data[i][13] || '',
+        note:          data[i][14] || '',
+        approverEmail: data[i][15],
+        approvedAt:    data[i][16] || '',
+        meta:          (data[i][17] || '').toString().trim() || null
+      };
+      break;
+    }
+  }
+  if (!baseVoucher) return null;
+  // Scan subsequent rows to update approval status (same logic as getVoucherFromHistory)
+  if (baseVoucher.meta) {
+    try {
+      const meta = JSON.parse(baseVoucher.meta);
+      if (meta.companyApprovers && meta.companyApprovers.approvers) {
+        let approvalCount = 0;
+        for (let i = 1; i < data.length; i++) {
+          if (data[i][0] === voucherNumber) {
+            const rowAction = (data[i][11] || '').toString();
+            const rowMetaJson = (data[i][17] || '').toString();
+            if (rowAction.includes('Duyệt') || rowAction.includes('duyệt') || rowAction.includes('Approved')) {
+              let rowMeta = null;
+              let rowApproverEmail = null;
+              if (rowMetaJson) {
+                try { rowMeta = JSON.parse(rowMetaJson); rowApproverEmail = rowMeta.approvedBy || null; } catch(e) {}
+              }
+              if (rowApproverEmail) {
+                for (const role in meta.companyApprovers.approvers) {
+                  const approver = meta.companyApprovers.approvers[role];
+                  if (approver.email === rowApproverEmail && approver.status !== 'approved') {
+                    approver.status = 'approved';
+                    approver.approvedAt = data[i][7];
+                    approvalCount++;
+                    break;
+                  }
+                }
+              } else if (rowMeta && rowMeta.companyApprovers && rowMeta.companyApprovers.approvers) {
+                const rowApprovers = rowMeta.companyApprovers.approvers;
+                for (const role in rowApprovers) {
+                  if (rowApprovers[role].status === 'approved' &&
+                      meta.companyApprovers.approvers[role] &&
+                      meta.companyApprovers.approvers[role].status !== 'approved') {
+                    meta.companyApprovers.approvers[role].status = 'approved';
+                    meta.companyApprovers.approvers[role].approvedAt = rowApprovers[role].approvedAt || data[i][7];
+                    approvalCount++;
+                  }
+                }
+              }
+            }
+          }
+        }
+        meta.companyApprovers.approvalProgress = approvalCount + '/3';
+        const sequence = meta.companyApprovers.approvalSequence || ['accountant', 'legalRep', 'treasurer'];
+        let nextApprover = null;
+        for (const role of sequence) {
+          if (meta.companyApprovers.approvers[role].status !== 'approved') { nextApprover = role; break; }
+        }
+        meta.companyApprovers.currentApprover = nextApprover;
+        if (approvalCount === 3) {
+          meta.companyApprovers.overallStatus = 'Approved';
+          meta.companyApprovers.displayStatus = 'Đã duyệt';
+        } else if (approvalCount > 0) {
+          meta.companyApprovers.overallStatus = 'Partially Approved';
+          meta.companyApprovers.displayStatus = 'Đang duyệt (' + approvalCount + '/3)';
+        }
+        baseVoucher.meta = JSON.stringify(meta);
+      }
+    } catch(e) {}
+  }
+  return baseVoucher;
+}
+
+/**
+ * Like appendHistory_ but takes a pre-opened sheet reference (no openById).
+ */
+function _appendHistoryToSheet_(entry, sheet) {
+  sheet.appendRow([
+    entry.voucherNumber || '',
+    entry.voucherType || '',
+    entry.company || '',
+    entry.companyKey || '',
+    entry.employee || '',
+    entry.requestorEmail || '',
+    entry.submittedBy || entry.employee || '',
+    new Date(),
+    parseFloat((entry.amount || '0').toString().replace(/\./g, '').replace(/,/g, '.')) || 0,
+    entry.status || '',
+    entry.dueDate || '',
+    entry.action || '',
+    entry.attachments || '',
+    entry.description || '',
+    entry.note || '',
+    entry.approverEmail || '',
+    entry.approvedAt || '',
+    entry.metaJson || '',
+    entry.acknowledgedAt || '',
+    entry.acknowledgedBy || '',
+    entry.signatureUrl || '',
+    entry.rejectionReason || ''
+  ]);
+}
+
+/**
+ * Like _approveVoucherCore_ but uses pre-loaded sheet data and sheet reference.
+ */
+function _approveVoucherCoreWithSheet_(voucherNumber, approverEmail, approverRole, signatureData, sheet, sheetData) {
+  const existing = _getVoucherFromData_(voucherNumber, sheetData);
+  if (!existing) return { success: false, error: 'Không tìm thấy phiếu: ' + voucherNumber };
+
+  let meta = {};
+  if (existing.meta) {
+    try { meta = JSON.parse(existing.meta); } catch(e) {}
+  }
+
+  const companyApprovers = meta.companyApprovers;
+  if (!companyApprovers || !companyApprovers.approvers) {
+    return { success: false, error: 'Phiếu không có thông tin phê duyệt tuần tự (companyApprovers).' };
+  }
+
+  const approver = companyApprovers.approvers[approverRole];
+  if (!approver) return { success: false, error: 'Vai trò phê duyệt không hợp lệ: ' + approverRole };
+  if (approver.status === 'approved') return { success: false, error: 'Phiếu đã được duyệt bởi ' + approverRole };
+  if (companyApprovers.overallStatus === 'Rejected') return { success: false, error: 'Phiếu đã bị từ chối.' };
+
+  const expectedRole = companyApprovers.currentApprover || 'accountant';
+  if (approverRole !== expectedRole) {
+    return { success: false, error: 'Chưa đến lượt phê duyệt. Đang chờ: ' + expectedRole };
+  }
+
+  const nowIso = new Date().toISOString();
+  const sigData = signatureData || {};
+  const approverSig  = sigData.approverSignature   || '';
+  const approverNm   = sigData.approverName        || (IMPORT_APPROVERS[approverRole] ? IMPORT_APPROVERS[approverRole].name : approverRole);
+  const sigVerResult = sigData.signatureVerification || null;
+
+  companyApprovers.approvers[approverRole].status     = 'approved';
+  companyApprovers.approvers[approverRole].approvedAt = nowIso;
+  companyApprovers.approvers[approverRole].signature  = approverSig;
+
+  if (approverRole === 'accountant')  { meta.accountantSignature = approverSig; meta.accountantName = approverNm; }
+  else if (approverRole === 'legalRep') { meta.legalRepSignature = approverSig; meta.legalRepName = approverNm; }
+  else if (approverRole === 'treasurer') { meta.treasurerSignature = approverSig; meta.treasurerName = approverNm; }
+
+  if (sigVerResult) {
+    meta.signatureVerification = meta.signatureVerification || {};
+    meta.signatureVerification[approverRole] = {
+      verified: sigVerResult.verified, similarity: sigVerResult.similarity,
+      reason: sigVerResult.reason, verifiedAt: nowIso
+    };
+  }
+
+  const approvalCount = countApprovals(companyApprovers.approvers);
+  companyApprovers.approvalProgress = approvalCount + '/3';
+  meta.companyApprovers = companyApprovers;
+  meta.approvedBy = approverEmail;
+
+  const isFinal = (approverRole === 'treasurer' || approvalCount === 3);
+
+  if (isFinal) {
+    companyApprovers.overallStatus = 'Approved';
+    companyApprovers.displayStatus = 'Đã duyệt';
+    companyApprovers.currentApprover = null;
+    companyApprovers.fullyApprovedAt = nowIso;
+    _appendHistoryToSheet_({
+      voucherNumber: voucherNumber, voucherType: existing.voucherType || '',
+      company: existing.company || '', companyKey: existing.companyKey || '',
+      employee: existing.employee || '', requestorEmail: existing.requestorEmail || '',
+      submittedBy: existing.submittedBy || '', amount: existing.amount || 0,
+      status: 'Đã duyệt', dueDate: existing.dueDate || '',
+      action: 'Duyệt bởi ' + (IMPORT_APPROVERS[approverRole] ? IMPORT_APPROVERS[approverRole].name : approverRole),
+      attachments: existing.attachments || '', description: existing.description || '',
+      note: 'Duyệt hàng loạt — tất cả 3 bước', approverEmail: approverEmail,
+      approvedAt: nowIso, metaJson: JSON.stringify(meta)
+    }, sheet);
+  } else {
+    const sequence = companyApprovers.approvalSequence || ['accountant', 'legalRep', 'treasurer'];
+    const nextRole = sequence[sequence.indexOf(approverRole) + 1];
+    companyApprovers.currentApprover = nextRole;
+    companyApprovers.overallStatus = 'Partially Approved';
+    companyApprovers.displayStatus = 'Đang duyệt (' + approvalCount + '/3)';
+    _appendHistoryToSheet_({
+      voucherNumber: voucherNumber, voucherType: existing.voucherType || '',
+      company: existing.company || '', companyKey: existing.companyKey || '',
+      employee: existing.employee || '', requestorEmail: existing.requestorEmail || '',
+      submittedBy: existing.submittedBy || '', amount: existing.amount || 0,
+      status: 'Đang duyệt (' + approvalCount + '/3)', dueDate: existing.dueDate || '',
+      action: 'Duyệt bởi ' + (IMPORT_APPROVERS[approverRole] ? IMPORT_APPROVERS[approverRole].name : approverRole),
+      attachments: existing.attachments || '', description: existing.description || '',
+      note: 'Duyệt hàng loạt — bước ' + approvalCount + '/3', approverEmail: approverEmail,
+      approvedAt: nowIso, metaJson: JSON.stringify(meta)
+    }, sheet);
+  }
+
+  return { success: true, isFinal: isFinal, voucherData: existing };
+}
+
 function handleBulkApprove(requestBody) {
   try {
     const voucherNumbers      = requestBody.voucherNumbers      || [];
@@ -2628,12 +2847,18 @@ function handleBulkApprove(requestBody) {
       signatureVerification: signatureVerification
     };
 
+    // Open sheet ONCE and read all data ONCE — reused for every voucher to avoid
+    // "Too many simultaneous invocations" from repeated openById calls in the loop.
+    const _bulkSheet = SpreadsheetApp.openById(VOUCHER_HISTORY_SHEET_ID).getSheetByName(VH_SHEET_NAME);
+    if (!_bulkSheet) return createResponse(false, 'Lỗi: Không tìm thấy sheet lịch sử.');
+    const _bulkData = _bulkSheet.getDataRange().getValues();
+
     const approved = [];
     const failed   = [];
     const nextStepVouchers = [];
 
     for (let vi = 0; vi < voucherNumbers.length; vi++) {
-      const result = _approveVoucherCore_(voucherNumbers[vi], approverEmail, approverRole, signatureData);
+      const result = _approveVoucherCoreWithSheet_(voucherNumbers[vi], approverEmail, approverRole, signatureData, _bulkSheet, _bulkData);
       if (result.success) {
         approved.push(voucherNumbers[vi]);
         if (!result.isFinal) {
@@ -2646,7 +2871,7 @@ function handleBulkApprove(requestBody) {
           });
         } else {
           try {
-            const existing = getVoucherFromHistory(voucherNumbers[vi]);
+            const existing = result.voucherData;
             if (existing && existing.requestorEmail) {
               sendFinalApprovalEmail(
                 { requestorEmail: existing.requestorEmail },
