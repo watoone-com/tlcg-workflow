@@ -5954,32 +5954,52 @@
                     }
                 }
 
-                // 6. Send to backend
-                const formData = new FormData();
-                formData.append('data', JSON.stringify({
-                    action: 'bulkApprove',
-                    voucherNumbers: voucherNumbers,
-                    approverEmail: user.email,
-                    approverName: user.name || user.email,
-                    approverRole: approverRole,
-                    approverSignature: finalSignature,
-                    signatureVerification: verificationResult
-                }));
-                const response = await fetch(GOOGLE_APPS_SCRIPT_WEB_APP_URL, {
-                    method: 'POST', mode: 'cors', redirect: 'follow', body: formData
-                });
-                const result = await response.json();
-                if (result.success) {
-                    const d = result.data || {};
-                    showToast(`Đã duyệt ${(d.approved || []).length} phiếu.` +
-                        (d.failed && d.failed.length ? ` Thất bại: ${d.failed.length}.` : ''), 'success');
-                    clearBulkSelection();
-                    // Close modal without confirm dialog (called programmatically)
-                    document.getElementById('bulk-approve-modal-overlay').classList.remove('show');
-                    loadRecentVouchers();
-                } else {
-                    showToast(result.message || 'Lỗi duyệt hàng loạt', 'error');
+                // 6. Send to backend in batches of 4 to avoid GAS 30s timeout
+                const BATCH_SIZE = 4;
+                const allApproved = [];
+                const allFailed = [];
+                for (let bi = 0; bi < voucherNumbers.length; bi += BATCH_SIZE) {
+                    const batch = voucherNumbers.slice(bi, bi + BATCH_SIZE);
+                    const batchNum = Math.floor(bi / BATCH_SIZE) + 1;
+                    const totalBatches = Math.ceil(voucherNumbers.length / BATCH_SIZE);
+                    if (confirmBtn) confirmBtn.textContent = `Đang duyệt... (${bi + batch.length}/${voucherNumbers.length})`;
+                    const formData = new FormData();
+                    formData.append('data', JSON.stringify({
+                        action: 'bulkApprove',
+                        voucherNumbers: batch,
+                        approverEmail: user.email,
+                        approverName: user.name || user.email,
+                        approverRole: approverRole,
+                        approverSignature: finalSignature,
+                        signatureVerification: verificationResult
+                    }));
+                    const response = await fetch(GOOGLE_APPS_SCRIPT_WEB_APP_URL, {
+                        method: 'POST', mode: 'cors', redirect: 'follow', body: formData
+                    });
+                    let result;
+                    const rawText = await response.text();
+                    try {
+                        result = JSON.parse(rawText);
+                    } catch (parseErr) {
+                        if (response.status === 504) {
+                            throw new Error(`Server timeout (504) khi xử lý nhóm ${batchNum}/${totalBatches}. Vui lòng thử lại với số phiếu ít hơn.`);
+                        }
+                        throw new Error(`Lỗi phản hồi server (nhóm ${batchNum}): ${rawText.substring(0, 100)}`);
+                    }
+                    if (result.success) {
+                        const d = result.data || {};
+                        allApproved.push(...(d.approved || []));
+                        allFailed.push(...(d.failed || []));
+                    } else {
+                        throw new Error(result.message || `Lỗi duyệt nhóm ${batchNum}`);
+                    }
                 }
+                showToast(`Đã duyệt ${allApproved.length} phiếu.` +
+                    (allFailed.length ? ` Thất bại: ${allFailed.length}.` : ''), 'success');
+                clearBulkSelection();
+                // Close modal without confirm dialog (called programmatically)
+                document.getElementById('bulk-approve-modal-overlay').classList.remove('show');
+                loadRecentVouchers();
             } catch (err) {
                 console.error('bulkApproveSelected error:', err);
                 showToast('Lỗi kết nối khi duyệt: ' + err.message, 'error');
