@@ -3040,8 +3040,10 @@
                         style="flex:0 0 140px;padding:0.4375rem 0.5rem;border:1px solid var(--ios-gray-4);border-radius:var(--ios-radius-sm);font-size:0.8125rem;background:white;color:var(--text-primary);outline:none;">
                         <option value="">Tất cả TT</option>
                         <option value="Pending">Chờ duyệt</option>
-                        <option value="InProgress">Đang duyệt</option>
+                        <option value="InProgress1">Đang duyệt (1/3)</option>
+                        <option value="InProgress2">Đang duyệt (2/3)</option>
                         <option value="Approved">Đã duyệt</option>
+                        <option value="Acknowledged">Đã xác nhận</option>
                         <option value="Rejected">Từ chối</option>
                     </select>
                     <select id="vf-type"
@@ -5597,12 +5599,16 @@
                 }
                 const state = normalizeVoucherState(v);
                 // Status filter — mapped to unified frontend states
-                if (status === 'InProgress') {
-                    if (state.bucket !== 'in-progress') return false;
+                if (status === 'InProgress1') {
+                    if (state.bucket !== 'in-progress' || state.progressNum !== 1) return false;
+                } else if (status === 'InProgress2') {
+                    if (state.bucket !== 'in-progress' || state.progressNum !== 2) return false;
                 } else if (status === 'Pending') {
                     if (state.bucket !== 'pending') return false;
                 } else if (status === 'Approved') {
-                    if (state.bucket !== 'approved' && state.bucket !== 'acknowledged') return false;
+                    if (state.bucket !== 'approved') return false;
+                } else if (status === 'Acknowledged') {
+                    if (state.bucket !== 'acknowledged') return false;
                 } else if (status === 'Rejected') {
                     if (state.bucket !== 'rejected') return false;
                 }
