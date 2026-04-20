@@ -5431,6 +5431,8 @@
                 let vouchers = [];
                 if (!forceRefresh) {
                     vouchers = loadVoucherSummaryFromCache() || [];
+                    // Discard cache if it predates requestorEmail field
+                    if (vouchers.length && vouchers[0].requestorEmail === undefined) vouchers = [];
                 }
                 if (!vouchers.length || forceRefresh) {
                     vouchers = await fetchVoucherSummaryFromBackend(forceRefresh);
@@ -5630,6 +5632,9 @@
             if (btn) {
                 btn.style.background = myTaskFilterActive ? '#f97316' : 'white';
                 btn.style.color      = myTaskFilterActive ? 'white'   : '#f97316';
+                btn.title = myTaskFilterActive
+                    ? 'Đang lọc việc của tôi — nhấn để xem tất cả'
+                    : 'Chỉ hiện việc cần làm của tôi';
             }
             applyVoucherFilter();
         }
