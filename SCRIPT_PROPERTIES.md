@@ -41,6 +41,22 @@ required but allowed inside the string):
 If `IMPORT_APPROVERS` is missing or not valid JSON, the backend falls back to
 the hardcoded roster shown above.
 
+### `PAYMENT_REQUEST_BACKEND.gs` — de_nghi_thanh_toan
+
+Maps to [PAYMENT_REQUEST_BACKEND.gs](PAYMENT_REQUEST_BACKEND.gs).
+
+| Key | Type | Example / Default fallback | Used by |
+| --- | --- | --- | --- |
+| `MASTER_SPREADSHEET_ID` | string | `1ujmPbtEdkGLgEshfhvV8gRB6R0GLI31jsZM5rDOJS0g` | Top-level constants `USERS_SHEET_ID` and `CONFIG.SPREADSHEET_ID` |
+
+Note: this backend reads the **same** `MASTER_SPREADSHEET_ID` property as
+`VOUCHER_WORKFLOW_BACKEND.gs`. If both scripts live in the same Apps Script
+project, setting the property once covers both flows. If they are separate
+projects, set it in each. The frontend for this flow (`de_nghi_thanh_toan.html`)
+reuses the Vercel-side `DRIVE_VOUCHER_FOLDER_ID`, `GOOGLE_CLIENT_ID` and
+`GOOGLE_API_KEY` via `/api/config` — no additional backend property is needed
+for Drive uploads because the client performs them directly with GIS.
+
 ## Relationship to Vercel environment variables
 
 The frontend-facing identifiers (`GOOGLE_CLIENT_ID`, `GOOGLE_API_KEY`,

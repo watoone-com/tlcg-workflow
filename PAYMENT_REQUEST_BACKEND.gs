@@ -16,10 +16,24 @@
 
 // ==================== CONFIGURATION ====================
 
-const USERS_SHEET_ID = '1ujmPbtEdkGLgEshfhvV8gRB6R0GLI31jsZM5rDOJS0g';
+/**
+ * Read a Script Property and fall back to a hardcoded default when the property
+ * is missing or the PropertiesService call fails. Keeps this backend running
+ * unchanged in legacy deployments that haven't populated properties yet.
+ */
+function getCfg_(key, fallback) {
+  try {
+    var v = PropertiesService.getScriptProperties().getProperty(key);
+    return (v && String(v).trim()) ? v : fallback;
+  } catch (_) {
+    return fallback;
+  }
+}
+
+const USERS_SHEET_ID = getCfg_('MASTER_SPREADSHEET_ID', '1ujmPbtEdkGLgEshfhvV8gRB6R0GLI31jsZM5rDOJS0g');
 
 const CONFIG = {
-  SPREADSHEET_ID: '1ujmPbtEdkGLgEshfhvV8gRB6R0GLI31jsZM5rDOJS0g',
+  SPREADSHEET_ID: getCfg_('MASTER_SPREADSHEET_ID', '1ujmPbtEdkGLgEshfhvV8gRB6R0GLI31jsZM5rDOJS0g'),
   SHEET_NAME: 'Payment_Request_History', // Main sheet for storing all payment requests
   SUPPLIERS_SHEET_NAME: 'Nhà cung cấp', // Existing suppliers sheet
   EMPLOYEES_SHEET_NAME: 'Master Employee',
