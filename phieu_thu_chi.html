@@ -4260,17 +4260,13 @@
             
             // ==================== INITIALIZE GOOGLE DRIVE (GIS TOKEN FLOW) ====================
             // We use Google Identity Services (GIS) to get a Drive token.
-            if (isDriveConfigured()) {
-                console.log('🔧 Google Drive API credentials detected, initializing (GIS token)...');
-                ensureDriveToken(false)
-                    .then(() => console.log('✅ Drive API ready - unlimited file uploads enabled!'))
-                    .catch(error => {
-                        console.warn('⚠️ Drive API initialization failed:', error);
-                        console.warn('⚠️ Falling back to legacy upload (500KB limit)');
-                    });
-            } else {
+            // Drive OAuth is requested lazily in uploadToDrive() when the user
+            // actually attaches a file that needs Drive (>500KB legacy limit).
+            // Eagerly calling ensureDriveToken(false) on every page load was
+            // spawning a Google account chooser popup on every visit, even when
+            // the user never uploads anything.
+            if (!isDriveConfigured()) {
                 console.log('ℹ️ Google Drive API not configured - using legacy upload (500KB limit)');
-                console.log('ℹ️ To enable unlimited uploads, configure Drive API credentials');
             }
             
             // Verify user data is valid
