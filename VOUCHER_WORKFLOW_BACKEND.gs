@@ -3515,6 +3515,21 @@ function handleGetVoucherSummary(requestBody) {
     Logger.log('VOUCHER_HISTORY_SHEET_ID: ' + VOUCHER_HISTORY_SHEET_ID);
     Logger.log('VH_SHEET_NAME: ' + VH_SHEET_NAME);
 
+    // Caller context for visibility scoping
+    const callerEmail = ((requestBody && requestBody.callerEmail) || '').toLowerCase().trim();
+    const callerRoleRaw = ((requestBody && requestBody.callerRole) || '').toLowerCase().trim();
+    const isAdmin = (requestBody && requestBody.isAdmin) === 'true';
+
+    // Normalize role — support both English keys and Vietnamese titles
+    function resolveRole(r) {
+      if (r === 'accountant' || r.includes('k\u1ebf to\u00e1n') || r.includes('ke toan')) return 'accountant';
+      if (r === 'legalrep' || r.includes('\u0111\u1ea1i di\u1ec7n') || r.includes('dai dien')) return 'legalRep';
+      if (r === 'treasurer' || r.includes('th\u1ee7 qu\u1ef9') || r.includes('thu quy')) return 'treasurer';
+      return 'submitter';
+    }
+    const callerRole = resolveRole(callerRoleRaw);
+    Logger.log('Caller: ' + callerEmail + ' role: ' + callerRole + ' isAdmin: ' + isAdmin);
+
     const ss = safeOpenSpreadsheet(VOUCHER_HISTORY_SHEET_ID, 'handleGetVoucherSummary');
     const sheet = safeGetSheet(ss, VH_SHEET_NAME, 'handleGetVoucherSummary');
     
@@ -3652,26 +3667,39 @@ function handleGetVoucherSummary(requestBody) {
       if (s === 'Received') return 3;
       return best;
     }
-    const pending = vouchers.filter(v => {
+
+    // ── Visibility filter ──────────────────────────────────────────────────────
+    function shouldShow(v) {
+      if (isAdmin) return true;
+      if (callerRole === 'accountant') return true;
+      if (callerRole === 'legalRep')   return true;
+      if (callerRole === 'treasurer')  return true;
+      if (!callerEmail) return true; // no-auth / dev fallback
+      return (v.requestorEmail || '').toLowerCase().trim() === callerEmail;
+    }
+    const visibleVouchers = vouchers.filter(shouldShow);
+    Logger.log('Visible vouchers after role filter: ' + visibleVouchers.length + ' (of ' + vouchers.length + ')');
+
+    const pending = visibleVouchers.filter(v => {
       const ep = getEffectiveProgress(v.voucherNumber, v.status);
       const s = (v.status || '').toString();
       return ep === 0 && s !== 'Rejected' && s !== 'Đã từ chối';
     }).length;
-    const approved = vouchers.filter(v => {
+    const approved = visibleVouchers.filter(v => {
       const ep = getEffectiveProgress(v.voucherNumber, v.status);
       const s = (v.status || '').toString();
       return ep === 3 || s === 'Received';
     }).length;
-    const rejected = vouchers.filter(v => {
+    const rejected = visibleVouchers.filter(v => {
       const s = (v.status || '').toString();
       return s === 'Rejected' || s === 'Đã từ chối';
     }).length;
 
     Logger.log('Vouchers by status - Pending: ' + pending + ', Approved: ' + approved + ', Rejected: ' + rejected);
-    
+
     // Get all vouchers (no limit)
     const seqLabels = ['accountant', 'legalRep', 'treasurer'];
-    const recent = vouchers.map(v => {
+    const recent = visibleVouchers.map(v => {
       // Use the highest progress we can determine:
       // 1. From the status column "(N/3)" pattern (new format)
       // 2. Fallback: count approval-action rows (old data without progress in status)
@@ -3688,6 +3716,7 @@ function handleGetVoucherSummary(requestBody) {
         voucherType: v.voucherType,
         company: v.company,
         employee: v.employee,
+        requestorEmail: v.requestorEmail,
         amount: v.amount,
         status: v.status,
         action: v.action,
@@ -3699,7 +3728,7 @@ function handleGetVoucherSummary(requestBody) {
     });
     
     return createResponse(true, 'Thành công', {
-      total: vouchers.length,
+      total: visibleVouchers.length,
       pending: pending,
       approved: approved,
       rejected: rejected,

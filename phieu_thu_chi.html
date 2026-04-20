@@ -2988,6 +2988,10 @@
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
                         Làm mới
                     </button>
+                    <button id="my-task-btn" onclick="toggleMyTaskFilter()" title="Chỉ hiện việc cần làm của tôi"
+                        style="display:flex;align-items:center;gap:0.35rem;padding:0.375rem 0.75rem;border:1.5px solid #f97316;border-radius:6px;font-size:0.8125rem;font-weight:600;background:white;color:#f97316;cursor:pointer;white-space:nowrap;transition:background 0.15s,color 0.15s;">
+                        ⚡ Việc của tôi <span id="my-task-count" style="background:#f97316;color:white;border-radius:999px;padding:0 6px;font-size:0.75rem;min-width:18px;text-align:center;">0</span>
+                    </button>
                 </div>
             </div>
             <!-- Bulk action toolbar — shown when ≥1 checkbox is selected -->
@@ -3029,6 +3033,10 @@
                 <div class="stat-item overdue">
                     <span class="stat-value" id="stat-overdue">0</span>
                     <span class="stat-label">Quá hạn &gt; 2 ngày</span>
+                </div>
+                <div class="stat-item" id="stat-my-task-item" onclick="toggleMyTaskFilter()" style="cursor:pointer;border:1.5px solid #f97316;border-radius:8px;">
+                    <span class="stat-value" id="stat-my-task" style="color:#f97316;">0</span>
+                    <span class="stat-label" style="color:#f97316;">⚡ Việc của tôi</span>
                 </div>
             </div>
             <!-- Voucher Filter Bar -->
@@ -5139,9 +5147,16 @@
         let renderedVoucherCount = 0;
         let selectedVoucherNumber = '';
         let voucherFilterTimer = null;
+        let myTaskFilterActive = false;
         const VOUCHER_BATCH_SIZE = 28;
-        const VOUCHER_CACHE_KEY = 'tlcg_voucher_summary_cache_v2';
         const VOUCHER_FILTER_STATE_KEY = 'tlcg_voucher_filter_state_v2';
+        function getVoucherCacheKey() {
+            try {
+                const u = JSON.parse(localStorage.getItem('tlc_current_user') || '{}');
+                return 'tlcg_voucher_summary_cache_v2_' + (u.email || 'anon');
+            } catch(e) { return 'tlcg_voucher_summary_cache_v2_anon'; }
+        }
+        const VOUCHER_CACHE_KEY = getVoucherCacheKey();
         const VOUCHER_CACHE_TTL_MS = 60 * 1000;
         const VOUCHER_HISTORY_CACHE_TTL_MS = 2 * 60 * 1000;
         const requestDedupMap = new Map();
@@ -5237,9 +5252,11 @@
 
         async function fetchVoucherSummaryFromBackend(forceRefresh = false) {
             const fetcher = async () => {
-                // Use GET to avoid POST→GET redirect conversion by Node.js fetch in the proxy layer.
-                // doGet already handles getVoucherSummary and returns the same response shape.
-                const url = `${GOOGLE_APPS_SCRIPT_WEB_APP_URL}?action=getVoucherSummary`;
+                const _u = (() => { try { return JSON.parse(localStorage.getItem('tlc_current_user') || '{}'); } catch(e) { return {}; } })();
+                const callerEmail = encodeURIComponent((_u.email || '').toLowerCase());
+                const callerRole  = encodeURIComponent((_u.role  || '').toLowerCase());
+                const isAdmin     = _u.isAdmin ? 'true' : 'false';
+                const url = `${GOOGLE_APPS_SCRIPT_WEB_APP_URL}?action=getVoucherSummary&callerEmail=${callerEmail}&callerRole=${callerRole}&isAdmin=${isAdmin}`;
                 const response = await fetch(url, {
                     method: 'GET',
                     mode: 'cors',
@@ -5259,11 +5276,12 @@
                 }
                 return result.data.recent || [];
             };
+            const _dedupKey = 'getVoucherSummary_' + ((() => { try { return JSON.parse(localStorage.getItem('tlc_current_user') || '{}').email || 'anon'; } catch(e) { return 'anon'; } })());
             if (forceRefresh) {
-                requestDedupMap.delete('getVoucherSummary');
+                requestDedupMap.delete(_dedupKey);
                 return fetcher();
             }
-            return dedupedRequest('getVoucherSummary', fetcher);
+            return dedupedRequest(_dedupKey, fetcher);
         }
 
         function normalizeVoucherState(voucher) {
@@ -5305,6 +5323,7 @@
                 acknowledged: 0,
                 overdue: 0
             };
+            let myTaskCount = 0;
             vouchers.forEach(v => {
                 const s = normalizeVoucherState(v);
                 if (s.bucket === 'pending') stats.pending += 1;
@@ -5314,6 +5333,7 @@
                 if (s.bucket === 'rejected') stats.rejected += 1;
                 if (s.bucket === 'approved' && !s.isReceived) stats.awaitingAck += 1;
                 if (s.isOverdue) stats.overdue += 1;
+                if (isMyTask(v)) myTaskCount += 1;
             });
             const mappings = [
                 ['stat-pending', stats.pending],
@@ -5322,12 +5342,16 @@
                 ['stat-rejected', stats.rejected],
                 ['stat-awaiting-ack', stats.awaitingAck],
                 ['stat-acknowledged', stats.acknowledged],
-                ['stat-overdue', stats.overdue]
+                ['stat-overdue', stats.overdue],
+                ['stat-my-task', myTaskCount]
             ];
             mappings.forEach(([id, value]) => {
                 const el = document.getElementById(id);
                 if (el) el.textContent = String(value);
             });
+            // Also update the inline badge on the button
+            const badgeEl = document.getElementById('my-task-count');
+            if (badgeEl) badgeEl.textContent = String(myTaskCount);
         }
 
         function saveVoucherFilterState() {
@@ -5584,6 +5608,42 @@
         }
 
         // ============ VOUCHER FILTER FUNCTIONS ============
+
+        function getCallerRole() {
+            try {
+                const u = JSON.parse(localStorage.getItem('tlc_current_user') || '{}');
+                const r = (u.role || '').toLowerCase();
+                if (r === 'accountant' || r.includes('kế toán') || r.includes('ke toan')) return 'accountant';
+                if (r === 'legalrep' || r.includes('đại diện') || r.includes('dai dien')) return 'legalRep';
+                if (r === 'treasurer' || r.includes('thủ quỹ') || r.includes('thu quy')) return 'treasurer';
+                return 'submitter';
+            } catch(e) { return 'submitter'; }
+        }
+
+        function isMyTask(v) {
+            const state = normalizeVoucherState(v);
+            if (state.bucket === 'acknowledged' || state.bucket === 'rejected') return false;
+            const role = getCallerRole();
+            if (role === 'accountant') return state.progressNum === 0;
+            if (role === 'legalRep')   return state.progressNum === 1;
+            if (role === 'treasurer')  return state.progressNum === 2;
+            // submitter: their vouchers not yet done
+            try {
+                const email = (JSON.parse(localStorage.getItem('tlc_current_user') || '{}').email || '').toLowerCase();
+                return email && (v.requestorEmail || '').toLowerCase() === email;
+            } catch(e) { return false; }
+        }
+
+        function toggleMyTaskFilter() {
+            myTaskFilterActive = !myTaskFilterActive;
+            const btn = document.getElementById('my-task-btn');
+            if (btn) {
+                btn.style.background = myTaskFilterActive ? '#f97316' : 'white';
+                btn.style.color      = myTaskFilterActive ? 'white'   : '#f97316';
+            }
+            applyVoucherFilter();
+        }
+
         function applyVoucherFilter() {
             const search   = (document.getElementById('vf-search')?.value || '').trim().toLowerCase();
             const status   = document.getElementById('vf-status')?.value || '';
@@ -5591,7 +5651,7 @@
             const dateFrom = document.getElementById('vf-date-from')?.value || '';
             const dateTo   = document.getElementById('vf-date-to')?.value || '';
 
-            const filtered = allLoadedVouchers.filter(v => {
+            let filtered = allLoadedVouchers.filter(v => {
                 // Text search: voucher number, employee, company
                 if (search) {
                     const hay = `${v.voucherNumber || ''} ${v.employee || ''} ${v.company || ''}`.toLowerCase();
@@ -5625,11 +5685,16 @@
                 return true;
             });
 
+            // My Task filter
+            if (myTaskFilterActive) {
+                filtered = filtered.filter(isMyTask);
+            }
+
             renderVoucherDataset(filtered);
 
             const countEl = document.getElementById('vf-count');
             if (countEl) {
-                const isFiltered = search || status || type || dateFrom || dateTo;
+                const isFiltered = search || status || type || dateFrom || dateTo || myTaskFilterActive;
                 countEl.textContent = isFiltered
                     ? `Hiển thị ${filtered.length} / ${allLoadedVouchers.length} phiếu`
                     : `${allLoadedVouchers.length} phiếu`;
@@ -5642,6 +5707,10 @@
                 const el = document.getElementById(id);
                 if (el) el.value = '';
             });
+            // Reset My Task toggle
+            myTaskFilterActive = false;
+            const btn = document.getElementById('my-task-btn');
+            if (btn) { btn.style.background = 'white'; btn.style.color = '#f97316'; }
             saveVoucherFilterState();
             applyVoucherFilter();
         }
