@@ -2,8 +2,37 @@
  * GOOGLE APPS SCRIPT - PHIẾU THU CHI
  */
 
+/**
+ * Read a script property with a safe fallback. If PropertiesService throws
+ * (e.g. during limited execution contexts) we still return the fallback so
+ * the existing behavior is preserved.
+ *
+ * Set values in: Apps Script editor -> Project Settings -> Script properties.
+ * See SCRIPT_PROPERTIES.md for the full list of supported keys.
+ */
+function getCfg_(key, fallback) {
+  try {
+    var v = PropertiesService.getScriptProperties().getProperty(key);
+    return (v === null || v === undefined || v === '') ? fallback : v;
+  } catch (e) {
+    return fallback;
+  }
+}
+
+/** Same as getCfg_() but parses the stored value as JSON. */
+function getCfgJson_(key, fallback) {
+  var raw = getCfg_(key, null);
+  if (!raw) return fallback;
+  try {
+    return JSON.parse(raw);
+  } catch (e) {
+    return fallback;
+  }
+}
+
 // TLCG Master Data spreadsheet - contains both "Nhân viên" and "Voucher_History" sheets
-const TLCG_MASTER_DATA_SHEET_ID = '1ujmPbtEdkGLgEshfhvV8gRB6R0GLI31jsZM5rDOJS0g';
+// Sourced from script property MASTER_SPREADSHEET_ID (fallback kept for continuity).
+const TLCG_MASTER_DATA_SHEET_ID = getCfg_('MASTER_SPREADSHEET_ID', '1ujmPbtEdkGLgEshfhvV8gRB6R0GLI31jsZM5rDOJS0g');
 const USERS_SHEET_ID = TLCG_MASTER_DATA_SHEET_ID; // Same spreadsheet
 const VOUCHER_HISTORY_SHEET_ID = TLCG_MASTER_DATA_SHEET_ID; // Same spreadsheet
 const VH_SHEET_NAME = 'Voucher_History';
@@ -11,12 +40,14 @@ const EMPLOYEES_SHEET_NAME = 'Master Employee';
 const COMPANY_SHEET_NAME = 'Master Company';
 const VH_IMPORT_SHEET_NAME = 'VH_import';
 
-// Fixed approvers for VH_import bulk flow
-const IMPORT_APPROVERS = {
+// Fixed approvers for VH_import bulk flow.
+// Sourced from script property IMPORT_APPROVERS (JSON string). Fallback is the
+// previously-hardcoded roster.
+const IMPORT_APPROVERS = getCfgJson_('IMPORT_APPROVERS', {
   accountant: { email: 'nhanh.nguyen@tl-c.com.vn', name: 'Nhanh Nguyễn', order: 1 },
   legalRep:   { email: 'anh.le@mediainsider.vn',   name: 'Anh Lê',        order: 2 },
   treasurer:  { email: 'linh.le@tl-c.com.vn',       name: 'Linh Lê',       order: 3 }
-};
+});
 
 /**
  * Helper function to safely open a spreadsheet with detailed error handling
@@ -3751,7 +3782,8 @@ function handleGetVoucherHistory(requestBody) {
 
 /** HÀM PHỤ TRỢ */
 function uploadFilesToDrive_(files, folderName) {
-  const DRIVE_FOLDER_ID = '1RBBUUAQIrYTWeBONIgkMtELL0hxZhtqG';
+  // Sourced from script property DRIVE_VOUCHER_FOLDER_ID (fallback kept for continuity).
+  const DRIVE_FOLDER_ID = getCfg_('DRIVE_VOUCHER_FOLDER_ID', '1RBBUUAQIrYTWeBONIgkMtELL0hxZhtqG');
   const parent = DriveApp.getFolderById(DRIVE_FOLDER_ID);
   let folder = parent.getFoldersByName(folderName).hasNext() ? parent.getFoldersByName(folderName).next() : parent.createFolder(folderName);
   return files.map(file => {
