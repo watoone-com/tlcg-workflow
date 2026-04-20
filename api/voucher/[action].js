@@ -2,6 +2,28 @@
 // Handles all voucher-related API calls
 // Location: api/voucher/[action].js
 
+// ---- In-memory cache for read-only actions (survives warm-instance reuse) ----
+// Vercel's Edge Network does not cache POST responses regardless of
+// Cache-Control headers, so this lives inside the warm function instance.
+// First call warms the entry; subsequent calls to the same warm worker in
+// the next CACHE_TTL_MS window return instantly without hitting GAS.
+// Not a replacement for proper edge caching — that requires the caller to
+// switch to GET, in which case the Cache-Control headers set below take
+// over. See .cursor/skills/audit-slow-flow/SKILL.md.
+const READ_ONLY_ACTIONS = new Set([
+  'getVoucherSummary',
+  'getEmployees',
+  'getCompanyApprovers',
+  'getApprovalStatus',
+  'getVoucherHistory'
+]);
+const CACHE_TTL_MS = 30 * 1000;
+const proxyCache = new Map(); // key -> { ts, status, body }
+
+function cacheKeyFrom(action, bodyString) {
+  return `${action}::${bodyString || ''}`;
+}
+
 export default async function handler(req, res) {
   const { action } = req.query;
   
@@ -47,27 +69,48 @@ export default async function handler(req, res) {
   try {
     // Handle GET requests
     if (req.method === 'GET') {
-      // Forward GET request to GAS with query parameters
       const queryParams = new URLSearchParams(req.query);
       const gasUrl = `${GAS_URL}?${queryParams.toString()}`;
-      
+      const isReadOnly = READ_ONLY_ACTIONS.has(action);
+      const cacheKey = isReadOnly ? cacheKeyFrom(action, queryParams.toString()) : null;
+
+      // In-memory cache hit (survives warm-instance reuse)
+      if (cacheKey) {
+        const hit = proxyCache.get(cacheKey);
+        if (hit && Date.now() - hit.ts < CACHE_TTL_MS) {
+          console.log(`[Proxy GET CacheHit] action: ${action}`);
+          res.setHeader('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=120');
+          res.setHeader('X-Proxy-Cache', 'HIT');
+          return res.status(hit.status).json(hit.body);
+        }
+      }
+
       console.log(`[Proxy GET] ${gasUrl.substring(0, 100)}...`);
-      
+
       const response = await fetch(gasUrl, {
         method: 'GET',
         headers: {
           'User-Agent': 'TLCG-Workflow-Proxy/1.0'
         }
       });
-      
+
       if (!response.ok) {
         console.error(`[Proxy GET Error] ${response.status}: ${response.statusText}`);
         throw new Error(`GAS returned ${response.status}: ${response.statusText}`);
       }
-      
+
       const data = await response.json();
       console.log(`[Proxy GET Success] action: ${action}`);
-      
+
+      // Cache + advertise cacheability for read-only actions. On GET,
+      // Vercel's Edge Network honours s-maxage so subsequent requests
+      // across any warm instance benefit.
+      if (cacheKey) {
+        proxyCache.set(cacheKey, { ts: Date.now(), status: 200, body: data });
+        res.setHeader('Cache-Control', 'public, s-maxage=30, stale-while-revalidate=120');
+        res.setHeader('X-Proxy-Cache', 'MISS');
+      }
+
       return res.status(200).json(data);
     }
     
@@ -75,20 +118,24 @@ export default async function handler(req, res) {
     if (req.method === 'POST') {
       // For Vercel, req.body is already parsed if Content-Type is application/json
       // But GAS expects FormData with 'data' field containing JSON string
-      
+
       let bodyToSend;
-      
+      // String representation of the request body used as the cache key
+      // (so two POSTs with the same action + params hit the same entry).
+      let bodyKeyString = '';
+
       // Check if body is already FormData (from client)
       if (req.headers['content-type']?.includes('multipart/form-data')) {
         // If it's FormData, we need to forward it as-is
         // But Vercel doesn't parse FormData by default, so we'll need to handle it
         // For now, assume it's JSON that was sent as FormData by frontend
         bodyToSend = req.body;
+        bodyKeyString = typeof req.body === 'string' ? req.body : JSON.stringify(req.body || {});
       } else {
         // Create FormData for GAS
         // Use native FormData (available in Node 18+ on Vercel)
         const formData = new FormData();
-        
+
         // Get JSON string from body
         let dataString;
         if (typeof req.body === 'string') {
@@ -98,13 +145,34 @@ export default async function handler(req, res) {
         } else {
           dataString = JSON.stringify({});
         }
-        
+
         formData.append('data', dataString);
         bodyToSend = formData;
+        bodyKeyString = dataString;
       }
-      
-      console.log(`[Proxy POST] ${GAS_URL.substring(0, 60)}... action: ${action || 'from body'}`);
-      
+
+      // Resolve the effective action name (query param wins, body is a
+      // fallback used by some callers that omit the path segment).
+      let effectiveAction = action;
+      if (!effectiveAction && req.body && typeof req.body === 'object' && req.body.action) {
+        effectiveAction = req.body.action;
+      }
+      const isReadOnly = effectiveAction && READ_ONLY_ACTIONS.has(effectiveAction);
+      const cacheKey = isReadOnly ? cacheKeyFrom(effectiveAction, bodyKeyString) : null;
+
+      // In-memory cache hit (warm-instance reuse)
+      if (cacheKey) {
+        const hit = proxyCache.get(cacheKey);
+        if (hit && Date.now() - hit.ts < CACHE_TTL_MS) {
+          console.log(`[Proxy POST CacheHit] action: ${effectiveAction}`);
+          res.setHeader('Cache-Control', 'private, max-age=30');
+          res.setHeader('X-Proxy-Cache', 'HIT');
+          return res.status(hit.status).json(hit.body);
+        }
+      }
+
+      console.log(`[Proxy POST] ${GAS_URL.substring(0, 60)}... action: ${effectiveAction || 'from body'}`);
+
       const response = await fetch(GAS_URL, {
         method: 'POST',
         body: bodyToSend,
@@ -112,16 +180,22 @@ export default async function handler(req, res) {
           'User-Agent': 'TLCG-Workflow-Proxy/1.0'
         }
       });
-      
+
       if (!response.ok) {
         const errorText = await response.text();
         console.error(`[Proxy POST Error] ${response.status}: ${errorText.substring(0, 200)}`);
         throw new Error(`GAS returned ${response.status}: ${errorText.substring(0, 200)}`);
       }
-      
+
       const data = await response.json();
-      console.log(`[Proxy POST Success] action: ${action || 'from body'}`);
-      
+      console.log(`[Proxy POST Success] action: ${effectiveAction || 'from body'}`);
+
+      if (cacheKey) {
+        proxyCache.set(cacheKey, { ts: Date.now(), status: 200, body: data });
+        res.setHeader('Cache-Control', 'private, max-age=30');
+        res.setHeader('X-Proxy-Cache', 'MISS');
+      }
+
       return res.status(200).json(data);
     }
     

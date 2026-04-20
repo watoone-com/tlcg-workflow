@@ -4640,9 +4640,12 @@
                     
                     // Update recent vouchers list
                     if (data.recent && data.recent.length > 0) {
-                        // Render vouchers initially with basic info, then load detailed status
+                        // Render vouchers with badge derived directly from the summary
+                        // payload — no per-voucher N+1 fetch. See .cursor/skills/
+                        // audit-slow-flow/SKILL.md for the audit that found this.
                         recentList.innerHTML = data.recent.map((voucher, index) => {
                             const voucherId = `voucher-${voucher.voucherNumber || index}`;
+                            const badge = deriveVoucherBadgeFromSummary(voucher);
                             return `
                                 <div id="${voucherId}" class="flex items-center justify-between p-4 bg-white border border-slate-200 rounded-lg hover:shadow-md transition">
                                     <div class="flex items-center gap-4 flex-1">
@@ -4652,9 +4655,8 @@
                                         <div class="flex-1">
                                             <div class="flex items-center gap-3 mb-1">
                                                 <h4 class="font-bold text-slate-800">${voucher.voucherNumber || 'N/A'}</h4>
-                                                <span class="status-badge bg-slate-100 text-slate-700">
-                                                    <i class="fas fa-circle mr-1"></i>
-                                                    <span class="status-text">Đang tải...</span>
+                                                <span class="status-badge ${badge.statusClass}">
+                                                    <span class="status-text"><i class="fas ${badge.statusIcon} mr-1"></i>${badge.badgeText}</span>
                                                 </span>
                                             </div>
                                             <div class="flex items-center gap-4 text-sm text-slate-600">
@@ -4662,7 +4664,7 @@
                                                 <span><i class="fas fa-user mr-1"></i> ${voucher.employee || 'N/A'}</span>
                                                 <span><i class="fas fa-money-bill-wave mr-1"></i> ${formatCurrency(voucher.amount || 0)}</span>
                                             </div>
-                                            <p class="text-xs text-slate-500 mt-1 approval-status-detail">Đang tải thông tin...</p>
+                                            <p class="text-xs text-slate-500 mt-1 approval-status-detail">${badge.detail || ''}</p>
                                         </div>
                                     </div>
                                     <div class="text-right">
@@ -4671,11 +4673,6 @@
                                 </div>
                             `;
                         }).join('');
-                        
-                        // Load detailed approval status for each voucher
-                        data.recent.forEach((voucher, index) => {
-                            loadVoucherApprovalStatus(voucher, `voucher-${voucher.voucherNumber || index}`);
-                        });
                     } else {
                         recentList.innerHTML = `
                             <div class="text-center py-8 text-slate-400">
@@ -4813,6 +4810,70 @@
                 return `${result.status}. ${result.detail}`;
             }
             return result.status;
+        }
+
+        /**
+         * Derive the voucher status badge directly from the summary payload —
+         * no per-voucher API call required. The summary's
+         * meta.companyApprovers.approvalProgress already encodes N/3 state,
+         * and voucher.status carries explicit rejected / received flags.
+         *
+         * Returns: { badgeText, statusClass, statusIcon, detail }
+         */
+        function deriveVoucherBadgeFromSummary(voucher) {
+            const status = (voucher?.status || '').toString();
+            const action = (voucher?.action || '').toString();
+            const progressRaw = voucher?.meta?.companyApprovers?.approvalProgress || '0/3';
+            const progressNum = parseInt(String(progressRaw).split('/')[0], 10) || 0;
+
+            // Rejected — trumps everything else
+            if (status === 'Rejected' || status === 'Đã từ chối' || action === 'Reject') {
+                return {
+                    badgeText: 'Đã từ chối',
+                    statusClass: 'bg-rose-100 text-rose-700',
+                    statusIcon: 'fa-times-circle',
+                    detail: status || 'Đã từ chối'
+                };
+            }
+
+            // Received (money paid / confirmed) — treat as fully complete
+            if (status === 'Received' || status === 'Đã nhận') {
+                return {
+                    badgeText: 'Đã nhận (3/3)',
+                    statusClass: 'bg-emerald-100 text-emerald-700',
+                    statusIcon: 'fa-check-double',
+                    detail: ''
+                };
+            }
+
+            // Fully approved
+            if (progressNum >= 3 || status === 'Approved' || status === 'Đã duyệt' ||
+                status === 'Fully Approved') {
+                return {
+                    badgeText: 'Đã Duyệt (3/3)',
+                    statusClass: 'bg-emerald-100 text-emerald-700',
+                    statusIcon: 'fa-check-circle',
+                    detail: ''
+                };
+            }
+
+            // Partially approved
+            if (progressNum > 0) {
+                return {
+                    badgeText: `Đang Duyệt (${progressNum}/3)`,
+                    statusClass: 'bg-blue-100 text-blue-700',
+                    statusIcon: 'fa-clock',
+                    detail: ''
+                };
+            }
+
+            // Default — awaiting first approver
+            return {
+                badgeText: 'Chờ Duyệt (0/3)',
+                statusClass: 'bg-amber-100 text-amber-700',
+                statusIcon: 'fa-paper-plane',
+                detail: ''
+            };
         }
         
         /**
