@@ -2988,6 +2988,10 @@
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
                         Làm mới
                     </button>
+                    <button id="my-task-btn" onclick="toggleMyTaskFilter()" title="Chỉ hiện việc cần làm của tôi"
+                        style="display:flex;align-items:center;gap:0.35rem;padding:0.375rem 0.75rem;border:1.5px solid #f97316;border-radius:6px;font-size:0.8125rem;font-weight:600;background:white;color:#f97316;cursor:pointer;white-space:nowrap;transition:background 0.15s,color 0.15s;">
+                        ⚡ Việc của tôi
+                    </button>
                 </div>
             </div>
             <!-- Bulk action toolbar — shown when ≥1 checkbox is selected -->
@@ -3030,7 +3034,6 @@
                     <span class="stat-value" id="stat-overdue">0</span>
                     <span class="stat-label">Quá hạn &gt; 2 ngày</span>
                 </div>
-                <span id="stat-my-task" style="display:none;"></span>
             </div>
             <!-- Voucher Filter Bar -->
             <div id="voucher-filter-bar" style="padding:0.625rem 1rem;background:var(--ios-gray-6);border-bottom:0.5px solid var(--ios-separator);">
@@ -5316,7 +5319,6 @@
                 acknowledged: 0,
                 overdue: 0
             };
-            let myTaskCount = 0;
             vouchers.forEach(v => {
                 const s = normalizeVoucherState(v);
                 if (s.bucket === 'pending') stats.pending += 1;
@@ -5326,7 +5328,6 @@
                 if (s.bucket === 'rejected') stats.rejected += 1;
                 if (s.bucket === 'approved' && !s.isReceived) stats.awaitingAck += 1;
                 if (s.isOverdue) stats.overdue += 1;
-                if (isMyTask(v)) myTaskCount += 1;
             });
             const mappings = [
                 ['stat-pending', stats.pending],
@@ -5335,16 +5336,12 @@
                 ['stat-rejected', stats.rejected],
                 ['stat-awaiting-ack', stats.awaitingAck],
                 ['stat-acknowledged', stats.acknowledged],
-                ['stat-overdue', stats.overdue],
-                ['stat-my-task', myTaskCount]
+                ['stat-overdue', stats.overdue]
             ];
             mappings.forEach(([id, value]) => {
                 const el = document.getElementById(id);
                 if (el) el.textContent = String(value);
             });
-            // Also update the inline badge on the button
-            const badgeEl = document.getElementById('my-task-count');
-            if (badgeEl) badgeEl.textContent = String(myTaskCount);
         }
 
         function saveVoucherFilterState() {
