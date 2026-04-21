@@ -2988,7 +2988,7 @@
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
                         Làm mới
                     </button>
-                    <button id="my-task-btn" onclick="console.log('BTN CLICKED');toggleMyTaskFilter();" title="Chỉ hiện việc cần làm của tôi"
+                    <button id="my-task-btn" onclick="toggleMyTaskFilter()" title="Chỉ hiện việc cần làm của tôi"
                         style="display:flex;align-items:center;gap:0.35rem;padding:0.375rem 0.75rem;border:1.5px solid #f97316;border-radius:6px;font-size:0.8125rem;font-weight:600;background:white;color:#f97316;cursor:pointer;white-space:nowrap;transition:background 0.15s,color 0.15s;">
                         ⚡ Việc của tôi
                     </button>
@@ -5608,23 +5608,11 @@
         function getCallerRole() {
             try {
                 const u = JSON.parse(localStorage.getItem('tlc_current_user') || '{}');
-                const email = (u.email || '').toLowerCase();
-                if (!email) return 'submitter';
-                // Derive approver role by matching email against companyApprovers in loaded vouchers
-                const sample = allLoadedVouchers[0];
-                console.log('[getCallerRole] email:', email, 'sample meta keys:', sample ? Object.keys(sample.meta || {}) : 'no vouchers');
-                if (sample && sample.meta) {
-                    const ca = sample.meta.companyApprovers;
-                    console.log('[getCallerRole] companyApprovers:', JSON.stringify(ca)?.slice(0, 300));
-                }
-                for (const v of allLoadedVouchers) {
-                    const ca = v.meta?.companyApprovers;
-                    if (!ca) continue;
-                    const approvers = ca.approvers || ca;
-                    if ((approvers.accountant?.email || '').toLowerCase() === email) return 'accountant';
-                    if ((approvers.legalRep?.email || '').toLowerCase() === email) return 'legalRep';
-                    if ((approvers.treasurer?.email || '').toLowerCase() === email) return 'treasurer';
-                }
+                if (u.isAdmin) return 'admin';
+                const r = (u.role || '').toLowerCase();
+                if (r === 'accountant' || r.includes('kế toán') || r.includes('ke toan')) return 'accountant';
+                if (r === 'legalrep' || r.includes('đại diện') || r.includes('dai dien')) return 'legalRep';
+                if (r === 'treasurer' || r.includes('thủ quỹ') || r.includes('thu quy')) return 'treasurer';
                 return 'submitter';
             } catch(e) { return 'submitter'; }
         }
@@ -5637,8 +5625,10 @@
 
             const isOwnVoucher = email && (v.requestorEmail || '').toLowerCase() === email;
 
+            // Admin: all vouchers except rejected (includes acknowledged for document binding)
+            if (role === 'admin') return state.bucket !== 'rejected';
+
             if (role === 'accountant') {
-                // Needs approval (step 0), acknowledged (document binding), or own submissions
                 return state.progressNum === 0
                     || state.bucket === 'acknowledged'
                     || (isOwnVoucher && state.bucket !== 'rejected');
@@ -5714,12 +5704,7 @@
 
             // My Task filter
             if (myTaskFilterActive) {
-                const role = getCallerRole();
-                console.log('[MyTask] active, role:', role, 'total before filter:', filtered.length);
-                console.log('[MyTask] sample requestorEmails:', filtered.slice(0,5).map(v => v.requestorEmail));
-                const passed = filtered.filter(isMyTask);
-                console.log('[MyTask] passed:', passed.length, 'sample:', passed.slice(0,3).map(v => ({num: v.voucherNumber, bucket: normalizeVoucherState(v).bucket, prog: normalizeVoucherState(v).progressNum, reqEmail: v.requestorEmail})));
-                filtered = passed;
+                filtered = filtered.filter(isMyTask);
             }
 
             renderVoucherDataset(filtered);
