@@ -5152,7 +5152,8 @@
                 return 'tlcg_voucher_summary_cache_v2_' + (u.email || 'anon');
             } catch(e) { return 'tlcg_voucher_summary_cache_v2_anon'; }
         }
-        const VOUCHER_CACHE_KEY = getVoucherCacheKey();
+        // Evaluated lazily at runtime (not at parse time) so user session is available
+        const VOUCHER_CACHE_KEY = getVoucherCacheKey;
         const VOUCHER_CACHE_TTL_MS = 60 * 1000;
         const VOUCHER_HISTORY_CACHE_TTL_MS = 2 * 60 * 1000;
         const requestDedupMap = new Map();
@@ -5223,7 +5224,7 @@
 
         function loadVoucherSummaryFromCache() {
             try {
-                const raw = localStorage.getItem(VOUCHER_CACHE_KEY);
+                const raw = localStorage.getItem(VOUCHER_CACHE_KEY());
                 if (!raw) return null;
                 const parsed = JSON.parse(raw);
                 if (!parsed || !Array.isArray(parsed.vouchers) || !parsed.timestamp) return null;
@@ -5237,7 +5238,7 @@
 
         function saveVoucherSummaryToCache(vouchers) {
             try {
-                localStorage.setItem(VOUCHER_CACHE_KEY, JSON.stringify({
+                localStorage.setItem(VOUCHER_CACHE_KEY(), JSON.stringify({
                     timestamp: Date.now(),
                     vouchers
                 }));
@@ -5428,6 +5429,9 @@
             const voucherList = document.getElementById('voucher-list');
             showVoucherListSkeleton(9);
             try {
+                // Purge the old shared (anon) cache key to prevent cross-user data leaks
+                localStorage.removeItem('tlcg_voucher_summary_cache_v2');
+                localStorage.removeItem('tlcg_voucher_summary_cache_v2_anon');
                 let vouchers = [];
                 if (!forceRefresh) {
                     vouchers = loadVoucherSummaryFromCache() || [];
