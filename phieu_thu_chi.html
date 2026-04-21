@@ -5608,11 +5608,15 @@
         function getCallerRole() {
             try {
                 const u = JSON.parse(localStorage.getItem('tlc_current_user') || '{}');
-                const r = (u.role || '').toLowerCase();
-                console.log('[MyTask] raw role:', JSON.stringify(u.role), '→ normalized r:', r);
-                if (r === 'accountant' || r.includes('kế toán') || r.includes('ke toan')) return 'accountant';
-                if (r === 'legalrep' || r.includes('đại diện') || r.includes('dai dien')) return 'legalRep';
-                if (r === 'treasurer' || r.includes('thủ quỹ') || r.includes('thu quy')) return 'treasurer';
+                const email = (u.email || '').toLowerCase();
+                if (!email) return 'submitter';
+                // Derive approver role by matching email against companyApprovers in loaded vouchers
+                for (const v of allLoadedVouchers) {
+                    const approvers = v.meta?.companyApprovers?.approvers || v.meta?.companyApprovers || {};
+                    if ((approvers.accountant?.email || '').toLowerCase() === email) return 'accountant';
+                    if ((approvers.legalRep?.email || '').toLowerCase() === email) return 'legalRep';
+                    if ((approvers.treasurer?.email || '').toLowerCase() === email) return 'treasurer';
+                }
                 return 'submitter';
             } catch(e) { return 'submitter'; }
         }
