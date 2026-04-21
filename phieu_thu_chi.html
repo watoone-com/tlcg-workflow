@@ -5609,6 +5609,7 @@
             try {
                 const u = JSON.parse(localStorage.getItem('tlc_current_user') || '{}');
                 const r = (u.role || '').toLowerCase();
+                console.log('[MyTask] raw role:', JSON.stringify(u.role), '→ normalized r:', r);
                 if (r === 'accountant' || r.includes('kế toán') || r.includes('ke toan')) return 'accountant';
                 if (r === 'legalrep' || r.includes('đại diện') || r.includes('dai dien')) return 'legalRep';
                 if (r === 'treasurer' || r.includes('thủ quỹ') || r.includes('thu quy')) return 'treasurer';
@@ -5701,7 +5702,11 @@
 
             // My Task filter
             if (myTaskFilterActive) {
-                filtered = filtered.filter(isMyTask);
+                const role = getCallerRole();
+                console.log('[MyTask] active, role:', role, 'total before filter:', filtered.length);
+                const passed = filtered.filter(isMyTask);
+                console.log('[MyTask] passed:', passed.length, 'sample:', passed.slice(0,3).map(v => ({num: v.voucherNumber, bucket: normalizeVoucherState(v).bucket, prog: normalizeVoucherState(v).progressNum, reqEmail: v.requestorEmail})));
+                filtered = passed;
             }
 
             renderVoucherDataset(filtered);
