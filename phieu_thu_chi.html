@@ -5618,21 +5618,31 @@
 
         function isMyTask(v) {
             const state = normalizeVoucherState(v);
-            if (state.bucket === 'acknowledged' || state.bucket === 'rejected') return false;
             const role = getCallerRole();
             let email = '';
             try { email = (JSON.parse(localStorage.getItem('tlc_current_user') || '{}').email || '').toLowerCase(); } catch(e) {}
 
             const isOwnVoucher = email && (v.requestorEmail || '').toLowerCase() === email;
 
-            // Always include own submitted vouchers that still need action (not yet acknowledged/rejected)
-            if (isOwnVoucher) return true;
+            if (role === 'accountant') {
+                // Needs approval (step 0), acknowledged (document binding), or own submissions
+                return state.progressNum === 0
+                    || state.bucket === 'acknowledged'
+                    || (isOwnVoucher && state.bucket !== 'rejected');
+            }
+            if (role === 'legalRep') {
+                return state.progressNum === 1
+                    || state.bucket === 'acknowledged'
+                    || (isOwnVoucher && state.bucket !== 'rejected');
+            }
+            if (role === 'treasurer') {
+                return state.progressNum === 2
+                    || state.bucket === 'acknowledged'
+                    || (isOwnVoucher && state.bucket !== 'rejected');
+            }
 
-            // Approver role tasks: vouchers at their approval step
-            if (role === 'accountant') return state.progressNum === 0;
-            if (role === 'legalRep')   return state.progressNum === 1;
-            if (role === 'treasurer')  return state.progressNum === 2;
-            return false;
+            // Submitter: their own vouchers only, except rejected
+            return isOwnVoucher && state.bucket !== 'rejected';
         }
 
         function toggleMyTaskFilter() {
