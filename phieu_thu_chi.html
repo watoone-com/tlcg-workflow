@@ -5611,8 +5611,16 @@
                 const email = (u.email || '').toLowerCase();
                 if (!email) return 'submitter';
                 // Derive approver role by matching email against companyApprovers in loaded vouchers
+                const sample = allLoadedVouchers[0];
+                console.log('[getCallerRole] email:', email, 'sample meta keys:', sample ? Object.keys(sample.meta || {}) : 'no vouchers');
+                if (sample && sample.meta) {
+                    const ca = sample.meta.companyApprovers;
+                    console.log('[getCallerRole] companyApprovers:', JSON.stringify(ca)?.slice(0, 300));
+                }
                 for (const v of allLoadedVouchers) {
-                    const approvers = v.meta?.companyApprovers?.approvers || v.meta?.companyApprovers || {};
+                    const ca = v.meta?.companyApprovers;
+                    if (!ca) continue;
+                    const approvers = ca.approvers || ca;
                     if ((approvers.accountant?.email || '').toLowerCase() === email) return 'accountant';
                     if ((approvers.legalRep?.email || '').toLowerCase() === email) return 'legalRep';
                     if ((approvers.treasurer?.email || '').toLowerCase() === email) return 'treasurer';
@@ -5708,6 +5716,7 @@
             if (myTaskFilterActive) {
                 const role = getCallerRole();
                 console.log('[MyTask] active, role:', role, 'total before filter:', filtered.length);
+                console.log('[MyTask] sample requestorEmails:', filtered.slice(0,5).map(v => v.requestorEmail));
                 const passed = filtered.filter(isMyTask);
                 console.log('[MyTask] passed:', passed.length, 'sample:', passed.slice(0,3).map(v => ({num: v.voucherNumber, bucket: normalizeVoucherState(v).bucket, prog: normalizeVoucherState(v).progressNum, reqEmail: v.requestorEmail})));
                 filtered = passed;
