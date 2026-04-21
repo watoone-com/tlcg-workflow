@@ -5623,15 +5623,16 @@
             let email = '';
             try { email = (JSON.parse(localStorage.getItem('tlc_current_user') || '{}').email || '').toLowerCase(); } catch(e) {}
 
-            // Always include own-submitted vouchers that are fully approved and awaiting acknowledgment
-            const needsMyAck = state.bucket === 'approved' && email && (v.requestorEmail || '').toLowerCase() === email;
-            if (needsMyAck) return true;
+            const isOwnVoucher = email && (v.requestorEmail || '').toLowerCase() === email;
 
+            // Always include own submitted vouchers that still need action (not yet acknowledged/rejected)
+            if (isOwnVoucher) return true;
+
+            // Approver role tasks: vouchers at their approval step
             if (role === 'accountant') return state.progressNum === 0;
             if (role === 'legalRep')   return state.progressNum === 1;
             if (role === 'treasurer')  return state.progressNum === 2;
-            // submitter: their own vouchers still in progress
-            return email && (v.requestorEmail || '').toLowerCase() === email;
+            return false;
         }
 
         function toggleMyTaskFilter() {
