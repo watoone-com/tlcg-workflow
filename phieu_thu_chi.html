@@ -5704,7 +5704,14 @@
 
             // My Task filter
             if (myTaskFilterActive) {
+                const role = getCallerRole();
+                const sample = filtered.slice(0, 3).map(v => {
+                    const s = normalizeVoucherState(v);
+                    return {num: v.voucherNumber, status: v.status, bucket: s.bucket, prog: s.progressNum};
+                });
+                console.log('[MyTask] role:', role, 'sample states:', JSON.stringify(sample));
                 filtered = filtered.filter(isMyTask);
+                console.log('[MyTask] after filter:', filtered.length);
             }
 
             renderVoucherDataset(filtered);
