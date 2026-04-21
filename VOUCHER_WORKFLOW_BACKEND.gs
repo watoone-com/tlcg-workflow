@@ -3727,12 +3727,22 @@ function handleGetVoucherSummary(requestBody) {
       };
     });
     
+    // Resolve caller's approver role by email matching against IMPORT_APPROVERS
+    let callerApproverRole = 'submitter';
+    if (callerEmail) {
+      if ((IMPORT_APPROVERS.accountant.email || '').toLowerCase() === callerEmail) callerApproverRole = 'accountant';
+      else if ((IMPORT_APPROVERS.legalRep.email || '').toLowerCase() === callerEmail) callerApproverRole = 'legalRep';
+      else if ((IMPORT_APPROVERS.treasurer.email || '').toLowerCase() === callerEmail) callerApproverRole = 'treasurer';
+    }
+    Logger.log('callerApproverRole: ' + callerApproverRole);
+
     return createResponse(true, 'Thành công', {
       total: visibleVouchers.length,
       pending: pending,
       approved: approved,
       rejected: rejected,
-      recent: recent
+      recent: recent,
+      callerApproverRole: callerApproverRole
     });
   } catch (error) {
     return createResponse(false, 'Lỗi: ' + error.message);

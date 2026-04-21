@@ -5271,6 +5271,13 @@
                 if (!result.success || !result.data) {
                     throw new Error(result.message || 'Không thể tải dữ liệu phiếu');
                 }
+                if (result.data.callerApproverRole) {
+                    try {
+                        const u = JSON.parse(localStorage.getItem('tlc_current_user') || '{}');
+                        u._approverRole = result.data.callerApproverRole;
+                        localStorage.setItem('tlc_current_user', JSON.stringify(u));
+                    } catch(e) {}
+                }
                 return result.data.recent || [];
             };
             const _dedupKey = 'getVoucherSummary_' + ((() => { try { return JSON.parse(localStorage.getItem('tlc_current_user') || '{}').email || 'anon'; } catch(e) { return 'anon'; } })());
@@ -5608,7 +5615,8 @@
         function getCallerRole() {
             try {
                 const u = JSON.parse(localStorage.getItem('tlc_current_user') || '{}');
-                console.log('[getCallerRole] full user:', JSON.stringify(u));
+                // Use backend-resolved approver role (email-matched against IMPORT_APPROVERS)
+                if (u._approverRole && u._approverRole !== 'submitter') return u._approverRole;
                 const isAdmin = u.isAdmin === true || u.isAdmin === 'true' || u.isAdmin === 'TRUE';
                 if (isAdmin) return 'admin';
                 const r = (u.role || '').toLowerCase();
@@ -5706,14 +5714,7 @@
 
             // My Task filter
             if (myTaskFilterActive) {
-                const role = getCallerRole();
-                const sample = filtered.slice(0, 3).map(v => {
-                    const s = normalizeVoucherState(v);
-                    return {num: v.voucherNumber, status: v.status, bucket: s.bucket, prog: s.progressNum};
-                });
-                console.log('[MyTask] role:', role, 'sample states:', JSON.stringify(sample));
                 filtered = filtered.filter(isMyTask);
-                console.log('[MyTask] after filter:', filtered.length);
             }
 
             renderVoucherDataset(filtered);
