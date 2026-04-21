@@ -5608,6 +5608,7 @@
         function getCallerRole() {
             try {
                 const u = JSON.parse(localStorage.getItem('tlc_current_user') || '{}');
+                console.log('[getCallerRole] full user:', JSON.stringify(u));
                 const isAdmin = u.isAdmin === true || u.isAdmin === 'true' || u.isAdmin === 'TRUE';
                 if (isAdmin) return 'admin';
                 const r = (u.role || '').toLowerCase();
