@@ -5625,8 +5625,8 @@
 
             const isOwnVoucher = email && (v.requestorEmail || '').toLowerCase() === email;
 
-            // Admin: all vouchers except rejected (includes acknowledged for document binding)
-            if (role === 'admin') return state.bucket !== 'rejected';
+            // Admin: only actionable — pending approval (step 0) + acknowledged (document binding)
+            if (role === 'admin') return state.progressNum === 0 || state.bucket === 'acknowledged';
 
             if (role === 'accountant') {
                 return state.progressNum === 0
