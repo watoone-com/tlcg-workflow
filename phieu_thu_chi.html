@@ -5620,14 +5620,18 @@
             const state = normalizeVoucherState(v);
             if (state.bucket === 'acknowledged' || state.bucket === 'rejected') return false;
             const role = getCallerRole();
+            let email = '';
+            try { email = (JSON.parse(localStorage.getItem('tlc_current_user') || '{}').email || '').toLowerCase(); } catch(e) {}
+
+            // Always include own-submitted vouchers that are fully approved and awaiting acknowledgment
+            const needsMyAck = state.bucket === 'approved' && email && (v.requestorEmail || '').toLowerCase() === email;
+            if (needsMyAck) return true;
+
             if (role === 'accountant') return state.progressNum === 0;
             if (role === 'legalRep')   return state.progressNum === 1;
             if (role === 'treasurer')  return state.progressNum === 2;
-            // submitter: their vouchers not yet done
-            try {
-                const email = (JSON.parse(localStorage.getItem('tlc_current_user') || '{}').email || '').toLowerCase();
-                return email && (v.requestorEmail || '').toLowerCase() === email;
-            } catch(e) { return false; }
+            // submitter: their own vouchers still in progress
+            return email && (v.requestorEmail || '').toLowerCase() === email;
         }
 
         function toggleMyTaskFilter() {
