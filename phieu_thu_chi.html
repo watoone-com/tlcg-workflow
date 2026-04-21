@@ -5633,7 +5633,12 @@
             let email = '';
             try { email = (JSON.parse(localStorage.getItem('tlc_current_user') || '{}').email || '').toLowerCase(); } catch(e) {}
 
-            const isOwnVoucher = email && (v.requestorEmail || '').toLowerCase() === email;
+            let userName = '';
+            try { userName = (JSON.parse(localStorage.getItem('tlc_current_user') || '{}').name || '').toLowerCase().trim(); } catch(e) {}
+            const isOwnVoucher = email && (
+                (v.requestorEmail || '').toLowerCase() === email ||
+                (!v.requestorEmail && userName && (v.employee || '').toLowerCase().trim() === userName)
+            );
 
             // Admin: only actionable — pending approval (step 0) + acknowledged (document binding)
             if (role === 'admin') return state.progressNum === 0 || state.bucket === 'acknowledged';
