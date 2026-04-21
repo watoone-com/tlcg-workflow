@@ -5608,7 +5608,8 @@
         function getCallerRole() {
             try {
                 const u = JSON.parse(localStorage.getItem('tlc_current_user') || '{}');
-                if (u.isAdmin) return 'admin';
+                const isAdmin = u.isAdmin === true || u.isAdmin === 'true' || u.isAdmin === 'TRUE';
+                if (isAdmin) return 'admin';
                 const r = (u.role || '').toLowerCase();
                 if (r === 'accountant' || r.includes('kế toán') || r.includes('ke toan')) return 'accountant';
                 if (r === 'legalrep' || r.includes('đại diện') || r.includes('dai dien')) return 'legalRep';
