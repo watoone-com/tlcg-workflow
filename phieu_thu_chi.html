@@ -5251,7 +5251,7 @@
             const fetcher = async () => {
                 const _u = (() => { try { return JSON.parse(localStorage.getItem('tlc_current_user') || '{}'); } catch(e) { return {}; } })();
                 const callerEmail = encodeURIComponent((_u.email || '').toLowerCase());
-                const callerRole  = encodeURIComponent((_u.role  || '').toLowerCase());
+                const callerRole  = encodeURIComponent((_u._approverRole || _u.role || '').toLowerCase());
                 const isAdmin     = _u.isAdmin ? 'true' : 'false';
                 const url = `${GOOGLE_APPS_SCRIPT_WEB_APP_URL}?action=getVoucherSummary&callerEmail=${callerEmail}&callerRole=${callerRole}&isAdmin=${isAdmin}`;
                 const response = await fetch(url, {
