@@ -5640,22 +5640,19 @@
                 (!v.requestorEmail && userName && (v.employee || '').toLowerCase().trim() === userName)
             );
 
-            // Admin: only actionable — pending approval (step 0) + acknowledged (document binding)
-            if (role === 'admin') return state.progressNum === 0 || state.bucket === 'acknowledged';
+            // Admin (no approver role): only truly pending vouchers
+            if (role === 'admin') return state.progressNum === 0 && state.bucket !== 'rejected';
 
             if (role === 'accountant') {
                 return state.progressNum === 0
-                    || state.bucket === 'acknowledged'
                     || (isOwnVoucher && state.bucket !== 'rejected');
             }
             if (role === 'legalRep') {
                 return state.progressNum === 1
-                    || state.bucket === 'acknowledged'
                     || (isOwnVoucher && state.bucket !== 'rejected');
             }
             if (role === 'treasurer') {
                 return state.progressNum === 2
-                    || state.bucket === 'acknowledged'
                     || (isOwnVoucher && state.bucket !== 'rejected');
             }
 
