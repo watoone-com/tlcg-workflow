@@ -202,11 +202,6 @@ function doPost(e) {
     return createResponse(false, 'Internal error: No request data received. Please call this as a Web App, not from editor.');
   }
   
-  // #region agent log
-  try {
-    UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:149', message: 'doPost entry', data: {hasParameter: !!e.parameter, hasPostData: !!e.postData}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A'})}).catch(() => {});
-  } catch (err) {}
-  // #endregion
   
   try {
     console.log('e.parameter keys: ' + (e.parameter ? Object.keys(e.parameter).join(', ') : 'none'));
@@ -331,11 +326,6 @@ function doPost(e) {
     switch (normalizedAction) {
       case 'login': return handleLogin_(requestBody);
       case 'sendApprovalEmail': 
-        // #region agent log
-        try {
-          UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:258', message: 'Routing to handleSendEmail', data: {action: normalizedAction}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A'})}).catch(() => {});
-        } catch (e) {}
-        // #endregion
         return handleSendEmail(requestBody);
       case 'approveVoucher': return handleApproveVoucher(requestBody);
       case 'rejectVoucher': return handleRejectVoucher(requestBody);
@@ -413,11 +403,6 @@ function doPost(e) {
         return createResponse(false, 'Action không hợp lệ: ' + normalizedAction + ' (length: ' + normalizedAction.length + ', expected: ' + 'getCompanyApprovers'.length + ')');
     }
   } catch (error) {
-    // #region agent log
-    try {
-      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:325', message: 'Error in doPost', data: {error: error.toString(), message: error.message}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'G'})}).catch(() => {});
-    } catch (e) {}
-    // #endregion
     console.log('❌❌❌ CRITICAL ERROR in doPost: ' + error.toString());
     Logger.log('❌❌❌ CRITICAL ERROR in doPost: ' + error.toString());
     console.log('❌❌❌ Error stack: ' + error.stack);
@@ -658,11 +643,6 @@ function getApproverRoleName(role) {
 
 /** 1. XỬ LÝ GỬI EMAIL & SUBMIT */
 function handleSendEmail(requestBody) {
-  // #region agent log
-  try {
-    UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:454', message: 'handleSendEmail entry', data: {hasEmail: !!requestBody.email, hasVoucher: !!requestBody.voucher, voucherNo: requestBody.voucher?.voucherNumber || 'N/A'}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'A'})}).catch(() => {});
-  } catch (e) {}
-  // #endregion
   try {
     const emailData = requestBody.email;
     const requesterEmailData = requestBody.requesterEmail || null;
@@ -671,52 +651,38 @@ function handleSendEmail(requestBody) {
 
     const voucherNo = voucher.voucherNumber || 'AUTO-' + new Date().getTime();
     
-    // ✅ CRITICAL FIX: Check for duplicate submission BEFORE processing
-    Logger.log('🔍 Checking for duplicate submission: ' + voucherNo);
-    // #region agent log
+    // Acquire document lock to prevent race-condition duplicate submissions
+    const submitLock = LockService.getDocumentLock();
     try {
-      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:465', message: 'Before sheet access', data: {voucherNo: voucherNo, sheetId: VOUCHER_HISTORY_SHEET_ID, sheetName: VH_SHEET_NAME}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'B'})}).catch(() => {});
-    } catch (e) {}
-    // #endregion
+      submitLock.waitLock(10000);
+    } catch (lockErr) {
+      return createResponse(false, 'Hệ thống đang xử lý yêu cầu khác. Vui lòng thử lại sau giây lát.');
+    }
+
+    try {
+
+    Logger.log('🔍 Checking for duplicate submission: ' + voucherNo);
     const sheet = SpreadsheetApp.openById(VOUCHER_HISTORY_SHEET_ID).getSheetByName(VH_SHEET_NAME);
-    
+
     if (!sheet) {
       Logger.log('❌ ERROR: Sheet "' + VH_SHEET_NAME + '" not found');
-      // #region agent log
-      try {
-        UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:467', message: 'Sheet not found error', data: {sheetName: VH_SHEET_NAME}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'B'})}).catch(() => {});
-      } catch (e) {}
-      // #endregion
       return createResponse(false, 'Lỗi: Không tìm thấy sheet lịch sử. Vui lòng kiểm tra cấu hình.');
     }
-    
-    // #region agent log
-    try {
-      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:472', message: 'After sheet access, before getDataRange', data: {sheetFound: true}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'B'})}).catch(() => {});
-    } catch (e) {}
-    // #endregion
+
     const data = sheet.getDataRange().getValues();
-    const rows = data.slice(1); // Skip header
-    
-    // Check if this voucher was already submitted (action = 'Submit')
+    const rows = data.slice(1);
+
     for (let i = 0; i < rows.length; i++) {
-      const rowVoucherNo = rows[i][0]; // A(0) = voucher_number
-      const rowAction = rows[i][11];   // L(11) = action
-      
+      const rowVoucherNo = rows[i][0];
+      const rowAction = rows[i][11];
       if (rowVoucherNo === voucherNo && (rowAction === 'Đã nộp phiếu' || rowAction === 'Submit')) {
         Logger.log('⚠️ DUPLICATE SUBMISSION DETECTED: ' + voucherNo);
-        Logger.log('⚠️ Found existing submission at row: ' + (i + 2)); // +2 for header and 0-index
         return createResponse(false, 'Phiếu này đã được gửi trước đó (số phiếu: ' + voucherNo + '). Vui lòng kiểm tra lại lịch sử phiếu.');
       }
     }
-    
+
     Logger.log('✅ No duplicate found, proceeding with submission: ' + voucherNo);
     
-    // #region agent log
-    try {
-      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:487', message: 'After duplicate check, before file handling', data: {voucherNo: voucherNo, hasFiles: !!(voucher.files && voucher.files.length > 0)}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'C'})}).catch(() => {});
-    } catch (e) {}
-    // #endregion
     
     let fileLinks = "";
 
@@ -774,11 +740,6 @@ function handleSendEmail(requestBody) {
       }
     }
 
-    // #region agent log
-    try {
-      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:543', message: 'After file handling, before approvers init', data: {fileLinksLength: fileLinks.length, hasCompanyApprovers: !!voucher.companyApprovers}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'C'})}).catch(() => {});
-    } catch (e) {}
-    // #endregion
 
     // ✅ SEQUENTIAL APPROVAL: Initialize approvers meta if companyApprovers provided
     let approversMeta = null;
@@ -841,11 +802,6 @@ function handleSendEmail(requestBody) {
       Logger.log('📧 Preparing to send email to: ' + emailData.to);
       Logger.log('📧 Email subject: ' + emailData.subject);
       
-      // #region agent log
-      try {
-        UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:601', message: 'Before GmailApp.sendEmail', data: {to: emailData.to, subject: emailData.subject?.substring(0, 50) || 'N/A', bodyLength: emailData.body?.length || 0}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'D'})}).catch(() => {});
-      } catch (e) {}
-      // #endregion
       
       let options = { htmlBody: emailData.body };
       if (emailData.cc && emailData.cc.trim() !== "") options.cc = emailData.cc.trim();
@@ -858,11 +814,6 @@ function handleSendEmail(requestBody) {
       GmailApp.sendEmail(emailData.to, emailData.subject, '', options);
       Logger.log('✅ Email sent successfully to: ' + emailData.to);
       
-      // #region agent log
-      try {
-        UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:614', message: 'After GmailApp.sendEmail', data: {success: true}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'D'})}).catch(() => {});
-      } catch (e) {}
-      // #endregion
     } catch (emailError) {
       Logger.log('❌ ERROR sending email: ' + emailError.toString());
       Logger.log('❌ Error details: ' + JSON.stringify({
@@ -873,18 +824,12 @@ function handleSendEmail(requestBody) {
     }
 
     // Gửi email thông báo cho requester
+    let requesterEmailWarning = null;
     if (requesterEmailData && requesterEmailData.to && requesterEmailData.to.trim() !== '') {
       try {
-        // #region agent log
-        try {
-          UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:625', message: 'Before requester email send', data: {to: requesterEmailData.to}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'D'})}).catch(() => {});
-        } catch (e) {}
-        // #endregion
         let requesterOptions = { htmlBody: requesterEmailData.body || '' };
-        // Use logged-in user's email as reply-to for requester email too
-        if (emailData.replyTo && emailData.replyTo.trim() !== "") {
+        if (emailData.replyTo && emailData.replyTo.trim() !== '') {
           requesterOptions.replyTo = emailData.replyTo.trim();
-          Logger.log('Setting reply-to for requester email: ' + requesterOptions.replyTo);
         }
         GmailApp.sendEmail(
           requesterEmailData.to,
@@ -892,19 +837,9 @@ function handleSendEmail(requestBody) {
           '',
           requesterOptions
         );
-        // #region agent log
-        try {
-          UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:634', message: 'After requester email send', data: {success: true}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'D'})}).catch(() => {});
-        } catch (e) {}
-        // #endregion
       } catch (requesterEmailError) {
-        // Log but don't fail - requester email is secondary
         Logger.log('Warning: Failed to send requester email: ' + requesterEmailError.toString());
-        // #region agent log
-        try {
-          UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:640', message: 'Requester email send error', data: {error: requesterEmailError.toString()}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'D'})}).catch(() => {});
-        } catch (e) {}
-        // #endregion
+        requesterEmailWarning = 'Email thông báo cho người nộp chưa gửi được. Phiếu vẫn đã được lưu thành công.';
       }
     }
 
@@ -925,11 +860,6 @@ function handleSendEmail(requestBody) {
       submitMetaData.companyApprovers = approversMeta;
     }
     
-    // #region agent log
-    try {
-      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:662', message: 'Before appendHistory_', data: {voucherNo: voucherNo, action: 'Submit'}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'E'})}).catch(() => {});
-    } catch (e) {}
-    // #endregion
 
     // Look up authoritative Company_Key_Or_Taxid from Master Company sheet col C
     // Only overwrite frontend value if exact name+key match found in sheet
@@ -979,25 +909,17 @@ function handleSendEmail(requestBody) {
       metaJson: JSON.stringify(submitMetaData)
     });
 
-    // #region agent log
-    try {
-      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:676', message: 'After appendHistory_, before return', data: {voucherNo: voucherNo}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'E'})}).catch(() => {});
-    } catch (e) {}
-    // #endregion
 
-    // #region agent log
-    try {
-      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:678', message: 'Returning success response', data: {voucherNo: voucherNo}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'F'})}).catch(() => {});
-    } catch (e) {}
-    // #endregion
     
-    return createResponse(true, 'Đã gửi yêu cầu phê duyệt thành công');
+    const successMsg = requesterEmailWarning
+      ? 'Đã gửi yêu cầu phê duyệt thành công. ' + requesterEmailWarning
+      : 'Đã gửi yêu cầu phê duyệt thành công';
+    return createResponse(true, successMsg);
+
+    } finally {
+      submitLock.releaseLock();
+    }
   } catch (error) {
-    // #region agent log
-    try {
-      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:679', message: 'Error caught in handleSendEmail', data: {error: error.toString(), message: error.message}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'G'})}).catch(() => {});
-    } catch (e) {}
-    // #endregion
     return createResponse(false, 'Lỗi gửi mail: ' + error.message);
   }
 }
@@ -1032,26 +954,21 @@ function handleApproveVoucher(requestBody) {
       return createResponse(false, 'Không tìm thấy phiếu: ' + voucherNumber);
     }
     
-    // Parse meta from note field (getVoucherFromHistory now uses substring for full JSON)
+    // Parse MetaJSON — validate required structure after parsing
     let meta = {};
     if (existingVoucher.meta) {
       try {
-        meta = JSON.parse(existingVoucher.meta);
+        const parsed = JSON.parse(existingVoucher.meta);
+        if (parsed && typeof parsed === 'object') {
+          meta = parsed;
+        } else {
+          Logger.log('⚠️ MetaJSON parsed but is not an object, ignoring');
+        }
       } catch (e) {
         Logger.log('Error parsing meta: ' + e.toString());
-        // Fallback: extract from note after "Meta: " (capture full string including newlines)
-        const note = existingVoucher.note || '';
-        const metaIdx = note.indexOf('Meta: ');
-        if (metaIdx >= 0) {
-          try {
-            meta = JSON.parse(note.substring(metaIdx + 6).trim());
-          } catch (e2) {
-            Logger.log('Error parsing meta from note: ' + e2.toString());
-          }
-        }
       }
     }
-    
+
     // Check if using sequential approval (has companyApprovers in meta)
     const companyApprovers = meta.companyApprovers;
     if (!companyApprovers || !companyApprovers.approvers) {
@@ -1106,18 +1023,29 @@ function handleApproveVoucher(requestBody) {
       );
     }
     
-    // 5. Check if signature provided
+    // 5. Validate signature + verification (must pass BEFORE any state mutation)
     if (!v.approverSignature || v.approverSignature.trim() === '') {
       return createResponse(false, 'Vui lòng tải lên chữ ký trước khi phê duyệt');
     }
-    
+    if (!v.signatureVerification || typeof v.signatureVerification !== 'object') {
+      return createResponse(false, 'Thiếu dữ liệu xác thực chữ ký. Vui lòng thử lại hoặc liên hệ quản trị viên.');
+    }
+    if (v.signatureVerification.verified !== true) {
+      return createResponse(false,
+        'Chữ ký không hợp lệ. ' +
+        'Lý do: ' + (v.signatureVerification.reason || 'unknown') + '. ' +
+        (v.signatureVerification.similarity ?
+          'Độ tương đồng: ' + v.signatureVerification.similarity + '% (yêu cầu: 75%)' :
+          'Vui lòng sử dụng chữ ký mẫu đã đăng ký.')
+      );
+    }
+
     // 6. Update this approver's status
     companyApprovers.approvers[approverRole].status = 'approved';
     companyApprovers.approvers[approverRole].signature = v.approverSignature;
     companyApprovers.approvers[approverRole].approvedAt = new Date().toISOString();
 
-    // 6b. Store role-specific signature and name in meta for print template
-    // Frontend expects meta.accountantSignature, meta.legalRepSignature, meta.treasurerSignature
+    // 6b. Store role-specific signature + name in meta for print template
     const approverName = v.approverName || companyApprovers.approvers[approverRole].name || v.approvedBy || '';
     if (approverRole === 'accountant') {
       meta.accountantSignature = v.approverSignature;
@@ -1128,42 +1056,18 @@ function handleApproveVoucher(requestBody) {
     } else if (approverRole === 'treasurer') {
       meta.treasurerSignature = v.approverSignature;
       meta.treasurerName = approverName;
+      meta.approverSignature = v.approverSignature; // compat alias for legacy print templates
     }
     Logger.log('✅ Stored role-specific signature for: ' + approverRole + ', name: ' + approverName);
 
-    // 6c. CRITICAL FIX: Enforce signature verification result
-    if (v.signatureVerification) {
-      Logger.log('🔍 Signature verification result: ' + JSON.stringify(v.signatureVerification));
-
-      // CRITICAL FIX: Enforce verification result - block if not verified
-      if (v.signatureVerification.verified !== true) {
-        Logger.log('❌ Signature verification failed - blocking approval');
-        return createResponse(false,
-          'Chữ ký không hợp lệ. ' +
-          'Lý do: ' + (v.signatureVerification.reason || 'unknown') + '. ' +
-          (v.signatureVerification.similarity ?
-            'Độ tương đồng: ' + v.signatureVerification.similarity + '% (yêu cầu: 75%)' :
-            'Vui lòng sử dụng chữ ký mẫu đã đăng ký.')
-        );
-      }
-
-      // Store verification result for audit trail
-      meta.signatureVerification = meta.signatureVerification || {};
-      meta.signatureVerification[approverRole] = {
-        verified: v.signatureVerification.verified,
-        similarity: v.signatureVerification.similarity,
-        reason: v.signatureVerification.reason,
-        verifiedAt: new Date().toISOString()
-      };
-    }
-
-    // CRITICAL FIX: Require verification object to be present
-    if (!v.signatureVerification || typeof v.signatureVerification !== 'object') {
-      Logger.log('❌ Missing signature verification data');
-      return createResponse(false,
-        'Thiếu dữ liệu xác thực chữ ký. Vui lòng thử lại hoặc liên hệ quản trị viên.'
-      );
-    }
+    // 6c. Store verification result for audit trail
+    meta.signatureVerification = meta.signatureVerification || {};
+    meta.signatureVerification[approverRole] = {
+      verified: v.signatureVerification.verified,
+      similarity: v.signatureVerification.similarity,
+      reason: v.signatureVerification.reason,
+      verifiedAt: new Date().toISOString()
+    };
 
     // 7. Count approvals
     const approvalCount = countApprovals(companyApprovers.approvers);
@@ -3882,19 +3786,9 @@ function uploadFilesToDrive_(files, folderName) {
 }
 
 function appendHistory_(entry) {
-  // #region agent log
-  try {
-    UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:1925', message: 'appendHistory_ entry', data: {voucherNumber: entry.voucherNumber, action: entry.action}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'E'})}).catch(() => {});
-  } catch (e) {}
-  // #endregion
   try {
     Logger.log('📝 Attempting to append history for voucher: ' + entry.voucherNumber);
     
-    // #region agent log
-    try {
-      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:1929', message: 'Before sheet access in appendHistory_', data: {sheetId: VOUCHER_HISTORY_SHEET_ID, sheetName: VH_SHEET_NAME}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'E'})}).catch(() => {});
-    } catch (e) {}
-    // #endregion
     
     const sheet = SpreadsheetApp.openById(VOUCHER_HISTORY_SHEET_ID).getSheetByName(VH_SHEET_NAME);
     
@@ -3909,11 +3803,6 @@ function appendHistory_(entry) {
       Logger.log('⚠️ WARNING: Voucher number is missing in entry');
     }
     
-    // #region agent log
-    try {
-      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:1942', message: 'Before appendRow', data: {voucherNumber: entry.voucherNumber}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'E'})}).catch(() => {});
-    } catch (e) {}
-    // #endregion
     
     sheet.appendRow([
       entry.voucherNumber || '',                       // A (0):  voucher_number
@@ -3940,11 +3829,6 @@ function appendHistory_(entry) {
       entry.rejectionReason || ''                      // V (21): rejection_reason
     ]);
     
-    // #region agent log
-    try {
-      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:1957', message: 'After appendRow', data: {voucherNumber: entry.voucherNumber, success: true}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'E'})}).catch(() => {});
-    } catch (e) {}
-    // #endregion
     
     Logger.log('✅ History appended successfully for voucher: ' + entry.voucherNumber);
     Logger.log('   - Action: ' + entry.action);
@@ -3953,11 +3837,6 @@ function appendHistory_(entry) {
     
     return true;
   } catch (error) {
-    // #region agent log
-    try {
-      UrlFetchApp.fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({location: 'VOUCHER_WORKFLOW_BACKEND.gs:1964', message: 'Error in appendHistory_', data: {error: error.toString(), message: error.message, voucherNumber: entry.voucherNumber}, timestamp: Date.now(), sessionId: 'debug-session', runId: 'run1', hypothesisId: 'E'})}).catch(() => {});
-    } catch (e) {}
-    // #endregion
     Logger.log('❌ CRITICAL ERROR in appendHistory_: ' + error.toString());
     Logger.log('❌ Error stack: ' + error.stack);
     Logger.log('❌ Entry data: ' + JSON.stringify({
