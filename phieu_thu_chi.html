@@ -3062,7 +3062,7 @@
             </div>
             <div class="voucher-stats" id="voucher-stats">
                 <div class="stats-pipeline-header">
-                    <span class="stats-pipeline-title">Tiến độ phê duyệt</span>
+                    <span class="stats-pipeline-title" id="stats-pipeline-title-text">Tiến độ phê duyệt</span>
                     <span class="stats-pipeline-total" id="stat-total-summary">—</span>
                 </div>
                 <div class="pipeline-steps">
@@ -5222,6 +5222,7 @@
         let approverSignatureData = null;
         const APPROVER_SIGNATURE_KEY = 'tlcg_approver_signature';
         let allLoadedVouchers = []; // cache for client-side filter
+        let globalStatsCache = null; // admin-only: company-wide counts from backend
         let activeRenderedVouchers = [];
         let renderedVoucherCount = 0;
         let selectedVoucherNumber = '';
@@ -5361,6 +5362,7 @@
                         localStorage.setItem('tlc_current_user', JSON.stringify(u));
                     } catch(e) {}
                 }
+                globalStatsCache = result.data.globalStats || null;
                 return result.data.recent || [];
             };
             const _dedupKey = 'getVoucherSummary_' + ((() => { try { return JSON.parse(localStorage.getItem('tlc_current_user') || '{}').email || 'anon'; } catch(e) { return 'anon'; } })());
@@ -5401,17 +5403,42 @@
         }
 
         function updateVoucherStats(vouchers) {
-            const stats = { pending: 0, s1: 0, s2: 0, s3: 0, approved: 0, acknowledged: 0, rejected: 0, awaitingAck: 0, overdue: 0, inProgress: 0 };
-            vouchers.forEach(v => {
-                const s = normalizeVoucherState(v);
-                if (s.bucket === 'pending')      { stats.pending += 1; }
-                if (s.bucket === 'in-progress')  { stats.inProgress += 1; if (s.progressNum === 1) stats.s1 += 1; else if (s.progressNum === 2) stats.s2 += 1; else stats.s3 += 1; }
-                if (s.bucket === 'approved')     { stats.approved += 1; stats.awaitingAck += 1; }
-                if (s.bucket === 'acknowledged') { stats.acknowledged += 1; }
-                if (s.bucket === 'rejected')     { stats.rejected += 1; }
-                if (s.isOverdue)                 { stats.overdue += 1; }
-            });
-            const total = vouchers.length;
+            const u = (() => { try { return JSON.parse(localStorage.getItem('tlc_current_user') || '{}'); } catch(e) { return {}; } })();
+            const isAdmin = u.isAdmin === true || u.isAdmin === 'true' || u.isAdmin === 'TRUE';
+
+            let stats, scopeLabel;
+            if (isAdmin && globalStatsCache) {
+                // Admin: use backend-computed company-wide counts
+                stats = {
+                    pending: globalStatsCache.pending || 0,
+                    s1: globalStatsCache.s1 || 0,
+                    s2: globalStatsCache.s2 || 0,
+                    s3: globalStatsCache.s3 || 0,
+                    approved: globalStatsCache.approved || 0,
+                    acknowledged: globalStatsCache.acknowledged || 0,
+                    rejected: globalStatsCache.rejected || 0,
+                    overdue: globalStatsCache.overdue || 0,
+                    inProgress: (globalStatsCache.s1 || 0) + (globalStatsCache.s2 || 0) + (globalStatsCache.s3 || 0),
+                    awaitingAck: globalStatsCache.approved || 0,
+                    total: globalStatsCache.total || 0
+                };
+                scopeLabel = 'Toàn công ty';
+            } else {
+                // Non-admin: compute from role-scoped voucher list
+                stats = { pending: 0, s1: 0, s2: 0, s3: 0, approved: 0, acknowledged: 0, rejected: 0, awaitingAck: 0, overdue: 0, inProgress: 0, total: vouchers.length };
+                vouchers.forEach(v => {
+                    const s = normalizeVoucherState(v);
+                    if (s.bucket === 'pending')      { stats.pending += 1; }
+                    if (s.bucket === 'in-progress')  { stats.inProgress += 1; if (s.progressNum === 1) stats.s1 += 1; else if (s.progressNum === 2) stats.s2 += 1; else stats.s3 += 1; }
+                    if (s.bucket === 'approved')     { stats.approved += 1; stats.awaitingAck += 1; }
+                    if (s.bucket === 'acknowledged') { stats.acknowledged += 1; }
+                    if (s.bucket === 'rejected')     { stats.rejected += 1; }
+                    if (s.isOverdue)                 { stats.overdue += 1; }
+                });
+                scopeLabel = 'Của tôi';
+            }
+
+            const total = stats.total;
             const active = stats.pending + stats.inProgress + stats.approved;
             const mappings = [
                 ['stat-pending', stats.pending],
@@ -5429,9 +5456,11 @@
                 const el = document.getElementById(id);
                 if (el) el.textContent = String(value);
             });
+            const titleEl = document.getElementById('stats-pipeline-title-text');
+            if (titleEl) titleEl.textContent = `Tiến độ phê duyệt · ${scopeLabel}`;
             const totalEl = document.getElementById('stat-total-summary');
             if (totalEl) {
-                totalEl.innerHTML = `${total} phiếu tổng · ${active} đang xử lý` +
+                totalEl.innerHTML = `${total} phiếu · ${active} đang xử lý` +
                     (stats.overdue > 0 ? ` · <span class="overdue-highlight">⚠ ${stats.overdue} quá hạn</span>` : '');
             }
             const overdueWrap = document.getElementById('stat-overdue-wrap');

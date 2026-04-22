@@ -3744,13 +3744,39 @@ function handleGetVoucherSummary(requestBody) {
     }
     Logger.log('callerApproverRole: ' + callerApproverRole);
 
+    // Global stats for admin — full count across all vouchers regardless of role filter
+    let globalStats = null;
+    if (isAdmin) {
+      const gs = { pending: 0, s1: 0, s2: 0, s3: 0, approved: 0, acknowledged: 0, rejected: 0, overdue: 0, total: vouchers.length };
+      const now = new Date();
+      vouchers.forEach(function(v) {
+        const prog = progressMap.get(v.voucherNumber) || 0;
+        const rawStatus = (v.status || '').toString().toLowerCase();
+        const isRej = rawStatus.includes('rejected') || rawStatus.includes('từ chối') || rawStatus.includes('đã từ chối');
+        const isAck = rawStatus.includes('received') || rawStatus.includes('xác nhận') || rawStatus.includes('đã thu') || rawStatus.includes('đã nhận');
+        const isFull = prog >= 3 || rawStatus.includes('approved') || rawStatus.includes('đã duyệt');
+        if (isRej)  { gs.rejected += 1; return; }
+        if (isAck)  { gs.acknowledged += 1; return; }
+        if (isFull) { gs.approved += 1; return; }
+        if (prog === 0)      gs.pending += 1;
+        else if (prog === 1) gs.s1 += 1;
+        else if (prog === 2) gs.s2 += 1;
+        else if (prog === 3) gs.s3 += 1;
+        const ts = v.timestamp instanceof Date ? v.timestamp : new Date(v.timestamp);
+        if (!isNaN(ts.getTime()) && (now - ts) > 2 * 24 * 60 * 60 * 1000) gs.overdue += 1;
+      });
+      globalStats = gs;
+      Logger.log('globalStats: ' + JSON.stringify(globalStats));
+    }
+
     return createResponse(true, 'Thành công', {
       total: visibleVouchers.length,
       pending: pending,
       approved: approved,
       rejected: rejected,
       recent: recent,
-      callerApproverRole: callerApproverRole
+      callerApproverRole: callerApproverRole,
+      globalStats: globalStats
     });
   } catch (error) {
     return createResponse(false, 'Lỗi: ' + error.message);
