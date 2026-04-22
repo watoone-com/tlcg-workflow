@@ -3670,10 +3670,10 @@ function handleGetVoucherSummary(requestBody) {
 
     // ── Visibility filter ──────────────────────────────────────────────────────
     function shouldShow(v) {
-      if (isAdmin) return true;
       if (!callerEmail) return true; // no-auth / dev fallback
       const isOwnVoucher = (v.requestorEmail || '').toLowerCase().trim() === callerEmail;
       const isApprover = callerRole === 'accountant' || callerRole === 'legalRep' || callerRole === 'treasurer';
+      if (isAdmin && !isApprover) return true; // admin with no approver role sees all
       if (isApprover) {
         // Hide fully-approved (3/3) vouchers that belong to other submitters — no action needed
         const prog = progressMap.get(v.voucherNumber) || 0;

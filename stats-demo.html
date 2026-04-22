@@ -1,0 +1,373 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Stats Bar Demo</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f1f5f9; padding: 2rem; }
+
+  h3 { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.08em; color: #94a3b8; margin-bottom: 0.75rem; }
+
+  /* ── OPTION A: Current (flat tiles) ── */
+  .stats-current {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 0.75rem;
+    padding: 1rem 1.5rem;
+    background: #f1f5f9;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    margin-bottom: 2rem;
+  }
+  .stat-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.25rem;
+    padding: 0.75rem 0.875rem;
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 1px 3px rgba(15,23,42,0.06);
+  }
+  .stat-item .stat-value { font-size: 1.5rem; font-weight: 700; line-height: 1; }
+  .stat-item .stat-label { font-size: 0.7rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.06em; }
+  .stat-item.pending   .stat-value { color: #f59e0b; }
+  .stat-item.s1        .stat-value { color: #60a5fa; }
+  .stat-item.s2        .stat-value { color: #818cf8; }
+  .stat-item.s3        .stat-value { color: #a78bfa; }
+  .stat-item.approved  .stat-value { color: #34d399; }
+  .stat-item.acknowledged .stat-value { color: #10b981; }
+  .stat-item.rejected  .stat-value { color: #f87171; }
+  .stat-item.overdue   .stat-value { color: #fb7185; }
+
+  /* ── OPTION B: Pipeline / funnel view ── */
+  .stats-pipeline {
+    background: #fff;
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+    padding: 1.25rem 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 1px 4px rgba(15,23,42,0.07);
+  }
+  .pipeline-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1.25rem;
+  }
+  .pipeline-title { font-size: 0.8rem; font-weight: 600; color: #475569; text-transform: uppercase; letter-spacing: 0.07em; }
+  .pipeline-total { font-size: 0.75rem; color: #94a3b8; }
+
+  .pipeline-steps {
+    display: flex;
+    align-items: stretch;
+    gap: 0;
+  }
+  .pipe-step {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    position: relative;
+    cursor: pointer;
+    padding: 0.625rem 0.5rem;
+    border-radius: 10px;
+    transition: background 0.15s;
+  }
+  .pipe-step:hover { background: #f8fafc; }
+  .pipe-step:not(:last-child)::after {
+    content: '›';
+    position: absolute;
+    right: -6px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: #cbd5e1;
+    font-size: 1.1rem;
+    z-index: 1;
+  }
+  .pipe-dot {
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 0.75rem; font-weight: 700;
+    margin-bottom: 0.375rem;
+    color: #fff;
+  }
+  .pipe-step.pending   .pipe-dot { background: #fbbf24; }
+  .pipe-step.s1        .pipe-dot { background: #60a5fa; }
+  .pipe-step.s2        .pipe-dot { background: #818cf8; }
+  .pipe-step.s3        .pipe-dot { background: #a78bfa; }
+  .pipe-step.approved  .pipe-dot { background: #34d399; }
+  .pipe-step.acknowledged .pipe-dot { background: #10b981; }
+  .pipe-step.rejected  .pipe-dot { background: #f87171; box-shadow: none; }
+
+  .pipe-count { font-size: 1.3rem; font-weight: 700; color: #1e293b; line-height: 1; }
+  .pipe-label { font-size: 0.65rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.05em; text-align: center; margin-top: 0.2rem; }
+  .pipe-sub   { font-size: 0.6rem; color: #94a3b8; text-align: center; }
+
+  .pipe-rejected-row {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-top: 0.875rem;
+    padding-top: 0.75rem;
+    border-top: 1px solid #f1f5f9;
+  }
+  .pipe-rejected-row .pipe-dot { width: 24px; height: 24px; font-size: 0.65rem; }
+  .pipe-rejected-label { font-size: 0.7rem; color: #64748b; }
+  .pipe-rejected-count { font-size: 0.85rem; font-weight: 700; color: #f87171; margin-left: auto; }
+  .pipe-overdue-badge {
+    display: inline-flex; align-items: center; gap: 0.25rem;
+    font-size: 0.65rem; color: #fb7185;
+    background: #fff1f2; border: 1px solid #fecdd3;
+    border-radius: 20px; padding: 0.15rem 0.5rem;
+    margin-left: 0.5rem;
+  }
+
+  /* ── OPTION C: Compact horizontal bar ── */
+  .stats-compact {
+    background: #fff;
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+    padding: 1rem 1.5rem;
+    margin-bottom: 2rem;
+    box-shadow: 0 1px 4px rgba(15,23,42,0.07);
+  }
+  .compact-row {
+    display: flex;
+    align-items: center;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+  }
+  .compact-item {
+    display: flex;
+    align-items: center;
+    gap: 0.375rem;
+    cursor: pointer;
+    padding: 0.3rem 0.5rem;
+    border-radius: 8px;
+    transition: background 0.12s;
+  }
+  .compact-item:hover { background: #f8fafc; }
+  .compact-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+  .compact-count { font-size: 1rem; font-weight: 700; color: #1e293b; }
+  .compact-label { font-size: 0.7rem; color: #64748b; }
+  .compact-divider { width: 1px; height: 24px; background: #e2e8f0; flex-shrink: 0; }
+
+  .progress-bar-wrap {
+    margin-top: 0.75rem;
+    height: 6px;
+    border-radius: 99px;
+    background: #f1f5f9;
+    overflow: hidden;
+    display: flex;
+  }
+  .progress-seg { height: 100%; transition: width 0.4s ease; }
+
+  /* labels under demo */
+  .demo-label {
+    font-size: 0.7rem;
+    color: #94a3b8;
+    margin-bottom: 0.4rem;
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+  .demo-badge {
+    background: #e0f2fe; color: #0284c7;
+    font-size: 0.6rem; padding: 0.1rem 0.4rem; border-radius: 4px;
+    font-weight: 600; text-transform: uppercase;
+  }
+  .demo-badge.rec { background: #dcfce7; color: #15803d; }
+
+  .section { margin-bottom: 3rem; }
+</style>
+</head>
+<body>
+
+<div style="max-width:900px;margin:0 auto;">
+
+  <div style="margin-bottom:2rem;">
+    <div style="font-size:1.1rem;font-weight:700;color:#1e293b;margin-bottom:0.25rem;">Stats Bar — 3 Options</div>
+    <div style="font-size:0.8rem;color:#64748b;">Sample data: 0 chờ · 12 đang duyệt (1/3) · 8 đang (2/3) · 4 đang (3/3) · 385 đã duyệt · 36 đã xác nhận · 3 từ chối · 7 quá hạn</div>
+  </div>
+
+  <!-- ══ OPTION A ══ -->
+  <div class="section">
+    <div class="demo-label">Option A — Current style, expanded with 1/3 2/3 3/3 <span class="demo-badge">Minimal change</span></div>
+    <div class="stats-current">
+      <div class="stat-item pending">
+        <span class="stat-value">0</span>
+        <span class="stat-label">Chờ duyệt</span>
+      </div>
+      <div class="stat-item s1">
+        <span class="stat-value">12</span>
+        <span class="stat-label">Duyệt 1/3</span>
+      </div>
+      <div class="stat-item s2">
+        <span class="stat-value">8</span>
+        <span class="stat-label">Duyệt 2/3</span>
+      </div>
+      <div class="stat-item s3">
+        <span class="stat-value">4</span>
+        <span class="stat-label">Duyệt 3/3</span>
+      </div>
+      <div class="stat-item approved">
+        <span class="stat-value">385</span>
+        <span class="stat-label">Đã duyệt</span>
+      </div>
+      <div class="stat-item acknowledged">
+        <span class="stat-value">36</span>
+        <span class="stat-label">Đã xác nhận</span>
+      </div>
+      <div class="stat-item rejected">
+        <span class="stat-value">3</span>
+        <span class="stat-label">Từ chối</span>
+      </div>
+      <div class="stat-item overdue">
+        <span class="stat-value">7</span>
+        <span class="stat-label">Quá hạn</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ OPTION B ══ -->
+  <div class="section">
+    <div class="demo-label">Option B — Pipeline funnel (flow left→right) <span class="demo-badge rec">Recommended</span></div>
+    <div class="stats-pipeline">
+      <div class="pipeline-header">
+        <span class="pipeline-title">Tiến độ phê duyệt</span>
+        <span class="pipeline-total">448 phiếu tổng · 7 quá hạn ⚠️</span>
+      </div>
+      <div class="pipeline-steps">
+        <div class="pipe-step pending" onclick="filterBy('pending')" title="Lọc: Chờ duyệt">
+          <div class="pipe-dot">0</div>
+          <div class="pipe-count">0</div>
+          <div class="pipe-label">Chờ duyệt</div>
+          <div class="pipe-sub">Bước 0</div>
+        </div>
+        <div class="pipe-step s1" onclick="filterBy('1')" title="Lọc: Đang duyệt 1/3">
+          <div class="pipe-dot">1</div>
+          <div class="pipe-count">12</div>
+          <div class="pipe-label">Duyệt 1/3</div>
+          <div class="pipe-sub">Kế toán</div>
+        </div>
+        <div class="pipe-step s2" onclick="filterBy('2')" title="Lọc: Đang duyệt 2/3">
+          <div class="pipe-dot">2</div>
+          <div class="pipe-count">8</div>
+          <div class="pipe-label">Duyệt 2/3</div>
+          <div class="pipe-sub">Pháp lý</div>
+        </div>
+        <div class="pipe-step s3" onclick="filterBy('3')" title="Lọc: Đang duyệt 3/3">
+          <div class="pipe-dot">3</div>
+          <div class="pipe-count">4</div>
+          <div class="pipe-label">Duyệt 3/3</div>
+          <div class="pipe-sub">Thủ quỹ</div>
+        </div>
+        <div class="pipe-step approved" onclick="filterBy('approved')" title="Lọc: Đã duyệt">
+          <div class="pipe-dot">✓</div>
+          <div class="pipe-count">385</div>
+          <div class="pipe-label">Đã duyệt</div>
+          <div class="pipe-sub">Chờ xác nhận</div>
+        </div>
+        <div class="pipe-step acknowledged" onclick="filterBy('acknowledged')" title="Lọc: Đã xác nhận">
+          <div class="pipe-dot">✓✓</div>
+          <div class="pipe-count">36</div>
+          <div class="pipe-label">Đã xác nhận</div>
+          <div class="pipe-sub">Hoàn tất</div>
+        </div>
+      </div>
+      <div class="pipe-rejected-row">
+        <div class="pipe-dot rejected" style="background:#f87171;display:flex;align-items:center;justify-content:center;color:#fff;font-size:0.65rem;font-weight:700;border-radius:50%;">✕</div>
+        <span class="pipe-rejected-label">Từ chối</span>
+        <span class="pipe-overdue-badge">⚠ 7 quá hạn</span>
+        <span class="pipe-rejected-count">3</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ OPTION C ══ -->
+  <div class="section">
+    <div class="demo-label">Option C — Compact single-line with progress bar <span class="demo-badge">Space-saving</span></div>
+    <div class="stats-compact">
+      <div class="compact-row">
+        <div class="compact-item" onclick="filterBy('pending')">
+          <div class="compact-dot" style="background:#fbbf24;"></div>
+          <span class="compact-count">0</span>
+          <span class="compact-label">Chờ duyệt</span>
+        </div>
+        <div class="compact-divider"></div>
+        <div class="compact-item" onclick="filterBy('1')">
+          <div class="compact-dot" style="background:#60a5fa;"></div>
+          <span class="compact-count">12</span>
+          <span class="compact-label">1/3</span>
+        </div>
+        <div class="compact-item" onclick="filterBy('2')">
+          <div class="compact-dot" style="background:#818cf8;"></div>
+          <span class="compact-count">8</span>
+          <span class="compact-label">2/3</span>
+        </div>
+        <div class="compact-item" onclick="filterBy('3')">
+          <div class="compact-dot" style="background:#a78bfa;"></div>
+          <span class="compact-count">4</span>
+          <span class="compact-label">3/3</span>
+        </div>
+        <div class="compact-divider"></div>
+        <div class="compact-item" onclick="filterBy('approved')">
+          <div class="compact-dot" style="background:#34d399;"></div>
+          <span class="compact-count">385</span>
+          <span class="compact-label">Đã duyệt</span>
+        </div>
+        <div class="compact-item" onclick="filterBy('acknowledged')">
+          <div class="compact-dot" style="background:#10b981;"></div>
+          <span class="compact-count">36</span>
+          <span class="compact-label">Đã xác nhận</span>
+        </div>
+        <div class="compact-divider"></div>
+        <div class="compact-item" onclick="filterBy('rejected')">
+          <div class="compact-dot" style="background:#f87171;"></div>
+          <span class="compact-count">3</span>
+          <span class="compact-label">Từ chối</span>
+        </div>
+        <div class="compact-item" onclick="filterBy('overdue')" style="margin-left:auto;">
+          <div class="compact-dot" style="background:#fb7185;"></div>
+          <span class="compact-count" style="color:#fb7185;">7</span>
+          <span class="compact-label">Quá hạn</span>
+        </div>
+      </div>
+      <div class="progress-bar-wrap">
+        <!-- total 448, segments proportional -->
+        <div class="progress-seg" style="width:2.7%;background:#60a5fa;" title="1/3: 12"></div>
+        <div class="progress-seg" style="width:1.8%;background:#818cf8;" title="2/3: 8"></div>
+        <div class="progress-seg" style="width:0.9%;background:#a78bfa;" title="3/3: 4"></div>
+        <div class="progress-seg" style="width:85.9%;background:#34d399;" title="Đã duyệt: 385"></div>
+        <div class="progress-seg" style="width:8%;background:#10b981;" title="Đã xác nhận: 36"></div>
+        <div class="progress-seg" style="width:0.7%;background:#f87171;" title="Từ chối: 3"></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="padding:1rem;background:#fff;border-radius:12px;border:1px solid #e2e8f0;font-size:0.75rem;color:#64748b;line-height:1.6;">
+    <strong style="color:#1e293b;">Ghi chú triển khai:</strong><br>
+    • Tất cả 3 option đều có thể click để lọc danh sách bên dưới<br>
+    • Stats luôn tính từ <code>allLoadedVouchers</code> (toàn bộ), không bị ảnh hưởng bởi bộ lọc đang active<br>
+    • Option B (pipeline) trực quan nhất cho manager vì thấy ngay bottleneck ở bước nào<br>
+    • Option C tiết kiệm không gian nhất, phù hợp nếu màn hình nhỏ
+  </div>
+
+</div>
+
+<script>
+function filterBy(val) {
+  const el = document.createElement('div');
+  el.style.cssText = 'position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%);background:#1e293b;color:#fff;padding:0.5rem 1.25rem;border-radius:8px;font-size:0.8rem;z-index:999;pointer-events:none;';
+  el.textContent = `→ Lọc: "${val}" (demo only)`;
+  document.body.appendChild(el);
+  setTimeout(() => el.remove(), 1800);
+}
+</script>
+</body>
+</html>

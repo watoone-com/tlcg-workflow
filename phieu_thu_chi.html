@@ -1818,47 +1818,102 @@
             accent-color: #0ea5e9;
         }
 
+        /* ── Pipeline stats bar ── */
         .voucher-stats {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-            gap: 0.75rem;
             padding: 1rem 1.5rem;
-            background: #f1f5f9;
+            background: #ffffff;
             border-bottom: 1px solid #e2e8f0;
+            box-shadow: 0 1px 4px rgba(15,23,42,0.07);
         }
-
-        .stat-item {
+        .stats-pipeline-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+        .stats-pipeline-title {
+            font-size: 0.7rem;
+            font-weight: 600;
+            color: #475569;
+            text-transform: uppercase;
+            letter-spacing: 0.07em;
+        }
+        .stats-pipeline-total {
+            font-size: 0.72rem;
+            color: #94a3b8;
+        }
+        .pipeline-steps {
+            display: flex;
+            align-items: stretch;
+            gap: 0;
+        }
+        .pipe-step {
+            flex: 1;
             display: flex;
             flex-direction: column;
-            align-items: flex-start;
-            gap: 0.375rem;
-            padding: 0.75rem 0.875rem;
-            background: #ffffff;
-            border-radius: 12px;
-            border: 1px solid #e2e8f0;
-            box-shadow: 0 1px 3px rgba(15, 23, 42, 0.06);
+            align-items: center;
+            position: relative;
+            cursor: pointer;
+            padding: 0.5rem 0.375rem;
+            border-radius: 10px;
+            transition: background 0.15s;
+            text-decoration: none;
         }
-
-        .stat-item .stat-value {
-            font-size: 1.25rem;
-            font-weight: 700;
-            line-height: 1;
+        .pipe-step:hover { background: #f8fafc; }
+        .pipe-step:not(:last-child)::after {
+            content: '›';
+            position: absolute;
+            right: -5px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #cbd5e1;
+            font-size: 1rem;
+            z-index: 1;
         }
-
-        .stat-item .stat-label {
-            font-size: 0.75rem;
-            color: #64748b;
-            text-transform: uppercase;
-            letter-spacing: 0.06em;
+        .pipe-dot {
+            width: 32px; height: 32px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 0.7rem; font-weight: 700;
+            margin-bottom: 0.3rem;
+            color: #fff;
+            flex-shrink: 0;
         }
-
-        .stat-item.pending .stat-value { color: var(--dashboard-warning); }
-        .stat-item.approved .stat-value { color: var(--dashboard-success); }
-        .stat-item.rejected .stat-value { color: var(--dashboard-danger); }
-        .stat-item.in-progress .stat-value { color: var(--dashboard-accent); }
-        .stat-item.awaiting-ack .stat-value { color: #f59e0b; }
-        .stat-item.acknowledged .stat-value { color: #10b981; }
-        .stat-item.overdue .stat-value { color: #fb7185; }
+        .pipe-step.ps-pending   .pipe-dot { background: #fbbf24; }
+        .pipe-step.ps-s1        .pipe-dot { background: #60a5fa; }
+        .pipe-step.ps-s2        .pipe-dot { background: #818cf8; }
+        .pipe-step.ps-s3        .pipe-dot { background: #a78bfa; }
+        .pipe-step.ps-approved  .pipe-dot { background: #34d399; }
+        .pipe-step.ps-acknowledged .pipe-dot { background: #10b981; }
+        .pipe-count { font-size: 1.2rem; font-weight: 700; color: #1e293b; line-height: 1; }
+        .pipe-label { font-size: 0.6rem; color: #64748b; text-transform: uppercase; letter-spacing: 0.04em; text-align: center; margin-top: 0.2rem; }
+        .pipe-sub   { font-size: 0.58rem; color: #94a3b8; text-align: center; }
+        .pipe-bottom-row {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            margin-top: 0.75rem;
+            padding-top: 0.625rem;
+            border-top: 1px solid #f1f5f9;
+            flex-wrap: wrap;
+        }
+        .pipe-bottom-item {
+            display: inline-flex; align-items: center; gap: 0.35rem;
+            cursor: pointer; padding: 0.2rem 0.5rem; border-radius: 6px;
+            transition: background 0.12s;
+            font-size: 0.72rem;
+        }
+        .pipe-bottom-item:hover { background: #f8fafc; }
+        .pipe-bottom-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; }
+        .pipe-bottom-count { font-weight: 700; color: #1e293b; }
+        .pipe-bottom-label { color: #64748b; }
+        .pipe-overdue-badge {
+            display: inline-flex; align-items: center; gap: 0.2rem;
+            font-size: 0.62rem; color: #fb7185;
+            background: #fff1f2; border: 1px solid #fecdd3;
+            border-radius: 20px; padding: 0.12rem 0.45rem;
+        }
+        .stats-pipeline-total .overdue-highlight { color: #fb7185; font-weight: 600; }
 
         #voucher-filter-bar {
             position: sticky;
@@ -3006,33 +3061,60 @@
                 </div>
             </div>
             <div class="voucher-stats" id="voucher-stats">
-                <div class="stat-item pending">
-                    <span class="stat-value" id="stat-pending">0</span>
-                    <span class="stat-label">Đang treo</span>
+                <div class="stats-pipeline-header">
+                    <span class="stats-pipeline-title">Tiến độ phê duyệt</span>
+                    <span class="stats-pipeline-total" id="stat-total-summary">—</span>
                 </div>
-                <div class="stat-item in-progress">
-                    <span class="stat-value" id="stat-in-progress">0</span>
-                    <span class="stat-label">Đang duyệt</span>
+                <div class="pipeline-steps">
+                    <div class="pipe-step ps-pending" onclick="applyStatFilter('Pending')" title="Chờ duyệt (0/3)">
+                        <div class="pipe-dot">0</div>
+                        <div class="pipe-count" id="stat-pending">0</div>
+                        <div class="pipe-label">Chờ duyệt</div>
+                        <div class="pipe-sub">Bước 0</div>
+                    </div>
+                    <div class="pipe-step ps-s1" onclick="applyStatFilter('InProgress1')" title="Đang duyệt 1/3 — Kế toán">
+                        <div class="pipe-dot">1</div>
+                        <div class="pipe-count" id="stat-s1">0</div>
+                        <div class="pipe-label">Duyệt 1/3</div>
+                        <div class="pipe-sub">Kế toán</div>
+                    </div>
+                    <div class="pipe-step ps-s2" onclick="applyStatFilter('InProgress2')" title="Đang duyệt 2/3 — Pháp lý">
+                        <div class="pipe-dot">2</div>
+                        <div class="pipe-count" id="stat-s2">0</div>
+                        <div class="pipe-label">Duyệt 2/3</div>
+                        <div class="pipe-sub">Pháp lý</div>
+                    </div>
+                    <div class="pipe-step ps-s3" onclick="applyStatFilter('InProgress3')" title="Đang duyệt 3/3 — Thủ quỹ">
+                        <div class="pipe-dot">3</div>
+                        <div class="pipe-count" id="stat-s3">0</div>
+                        <div class="pipe-label">Duyệt 3/3</div>
+                        <div class="pipe-sub">Thủ quỹ</div>
+                    </div>
+                    <div class="pipe-step ps-approved" onclick="applyStatFilter('Approved')" title="Đã duyệt — chờ xác nhận">
+                        <div class="pipe-dot">✓</div>
+                        <div class="pipe-count" id="stat-approved">0</div>
+                        <div class="pipe-label">Đã duyệt</div>
+                        <div class="pipe-sub">Chờ xác nhận</div>
+                    </div>
+                    <div class="pipe-step ps-acknowledged" onclick="applyStatFilter('Acknowledged')" title="Đã xác nhận — hoàn tất">
+                        <div class="pipe-dot">✓✓</div>
+                        <div class="pipe-count" id="stat-acknowledged">0</div>
+                        <div class="pipe-label">Đã xác nhận</div>
+                        <div class="pipe-sub">Hoàn tất</div>
+                    </div>
                 </div>
-                <div class="stat-item approved">
-                    <span class="stat-value" id="stat-approved">0</span>
-                    <span class="stat-label">Đã duyệt</span>
-                </div>
-                <div class="stat-item rejected">
-                    <span class="stat-value" id="stat-rejected">0</span>
-                    <span class="stat-label">Từ chối</span>
-                </div>
-                <div class="stat-item awaiting-ack">
-                    <span class="stat-value" id="stat-awaiting-ack">0</span>
-                    <span class="stat-label">Chờ xác nhận</span>
-                </div>
-                <div class="stat-item acknowledged">
-                    <span class="stat-value" id="stat-acknowledged">0</span>
-                    <span class="stat-label">Đã xác nhận</span>
-                </div>
-                <div class="stat-item overdue">
-                    <span class="stat-value" id="stat-overdue">0</span>
-                    <span class="stat-label">Quá hạn &gt; 2 ngày</span>
+                <div class="pipe-bottom-row">
+                    <div class="pipe-bottom-item" onclick="applyStatFilter('Rejected')" title="Từ chối">
+                        <div class="pipe-bottom-dot" style="background:#f87171;"></div>
+                        <span class="pipe-bottom-count" id="stat-rejected">0</span>
+                        <span class="pipe-bottom-label">Từ chối</span>
+                    </div>
+                    <div class="pipe-bottom-item" id="stat-overdue-wrap" onclick="applyStatFilter('Overdue')" title="Quá hạn > 2 ngày" style="display:none;">
+                        <span class="pipe-overdue-badge">⚠ <span id="stat-overdue">0</span> quá hạn</span>
+                    </div>
+                    <!-- hidden compat IDs -->
+                    <span id="stat-in-progress" style="display:none;">0</span>
+                    <span id="stat-awaiting-ack" style="display:none;">0</span>
                 </div>
             </div>
             <!-- Voucher Filter Bar -->
@@ -3046,6 +3128,7 @@
                         <option value="Pending">Chờ duyệt</option>
                         <option value="InProgress1">Đang duyệt (1/3)</option>
                         <option value="InProgress2">Đang duyệt (2/3)</option>
+                        <option value="InProgress3">Đang duyệt (3/3)</option>
                         <option value="Approved">Đã duyệt</option>
                         <option value="Acknowledged">Đã xác nhận</option>
                         <option value="Rejected">Từ chối</option>
@@ -5318,38 +5401,53 @@
         }
 
         function updateVoucherStats(vouchers) {
-            const stats = {
-                pending: 0,
-                inProgress: 0,
-                approved: 0,
-                rejected: 0,
-                awaitingAck: 0,
-                acknowledged: 0,
-                overdue: 0
-            };
+            const stats = { pending: 0, s1: 0, s2: 0, s3: 0, approved: 0, acknowledged: 0, rejected: 0, awaitingAck: 0, overdue: 0, inProgress: 0 };
             vouchers.forEach(v => {
                 const s = normalizeVoucherState(v);
-                if (s.bucket === 'pending') stats.pending += 1;
-                if (s.bucket === 'in-progress') stats.inProgress += 1;
-                if (s.bucket === 'approved') stats.approved += 1;
-                if (s.bucket === 'acknowledged') stats.acknowledged += 1;
-                if (s.bucket === 'rejected') stats.rejected += 1;
-                if (s.bucket === 'approved' && !s.isReceived) stats.awaitingAck += 1;
-                if (s.isOverdue) stats.overdue += 1;
+                if (s.bucket === 'pending')      { stats.pending += 1; }
+                if (s.bucket === 'in-progress')  { stats.inProgress += 1; if (s.progressNum === 1) stats.s1 += 1; else if (s.progressNum === 2) stats.s2 += 1; else stats.s3 += 1; }
+                if (s.bucket === 'approved')     { stats.approved += 1; stats.awaitingAck += 1; }
+                if (s.bucket === 'acknowledged') { stats.acknowledged += 1; }
+                if (s.bucket === 'rejected')     { stats.rejected += 1; }
+                if (s.isOverdue)                 { stats.overdue += 1; }
             });
+            const total = vouchers.length;
+            const active = stats.pending + stats.inProgress + stats.approved;
             const mappings = [
                 ['stat-pending', stats.pending],
-                ['stat-in-progress', stats.inProgress],
+                ['stat-s1', stats.s1],
+                ['stat-s2', stats.s2],
+                ['stat-s3', stats.s3],
                 ['stat-approved', stats.approved],
-                ['stat-rejected', stats.rejected],
-                ['stat-awaiting-ack', stats.awaitingAck],
                 ['stat-acknowledged', stats.acknowledged],
-                ['stat-overdue', stats.overdue]
+                ['stat-rejected', stats.rejected],
+                ['stat-overdue', stats.overdue],
+                ['stat-in-progress', stats.inProgress],
+                ['stat-awaiting-ack', stats.awaitingAck],
             ];
             mappings.forEach(([id, value]) => {
                 const el = document.getElementById(id);
                 if (el) el.textContent = String(value);
             });
+            const totalEl = document.getElementById('stat-total-summary');
+            if (totalEl) {
+                totalEl.innerHTML = `${total} phiếu tổng · ${active} đang xử lý` +
+                    (stats.overdue > 0 ? ` · <span class="overdue-highlight">⚠ ${stats.overdue} quá hạn</span>` : '');
+            }
+            const overdueWrap = document.getElementById('stat-overdue-wrap');
+            if (overdueWrap) overdueWrap.style.display = stats.overdue > 0 ? 'inline-flex' : 'none';
+        }
+
+        function applyStatFilter(statusValue) {
+            const sel = document.getElementById('vf-status');
+            if (!sel) return;
+            if (statusValue === 'Overdue') {
+                sel.value = '';
+                applyVoucherFilter();
+                return;
+            }
+            sel.value = statusValue;
+            applyVoucherFilter();
         }
 
         function saveVoucherFilterState() {
@@ -5692,6 +5790,8 @@
                     if (state.bucket !== 'in-progress' || state.progressNum !== 1) return false;
                 } else if (status === 'InProgress2') {
                     if (state.bucket !== 'in-progress' || state.progressNum !== 2) return false;
+                } else if (status === 'InProgress3') {
+                    if (state.bucket !== 'in-progress' || state.progressNum !== 3) return false;
                 } else if (status === 'Pending') {
                     if (state.bucket !== 'pending') return false;
                 } else if (status === 'Approved') {
