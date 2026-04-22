@@ -3671,11 +3671,19 @@ function handleGetVoucherSummary(requestBody) {
     // ── Visibility filter ──────────────────────────────────────────────────────
     function shouldShow(v) {
       if (isAdmin) return true;
-      if (callerRole === 'accountant') return true;
-      if (callerRole === 'legalRep')   return true;
-      if (callerRole === 'treasurer')  return true;
       if (!callerEmail) return true; // no-auth / dev fallback
-      return (v.requestorEmail || '').toLowerCase().trim() === callerEmail;
+      const isOwnVoucher = (v.requestorEmail || '').toLowerCase().trim() === callerEmail;
+      const isApprover = callerRole === 'accountant' || callerRole === 'legalRep' || callerRole === 'treasurer';
+      if (isApprover) {
+        // Hide fully-approved (3/3) vouchers that belong to other submitters — no action needed
+        const prog = progressMap.get(v.voucherNumber) || 0;
+        const rawStatus = (v.status || '').toLowerCase();
+        const isFullyApproved = prog >= 3 || rawStatus.includes('approved') || rawStatus.includes('đã duyệt');
+        const isAcknowledged = rawStatus.includes('received') || rawStatus.includes('xác nhận') || rawStatus.includes('đã thu') || rawStatus.includes('đã nhận');
+        if ((isFullyApproved || isAcknowledged) && !isOwnVoucher) return false;
+        return true;
+      }
+      return isOwnVoucher;
     }
     const visibleVouchers = vouchers.filter(shouldShow);
     Logger.log('Visible vouchers after role filter: ' + visibleVouchers.length + ' (of ' + vouchers.length + ')');
