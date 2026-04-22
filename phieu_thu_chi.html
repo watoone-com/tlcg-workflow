@@ -5405,10 +5405,11 @@
         function updateVoucherStats(vouchers) {
             const u = (() => { try { return JSON.parse(localStorage.getItem('tlc_current_user') || '{}'); } catch(e) { return {}; } })();
             const isAdmin = u.isAdmin === true || u.isAdmin === 'true' || u.isAdmin === 'TRUE';
+            const useGlobal = isAdmin && globalStatsCache && !myTaskFilterActive;
 
             let stats, scopeLabel;
-            if (isAdmin && globalStatsCache) {
-                // Admin: use backend-computed company-wide counts
+            if (useGlobal) {
+                // Admin + My Task OFF: show company-wide counts
                 stats = {
                     pending: globalStatsCache.pending || 0,
                     s1: globalStatsCache.s1 || 0,
@@ -5424,7 +5425,7 @@
                 };
                 scopeLabel = 'Toàn công ty';
             } else {
-                // Non-admin: compute from role-scoped voucher list
+                // Non-admin OR My Task ON: compute from current voucher list
                 stats = { pending: 0, s1: 0, s2: 0, s3: 0, approved: 0, acknowledged: 0, rejected: 0, awaitingAck: 0, overdue: 0, inProgress: 0, total: vouchers.length };
                 vouchers.forEach(v => {
                     const s = normalizeVoucherState(v);
@@ -5435,7 +5436,7 @@
                     if (s.bucket === 'rejected')     { stats.rejected += 1; }
                     if (s.isOverdue)                 { stats.overdue += 1; }
                 });
-                scopeLabel = 'Của tôi';
+                scopeLabel = myTaskFilterActive ? 'Việc của tôi' : 'Của tôi';
             }
 
             const total = stats.total;
@@ -5797,6 +5798,7 @@
                     ? 'Đang lọc việc của tôi — nhấn để xem tất cả'
                     : 'Chỉ hiện việc cần làm của tôi';
             }
+            updateVoucherStats(allLoadedVouchers);
             applyVoucherFilter();
         }
 
