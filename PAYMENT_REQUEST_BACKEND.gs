@@ -122,6 +122,8 @@ function doPost(e) {
         return handleGetPaymentRequestDetails(data);
       case 'getSuppliers':
         return handleGetSuppliers(data);
+      case 'getVendorBanks':
+        return handleGetVendorBanks(data);
       case 'addSupplier':
         return handleAddSupplier(data);
       case 'getEmployees':
@@ -152,6 +154,10 @@ function doGet(e) {
       return handleGetEmployees(e.parameter);
     } else if (action === 'getPurchaseOrderTypes') {
       return handleGetPurchaseOrderTypes(e.parameter);
+    } else if (action === 'getSuppliers') {
+      return handleGetSuppliers(e.parameter);
+    } else if (action === 'getVendorBanks') {
+      return handleGetVendorBanks(e.parameter);
     }
     
     return createResponse(false, 'Invalid GET request');
@@ -898,49 +904,95 @@ function createResponse(success, message, data = {}) {
 // ==================== SUPPLIER MANAGEMENT ====================
 
 /**
- * Get all suppliers from "Nhà cung cấp" sheet
+ * Get suppliers from "Master Vendor" sheet, optionally filtered by companyGroupKey
  */
 function handleGetSuppliers(data) {
   try {
-    Logger.log('[Payment Request] Getting suppliers from "Nhà cung cấp" sheet');
-    
+    Logger.log('[Payment Request] Getting suppliers from "Master Vendor" sheet');
+    const companyGroupKey = (data.companyGroupKey || '').toString().trim().toLowerCase();
+
     const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
-    const suppliersSheet = ss.getSheetByName(CONFIG.SUPPLIERS_SHEET_NAME);
-    
-    if (!suppliersSheet) {
-      Logger.log('[Payment Request] Sheet "Nhà cung cấp" not found');
-      return createResponse(false, 'Sheet "Nhà cung cấp" not found');
+    const sheet = ss.getSheetByName('Master Vendor');
+
+    if (!sheet) {
+      Logger.log('[Payment Request] Sheet "Master Vendor" not found');
+      return createResponse(false, 'Sheet "Master Vendor" không tồn tại');
     }
-    
-    // Get all data (starting from row 2 to skip header)
-    const lastRow = suppliersSheet.getLastRow();
-    if (lastRow < 2) {
-      Logger.log('[Payment Request] No suppliers found');
+
+    const rows = sheet.getDataRange().getValues();
+    if (rows.length < 2) {
       return createResponse(true, 'No suppliers found', { suppliers: [], count: 0 });
     }
-    
-    // Get Column C (Vendor_Full_Name) - index 3
-    const vendorNames = suppliersSheet.getRange(2, 3, lastRow - 1, 1).getValues();
-    
-    // Filter out empty rows and create supplier list
-    const suppliers = vendorNames
-      .map(row => row[0])
-      .filter(name => name && name.toString().trim() !== '')
-      .map(name => name.toString().trim())
-      .sort(); // Sort alphabetically
-    
-    // Remove duplicates
-    const uniqueSuppliers = [...new Set(suppliers)];
-    
-    Logger.log('[Payment Request] Found ' + uniqueSuppliers.length + ' suppliers');
-    
-    return createResponse(true, 'Suppliers retrieved successfully', {
-      suppliers: uniqueSuppliers,
-      count: uniqueSuppliers.length
-    });
-    
+
+    // Col H=7: Vendor_Full_Name, I=8: Vendor_Type, J=9: Tax_ID, K=10: Address
+    // Col G=6: company group key for filtering
+    const suppliers = [];
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      const vendorName = (row[7] || '').toString().trim();
+      if (!vendorName) continue;
+      if (companyGroupKey) {
+        const rowKey = (row[6] || '').toString().trim().toLowerCase();
+        if (rowKey && rowKey !== companyGroupKey) continue;
+      }
+      suppliers.push({
+        vendor_name: vendorName,
+        vendor_type: (row[8] || '').toString().trim(),
+        tax_id:      (row[9] || '').toString().trim(),
+        address:     (row[10] || '').toString().trim()
+      });
+    }
+
+    suppliers.sort((a, b) => a.vendor_name.localeCompare(b.vendor_name, 'vi'));
+    Logger.log('[Payment Request] Found ' + suppliers.length + ' suppliers');
+    return createResponse(true, 'Suppliers retrieved successfully', { suppliers: suppliers, count: suppliers.length });
+
   } catch (error) {
     Logger.log('[Payment Request] Error getting suppliers: ' + error.message);
+    return createResponse(false, 'Error: ' + error.message);
+  }
+}
+
+function handleGetVendorBanks(data) {
+  try {
+    const vendorName = (data.vendorName || '').toString().trim().toLowerCase();
+    Logger.log('[Payment Request] Getting vendor banks for: ' + vendorName);
+
+    const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    const sheet = ss.getSheetByName('Master Vendor_Bank');
+
+    if (!sheet) {
+      Logger.log('[Payment Request] Sheet "Master Vendor_Bank" not found');
+      return createResponse(false, 'Sheet "Master Vendor_Bank" không tồn tại');
+    }
+
+    const rows = sheet.getDataRange().getValues();
+    if (rows.length < 2) {
+      return createResponse(true, 'No banks found', { banks: [] });
+    }
+
+    // A=0: Vendor_Full_Name, B=1: Account_Name, C=2: Account_No,
+    // D=3: Bank_Name, E=4: Transfer_Note, F=5: Status
+    const banks = [];
+    for (let i = 1; i < rows.length; i++) {
+      const row = rows[i];
+      const rowVendor = (row[0] || '').toString().trim().toLowerCase();
+      const status = (row[5] || '').toString().trim().toLowerCase();
+      if (vendorName && rowVendor !== vendorName) continue;
+      if (status && status !== 'active') continue;
+      banks.push({
+        account_name: (row[1] || '').toString().trim(),
+        account_no:   (row[2] || '').toString().trim(),
+        bank_name:    (row[3] || '').toString().trim(),
+        note:         (row[4] || '').toString().trim()
+      });
+    }
+
+    Logger.log('[Payment Request] Found ' + banks.length + ' banks for: ' + vendorName);
+    return createResponse(true, 'Banks retrieved successfully', { banks: banks });
+
+  } catch (error) {
+    Logger.log('[Payment Request] Error getting vendor banks: ' + error.message);
     return createResponse(false, 'Error: ' + error.message);
   }
 }
