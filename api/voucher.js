@@ -168,8 +168,9 @@ export default async function handler(req, res) {
     'getSuppliers',                // Load suppliers from "Master Vendor" sheet
     'getVendorBanks',              // Load vendor banks from "Master Vendor_Bank" sheet
     'addSupplier',                 // Add supplier to "Nhà cung cấp" sheet
-    'getEmployees',                // Load employees from "Nhân viên" sheet
     'getPurchaseOrderTypes'        // Load purchase order types from "Purchase Order" sheet
+    // NOTE: 'getEmployees' intentionally NOT here — it must go to PHIEU_THU_CHI_BACKEND
+    // which returns companies_data[]. Payment Request backend returns employees[] (different shape).
   ];
   
   if (paymentRequestActions.includes(action)) {
