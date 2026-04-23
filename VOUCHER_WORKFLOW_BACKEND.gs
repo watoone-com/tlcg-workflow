@@ -119,6 +119,8 @@ function doGet(e) {
       return handleGetVoucherHistory(e.parameter);
     } else if (action === 'getEmployees') {
       return handleGetEmployees(e.parameter);
+    } else if (action === 'getCompanies') {
+      return handleGetCompanies();
     } else if (action === 'getCompanyApprovers') {
       Logger.log('doGet: getCompanyApprovers called');
       Logger.log('e.parameter:', JSON.stringify(e.parameter));
@@ -3204,6 +3206,43 @@ function handleGetEmployees(requestBody) {
   } catch (error) {
     Logger.log('❌ ERROR in handleGetEmployees: ' + error.toString());
     Logger.log('❌ Error stack: ' + error.stack);
+    return createResponse(false, 'Lỗi: ' + error.message);
+  }
+}
+
+/**
+ * Get all companies from "Master Company" sheet.
+ * Returns companies_data[] in the same shape as the embedded blob in phieu_thu_chi.html
+ * so that any page can build a live company dropdown without embedding static data.
+ */
+function handleGetCompanies() {
+  try {
+    Logger.log('=== handleGetCompanies called ===');
+    const ss = safeOpenSpreadsheet(TLCG_MASTER_DATA_SHEET_ID, 'handleGetCompanies');
+    const sheet = safeGetSheet(ss, COMPANY_SHEET_NAME, 'handleGetCompanies');
+    if (!sheet) {
+      return createResponse(false, 'Sheet "' + COMPANY_SHEET_NAME + '" không tồn tại');
+    }
+    const rows = sheet.getDataRange().getValues();
+    if (rows.length < 2) {
+      return createResponse(true, 'Thành công', { companies_data: [] });
+    }
+    // A=0 Company_Name, B=1 Company_Code, C=2 Company_Key_Or_Taxid
+    const companies_data = [];
+    for (var i = 1; i < rows.length; i++) {
+      var row = rows[i];
+      var name = (row[0] || '').toString().trim();
+      if (!name) continue;
+      companies_data.push({
+        'Tên công ty':  name,
+        'Mã công ty':   (row[1] || '').toString().trim(),
+        'Mã định danh': (row[2] || '').toString().trim()
+      });
+    }
+    Logger.log('✅ Found ' + companies_data.length + ' companies');
+    return createResponse(true, 'Thành công', { companies_data: companies_data });
+  } catch (error) {
+    Logger.log('❌ ERROR in handleGetCompanies: ' + error.toString());
     return createResponse(false, 'Lỗi: ' + error.message);
   }
 }

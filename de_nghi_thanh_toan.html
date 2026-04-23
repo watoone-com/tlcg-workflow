@@ -779,9 +779,10 @@
     async function loadCompanies() {
         const sel = document.getElementById('company_code');
         try {
-            const r  = await fetch('/api/voucher?action=getEmployees');
+            const r  = await fetch('/api/voucher?action=getCompanies');
             const js = await r.json();
-            const arr = js.data?.companies_data || [];
+            // Backend returns { success, data: { companies_data: [...] } }
+            const arr = (js.data && js.data.companies_data) || [];
             allCompanies = arr;
             sel.innerHTML = '<option value="">-- Chọn công ty --</option>';
             arr.forEach(c => {
@@ -796,6 +797,7 @@
                 opt.dataset.key  = key;
                 sel.appendChild(opt);
             });
+            if (arr.length === 0) sel.innerHTML = '<option value="">-- Không có dữ liệu --</option>';
         } catch (_) {
             sel.innerHTML = '<option value="">-- Lỗi tải dữ liệu --</option>';
         }
