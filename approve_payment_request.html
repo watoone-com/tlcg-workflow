@@ -346,19 +346,139 @@
         const urlParams = new URLSearchParams(window.location.search);
         const requestId = urlParams.get('requestId');
         const stage = urlParams.get('stage') || 'final'; // budget, supplier, legal, accounting, director, final
-        
+        const approverEmail = urlParams.get('approverEmail') || '';
+
         // State
         let signatureData = null;
         let requestDetails = null;
         let hasApproved = false;
+        let companyApproversData = null;
+        let currentApproverRole = null;
         
+        // ============ SIGNATURE CACHE ============
+        const SIG_CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+        function getSigCacheKey() { return `tlc_sig_${approverEmail}`; }
+
+        function loadCachedSignature() {
+            if (!approverEmail) return;
+            try {
+                const key = getSigCacheKey();
+                const cached = localStorage.getItem(key);
+                const ts = parseInt(localStorage.getItem(key + '_ts') || '0');
+                if (cached && (Date.now() - ts) < SIG_CACHE_TTL) {
+                    signatureData = cached;
+                    const img = document.getElementById('signature-img');
+                    const placeholder = document.getElementById('signature-placeholder');
+                    img.src = cached;
+                    img.style.display = 'block';
+                    placeholder.style.display = 'none';
+                    document.getElementById('clear-signature-btn').style.display = 'block';
+                    document.getElementById('approve-btn').disabled = false;
+                    const err = document.getElementById('signature-error');
+                    err.style.color = '#888';
+                    err.textContent = '✔ Đang dùng chữ ký đã lưu. Bạn có thể xóa và tải lại nếu cần.';
+                    err.style.display = 'block';
+                    console.log('✅ Restored cached signature from localStorage');
+                }
+            } catch (e) { console.warn('Could not load cached signature:', e); }
+        }
+
+        function saveCachedSignature(base64) {
+            if (!approverEmail || !base64) return;
+            try {
+                const key = getSigCacheKey();
+                localStorage.setItem(key, base64);
+                localStorage.setItem(key + '_ts', Date.now().toString());
+            } catch (e) { console.warn('Could not cache signature:', e); }
+        }
+        // ============ END SIGNATURE CACHE ============
+
+        // ============ SIGNATURE VERIFICATION ============
+        async function fetchCompanyApprovers(company) {
+            try {
+                const response = await fetch(VERCEL_PROXY_URL + '?action=getCompanyApprovers&company=' + encodeURIComponent(company));
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const result = await response.json();
+                if (result.success && result.data) {
+                    companyApproversData = result.data.approvers;
+                    if (companyApproversData && approverEmail) {
+                        if (companyApproversData.accountant && companyApproversData.accountant.email === approverEmail)
+                            currentApproverRole = 'accountant';
+                        else if (companyApproversData.legalRep && companyApproversData.legalRep.email === approverEmail)
+                            currentApproverRole = 'legalRep';
+                        else if (companyApproversData.treasurer && companyApproversData.treasurer.email === approverEmail)
+                            currentApproverRole = 'treasurer';
+                    }
+                    console.log('✅ Company approvers loaded, role:', currentApproverRole);
+                }
+            } catch (e) { console.warn('Could not fetch company approvers:', e); }
+        }
+
+        async function fetchSampleSignature(signatureUrl) {
+            if (!signatureUrl) return null;
+            try {
+                const formData = new FormData();
+                formData.append('data', JSON.stringify({ action: 'fetchSignatureImage', imageUrl: signatureUrl }));
+                const response = await fetch(VERCEL_PROXY_URL, { method: 'POST', body: formData });
+                if (!response.ok) return null;
+                const result = await response.json();
+                return (result.success && result.data && result.data.imageBase64) ? result.data.imageBase64 : null;
+            } catch (e) { return null; }
+        }
+
+        async function generateImageHash(base64Data) {
+            return new Promise((resolve) => {
+                const img = new Image();
+                img.crossOrigin = 'anonymous';
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = 8; canvas.height = 8;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, 8, 8);
+                    const pixels = ctx.getImageData(0, 0, 8, 8).data;
+                    let total = 0;
+                    const grays = [];
+                    for (let i = 0; i < pixels.length; i += 4) {
+                        const g = pixels[i] * 0.299 + pixels[i+1] * 0.587 + pixels[i+2] * 0.114;
+                        grays.push(g); total += g;
+                    }
+                    const avg = total / grays.length;
+                    resolve(grays.map(g => g >= avg ? '1' : '0').join(''));
+                };
+                img.onerror = () => resolve(null);
+                img.src = base64Data;
+            });
+        }
+
+        async function compareSignatures(uploadedBase64, sampleUrl) {
+            try {
+                const sampleBase64 = await fetchSampleSignature(sampleUrl);
+                if (!sampleBase64) return { verified: false, reason: 'fetch_failed', similarity: 0, threshold: 75 };
+                const uploadedHash = await generateImageHash(uploadedBase64);
+                const sampleHash = await generateImageHash(sampleBase64);
+                if (!uploadedHash || !sampleHash) return { verified: false, reason: 'hash_failed', similarity: 0, threshold: 75 };
+                let diff = 0;
+                for (let i = 0; i < uploadedHash.length; i++) if (uploadedHash[i] !== sampleHash[i]) diff++;
+                const similarity = ((uploadedHash.length - diff) / uploadedHash.length) * 100;
+                const THRESHOLD = 75;
+                console.log(`🔍 Signature similarity: ${similarity.toFixed(2)}%`);
+                return similarity >= THRESHOLD
+                    ? { verified: true, similarity: similarity.toFixed(2), reason: 'match', threshold: THRESHOLD }
+                    : { verified: false, similarity: similarity.toFixed(2), reason: 'mismatch', threshold: THRESHOLD };
+            } catch (e) {
+                return { verified: false, reason: 'comparison_error', similarity: 0, threshold: 75 };
+            }
+        }
+        // ============ END SIGNATURE VERIFICATION ============
+
         // Initialize
         document.addEventListener('DOMContentLoaded', function() {
             if (!requestId) {
                 showMessage('error', '❌ Thiếu thông tin đề nghị. Vui lòng kiểm tra lại link.');
                 return;
             }
-            
+
             loadRequestDetails();
             setupSignatureUpload();
         });
@@ -383,6 +503,10 @@
                 
                 requestDetails = result.details;
                 displayRequestInfo();
+                if (requestDetails.company) {
+                    await fetchCompanyApprovers(requestDetails.company);
+                }
+                loadCachedSignature();
                 
             } catch (error) {
                 console.error('Error loading request details:', error);
@@ -467,8 +591,10 @@
                 // Enable approve button
                 document.getElementById('approve-btn').disabled = false;
                 
+                const errDiv = document.getElementById('signature-error');
+                errDiv.style.color = '';
                 hideSignatureError();
-                
+
                 console.log('✅ Signature uploaded and compressed');
                 
             } catch (error) {
@@ -561,13 +687,56 @@
             
             try {
                 const comment = document.getElementById('comment-input').value.trim();
-                
+
+                // ============ SIGNATURE VERIFICATION ============
+                let verificationResult = { verified: false, reason: 'no_sample_required', similarity: '0' };
+                if (companyApproversData && currentApproverRole) {
+                    let sampleSignatureUrl = null;
+                    if (currentApproverRole === 'accountant' && companyApproversData.accountant)
+                        sampleSignatureUrl = companyApproversData.accountant.signature;
+                    else if (currentApproverRole === 'legalRep' && companyApproversData.legalRep)
+                        sampleSignatureUrl = companyApproversData.legalRep.signature;
+                    else if (currentApproverRole === 'treasurer' && companyApproversData.treasurer)
+                        sampleSignatureUrl = companyApproversData.treasurer.signature;
+
+                    if (!sampleSignatureUrl || sampleSignatureUrl.trim() === '') {
+                        showMessage('error', '❌ KHÔNG THỂ PHÊ DUYỆT: Thiếu chữ ký mẫu. Vui lòng liên hệ quản trị viên để cập nhật chữ ký mẫu.');
+                        approveBtn.disabled = false;
+                        return;
+                    }
+
+                    console.log('🔍 Verifying signature...');
+                    verificationResult = await compareSignatures(signatureData, sampleSignatureUrl);
+                    console.log('🔍 Verification result:', verificationResult);
+
+                    if (!verificationResult.verified) {
+                        let errorMsg = '';
+                        if (verificationResult.reason === 'mismatch') {
+                            errorMsg = `❌ KHÔNG THỂ PHÊ DUYỆT: Chữ ký không khớp!\n` +
+                                `Độ tương đồng: ${verificationResult.similarity}% (yêu cầu tối thiểu: ${verificationResult.threshold}%)\n\n` +
+                                `Gợi ý:\n- Đảm bảo chụp rõ, đủ sáng\n- Dùng đúng chữ ký đã đăng ký\n- Liên hệ quản trị viên nếu chữ ký đã thay đổi`;
+                        } else if (verificationResult.reason === 'fetch_failed') {
+                            errorMsg = `❌ KHÔNG THỂ PHÊ DUYỆT: Không thể tải chữ ký mẫu. Vui lòng thử lại hoặc liên hệ quản trị viên.`;
+                        } else if (verificationResult.reason === 'hash_failed') {
+                            errorMsg = `❌ KHÔNG THỂ PHÊ DUYỆT: Lỗi xử lý file chữ ký. Vui lòng kiểm tra file PNG/JPG và thử lại.`;
+                        } else {
+                            errorMsg = `❌ KHÔNG THỂ PHÊ DUYỆT: Lỗi xác thực chữ ký (${verificationResult.reason}). Vui lòng thử lại.`;
+                        }
+                        showMessage('error', errorMsg);
+                        approveBtn.disabled = false;
+                        return;
+                    }
+                    console.log('✅ Signature verification passed');
+                }
+                // ============ END SIGNATURE VERIFICATION ============
+
                 const payload = {
                     action: 'approvePaymentRequest',
                     requestId: requestId,
                     stage: stage,
-                    approver: 'Approver', // This should come from logged-in user
+                    approver: approverEmail || 'Approver',
                     signature: signatureData,
+                    signatureVerification: verificationResult,
                     comment: comment
                 };
                 
@@ -601,7 +770,7 @@
                 }
                 
                 console.log('✅ Approval successful');
-                
+                saveCachedSignature(signatureData);
                 showMessage('success', '✅ Phê duyệt thành công! Trang sẽ tự động đóng sau 3 giây...');
                 hasApproved = true;
                 

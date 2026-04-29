@@ -614,6 +614,7 @@
         </div><!-- /page-content -->
     </div><!-- /ipad-main -->
 
+    <script src="tlcg_companies_embed.js"></script>
     <script>
     // ═══════════════════════════════════════════════════════════════════
     //  CONFIG & STATE
@@ -775,32 +776,37 @@
 
     // ═══════════════════════════════════════════════════════════════════
     //  DATA LOADING
+    //  Companies: same source as phieu_thu_chi (tlcg_companies_embed.js)
     // ═══════════════════════════════════════════════════════════════════
+    function getSelectedCompanyMaj() {
+        const sel = document.getElementById('company_code');
+        const opt = sel.options[sel.selectedIndex];
+        return (opt && opt.dataset && opt.dataset.code) ? String(opt.dataset.code).trim() : '';
+    }
+
     async function loadCompanies() {
         const sel = document.getElementById('company_code');
-        try {
-            const r  = await fetch('/api/voucher?action=getCompanies');
-            const js = await r.json();
-            // Backend returns { success, data: { companies_data: [...] } }
-            const arr = (js.data && js.data.companies_data) || [];
-            allCompanies = arr;
-            sel.innerHTML = '<option value="">-- Chọn công ty --</option>';
-            arr.forEach(c => {
-                const name = c['Tên công ty'] || '';
-                const key  = c['Mã định danh'] || '';
-                const code = c['Mã công ty'] || '';
-                const opt  = document.createElement('option');
-                opt.value = code || name;
-                opt.textContent = key ? `${name} (${key})` : name;
-                opt.dataset.code = code;
-                opt.dataset.name = name;
-                opt.dataset.key  = key;
-                sel.appendChild(opt);
-            });
-            if (arr.length === 0) sel.innerHTML = '<option value="">-- Không có dữ liệu --</option>';
-        } catch (_) {
-            sel.innerHTML = '<option value="">-- Lỗi tải dữ liệu --</option>';
+        const embed = (typeof TLCG_COMPANIES_DATA !== 'undefined' && TLCG_COMPANIES_DATA) || null;
+        const arr = (embed && embed.companies_data) || [];
+        allCompanies = arr;
+        sel.innerHTML = '<option value="">-- Chọn công ty --</option>';
+        if (arr.length === 0) {
+            sel.innerHTML = '<option value="">-- Không có dữ liệu (thiếu tlcg_companies_embed.js) --</option>';
+            return;
         }
+        arr.forEach(c => {
+            const name = c['Tên công ty'] || '';
+            const key  = c['Mã định danh'] || '';
+            const code = c['Mã công ty'] || '';
+            const displayText = key ? `${name} (${key})` : name;
+            const opt = document.createElement('option');
+            opt.value = displayText;
+            opt.textContent = displayText;
+            opt.dataset.code = code;
+            opt.dataset.name = name;
+            opt.dataset.key  = key;
+            sel.appendChild(opt);
+        });
     }
 
     async function loadVendors(companyGroupKey) {
@@ -859,8 +865,9 @@
     //  REQUEST NUMBER  (mirrors phieu_thu_chi.html pattern, type = PO)
     // ═══════════════════════════════════════════════════════════════════
     function generateRequestNumber() {
-        const sel         = document.getElementById('company_code');
-        const companyCode = (sel.value || '').replace(/[^A-Z0-9]/gi, '').toUpperCase();
+        const sel = document.getElementById('company_code');
+        const raw = getSelectedCompanyMaj() || (sel.value || '');
+        const companyCode = (raw || '').replace(/[^A-Z0-9]/gi, '').toUpperCase();
         if (!companyCode) {
             document.getElementById('req-no-pill').textContent = 'Số phiếu: —';
             document.getElementById('request_id').value = '';
@@ -1181,20 +1188,20 @@
         if (!finalAmount || finalAmount <= 0) { showToast('Vui lòng nhập số tiền đề nghị.', 'error'); return; }
         if (!dueDate)     { showToast('Vui lòng chọn ngày đáo hạn.', 'error'); return; }
 
+        const requestId = document.getElementById('request_id').value;
+        if (!requestId) { showToast('Vui lòng chọn công ty để tạo số phiếu.', 'error'); return; }
+
         isSubmitting = true;
         const btn = document.getElementById('submit-btn');
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang gửi...';
-
-        const requestId = document.getElementById('request_id').value;
-        if (!requestId) { showToast('Vui lòng chọn công ty để tạo số phiếu.', 'error'); return; }
 
         const payload = {
             action: 'sendPaymentRequest',
             requestId:        requestId,
             requestorEmail:   loggedInUser?.email || '',
             requestorName:    loggedInUser?.name  || '',
-            companyCode:      document.getElementById('company_code').value,
+            companyCode:      getSelectedCompanyMaj() || companyCode,
             companyName:      document.getElementById('company_name').value,
             companyKey:       document.getElementById('company_key_or_taxid').value,
             vendorName:       document.getElementById('vendor_final_name').value || document.getElementById('vendor_old').value,

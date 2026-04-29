@@ -521,8 +521,54 @@
             }
         }
 
-        // Initialize: Fetch company approvers when page loads
-        fetchCompanyApprovers();
+        // ============ SIGNATURE CACHE (localStorage) ============
+        const SIG_CACHE_TTL = 7 * 24 * 60 * 60 * 1000; // 7 days
+
+        function getSigCacheKey() {
+            return `tlc_sig_${approverEmail}`;
+        }
+
+        function loadCachedSignature() {
+            if (!approverEmail) return;
+            try {
+                const key = getSigCacheKey();
+                const cached = localStorage.getItem(key);
+                const ts = parseInt(localStorage.getItem(key + '_ts') || '0');
+                if (cached && (Date.now() - ts) < SIG_CACHE_TTL) {
+                    approverSignatureData = cached;
+                    const placeholder = document.getElementById('signature-placeholder');
+                    const img = document.getElementById('signature-img');
+                    const clearBtn = document.getElementById('clear-signature-btn');
+                    placeholder.style.display = 'none';
+                    img.src = cached;
+                    img.style.display = 'block';
+                    clearBtn.style.display = 'block';
+                    const errorDiv = document.getElementById('signature-error');
+                    errorDiv.style.color = '#888';
+                    errorDiv.textContent = '✔ Đang dùng chữ ký đã lưu. Bạn có thể xóa và tải lại nếu cần.';
+                    errorDiv.style.display = 'block';
+                    console.log('✅ Restored cached signature from localStorage');
+                }
+            } catch (e) {
+                console.warn('Could not load cached signature:', e);
+            }
+        }
+
+        function saveCachedSignature(base64) {
+            if (!approverEmail || !base64) return;
+            try {
+                const key = getSigCacheKey();
+                localStorage.setItem(key, base64);
+                localStorage.setItem(key + '_ts', Date.now().toString());
+                console.log('✅ Signature cached in localStorage');
+            } catch (e) {
+                console.warn('Could not cache signature:', e);
+            }
+        }
+        // ============ END SIGNATURE CACHE ============
+
+        // Initialize: Fetch company approvers when page loads, then restore cached signature
+        fetchCompanyApprovers().then(() => loadCachedSignature()).catch(() => loadCachedSignature());
 
         // Handle signature upload
         document.getElementById('signature-upload-input').addEventListener('change', async (e) => {
@@ -570,6 +616,8 @@
                 img.style.display = 'block';
                 clearBtn.style.display = 'block';
                 
+                // Reset cache hint color in case it was showing the "saved signature" notice
+                errorDiv.style.color = '';
                 console.log('✅ Signature uploaded and compressed successfully, size: ' + (approverSignatureData.length / 1024).toFixed(2) + 'KB');
             } catch (error) {
                 errorDiv.textContent = 'Lỗi tải file: ' + error.message;
@@ -666,9 +714,11 @@
                     let errorMessage = '';
                     if (verificationResult.reason === 'mismatch') {
                         errorMessage = `❌ KHÔNG THỂ PHÊ DUYỆT: Chữ ký không khớp!\n` +
-                            `Độ tương đồng: ${verificationResult.similarity}%\n` +
-                            `(yêu cầu: ${verificationResult.threshold}%)\n\n` +
-                            `Vui lòng sử dụng chữ ký mẫu đã đăng ký.`;
+                            `Độ tương đồng: ${verificationResult.similarity}% (yêu cầu tối thiểu: ${verificationResult.threshold}%)\n\n` +
+                            `Gợi ý:\n` +
+                            `- Đảm bảo chụp rõ, đủ sáng, không bị mờ\n` +
+                            `- Dùng đúng chữ ký đã đăng ký trong hệ thống\n` +
+                            `- Nếu chữ ký đã thay đổi, liên hệ quản trị viên để cập nhật mẫu`;
                     } else if (verificationResult.reason === 'no_sample' || verificationResult.reason === 'fetch_failed') {
                         errorMessage = `❌ KHÔNG THỂ PHÊ DUYỆT: Lỗi hệ thống\n\n` +
                             `Không thể tải chữ ký mẫu từ hệ thống.\n` +
@@ -766,6 +816,7 @@
                 }
                 
                 if (result.success) {
+                    saveCachedSignature(approverSignatureData);
                     showMessage('Đã phê duyệt phiếu thành công! Email thông báo đã được gửi đến ' + requestorEmail + '.', 'success');
                     
                     // Close window after 3 seconds
