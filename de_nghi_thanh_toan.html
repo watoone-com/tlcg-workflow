@@ -820,7 +820,7 @@
                 body: JSON.stringify({ action: 'getSuppliers', companyGroupKey: companyGroupKey || '' })
             });
             const js = await r.json();
-            const arr = js.data?.suppliers || [];
+            const arr = (js && (js.suppliers || (js.data && js.data.suppliers))) || [];
             allVendors = arr;
             sel.innerHTML = '<option value="">-- Chọn NCC --</option>';
             arr.forEach(v => {
@@ -846,7 +846,7 @@
                 body: JSON.stringify({ action: 'getVendorBanks', vendorName })
             });
             const js = await r.json();
-            const arr = js.data?.banks || [];
+            const arr = (js && (js.banks || (js.data && js.data.banks))) || [];
             allBanks = arr;
             sel.innerHTML = '<option value="">-- Chọn tài khoản --</option>';
             arr.forEach((b, i) => {
