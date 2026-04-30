@@ -7,7 +7,7 @@
 [[redirects]]
   # Redirect root to main HTML file
   from = "/"
-  to = "/phieu_thu_chi_auto_email_working (final).html"
+  to = "/phieu_thu_chi.html"
   status = 200
 
 [[headers]]
