@@ -809,18 +809,30 @@
         });
     }
 
-    async function loadVendors(companyGroupKey) {
+    async function fetchSuppliers(companyGroupKey) {
+        const r  = await fetch('/api/voucher', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'getSuppliers', companyGroupKey: companyGroupKey || '' })
+        });
+        const js = await r.json();
+        return (js && (js.suppliers || (js.data && js.data.suppliers))) || [];
+    }
+
+    async function loadVendors(companyGroupKey, companyCode) {
         const sel = document.getElementById('vendor_old');
         sel.innerHTML = '<option value="">-- Đang tải... --</option>';
         allVendors = [];
         try {
-            const r  = await fetch('/api/voucher', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'getSuppliers', companyGroupKey: companyGroupKey || '' })
-            });
-            const js = await r.json();
-            const arr = (js && (js.suppliers || (js.data && js.data.suppliers))) || [];
+            let arr = await fetchSuppliers(companyGroupKey);
+            if (arr.length <= 1 && companyCode && companyCode !== companyGroupKey) {
+                const retry = await fetchSuppliers(companyCode);
+                if (retry.length > arr.length) arr = retry;
+            }
+            if (arr.length <= 1 && (companyGroupKey || companyCode)) {
+                const retryAll = await fetchSuppliers('');
+                if (retryAll.length > arr.length) arr = retryAll;
+            }
             allVendors = arr;
             sel.innerHTML = '<option value="">-- Chọn NCC --</option>';
             arr.forEach(v => {
@@ -897,11 +909,12 @@
         const opt = sel.options[sel.selectedIndex];
         const name = opt?.dataset?.name || '';
         const key  = opt?.dataset?.key  || '';
+        const code = opt?.dataset?.code || '';
         document.getElementById('company_name').value = name;
         document.getElementById('company_key_or_taxid').value = key;
         clearVendorFields();
         generateRequestNumber();
-        if (sel.value) loadVendors(key);
+        if (sel.value) loadVendors(key, code);
     }
 
     function onVendorOldChange() {
