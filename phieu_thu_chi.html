@@ -4490,6 +4490,7 @@
                 const option = document.createElement('option');
                 option.value = employee;
                 option.textContent = employee;
+                option.dataset.dept = data.employee_departments?.[employee] || '';
                 employeeSelect.appendChild(option);
 
                 const payeeOption = option.cloneNode(true);
@@ -8608,9 +8609,12 @@
             wrapper.appendChild(optionsContainer);
 
             function getFilteredOptions(q) {
-                return Array.from(selectElement.options).filter((o, i) =>
-                    i > 0 && o.text.toLowerCase().includes(q)
-                );
+                return Array.from(selectElement.options).filter((o, i) => {
+                    if (i === 0) return false;
+                    if (!q) return true;
+                    const haystack = [o.text, o.dataset.dept, o.dataset.key].filter(Boolean).join(' ').toLowerCase();
+                    return haystack.includes(q);
+                });
             }
 
             function showOptions(q = '') {
@@ -8622,7 +8626,8 @@
                     matches.forEach(option => {
                         const div = document.createElement('div');
                         div.className = 'dropdown-option';
-                        div.textContent = option.text;
+                        const meta = option.dataset.dept || option.dataset.key || '';
+                        div.innerHTML = `<div style="font-weight:500">${option.text}</div>${meta ? `<div style="font-size:12px;color:#8e8e93;margin-top:1px">${meta}</div>` : ''}`;
                         div.onmousedown = (e) => {
                             e.preventDefault();
                             selectElement.value = option.value;

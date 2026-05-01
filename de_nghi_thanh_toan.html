@@ -572,12 +572,7 @@
                         </div>
                         <input type="hidden" id="company_key_or_taxid">
                     </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="po_request_no">Số PO / Đề nghị mua hàng</label>
-                            <input type="text" id="po_request_no" placeholder="Tự động điền" readonly>
-                        </div>
-                    </div>
+
                 </div>
             </div>
 
@@ -868,7 +863,6 @@
     let driveFolderId = null;
     let uploadedLinks = [];
     let isSubmitting  = false;
-    let poAutoFilled  = true;
 
     const loggedInUser = checkUserLogin();
 
@@ -1204,10 +1198,6 @@
         const reqNo = `${companyCode}-PO${dateStr}${String(counter).padStart(6, '0')}`;
         document.getElementById('req-no-pill').textContent = reqNo;
         document.getElementById('request_id').value        = reqNo;
-        const poInput = document.getElementById('po_request_no');
-        if (poInput && (poAutoFilled || !poInput.value)) {
-            poInput.value = reqNo;
-        }
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -1222,7 +1212,6 @@
         document.getElementById('company_name').value = name;
         document.getElementById('company_key_or_taxid').value = key;
         clearVendorFields();
-        poAutoFilled = true;
         generateRequestNumber();
         if (sel.value) loadVendors(key, code);
     }
@@ -1543,7 +1532,6 @@
             finalAmount:      finalAmount,
             dueDate:          dueDate,
             currency:         document.getElementById('currency').value,
-            poRequestNo:      document.getElementById('po_request_no').value,
             installmentNo:    document.getElementById('installment_no').value,
             paymentType1:     document.getElementById('payment_type_1').value,
             paymentType2:     document.getElementById('payment_type_2').value,
@@ -1588,9 +1576,8 @@
         document.getElementById('company_name').value = '';
         document.getElementById('company_key_or_taxid').value = '';
         clearVendorFields();
-        poAutoFilled = true;
 
-        ['final_amount','due_date','po_request_no','installment_no',
+        ['final_amount','due_date','installment_no',
          'payment_description','vendor_bank_transfer_note','drive_link'].forEach(id => {
             const el = document.getElementById(id);
             if (el) el.value = '';
@@ -1711,10 +1698,6 @@
         addInvoiceRow();
         await loadCompanies();
         updateStepperUI();
-        const poInput = document.getElementById('po_request_no');
-        if (poInput) {
-            poInput.addEventListener('input', () => { poAutoFilled = false; });
-        }
         document.addEventListener('click', (e) => {
             const combobox = document.getElementById('vendor-combobox');
             if (combobox && !combobox.contains(e.target)) {
