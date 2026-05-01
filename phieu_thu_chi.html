@@ -3590,16 +3590,13 @@
                     return false;
                 }
                 
-                // Build employee departments map from column C (Phòng ban)
+                // Build employee departments map and populate dropdowns live
                 data.employee_departments = {};
                 employees.forEach(emp => {
-                    if (emp.name && emp.department) {
-                        data.employee_departments[emp.name] = emp.department;
-                    }
+                    if (emp.name) data.employee_departments[emp.name] = emp.department || '';
                 });
-                
-                console.log('✅ Employee departments loaded from backend (column C - Phòng ban)');
-                console.log('Sample departments:', Object.keys(data.employee_departments).slice(0, 5).map(name => `${name}: ${data.employee_departments[name]}`));
+
+                populateEmployeeDropdowns(employees);
                 return true;
             } catch (error) {
                 console.error('❌ Error loading employees from backend:', error);
@@ -3608,10 +3605,38 @@
                     stack: error.stack,
                     name: error.name
                 });
-                console.warn('⚠️ Using fallback department mapping');
                 createFallbackDepartmentMapping();
+                populateEmployeeDropdowns(
+                    (data.employee_names || []).map(n => ({ name: n, department: data.employee_departments[n] || '' }))
+                );
                 return false;
             }
+        }
+
+        function populateEmployeeDropdowns(employees) {
+            const employeeSelect = document.getElementById('employee');
+            const payeeDropdown  = document.getElementById('payee-dropdown');
+            if (!employeeSelect || !payeeDropdown) return;
+
+            // Clear existing options (keep the placeholder)
+            while (employeeSelect.options.length > 1) employeeSelect.remove(1);
+            while (payeeDropdown.options.length  > 1) payeeDropdown.remove(1);
+
+            employees.forEach(emp => {
+                if (!emp.name) return;
+                const opt = document.createElement('option');
+                opt.value = emp.name;
+                opt.textContent = emp.name;
+                opt.dataset.dept = emp.department || '';
+                employeeSelect.appendChild(opt);
+
+                const payeeOpt = opt.cloneNode(true);
+                payeeDropdown.appendChild(payeeOpt);
+            });
+
+            // Refresh searchable combobox display if already initialized
+            if (employeeSelect._syncSearchInput) employeeSelect._syncSearchInput();
+            if (payeeDropdown._syncSearchInput)  payeeDropdown._syncSearchInput();
         }
 
 
@@ -4484,18 +4509,7 @@
                 companySelect.appendChild(option);
             });
             
-            const employeeSelect = document.getElementById('employee');
-            const payeeDropdown = document.getElementById('payee-dropdown');
-            data.employee_names.forEach(employee => {
-                const option = document.createElement('option');
-                option.value = employee;
-                option.textContent = employee;
-                option.dataset.dept = data.employee_departments?.[employee] || '';
-                employeeSelect.appendChild(option);
-
-                const payeeOption = option.cloneNode(true);
-                payeeDropdown.appendChild(payeeOption);
-            });
+            // Employee dropdown is populated live from backend in loadEmployeesFromBackend()
             
             const voucherTypeSelect = document.getElementById('voucher-type');
             data.voucher_types.forEach(type => {
