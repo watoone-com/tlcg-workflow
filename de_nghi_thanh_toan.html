@@ -899,6 +899,7 @@
         const reqNo = `${companyCode}-PO${dateStr}${String(counter).padStart(6, '0')}`;
         document.getElementById('req-no-pill').textContent = reqNo;
         document.getElementById('request_id').value        = reqNo;
+        document.getElementById('po_request_no').value     = reqNo;
     }
 
     // ═══════════════════════════════════════════════════════════════════
