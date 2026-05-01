@@ -116,8 +116,9 @@ function doPost(e) {
       case 'rejectPaymentRequest':
         return handleRejectPaymentRequest(data);
       case 'getPaymentRequestHistory':
-      case 'getRecentPaymentRequests':
         return handleGetPaymentRequestHistory(data);
+      case 'getRecentPaymentRequests':
+        return handleGetRecentPaymentRequests(data);
       case 'getPaymentRequestDetails':
         return handleGetPaymentRequestDetails(data);
       case 'getSuppliers':
@@ -481,6 +482,61 @@ function handleGetPaymentRequestHistory(data) {
   } catch (error) {
     Logger.log('[Payment Request] Error in handleGetPaymentRequestHistory: ' + error.message);
     return createResponse(false, 'Lỗi khi lấy lịch sử: ' + error.message);
+  }
+}
+
+// ==================== GET RECENT PAYMENT REQUESTS (list view) ====================
+
+function handleGetRecentPaymentRequests(data) {
+  try {
+    const sheet = getOrCreateSheet(CONFIG.SHEET_NAME);
+    const values = sheet.getDataRange().getValues();
+    if (values.length <= 1) return createResponse(true, 'No requests found', { requests: [] });
+
+    const C = CONFIG.COLUMNS;
+    const emailFilter = (data.requestorEmail || '').toString().trim().toLowerCase();
+    const requests = [];
+
+    for (let i = 1; i < values.length; i++) {
+      const row = values[i];
+      if (!row[C.REQUEST_ID]) continue;
+      if (emailFilter && (row[C.REQUESTOR_EMAIL] || '').toString().trim().toLowerCase() !== emailFilter) continue;
+
+      const overallStatus = (row[C.OVERALL_STATUS] || 'Pending').toString().trim();
+      const approvalSteps = [
+        { role: 'Budget',     status: row[C.BUDGET_STATUS],     approver: row[C.BUDGET_APPROVER] },
+        { role: 'Supplier',   status: row[C.SUPPLIER_STATUS],   approver: row[C.SUPPLIER_APPROVER] },
+        { role: 'Legal',      status: row[C.LEGAL_STATUS],      approver: row[C.LEGAL_APPROVER] },
+        { role: 'Accounting', status: row[C.ACCOUNTING_STATUS], approver: row[C.ACCOUNTING_APPROVER] },
+        { role: 'Director',   status: row[C.DIRECTOR_STATUS],   approver: row[C.DIRECTOR_APPROVER] }
+      ];
+      const approvedCount = approvalSteps.filter(s => (s.status || '').toString().toLowerCase() === 'approved').length;
+      const totalSteps    = approvalSteps.filter(s => s.approver).length || 1;
+
+      requests.push({
+        requestId:      row[C.REQUEST_ID],
+        requestDate:    row[C.REQUEST_DATE],
+        company:        row[C.COMPANY],
+        requestor:      row[C.REQUESTOR],
+        requestorEmail: row[C.REQUESTOR_EMAIL],
+        supplier:       row[C.SUPPLIER],
+        totalAmount:    row[C.TOTAL_AMOUNT],
+        paymentType:    row[C.PAYMENT_TYPE],
+        purpose:        row[C.PURPOSE],
+        overallStatus:  overallStatus,
+        approvedCount:  approvedCount,
+        totalSteps:     totalSteps,
+        submittedAt:    row[C.SUBMITTED_AT] || row[C.REQUEST_DATE]
+      });
+    }
+
+    // Most recent first
+    requests.sort((a, b) => new Date(b.submittedAt) - new Date(a.submittedAt));
+    return createResponse(true, 'Requests retrieved', { requests: requests });
+
+  } catch (error) {
+    Logger.log('[Payment Request] Error in handleGetRecentPaymentRequests: ' + error.message);
+    return createResponse(false, 'Lỗi: ' + error.message);
   }
 }
 

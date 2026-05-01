@@ -827,6 +827,20 @@
             </div>
             </div>
 
+            <!-- ── PO Status History ──────────────────────────────────── -->
+            <div class="form-card" id="po-history-card">
+                <div class="form-card-header" style="cursor:pointer;" onclick="togglePoHistory()">
+                    <i class="fas fa-history" style="color: var(--primary); font-size: 14px;"></i>
+                    <h2 style="flex:1;">Lịch sử đề nghị thanh toán</h2>
+                    <i class="fas fa-chevron-down" id="po-history-chevron" style="color: var(--text-secondary); font-size: 13px; transition: transform 0.2s;"></i>
+                </div>
+                <div id="po-history-body" style="display:none;">
+                    <div id="po-history-list" style="padding: 12px 20px;">
+                        <p style="font-size: 14px; color: var(--text-secondary); text-align: center; padding: 16px 0;">Đang tải...</p>
+                    </div>
+                </div>
+            </div>
+
         </div><!-- /page-content -->
     </div><!-- /ipad-main -->
 
@@ -1670,7 +1684,99 @@
                 document.getElementById('vendor-dropdown-list')?.classList.remove('show');
             }
         });
+
+        // ── PO History load on open ─────────────────────────────────
+        document.getElementById('po-history-card')
+            .querySelector('.form-card-header')
+            .addEventListener('click', () => {
+                const body = document.getElementById('po-history-body');
+                if (body.style.display !== 'none') return;
+                loadPoHistory();
+            });
     });
+
+    // ═══════════════════════════════════════════════════════════════════
+    //  PO STATUS HISTORY
+    // ═══════════════════════════════════════════════════════════════════
+    let poHistoryLoaded = false;
+
+    function togglePoHistory() {
+        const body    = document.getElementById('po-history-body');
+        const chevron = document.getElementById('po-history-chevron');
+        const open    = body.style.display === 'none';
+        body.style.display = open ? '' : 'none';
+        chevron.style.transform = open ? 'rotate(180deg)' : '';
+        if (open && !poHistoryLoaded) loadPoHistory();
+    }
+
+    async function loadPoHistory() {
+        const list = document.getElementById('po-history-list');
+        list.innerHTML = '<p style="font-size:14px;color:var(--text-secondary);text-align:center;padding:16px 0;">Đang tải...</p>';
+        try {
+            const r  = await fetch('/api/voucher', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    action: 'getRecentPaymentRequests',
+                    requestorEmail: loggedInUser?.email || ''
+                })
+            });
+            const js = await r.json();
+            const requests = (js && (js.requests || (js.data && js.data.requests))) || [];
+            poHistoryLoaded = true;
+            renderPoHistory(requests);
+        } catch (_) {
+            list.innerHTML = '<p style="font-size:14px;color:var(--error);text-align:center;padding:16px 0;">Không thể tải lịch sử</p>';
+        }
+    }
+
+    function renderPoHistory(requests) {
+        const list = document.getElementById('po-history-list');
+        if (!requests.length) {
+            list.innerHTML = '<p style="font-size:14px;color:var(--text-secondary);text-align:center;padding:16px 0;">Chưa có đề nghị nào</p>';
+            return;
+        }
+
+        const statusStyle = (status) => {
+            const s = (status || '').toLowerCase();
+            if (s === 'approved')  return { color: '#34C759', bg: 'rgba(52,199,89,0.12)',  icon: 'fa-check-circle',  label: 'Đã duyệt' };
+            if (s === 'rejected')  return { color: '#FF3B30', bg: 'rgba(255,59,48,0.12)',  icon: 'fa-times-circle',  label: 'Từ chối' };
+            return                        { color: '#FF9500', bg: 'rgba(255,149,0,0.12)',   icon: 'fa-clock',         label: 'Đang xử lý' };
+        };
+
+        const timeAgo = (ts) => {
+            if (!ts) return '';
+            const diff = Date.now() - new Date(ts).getTime();
+            const mins = Math.floor(diff / 60000);
+            if (mins < 60)  return `${mins} phút trước`;
+            const hrs = Math.floor(mins / 60);
+            if (hrs < 24)   return `${hrs} giờ trước`;
+            return `${Math.floor(hrs / 24)} ngày trước`;
+        };
+
+        list.innerHTML = requests.map((req, i, arr) => {
+            const { color, bg, icon, label } = statusStyle(req.overallStatus);
+            const border = i < arr.length - 1 ? 'border-bottom: 0.5px solid rgba(0,0,0,0.08);' : '';
+            const prog   = req.totalSteps > 1 ? ` (${req.approvedCount}/${req.totalSteps})` : '';
+            const amount = req.totalAmount ? Number(req.totalAmount).toLocaleString('vi-VN') + ' đ' : '';
+            return `
+            <div style="display:flex;align-items:center;gap:12px;padding:12px 0;${border}">
+                <div style="width:40px;height:40px;border-radius:10px;background:${bg};display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fas ${icon}" style="color:${color};font-size:16px;"></i>
+                </div>
+                <div style="flex:1;min-width:0;">
+                    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+                        <span style="font-size:14px;font-weight:600;color:var(--text-primary);">${req.requestId || '—'}</span>
+                        <span style="font-size:12px;color:${color};background:${bg};padding:2px 8px;border-radius:100px;white-space:nowrap;">${label}${prog}</span>
+                    </div>
+                    <div style="font-size:13px;color:var(--text-secondary);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                        ${req.supplier || '—'} ${amount ? '• ' + amount : ''}
+                    </div>
+                    <div style="font-size:12px;color:#8e8e93;margin-top:1px;">${timeAgo(req.submittedAt)}</div>
+                </div>
+            </div>`;
+        }).join('');
+    }
     </script>
 
 </div><!-- /ipad-main -->
