@@ -2089,7 +2089,7 @@
                 <!-- iOS Large Title Header -->
                 <div style="margin-bottom: 16px;">
                     <h1 style="font-size: 28px; font-weight: 700; color: #000000; margin-bottom: 2px;">
-                        Welcome, <span id="welcome-name" style="color: #007AFF;">Guest</span>
+                        <span id="welcome-greeting">Welcome</span>, <span id="welcome-name" style="color: #007AFF;">Guest</span>
                     </h1>
                     <p style="font-size: 15px; color: #3C3C43; margin-bottom: 12px;">Manage your workflows and processes</p>
 
@@ -2108,19 +2108,19 @@
                     <div style="background: #FFFFFF; border-radius: 12px; padding: 16px;">
                         <div style="display: flex; align-items: center; justify-content: space-between;">
                             <div>
-                                <p style="font-size: 34px; font-weight: 700; color: #007AFF; line-height: 1;">12</p>
-                                <p style="font-size: 13px; color: #6e6e73; margin-top: 4px;">Active</p>
+                                <p id="home-stat-pending" style="font-size: 34px; font-weight: 700; color: #007AFF; line-height: 1;">—</p>
+                                <p style="font-size: 13px; color: #6e6e73; margin-top: 4px;">Pending</p>
                             </div>
                             <div style="width: 40px; height: 40px; border-radius: 8px; background: rgba(0, 122, 255, 0.1); display: flex; align-items: center; justify-content: center;">
-                                <i class="fas fa-tasks" style="color: #007AFF; font-size: 18px;"></i>
+                                <i class="fas fa-clock" style="color: #007AFF; font-size: 18px;"></i>
                             </div>
                         </div>
                     </div>
                     <div style="background: #FFFFFF; border-radius: 12px; padding: 16px;">
                         <div style="display: flex; align-items: center; justify-content: space-between;">
                             <div>
-                                <p style="font-size: 34px; font-weight: 700; color: #34C759; line-height: 1;">48</p>
-                                <p style="font-size: 13px; color: #6e6e73; margin-top: 4px;">Completed</p>
+                                <p id="home-stat-approved" style="font-size: 34px; font-weight: 700; color: #34C759; line-height: 1;">—</p>
+                                <p style="font-size: 13px; color: #6e6e73; margin-top: 4px;">Approved</p>
                             </div>
                             <div style="width: 40px; height: 40px; border-radius: 8px; background: rgba(52, 199, 89, 0.1); display: flex; align-items: center; justify-content: center;">
                                 <i class="fas fa-check-circle" style="color: #34C759; font-size: 18px;"></i>
@@ -2130,19 +2130,19 @@
                     <div style="background: #FFFFFF; border-radius: 12px; padding: 16px;">
                         <div style="display: flex; align-items: center; justify-content: space-between;">
                             <div>
-                                <p style="font-size: 34px; font-weight: 700; color: #FF9500; line-height: 1;">5</p>
-                                <p style="font-size: 13px; color: #6e6e73; margin-top: 4px;">Pending</p>
+                                <p id="home-stat-rejected" style="font-size: 34px; font-weight: 700; color: #FF3B30; line-height: 1;">—</p>
+                                <p style="font-size: 13px; color: #6e6e73; margin-top: 4px;">Rejected</p>
                             </div>
-                            <div style="width: 40px; height: 40px; border-radius: 8px; background: rgba(255, 149, 0, 0.1); display: flex; align-items: center; justify-content: center;">
-                                <i class="fas fa-clock" style="color: #FF9500; font-size: 18px;"></i>
+                            <div style="width: 40px; height: 40px; border-radius: 8px; background: rgba(255, 59, 48, 0.1); display: flex; align-items: center; justify-content: center;">
+                                <i class="fas fa-times-circle" style="color: #FF3B30; font-size: 18px;"></i>
                             </div>
                         </div>
                     </div>
                     <div style="background: #FFFFFF; border-radius: 12px; padding: 16px;">
                         <div style="display: flex; align-items: center; justify-content: space-between;">
                             <div>
-                                <p style="font-size: 34px; font-weight: 700; color: #AF52DE; line-height: 1;">65</p>
-                                <p style="font-size: 13px; color: #6e6e73; margin-top: 4px;">This Month</p>
+                                <p id="home-stat-total" style="font-size: 34px; font-weight: 700; color: #AF52DE; line-height: 1;">—</p>
+                                <p style="font-size: 13px; color: #6e6e73; margin-top: 4px;">Total</p>
                             </div>
                             <div style="width: 40px; height: 40px; border-radius: 8px; background: rgba(175, 82, 222, 0.1); display: flex; align-items: center; justify-content: center;">
                                 <i class="fas fa-chart-line" style="color: #AF52DE; font-size: 18px;"></i>
@@ -2153,77 +2153,57 @@
 
                 <!-- iOS Process Cards -->
                 <p style="font-size: 13px; color: #6e6e73; text-transform: uppercase; padding: 12px 4px 6px; font-weight: 400;">WORKFLOWS</p>
-                <div style="display: flex; flex-direction: column; gap: 12px;">
+                <div style="display: grid; grid-template-columns: 1fr; gap: 12px;">
                     <!-- O2C Process Card -->
                     <div onclick="showPage('process-o2c')" style="background: #FFFFFF; border-radius: 16px; padding: 16px; display: flex; align-items: center; gap: 12px; cursor: pointer;">
-                        <div style="width: 60px; height: 60px; border-radius: 12px; background: linear-gradient(135deg, #34C759, #2ebd59); display: flex; align-items: center; justify-content: center; color: white; font-size: 24px;">
+                        <div style="width: 60px; height: 60px; border-radius: 12px; background: linear-gradient(135deg, #34C759, #2ebd59); display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; flex-shrink: 0;">
                             <i class="fas fa-cart-shopping"></i>
                         </div>
-                        <div style="flex: 1;">
+                        <div style="flex: 1; min-width: 0;">
                             <p style="font-size: 17px; font-weight: 600; color: #000000;">Order to Cash</p>
-                            <p style="font-size: 15px; color: #6e6e73;">Quotation, Contract, VAT Invoicing</p>
+                            <p style="font-size: 14px; color: #6e6e73;">Quotation, Contract, VAT Invoicing</p>
                         </div>
-                        <span style="font-size: 13px; color: #8e8e93; background: rgba(118,118,128,0.12); padding: 4px 10px; border-radius: 100px;">3 flows</span>
-                        <i class="fas fa-chevron-right" style="color: #C7C7CC; font-size: 14px;"></i>
+                        <span style="font-size: 13px; color: #8e8e93; background: rgba(118,118,128,0.12); padding: 4px 10px; border-radius: 100px; white-space: nowrap; flex-shrink: 0;">3 flows</span>
+                        <i class="fas fa-chevron-right" style="color: #C7C7CC; font-size: 14px; flex-shrink: 0;"></i>
                     </div>
 
                     <!-- P2P Process Card -->
                     <div onclick="showPage('process-p2p')" style="background: #FFFFFF; border-radius: 16px; padding: 16px; display: flex; align-items: center; gap: 12px; cursor: pointer;">
-                        <div style="width: 60px; height: 60px; border-radius: 12px; background: linear-gradient(135deg, #007AFF, #5856D6); display: flex; align-items: center; justify-content: center; color: white; font-size: 24px;">
+                        <div style="width: 60px; height: 60px; border-radius: 12px; background: linear-gradient(135deg, #007AFF, #5856D6); display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; flex-shrink: 0;">
                             <i class="fas fa-bag-shopping"></i>
                         </div>
-                        <div style="flex: 1;">
+                        <div style="flex: 1; min-width: 0;">
                             <p style="font-size: 17px; font-weight: 600; color: #000000;">Purchase to Pay</p>
-                            <p style="font-size: 15px; color: #6e6e73;">Procurement, Acceptance, Payments</p>
+                            <p style="font-size: 14px; color: #6e6e73;">Procurement, Acceptance, Payments</p>
                         </div>
-                        <span style="font-size: 13px; color: #8e8e93; background: rgba(118,118,128,0.12); padding: 4px 10px; border-radius: 100px;">4 flows</span>
-                        <i class="fas fa-chevron-right" style="color: #C7C7CC; font-size: 14px;"></i>
+                        <span style="font-size: 13px; color: #8e8e93; background: rgba(118,118,128,0.12); padding: 4px 10px; border-radius: 100px; white-space: nowrap; flex-shrink: 0;">4 flows</span>
+                        <i class="fas fa-chevron-right" style="color: #C7C7CC; font-size: 14px; flex-shrink: 0;"></i>
                     </div>
 
                     <!-- Cash Process Card -->
                     <div onclick="showPage('process-cash')" style="background: #FFFFFF; border-radius: 16px; padding: 16px; display: flex; align-items: center; gap: 12px; cursor: pointer;">
-                        <div style="width: 60px; height: 60px; border-radius: 12px; background: linear-gradient(135deg, #FF9500, #e08600); display: flex; align-items: center; justify-content: center; color: white; font-size: 24px;">
+                        <div style="width: 60px; height: 60px; border-radius: 12px; background: linear-gradient(135deg, #FF9500, #e08600); display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; flex-shrink: 0;">
                             <i class="fas fa-wallet"></i>
                         </div>
-                        <div style="flex: 1;">
+                        <div style="flex: 1; min-width: 0;">
                             <p style="font-size: 17px; font-weight: 600; color: #000000;">Cash & Vouchers</p>
-                            <p style="font-size: 15px; color: #6e6e73;">Cash Book and Vouchers</p>
+                            <p style="font-size: 14px; color: #6e6e73;">Cash Book and Vouchers</p>
                         </div>
-                        <span style="font-size: 13px; color: #8e8e93; background: rgba(118,118,128,0.12); padding: 4px 10px; border-radius: 100px;">2 flows</span>
-                        <i class="fas fa-chevron-right" style="color: #C7C7CC; font-size: 14px;"></i>
+                        <span id="home-cash-badge" style="font-size: 13px; color: #8e8e93; background: rgba(118,118,128,0.12); padding: 4px 10px; border-radius: 100px; white-space: nowrap; flex-shrink: 0;">2 flows</span>
+                        <i class="fas fa-chevron-right" style="color: #C7C7CC; font-size: 14px; flex-shrink: 0;"></i>
                     </div>
+                </div>
+
+                <!-- My Tasks -->
+                <p style="font-size: 13px; color: #6e6e73; text-transform: uppercase; padding: 12px 4px 6px; font-weight: 400;">MY TASKS</p>
+                <div id="home-my-tasks" style="background: #FFFFFF; border-radius: 12px; overflow: hidden;">
+                    <div style="padding: 16px; text-align: center; color: #8E8E93; font-size: 14px;">Loading...</div>
                 </div>
 
                 <!-- Recent Activities - iOS Style -->
                 <p style="font-size: 13px; color: #6e6e73; text-transform: uppercase; padding: 12px 4px 6px; font-weight: 400;">RECENT ACTIVITY</p>
-                <div style="background: #FFFFFF; border-radius: 12px; overflow: hidden;">
-                    <div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 0.5px solid rgba(60,60,67,0.29);">
-                        <div style="width: 40px; height: 40px; background: rgba(52, 199, 89, 0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                            <i class="fas fa-check" style="color: #34C759;"></i>
-                        </div>
-                        <div style="flex: 1;">
-                            <p style="font-size: 15px; font-weight: 500; color: #000000;">Invoice #INV-2025-001 approved</p>
-                            <p style="font-size: 13px; color: #8E8E93;">2 hours ago</p>
-                        </div>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 0.5px solid rgba(60,60,67,0.29);">
-                        <div style="width: 40px; height: 40px; background: rgba(0, 122, 255, 0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                            <i class="fas fa-file-invoice" style="color: #007AFF;"></i>
-                        </div>
-                        <div style="flex: 1;">
-                            <p style="font-size: 15px; font-weight: 500; color: #000000;">New purchase request submitted</p>
-                            <p style="font-size: 13px; color: #8E8E93;">5 hours ago</p>
-                        </div>
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 12px; padding: 12px 16px;">
-                        <div style="width: 40px; height: 40px; background: rgba(255, 149, 0, 0.15); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                            <i class="fas fa-clock" style="color: #FF9500;"></i>
-                        </div>
-                        <div style="flex: 1;">
-                            <p style="font-size: 15px; font-weight: 500; color: #000000;">Payment voucher pending approval</p>
-                            <p style="font-size: 13px; color: #8E8E93;">1 day ago</p>
-                        </div>
-                    </div>
+                <div id="home-recent-list" style="background: #FFFFFF; border-radius: 12px; overflow: hidden;">
+                    <div style="padding: 16px; text-align: center; color: #8E8E93; font-size: 14px;">Loading...</div>
                 </div>
             </main>
 
@@ -4122,11 +4102,17 @@
             document.getElementById('user-display-name').textContent = currentUser.name;
             document.getElementById('user-display-role').textContent = currentUser.role;
             
-            // Update welcome name in dashboard - show full name
+            // Update welcome name + time-based greeting
             const welcomeName = document.getElementById('welcome-name');
-            if (welcomeName && currentUser.name) {
-                welcomeName.textContent = currentUser.name;
+            if (welcomeName && currentUser.name) welcomeName.textContent = currentUser.name;
+            const greetingEl = document.getElementById('welcome-greeting');
+            if (greetingEl) {
+                const h = new Date().getHours();
+                greetingEl.textContent = h < 12 ? 'Good morning' : h < 18 ? 'Good afternoon' : 'Good evening';
             }
+
+            // Load homepage stats + activity after login
+            loadHomeDashboard();
             const av = `https://ui-avatars.com/api/?name=${encodeURIComponent(currentUser.name)}&background=${currentUser.isAdmin ? 'ea580c' : '2563eb'}&color=fff`;
             document.getElementById('user-avatar').src = av;
             document.getElementById('profile-avatar').src = av;
@@ -4577,6 +4563,130 @@
                 const text = row.textContent.toLowerCase();
                 row.style.display = text.includes(term) ? '' : 'none';
             });
+        }
+
+        // ── Homepage Dashboard ─────────────────────────────────────────
+        async function loadHomeDashboard() {
+            try {
+                const userEmail    = currentUser?.email || '';
+                const employeeName = currentUser?.name  || '';
+                const formData = new FormData();
+                formData.append('action', 'getVoucherSummary');
+                if (userEmail)    formData.append('userEmail', userEmail);
+                if (employeeName) formData.append('employee', employeeName);
+
+                const response = await fetch(GOOGLE_APPS_SCRIPT_WEB_APP_URL, {
+                    method: 'POST', mode: 'cors', redirect: 'follow', body: formData
+                });
+                const result = await response.json();
+                if (!result.success || !result.data) return;
+
+                const d = result.data;
+
+                // Stat cards
+                const set = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val ?? '—'; };
+                set('home-stat-pending',  d.pending  ?? '—');
+                set('home-stat-approved', d.approved ?? '—');
+                set('home-stat-rejected', d.rejected ?? '—');
+                set('home-stat-total',    d.total    ?? '—');
+
+                // Cash & Vouchers workflow badge
+                const badge = document.getElementById('home-cash-badge');
+                if (badge && d.pending != null) {
+                    if (d.pending > 0) {
+                        badge.textContent = `${d.pending} pending`;
+                        badge.style.background = 'rgba(255,149,0,0.15)';
+                        badge.style.color = '#FF9500';
+                    } else {
+                        badge.textContent = '2 flows';
+                        badge.style.background = 'rgba(118,118,128,0.12)';
+                        badge.style.color = '#8e8e93';
+                    }
+                }
+
+                // My Tasks — vouchers in-progress where user is next approver
+                renderHomeMyTasks(d.recent || [], userEmail, employeeName);
+
+                // Recent Activity
+                renderHomeRecent(d.recent || []);
+
+            } catch (_) {
+                // Silently fail — homepage still works without live data
+                document.getElementById('home-my-tasks').innerHTML =
+                    '<div style="padding:16px;text-align:center;color:#8E8E93;font-size:14px;">Could not load tasks</div>';
+                document.getElementById('home-recent-list').innerHTML =
+                    '<div style="padding:16px;text-align:center;color:#8E8E93;font-size:14px;">Could not load activity</div>';
+            }
+        }
+
+        function renderHomeMyTasks(recent, userEmail, employeeName) {
+            const el = document.getElementById('home-my-tasks');
+            if (!el) return;
+            // Filter: pending/in-progress vouchers where logged-in user is an approver
+            const tasks = recent.filter(v => {
+                const status = (v.status || '').toLowerCase();
+                if (status.includes('approved') || status.includes('rejected') || status.includes('received')) return false;
+                const approvers = v.meta?.companyApprovers || {};
+                return [approvers.accountant, approvers.legalRep, approvers.treasurer].some(a =>
+                    a && (a.email?.toLowerCase() === userEmail.toLowerCase() || a.name === employeeName) && !a.signature
+                );
+            });
+
+            if (tasks.length === 0) {
+                el.innerHTML = '<div style="padding:16px;text-align:center;color:#8E8E93;font-size:14px;">No tasks awaiting your approval</div>';
+                return;
+            }
+            el.innerHTML = tasks.slice(0, 5).map((v, i, arr) => {
+                const border = i < arr.length - 1 ? 'border-bottom: 0.5px solid rgba(60,60,67,0.18);' : '';
+                const prog   = v.meta?.companyApprovers?.approvalProgress || '0/3';
+                return `<div onclick="showPage('process-cash')" style="display:flex;align-items:center;gap:12px;padding:12px 16px;cursor:pointer;${border}">
+                    <div style="width:40px;height:40px;background:rgba(255,149,0,0.15);border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <i class="fas fa-file-invoice" style="color:#FF9500;"></i>
+                    </div>
+                    <div style="flex:1;min-width:0;">
+                        <p style="font-size:15px;font-weight:500;color:#000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${v.voucherNumber || 'Voucher'}</p>
+                        <p style="font-size:13px;color:#8E8E93;">${v.employee || ''} • ${v.company || ''}</p>
+                    </div>
+                    <span style="font-size:12px;color:#FF9500;background:rgba(255,149,0,0.12);padding:3px 8px;border-radius:100px;white-space:nowrap;flex-shrink:0;">Step ${prog}</span>
+                </div>`;
+            }).join('');
+        }
+
+        function renderHomeRecent(recent) {
+            const el = document.getElementById('home-recent-list');
+            if (!el) return;
+            if (!recent || recent.length === 0) {
+                el.innerHTML = '<div style="padding:16px;text-align:center;color:#8E8E93;font-size:14px;">No recent activity</div>';
+                return;
+            }
+            const statusStyle = (v) => {
+                const s = (v.status || '').toLowerCase();
+                if (s.includes('reject'))  return { bg: 'rgba(255,59,48,0.15)',  color: '#FF3B30', icon: 'fa-times-circle' };
+                if (s.includes('approv') || s.includes('received')) return { bg: 'rgba(52,199,89,0.15)', color: '#34C759', icon: 'fa-check-circle' };
+                return { bg: 'rgba(0,122,255,0.15)', color: '#007AFF', icon: 'fa-file-invoice' };
+            };
+            const timeAgo = (ts) => {
+                if (!ts) return '';
+                const diff = Date.now() - new Date(ts).getTime();
+                const mins = Math.floor(diff / 60000);
+                if (mins < 60)  return `${mins}m ago`;
+                const hrs = Math.floor(mins / 60);
+                if (hrs < 24)   return `${hrs}h ago`;
+                return `${Math.floor(hrs / 24)}d ago`;
+            };
+            el.innerHTML = recent.slice(0, 5).map((v, i, arr) => {
+                const { bg, color, icon } = statusStyle(v);
+                const border = i < arr.length - 1 ? 'border-bottom: 0.5px solid rgba(60,60,67,0.18);' : '';
+                return `<div style="display:flex;align-items:center;gap:12px;padding:12px 16px;${border}">
+                    <div style="width:40px;height:40px;background:${bg};border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                        <i class="fas ${icon}" style="color:${color};"></i>
+                    </div>
+                    <div style="flex:1;min-width:0;">
+                        <p style="font-size:15px;font-weight:500;color:#000;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${v.voucherNumber || 'Voucher'} — ${v.status || ''}</p>
+                        <p style="font-size:13px;color:#8E8E93;">${v.employee || ''} • ${timeAgo(v.timestamp)}</p>
+                    </div>
+                </div>`;
+            }).join('');
         }
 
         // Load Cash & Admin Summary
