@@ -509,7 +509,6 @@
         <!-- ── Sticky bar ──────────────────────────────────────────── -->
         <input type="hidden" id="request_id">
         <div class="sticky-bar" id="sticky-bar">
-            <span class="req-no-pill" id="req-no-pill">Số phiếu: —</span>
             <a id="drive-folder-link" href="#" target="_blank" style="font-size: 12px; color: var(--primary); display: none;">
                 <i class="fas fa-folder-open"></i> Xem folder Drive
             </a>
@@ -568,7 +567,12 @@
                         </div>
                         <input type="hidden" id="company_key_or_taxid">
                     </div>
-
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Số phiếu</label>
+                            <input type="text" id="req-no-pill" readonly placeholder="Tự động tạo sau khi chọn công ty">
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -1190,7 +1194,7 @@
         const raw = getSelectedCompanyMaj() || (sel.value || '');
         const companyCode = (raw || '').replace(/[^A-Z0-9]/gi, '').toUpperCase();
         if (!companyCode) {
-            document.getElementById('req-no-pill').textContent = 'Số phiếu: —';
+            document.getElementById('req-no-pill').value = '';
             document.getElementById('request_id').value = '';
             return;
         }
@@ -1206,7 +1210,7 @@
         localStorage.setItem(counterKey, counter);
 
         const reqNo = `${companyCode}-PO${dateStr}${String(counter).padStart(6, '0')}`;
-        document.getElementById('req-no-pill').textContent = `Số phiếu: ${reqNo}`;
+        document.getElementById('req-no-pill').value = reqNo;
         document.getElementById('request_id').value = reqNo;
     }
 
@@ -1589,7 +1593,7 @@
         document.getElementById('upload-btn').disabled = true;
         document.getElementById('drive-status').textContent = '';
         document.getElementById('drive-folder-link').style.display = 'none';
-        document.getElementById('req-no-pill').textContent = 'Số phiếu: —';
+        document.getElementById('req-no-pill').value = '';
         document.getElementById('request_id').value = '';
     }
 
