@@ -379,6 +379,12 @@
                         </div>
                         <input type="hidden" id="company_key_or_taxid">
                     </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="po_request_no">Số PO / Đề nghị mua hàng</label>
+                            <input type="text" id="po_request_no" placeholder="Nhập số PO nếu có">
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -421,73 +427,6 @@
                             <input type="text" id="vendor_address_final" readonly>
                         </div>
                     </div>
-                </div>
-            </div>
-
-            <!-- 3. Thông tin thanh toán ──────────────────────────────── -->
-            <div class="form-card">
-                <div class="form-card-header">
-                    <i class="fas fa-money-bill-wave" style="color: var(--success); font-size: 14px;"></i>
-                    <h2>Thông tin thanh toán</h2>
-                </div>
-                <div class="form-card-body">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="final_amount">Số tiền đề nghị <span class="req">*</span></label>
-                            <div class="money-wrap">
-                                <input type="number" id="final_amount" min="0" step="1000" placeholder="0" oninput="onAmountInput()">
-                                <span class="money-display" id="final_amount_display"></span>
-                            </div>
-                        </div>
-                        <div class="form-group">
-                            <label for="due_date">Ngày đáo hạn <span class="req">*</span></label>
-                            <input type="date" id="due_date">
-                        </div>
-                        <div class="form-group">
-                            <label for="currency">Loại tiền</label>
-                            <select id="currency">
-                                <option value="VND" selected>VND</option>
-                                <option value="USD">USD</option>
-                                <option value="EUR">EUR</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="po_request_no">Số PO / Đề nghị mua hàng</label>
-                            <input type="text" id="po_request_no" placeholder="Nhập số PO nếu có">
-                        </div>
-                        <div class="form-group">
-                            <label for="installment_no">Đợt thanh toán</label>
-                            <input type="text" id="installment_no" placeholder="VD: Đợt 1/3">
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="payment_type_1">Loại thanh toán 1</label>
-                            <select id="payment_type_1">
-                                <option value="">-- Chọn --</option>
-                                <option>Thanh toán hóa đơn</option>
-                                <option>Thanh toán trước</option>
-                                <option>Hoàn ứng</option>
-                            </select>
-                        </div>
-                        <div class="form-group">
-                            <label for="payment_type_2">Loại thanh toán 2</label>
-                            <select id="payment_type_2" onchange="toggleInvoiceByType()">
-                                <option value="">-- Chọn --</option>
-                                <option>Thanh toán hóa đơn</option>
-                                <option>Đề nghị tạm ứng</option>
-                                <option>Hoàn ứng</option>
-                            </select>
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group full">
-                            <label for="payment_description">Nội dung đề nghị thanh toán <span class="req">*</span></label>
-                            <textarea id="payment_description" placeholder="Mô tả lý do và nội dung đề nghị thanh toán..." required></textarea>
-                        </div>
-                    </div>
 
                     <!-- Bank info -->
                     <div style="border-top: 0.5px solid rgba(0,0,0,0.08); margin: 6px 0 14px; padding-top: 14px;">
@@ -521,6 +460,70 @@
                             </div>
                         </div>
                     </div>
+                </div>
+            </div>
+
+            <!-- 3. Thông tin thanh toán ──────────────────────────────── -->
+            <div class="form-card">
+                <div class="form-card-header">
+                    <i class="fas fa-money-bill-wave" style="color: var(--success); font-size: 14px;"></i>
+                    <h2>Thông tin thanh toán</h2>
+                </div>
+                <div class="form-card-body">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="final_amount">Số tiền đề nghị <span class="req">*</span></label>
+                            <div class="money-wrap">
+                                <input type="number" id="final_amount" min="0" step="1000" placeholder="0" oninput="onAmountInput()">
+                                <span class="money-display" id="final_amount_display"></span>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="due_date">Ngày đáo hạn <span class="req">*</span></label>
+                            <input type="date" id="due_date">
+                        </div>
+                        <div class="form-group">
+                            <label for="currency">Loại tiền</label>
+                            <select id="currency">
+                                <option value="VND" selected>VND</option>
+                                <option value="USD">USD</option>
+                                <option value="EUR">EUR</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="installment_no">Đợt thanh toán</label>
+                            <input type="text" id="installment_no" placeholder="VD: Đợt 1/3">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="payment_type_1">Loại thanh toán 1</label>
+                            <select id="payment_type_1">
+                                <option value="">-- Chọn --</option>
+                                <option>Thanh toán hóa đơn</option>
+                                <option>Thanh toán trước</option>
+                                <option>Hoàn ứng</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="payment_type_2">Loại thanh toán 2</label>
+                            <select id="payment_type_2" onchange="toggleInvoiceByType()">
+                                <option value="">-- Chọn --</option>
+                                <option>Thanh toán hóa đơn</option>
+                                <option>Đề nghị tạm ứng</option>
+                                <option>Hoàn ứng</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group full">
+                            <label for="payment_description">Nội dung đề nghị thanh toán <span class="req">*</span></label>
+                            <textarea id="payment_description" placeholder="Mô tả lý do và nội dung đề nghị thanh toán..." required></textarea>
+                        </div>
+                    </div>
+
                 </div>
             </div>
 
