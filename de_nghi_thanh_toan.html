@@ -128,7 +128,11 @@
             padding: 10px 16px;
             display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
         }
-
+        .req-no-pill {
+            background: var(--color-primary-light); color: var(--primary);
+            border-radius: 20px; padding: 4px 14px; font-size: 13px; font-weight: 600;
+            white-space: nowrap;
+        }
 
         /* ── Form card ─────────────────────────────────────────────── */
         .form-card {
@@ -505,7 +509,7 @@
         <!-- ── Sticky bar ──────────────────────────────────────────── -->
         <input type="hidden" id="request_id">
         <div class="sticky-bar" id="sticky-bar">
-
+            <span class="req-no-pill" id="req-no-pill">Số phiếu: —</span>
             <a id="drive-folder-link" href="#" target="_blank" style="font-size: 12px; color: var(--primary); display: none;">
                 <i class="fas fa-folder-open"></i> Xem folder Drive
             </a>
@@ -1185,7 +1189,11 @@
         const sel = document.getElementById('company_code');
         const raw = getSelectedCompanyMaj() || (sel.value || '');
         const companyCode = (raw || '').replace(/[^A-Z0-9]/gi, '').toUpperCase();
-        if (!companyCode) { document.getElementById('request_id').value = ''; return; }
+        if (!companyCode) {
+            document.getElementById('req-no-pill').textContent = 'Số phiếu: —';
+            document.getElementById('request_id').value = '';
+            return;
+        }
 
         const now     = new Date();
         const y       = now.getFullYear();
@@ -1193,11 +1201,12 @@
         const d       = String(now.getDate()).padStart(2, '0');
         const dateStr = `${y}${m}${d}`;
 
-        const counterKey = `vc_${companyCode}_DNTT_${dateStr}`;
+        const counterKey = `vc_${companyCode}_PO_${dateStr}`;
         const counter    = parseInt(localStorage.getItem(counterKey) || '0') + 1;
         localStorage.setItem(counterKey, counter);
 
-        const reqNo = `${companyCode}-DNTT${dateStr}${String(counter).padStart(6, '0')}`;
+        const reqNo = `${companyCode}-PO${dateStr}${String(counter).padStart(6, '0')}`;
+        document.getElementById('req-no-pill').textContent = `Số phiếu: ${reqNo}`;
         document.getElementById('request_id').value = reqNo;
     }
 
@@ -1580,7 +1589,7 @@
         document.getElementById('upload-btn').disabled = true;
         document.getElementById('drive-status').textContent = '';
         document.getElementById('drive-folder-link').style.display = 'none';
-
+        document.getElementById('req-no-pill').textContent = 'Số phiếu: —';
         document.getElementById('request_id').value = '';
     }
 
