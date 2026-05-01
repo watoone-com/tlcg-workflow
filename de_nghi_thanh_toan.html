@@ -234,6 +234,151 @@
 
         .action-bar { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wrap; padding: 16px 20px; border-top: 0.5px solid rgba(0,0,0,0.08); background: rgba(242,242,247,0.4); }
 
+        /* ── Progress Stepper ──────────────────────────────────────────────── */
+        .progress-stepper {
+            background: white;
+            border-radius: var(--ios-radius-lg);
+            border: 0.5px solid rgba(0, 0, 0, 0.10);
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.07);
+            padding: 20px 16px;
+            margin-bottom: 16px;
+        }
+
+        .stepper-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .stepper-line {
+            position: absolute;
+            top: 20px;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: rgba(0, 0, 0, 0.10);
+            z-index: 1;
+        }
+
+        .stepper-line-progress {
+            position: absolute;
+            top: 0;
+            left: 0;
+            height: 100%;
+            background: var(--primary);
+            transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            width: 0%;
+        }
+
+        .stepper-step {
+            position: relative;
+            z-index: 2;
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 8px;
+            min-width: 60px;
+            cursor: pointer;
+        }
+
+        .stepper-circle {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: white;
+            border: 2px solid rgba(0, 0, 0, 0.15);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-secondary);
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .stepper-step.active .stepper-circle {
+            background: var(--primary);
+            border-color: var(--primary);
+            color: white;
+            box-shadow: 0 2px 8px rgba(0, 122, 255, 0.24);
+        }
+
+        .stepper-step.completed .stepper-circle {
+            background: var(--success);
+            border-color: var(--success);
+            color: white;
+        }
+
+        .stepper-label {
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            text-align: center;
+            max-width: 80px;
+        }
+
+        .stepper-step.active .stepper-label {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+
+        .stepper-step.completed .stepper-label {
+            color: var(--success);
+            font-weight: 600;
+        }
+
+        .form-step { display: none; }
+        .form-step.active { display: block; animation: fadeIn 0.2s ease-in-out; }
+
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        .step-navigation {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 20px;
+            border-top: 0.5px solid rgba(0, 0, 0, 0.08);
+            background: rgba(242, 242, 247, 0.4);
+            margin-top: 12px;
+            gap: 8px;
+        }
+
+        .step-navigation button {
+            border: none;
+            border-radius: 8px;
+            font-family: var(--font-body);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            padding: 9px 18px;
+            transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+        }
+
+        .step-navigation button:hover:not(:disabled) { transform: translateY(-1px); }
+        .step-navigation button:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+        .step-navigation .btn-next { background: var(--primary); color: white; }
+        .step-navigation .btn-next:hover:not(:disabled) { background: var(--primary-hover); }
+        .step-navigation .btn-submit { background: var(--success); color: white; }
+        .step-navigation .btn-submit:hover:not(:disabled) { background: #28A745; }
+
+        .step-actions { display: flex; gap: 8px; margin-left: auto; }
+
+        @media (max-width: 640px) {
+            .progress-stepper { padding: 16px 12px; }
+            .stepper-circle { width: 36px; height: 36px; font-size: 12px; }
+            .stepper-label { font-size: 11px; max-width: 70px; }
+            .step-navigation { flex-direction: column; }
+            .step-navigation button { width: 100%; }
+            .step-actions { width: 100%; margin-left: 0; }
+        }
+
         /* ── Toast ─────────────────────────────────────────────────── */
         .toast-container { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
         .toast { background: white; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,0.15); padding: 12px 18px; font-size: 14px; min-width: 260px; max-width: 420px; pointer-events: auto; animation: toastIn 0.3s ease; border-left: 4px solid #ccc; }
@@ -359,6 +504,35 @@
         <div class="page-content">
             <h1 style="font-family: var(--font-display); font-size: 22px; font-weight: 700; text-align: center; margin: 4px 0 0;">ĐỀ NGHỊ THANH TOÁN</h1>
 
+            <div class="progress-stepper">
+                <div class="stepper-container">
+                    <div class="stepper-line">
+                        <div class="stepper-line-progress" id="stepper-progress"></div>
+                    </div>
+                    <div class="stepper-step active" data-step="1" onclick="goToStep(1)">
+                        <div class="stepper-circle">1</div>
+                        <div class="stepper-label">Công ty</div>
+                    </div>
+                    <div class="stepper-step" data-step="2" onclick="goToStep(2)">
+                        <div class="stepper-circle">2</div>
+                        <div class="stepper-label">Nhà cung cấp</div>
+                    </div>
+                    <div class="stepper-step" data-step="3" onclick="goToStep(3)">
+                        <div class="stepper-circle">3</div>
+                        <div class="stepper-label">Thanh toán</div>
+                    </div>
+                    <div class="stepper-step" data-step="4" onclick="goToStep(4)">
+                        <div class="stepper-circle">4</div>
+                        <div class="stepper-label">Tài liệu</div>
+                    </div>
+                    <div class="stepper-step" data-step="5" onclick="goToStep(5)">
+                        <div class="stepper-circle">5</div>
+                        <div class="stepper-label">Hóa đơn</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-step active" id="step-1">
             <!-- 1. Công ty ──────────────────────────────────────────── -->
             <div class="form-card">
                 <div class="form-card-header">
@@ -388,6 +562,13 @@
                 </div>
             </div>
 
+            <div class="step-navigation">
+                <button type="button" class="btn-secondary" disabled>← Quay lại</button>
+                <button type="button" class="btn-primary btn-next" onclick="goToStep(2)">Tiếp theo →</button>
+            </div>
+            </div>
+
+            <div class="form-step" id="step-2">
             <!-- 2. Nhà cung cấp ─────────────────────────────────────── -->
             <div class="form-card">
                 <div class="form-card-header">
@@ -463,6 +644,13 @@
                 </div>
             </div>
 
+            <div class="step-navigation">
+                <button type="button" class="btn-secondary" onclick="goToStep(1)">← Quay lại</button>
+                <button type="button" class="btn-primary btn-next" onclick="goToStep(3)">Tiếp theo →</button>
+            </div>
+            </div>
+
+            <div class="form-step" id="step-3">
             <!-- 3. Thông tin thanh toán ──────────────────────────────── -->
             <div class="form-card">
                 <div class="form-card-header">
@@ -527,6 +715,13 @@
                 </div>
             </div>
 
+            <div class="step-navigation">
+                <button type="button" class="btn-secondary" onclick="goToStep(2)">← Quay lại</button>
+                <button type="button" class="btn-primary btn-next" onclick="goToStep(4)">Tiếp theo →</button>
+            </div>
+            </div>
+
+            <div class="form-step" id="step-4">
             <!-- 4. Upload ────────────────────────────────────────────── -->
             <div class="form-card">
                 <div class="form-card-header">
@@ -565,6 +760,13 @@
                 </div>
             </div>
 
+            <div class="step-navigation">
+                <button type="button" class="btn-secondary" onclick="goToStep(3)">← Quay lại</button>
+                <button type="button" class="btn-primary btn-next" onclick="goToStep(5)">Tiếp theo →</button>
+            </div>
+            </div>
+
+            <div class="form-step" id="step-5">
             <!-- 5. Bảng hoá đơn ─────────────────────────────────────── -->
             <div class="form-card" id="invoice-section">
                 <div class="form-card-header">
@@ -604,16 +806,17 @@
                 </div>
             </div>
 
-            <!-- 6. Actions ──────────────────────────────────────────── -->
-            <div class="form-card">
-                <div class="action-bar">
-                    <button class="btn-secondary" onclick="resetForm()">
+            <div class="step-navigation">
+                <button type="button" class="btn-secondary" onclick="goToStep(4)">← Quay lại</button>
+                <div class="step-actions">
+                    <button type="button" class="btn-secondary" onclick="resetForm()">
                         <i class="fas fa-redo"></i> Làm mới
                     </button>
-                    <button class="btn-success" id="submit-btn" onclick="submitForm()">
+                    <button type="button" class="btn-success btn-submit" id="submit-btn" onclick="submitForm()">
                         <i class="fas fa-paper-plane"></i> Gửi đề nghị
                     </button>
                 </div>
+            </div>
             </div>
 
         </div><!-- /page-content -->
@@ -1383,6 +1586,35 @@
     }
 
     // ═══════════════════════════════════════════════════════════════════
+    //  STEPPER LOGIC
+    // ═══════════════════════════════════════════════════════════════════
+    let currentStep = 1;
+    const totalSteps = 5;
+
+    function goToStep(step) {
+        if (step < 1 || step > totalSteps) return;
+        currentStep = step;
+        updateStepperUI();
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function updateStepperUI() {
+        document.querySelectorAll('.form-step').forEach(step => step.classList.remove('active'));
+        const active = document.getElementById(`step-${currentStep}`);
+        if (active) active.classList.add('active');
+
+        const progress = ((currentStep - 1) / (totalSteps - 1)) * 100;
+        const line = document.getElementById('stepper-progress');
+        if (line) line.style.width = `${progress}%`;
+
+        document.querySelectorAll('.stepper-step').forEach(step => {
+            const n = parseInt(step.dataset.step, 10);
+            step.classList.toggle('active', n === currentStep);
+            step.classList.toggle('completed', n < currentStep);
+        });
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
     //  INIT
     // ═══════════════════════════════════════════════════════════════════
     document.addEventListener('DOMContentLoaded', async () => {
@@ -1391,6 +1623,7 @@
         bootstrapConfig();
         addInvoiceRow();
         await loadCompanies();
+        updateStepperUI();
     });
     </script>
 
