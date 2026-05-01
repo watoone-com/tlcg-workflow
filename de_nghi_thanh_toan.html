@@ -1203,9 +1203,10 @@
         const idx = parseInt(sel.value);
         if (isNaN(idx) || !allBanks[idx]) { clearBankFields(false); return; }
         const b = allBanks[idx];
-        document.getElementById('vendor_account_name').value = b.account_name || '';
-        document.getElementById('vendor_account_no').value   = b.account_no   || '';
-        document.getElementById('vendor_bank_name').value    = b.bank_name    || '';
+        document.getElementById('vendor_account_name').value       = b.account_name || '';
+        document.getElementById('vendor_account_no').value         = b.account_no   || '';
+        document.getElementById('vendor_bank_name').value          = b.bank_name    || '';
+        document.getElementById('vendor_bank_transfer_note').value = b.note         || '';
     }
 
     function clearVendorFields() {
@@ -1224,9 +1225,10 @@
 
     function clearBankFields(clearSel = true) {
         if (clearSel) document.getElementById('vendor_bank_pick').innerHTML = '<option value="">-- Chọn NCC trước --</option>';
-        document.getElementById('vendor_account_name').value = '';
-        document.getElementById('vendor_account_no').value   = '';
-        document.getElementById('vendor_bank_name').value    = '';
+        document.getElementById('vendor_account_name').value       = '';
+        document.getElementById('vendor_account_no').value         = '';
+        document.getElementById('vendor_bank_name').value          = '';
+        document.getElementById('vendor_bank_transfer_note').value = '';
     }
 
     // ═══════════════════════════════════════════════════════════════════
