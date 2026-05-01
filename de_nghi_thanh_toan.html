@@ -386,7 +386,7 @@
             <div class="form-card">
                 <div class="form-card-header">
                     <i class="fas fa-store" style="color: var(--warning); font-size: 14px;"></i>
-                    <h2>Nhà cung cấp (NCC)</h2>
+                    <h2>Thông tin Nhà cung cấp (NCC)</h2>
                 </div>
                 <div class="form-card-body">
                     <div class="form-row">
@@ -395,6 +395,8 @@
                             <select id="vendor_old" onchange="onVendorOldChange()">
                                 <option value="">-- Chọn công ty trước --</option>
                             </select>
+                            <label for="vendor_search">Tìm kiếm NCC</label>
+                            <input type="text" id="vendor_search" placeholder="Tìm nhanh trong danh sách..." oninput="onVendorSearch()">
                         </div>
                         <div class="form-group">
                             <label for="vendor_new">Hoặc nhập NCC mới</label>
@@ -482,8 +484,8 @@
                     </div>
                     <div class="form-row">
                         <div class="form-group full">
-                            <label for="payment_description">Nội dung đề nghị thanh toán</label>
-                            <textarea id="payment_description" placeholder="Mô tả lý do và nội dung đề nghị thanh toán..."></textarea>
+                            <label for="payment_description">Nội dung đề nghị thanh toán <span class="req">*</span></label>
+                            <textarea id="payment_description" placeholder="Mô tả lý do và nội dung đề nghị thanh toán..." required></textarea>
                         </div>
                     </div>
 
@@ -655,6 +657,30 @@
             localStorage.removeItem('tlc_current_user');
             alert('Phiên đăng nhập không hợp lệ.'); window.location.href = 'index.html'; return null;
         }
+    }
+
+    function renderVendorOptions(list = [], keepValue = false) {
+        const sel = document.getElementById('vendor_old');
+        const current = keepValue ? (sel.value || '') : '';
+        sel.innerHTML = '<option value="">-- Chọn NCC --</option>';
+        (list || []).forEach(v => {
+            const opt = document.createElement('option');
+            opt.value = v.vendor_name || '';
+            opt.textContent = v.vendor_name || '';
+            sel.appendChild(opt);
+        });
+        if (current) {
+            const found = Array.from(sel.options).find(o => o.value === current);
+            if (found) sel.value = current;
+        }
+        allVendors = list || [];
+    }
+
+    function onVendorSearch() {
+        const q = (document.getElementById('vendor_search').value || '').trim().toLowerCase();
+        if (!q) { renderVendorOptions(allVendors, true); return; }
+        const filtered = (allVendors || []).filter(v => (v.vendor_name || '').toLowerCase().includes(q));
+        renderVendorOptions(filtered, true);
     }
 
     function handleLogout() {
@@ -833,14 +859,9 @@
                 const retryAll = await fetchSuppliers('');
                 if (retryAll.length > arr.length) arr = retryAll;
             }
-            allVendors = arr;
-            sel.innerHTML = '<option value="">-- Chọn NCC --</option>';
-            arr.forEach(v => {
-                const opt = document.createElement('option');
-                opt.value = v.vendor_name || '';
-                opt.textContent = v.vendor_name || '';
-                sel.appendChild(opt);
-            });
+            allVendors = arr || [];
+            console.log('loadVendors -> fetched', allVendors.length, { companyGroupKey, companyCode });
+            renderVendorOptions(allVendors, false);
         } catch (_) {
             sel.innerHTML = '<option value="">-- Lỗi tải NCC --</option>';
         }
@@ -867,6 +888,10 @@
                 opt.textContent = `${b.bank_name} — ${b.account_no}`;
                 sel.appendChild(opt);
             });
+            if (arr.length > 0) {
+                sel.value = '0';
+                onBankPick();
+            }
             if (arr.length === 0) sel.innerHTML = '<option value="">-- Không có tài khoản --</option>';
         } catch (_) {
             sel.innerHTML = '<option value="">-- Lỗi tải ngân hàng --</option>';
@@ -967,6 +992,7 @@
     function clearVendorFields() {
         document.getElementById('vendor_old').innerHTML = '<option value="">-- Chọn NCC --</option>';
         document.getElementById('vendor_new').value = '';
+        if (document.getElementById('vendor_search')) document.getElementById('vendor_search').value = '';
         document.getElementById('vendor-autofill-row').style.display = 'none';
         document.getElementById('vendor_final_name').value    = '';
         document.getElementById('vendor_type_final').value    = '';
