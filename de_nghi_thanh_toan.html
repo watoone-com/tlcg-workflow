@@ -841,6 +841,7 @@
 
     let allCompanies = [];
     let allVendors   = [];
+    let allVendorsMaster = [];
     let allBanks     = [];
     let pendingFiles = [];
     let driveFolderId = null;
@@ -876,6 +877,12 @@
             opt.textContent = v.vendor_name || '';
             sel.appendChild(opt);
         });
+        if (!list || list.length === 0) {
+            const opt = document.createElement('option');
+            opt.value = '';
+            opt.textContent = '-- Không có NCC --';
+            sel.appendChild(opt);
+        }
         if (current) {
             const found = Array.from(sel.options).find(o => o.value === current);
             if (found) sel.value = current;
@@ -885,8 +892,8 @@
 
     function onVendorSearch() {
         const q = (document.getElementById('vendor_search').value || '').trim().toLowerCase();
-        if (!q) { renderVendorOptions(allVendors, true); return; }
-        const filtered = (allVendors || []).filter(v => (v.vendor_name || '').toLowerCase().includes(q));
+        if (!q) { renderVendorOptions(allVendorsMaster, true); return; }
+        const filtered = (allVendorsMaster || []).filter(v => (v.vendor_name || '').toLowerCase().includes(q));
         renderVendorOptions(filtered, true);
     }
 
@@ -1066,9 +1073,10 @@
                 const retryAll = await fetchSuppliers('');
                 if (retryAll.length > arr.length) arr = retryAll;
             }
-            allVendors = arr || [];
-            console.log('loadVendors -> fetched', allVendors.length, { companyGroupKey, companyCode });
-            renderVendorOptions(allVendors, false);
+            allVendorsMaster = arr || [];
+            allVendors = allVendorsMaster;
+            console.log('loadVendors -> fetched', allVendorsMaster.length, { companyGroupKey, companyCode });
+            renderVendorOptions(allVendorsMaster, false);
         } catch (_) {
             sel.innerHTML = '<option value="">-- Lỗi tải NCC --</option>';
         }
@@ -1204,6 +1212,8 @@
         document.getElementById('vendor_old').innerHTML = '<option value="">-- Chọn NCC --</option>';
         document.getElementById('vendor_new').value = '';
         if (document.getElementById('vendor_search')) document.getElementById('vendor_search').value = '';
+        allVendors = [];
+        allVendorsMaster = [];
         document.getElementById('vendor-autofill-row').style.display = 'none';
         document.getElementById('vendor_final_name').value    = '';
         document.getElementById('vendor_type_final').value    = '';
