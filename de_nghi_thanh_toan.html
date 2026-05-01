@@ -846,6 +846,7 @@
     let driveFolderId = null;
     let uploadedLinks = [];
     let isSubmitting  = false;
+    let poAutoFilled  = true;
 
     const loggedInUser = checkUserLogin();
 
@@ -1130,7 +1131,10 @@
         const reqNo = `${companyCode}-PO${dateStr}${String(counter).padStart(6, '0')}`;
         document.getElementById('req-no-pill').textContent = reqNo;
         document.getElementById('request_id').value        = reqNo;
-        document.getElementById('po_request_no').value     = reqNo;
+        const poInput = document.getElementById('po_request_no');
+        if (poInput && (poAutoFilled || !poInput.value)) {
+            poInput.value = reqNo;
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -1145,6 +1149,7 @@
         document.getElementById('company_name').value = name;
         document.getElementById('company_key_or_taxid').value = key;
         clearVendorFields();
+        poAutoFilled = true;
         generateRequestNumber();
         if (sel.value) loadVendors(key, code);
     }
@@ -1502,6 +1507,7 @@
         document.getElementById('company_name').value = '';
         document.getElementById('company_key_or_taxid').value = '';
         clearVendorFields();
+        poAutoFilled = true;
 
         ['final_amount','due_date','po_request_no','installment_no',
          'payment_description','vendor_bank_transfer_note','drive_link'].forEach(id => {
@@ -1624,6 +1630,10 @@
         addInvoiceRow();
         await loadCompanies();
         updateStepperUI();
+        const poInput = document.getElementById('po_request_no');
+        if (poInput) {
+            poInput.addEventListener('input', () => { poAutoFilled = false; });
+        }
     });
     </script>
 
