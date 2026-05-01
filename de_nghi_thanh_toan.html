@@ -129,9 +129,6 @@
             display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
         }
 
-        .diff-line { font-size: 12px; color: var(--text-secondary); flex: 1; text-align: right; }
-        .diff-line.ok { color: var(--success); }
-        .diff-line.mismatch { color: var(--error); }
 
         /* ── Form card ─────────────────────────────────────────────── */
         .form-card {
@@ -512,7 +509,6 @@
             <a id="drive-folder-link" href="#" target="_blank" style="font-size: 12px; color: var(--primary); display: none;">
                 <i class="fas fa-folder-open"></i> Xem folder Drive
             </a>
-            <span class="diff-line" id="diff-line"></span>
         </div>
 
         <!-- ── Page content ──────────────────────────────────────────── -->
@@ -1291,7 +1287,6 @@
     function onAmountInput() {
         const v = parseFloat(document.getElementById('final_amount').value) || 0;
         document.getElementById('final_amount_display').textContent = v ? formatMoney(v) : '';
-        renderDiffCheck();
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -1359,13 +1354,11 @@
         if (vatEl) vatEl.textContent   = formatMoney(row.vat);
         if (totEl) totEl.textContent   = formatMoney(row.row_total);
         updateInvoiceTotal();
-        renderDiffCheck();
     }
 
     function deleteRow(id) {
         invoiceRows = invoiceRows.filter(r => r.id !== id);
         renderInvoiceTable();
-        renderDiffCheck();
     }
 
     function updateInvoiceTotal() {
@@ -1382,21 +1375,6 @@
     // ═══════════════════════════════════════════════════════════════════
     //  DIFF CHECK
     // ═══════════════════════════════════════════════════════════════════
-    function renderDiffCheck() {
-        const amount   = parseFloat(document.getElementById('final_amount').value) || 0;
-        const invTotal = invoiceRows.reduce((a, r) => a + (r.row_total || 0), 0);
-        const el       = document.getElementById('diff-line');
-        const invSec   = document.getElementById('invoice-section');
-        if (invSec.style.display === 'none' || invoiceRows.length === 0) { el.textContent = ''; el.className = 'diff-line'; return; }
-        const diff = amount - invTotal;
-        if (diff === 0) {
-            el.textContent = '✓ Khớp số tiền';
-            el.className   = 'diff-line ok';
-        } else {
-            el.textContent = `Chênh: ${formatMoney(Math.abs(diff))} (${diff > 0 ? 'thiếu HĐ' : 'HĐ vượt'})`;
-            el.className   = 'diff-line mismatch';
-        }
-    }
 
     // ═══════════════════════════════════════════════════════════════════
     //  FILE PICKER & DRIVE UPLOAD
@@ -1590,7 +1568,6 @@
         document.getElementById('drive-folder-link').style.display = 'none';
 
         document.getElementById('request_id').value = '';
-        document.getElementById('diff-line').textContent = '';
     }
 
     // ═══════════════════════════════════════════════════════════════════
