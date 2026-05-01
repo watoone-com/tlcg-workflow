@@ -192,6 +192,25 @@
             max-width: 50%; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;
         }
 
+        /* ── Vendor searchable combobox ───────────────────────────── */
+        .vendor-combobox { position: relative; }
+        .vendor-combobox input { width: 100%; }
+        .vendor-dropdown-list {
+            display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+            max-height: 220px; overflow-y: auto;
+            background: white; border: 1px solid rgba(0,0,0,0.15); border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.13); z-index: 200;
+        }
+        .vendor-dropdown-list.show { display: block; }
+        .vendor-dropdown-item {
+            padding: 9px 12px; cursor: pointer; font-size: 14px; color: var(--text-primary);
+            transition: background 0.12s;
+        }
+        .vendor-dropdown-item:hover, .vendor-dropdown-item.focused { background: rgba(0,122,255,0.08); }
+        .vendor-dropdown-item .vdi-name { font-weight: 500; }
+        .vendor-dropdown-item .vdi-meta { font-size: 12px; color: var(--text-secondary); margin-top: 1px; }
+        .vendor-dropdown-empty { padding: 10px 12px; font-size: 13px; color: var(--text-secondary); text-align: center; }
+
         /* ── Invoice table ─────────────────────────────────────────── */
         .invoice-wrap { overflow-x: auto; }
         .invoice-table { width: 100%; border-collapse: collapse; min-width: 900px; font-size: 13px; }
@@ -578,10 +597,12 @@
                 <div class="form-card-body">
                     <div class="form-row">
                         <div class="form-group w2">
-                            <label for="vendor_search">Tìm kiếm NCC</label>
-                            <input type="text" id="vendor_search" placeholder="Tìm nhanh trong danh sách..." oninput="onVendorSearch()">
-                            <label for="vendor_old">NCC từ danh sách</label>
-                            <select id="vendor_old" onchange="onVendorOldChange()">
+                            <label for="vendor_search">NCC từ danh sách</label>
+                            <div class="vendor-combobox" id="vendor-combobox">
+                                <input type="text" id="vendor_search" placeholder="Gõ để tìm nhà cung cấp..." autocomplete="off" oninput="onVendorSearch()" onfocus="onVendorSearchFocus()">
+                                <div class="vendor-dropdown-list" id="vendor-dropdown-list"></div>
+                            </div>
+                            <select id="vendor_old" onchange="onVendorOldChange()" style="display:none">
                                 <option value="">-- Chọn công ty trước --</option>
                             </select>
                         </div>
@@ -892,9 +913,53 @@
 
     function onVendorSearch() {
         const q = (document.getElementById('vendor_search').value || '').trim().toLowerCase();
-        if (!q) { renderVendorOptions(allVendorsMaster, true); return; }
-        const filtered = (allVendorsMaster || []).filter(v => (v.vendor_name || '').toLowerCase().includes(q));
-        renderVendorOptions(filtered, true);
+        renderVendorDropdown(q);
+    }
+
+    function onVendorSearchFocus() {
+        const q = (document.getElementById('vendor_search').value || '').trim().toLowerCase();
+        renderVendorDropdown(q, true);
+    }
+
+    function renderVendorDropdown(q = '', forceShow = false) {
+        const list = document.getElementById('vendor-dropdown-list');
+        if (!list) return;
+        const source = allVendorsMaster || [];
+        const filtered = q
+            ? source.filter(v => (v.vendor_name || '').toLowerCase().includes(q))
+            : source;
+
+        list.innerHTML = '';
+
+        if (filtered.length === 0) {
+            list.innerHTML = '<div class="vendor-dropdown-empty">Không tìm thấy NCC</div>';
+            list.classList.add('show');
+            return;
+        }
+
+        if (!q && !forceShow) { list.classList.remove('show'); return; }
+
+        filtered.forEach(v => {
+            const item = document.createElement('div');
+            item.className = 'vendor-dropdown-item';
+            const meta = [v.vendor_type, v.tax_id].filter(Boolean).join(' · ');
+            item.innerHTML = `<div class="vdi-name">${v.vendor_name}</div>${meta ? `<div class="vdi-meta">${meta}</div>` : ''}`;
+            item.onmousedown = (e) => {
+                e.preventDefault();
+                selectVendorFromDropdown(v.vendor_name);
+            };
+            list.appendChild(item);
+        });
+
+        list.classList.add('show');
+    }
+
+    function selectVendorFromDropdown(vendorName) {
+        document.getElementById('vendor_search').value = vendorName;
+        document.getElementById('vendor_old').value = vendorName;
+        document.getElementById('vendor-dropdown-list').classList.remove('show');
+        document.getElementById('vendor_new').value = '';
+        applyVendorCombine();
     }
 
     function handleLogout() {
@@ -1163,6 +1228,8 @@
     }
 
     function onVendorOldChange() {
+        const val = document.getElementById('vendor_old').value;
+        if (val) document.getElementById('vendor_search').value = val;
         document.getElementById('vendor_new').value = '';
         applyVendorCombine();
     }
@@ -1212,7 +1279,9 @@
     function clearVendorFields() {
         document.getElementById('vendor_old').innerHTML = '<option value="">-- Chọn NCC --</option>';
         document.getElementById('vendor_new').value = '';
-        if (document.getElementById('vendor_search')) document.getElementById('vendor_search').value = '';
+        document.getElementById('vendor_search').value = '';
+        const list = document.getElementById('vendor-dropdown-list');
+        if (list) { list.innerHTML = ''; list.classList.remove('show'); }
         allVendors = [];
         allVendorsMaster = [];
         document.getElementById('vendor-autofill-row').style.display = 'none';
@@ -1646,6 +1715,12 @@
         if (poInput) {
             poInput.addEventListener('input', () => { poAutoFilled = false; });
         }
+        document.addEventListener('click', (e) => {
+            const combobox = document.getElementById('vendor-combobox');
+            if (combobox && !combobox.contains(e.target)) {
+                document.getElementById('vendor-dropdown-list')?.classList.remove('show');
+            }
+        });
     });
     </script>
 
