@@ -2892,7 +2892,10 @@
                             <p id="profile-role" class="text-slate-500"></p>
                         </div>
                     </div>
-                    <div>
+                    <div class="flex gap-3">
+                        <button onclick="showChangePasswordModal(currentUser && currentUser.email)" class="bg-blue-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-blue-700 transition flex items-center gap-2">
+                            <i class="fas fa-key"></i> Change Password
+                        </button>
                         <button onclick="handleLogout()" class="bg-red-600 text-white px-6 py-3 rounded-lg font-bold hover:bg-red-700 transition flex items-center gap-2">
                             <i class="fas fa-sign-out-alt"></i> Logout
                         </button>
@@ -3569,6 +3572,11 @@
         // ==================== CHANGE PASSWORD ====================
         let _changePasswordEmail = '';
 
+        async function sha256(str) {
+            const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+            return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+        }
+
         function showChangePasswordModal(email) {
             _changePasswordEmail = email || (currentUser && currentUser.email) || '';
             document.getElementById('chpw-current').value = '';
@@ -3623,8 +3631,8 @@
                 const params = new URLSearchParams();
                 params.append('action', 'changePassword');
                 params.append('email', _changePasswordEmail);
-                params.append('currentPassword', currentPw);
-                params.append('newPassword', newPw);
+                params.append('currentPassword', await sha256(currentPw));
+                params.append('newPassword', await sha256(newPw));
 
                 const response = await fetch(INTRANET_BACKEND_URL, {
                     method: 'POST',
@@ -3801,7 +3809,7 @@
                 const params = new URLSearchParams();
                 params.append('action', 'login');
                 params.append('email', email);
-                params.append('password', password);
+                params.append('password', await sha256(password));
                 
                 const response = await fetch(GOOGLE_APPS_SCRIPT_WEB_APP_URL, {
                     method: 'POST',

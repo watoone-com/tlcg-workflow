@@ -327,7 +327,9 @@ function doPost(e) {
     
     switch (normalizedAction) {
       case 'login': return handleLogin_(requestBody);
-      case 'sendApprovalEmail': 
+      case 'login': return handleLogin_(requestBody);
+      case 'changePassword': return handleChangePassword(requestBody);
+      case 'sendApprovalEmail':
         return handleSendEmail(requestBody);
       case 'approveVoucher': return handleApproveVoucher(requestBody);
       case 'rejectVoucher': return handleRejectVoucher(requestBody);
@@ -3139,7 +3141,43 @@ function handleLogin_(requestBody) {
     for (let i = 1; i < data.length; i++) {
       if (data[i][4] == requestBody.email) {
         Logger.log('✅ User found at row ' + (i + 1));
-        return createResponse(true, 'Thành công', { name: data[i][0], email: data[i][4], role: data[i][1] });
+
+        const storedHash  = (data[i][11] || '').toString().trim(); // Column L = SHA-256 hash
+        const storedPlain = (data[i][10] || '').toString().trim(); // Column K = plain text
+        const submittedHash = (requestBody.password || '').toString().trim();
+
+        // No hash in column L yet → migrate from plain text or prompt first-time setup
+        if (!storedHash) {
+          if (!storedPlain) {
+            Logger.log('⚠️ No password set for user, mustChangePassword = true');
+            return createResponse(true, 'Thành công', {
+              name: data[i][0], email: data[i][4], role: data[i][1],
+              department: data[i][2], company: data[i][3], phone: data[i][5],
+              mustChangePassword: true
+            });
+          }
+          // Column K has plain text — verify and migrate to column L
+          const plainHash = hashPassword(storedPlain);
+          if (submittedHash !== plainHash) {
+            Logger.log('❌ Password mismatch (plain-text migration) for: ' + requestBody.email);
+            return createResponse(false, 'Mật khẩu không đúng');
+          }
+          sheet.getRange(i + 1, 12).setValue(plainHash); // Write hash to column L
+          Logger.log('✅ Migrated plain-text password to column L for: ' + data[i][4]);
+        } else {
+          // Normal comparison against column L hash
+          if (submittedHash !== storedHash) {
+            Logger.log('❌ Password mismatch for: ' + requestBody.email);
+            return createResponse(false, 'Mật khẩu không đúng');
+          }
+        }
+
+        Logger.log('✅ Password verified for: ' + requestBody.email);
+        return createResponse(true, 'Thành công', {
+          name: data[i][0], email: data[i][4], role: data[i][1],
+          department: data[i][2], company: data[i][3], phone: data[i][5],
+          mustChangePassword: false
+        });
       }
     }
 
@@ -3149,6 +3187,56 @@ function handleLogin_(requestBody) {
     Logger.log('❌ UNEXPECTED ERROR in handleLogin_: ' + error.toString());
     Logger.log('Error stack: ' + error.stack);
     return createResponse(false, 'Lỗi không mong đợi: ' + error.message + '\n\nVui lòng kiểm tra Apps Script logs để biết chi tiết.');
+  }
+}
+
+/**
+ * SHA-256 hash a string — used for password storage
+ */
+function hashPassword(plaintext) {
+  const bytes = Utilities.computeDigest(
+    Utilities.DigestAlgorithm.SHA_256,
+    plaintext,
+    Utilities.Charset.UTF_8
+  );
+  return bytes.map(b => ('0' + (b & 0xFF).toString(16)).slice(-2)).join('');
+}
+
+/**
+ * Change or set a user's password. Column K (index 10) stores the SHA-256 hash.
+ */
+function handleChangePassword(requestBody) {
+  try {
+    const email       = (requestBody.email           || '').toString().trim();
+    const currentHash = (requestBody.currentPassword || '').toString().trim();
+    const newHash     = (requestBody.newPassword      || '').toString().trim();
+
+    if (!email || !newHash) return createResponse(false, 'Thiếu thông tin bắt buộc');
+
+    const ss    = SpreadsheetApp.openById(USERS_SHEET_ID);
+    const sheet = ss.getSheetByName(EMPLOYEES_SHEET_NAME);
+    if (!sheet) return createResponse(false, 'Không tìm thấy sheet người dùng');
+
+    const data = sheet.getDataRange().getValues();
+    for (let i = 1; i < data.length; i++) {
+      if (data[i][4] == email) {
+        const storedHash = (data[i][11] || '').toString().trim(); // Column L
+
+        // If a hash already exists, verify the current one before allowing change
+        if (storedHash && currentHash !== storedHash) {
+          return createResponse(false, 'Mật khẩu hiện tại không đúng');
+        }
+
+        // Write new hash to column L (index 11 → column 12 in 1-based)
+        sheet.getRange(i + 1, 12).setValue(newHash);
+        Logger.log('✅ Password updated for: ' + email);
+        return createResponse(true, 'Đổi mật khẩu thành công');
+      }
+    }
+    return createResponse(false, 'Tài khoản không tồn tại');
+  } catch (error) {
+    Logger.log('❌ ERROR in handleChangePassword: ' + error.toString());
+    return createResponse(false, 'Lỗi: ' + error.message);
   }
 }
 
