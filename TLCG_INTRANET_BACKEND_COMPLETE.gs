@@ -253,6 +253,18 @@ function doPost(e) {
       case 'changePassword':
         result = handleChangePassword(requestBody);
         break;
+
+      case 'requestPasswordReset':
+        result = handleRequestPasswordReset(requestBody);
+        break;
+
+      case 'verifyOTP':
+        result = handleVerifyOTP(requestBody);
+        break;
+
+      case 'resetPassword':
+        result = handleResetPassword(requestBody);
+        break;
       
       case 'diagnose':
         // Diagnostic endpoint - returns diagnostic information
@@ -547,9 +559,9 @@ function authenticateUser(email, password) {
       return { success: false, message: 'Password is required' };
     }
 
-    // Password is already SHA-256 hashed by the frontend — compare directly
-    const hashedPassword = password.toString().trim();
-    Logger.log('Received hash: ' + hashedPassword.substring(0, 10) + '...');
+    // Frontend sends plain text — backend hashes for comparison
+    const submittedPassword = password.toString().trim();
+    Logger.log('Password received (plain text over HTTPS)');
     
     // Search for user
     for (let i = 1; i < data.length; i++) {
@@ -576,26 +588,34 @@ function authenticateUser(email, password) {
           return { success: false, message: 'Account is inactive' };
         }
         
-        // Check if password column exists and has value
-        if (passwordCol < 0 || !rowPassword || rowPassword.toString().trim() === '') {
-          Logger.log('WARNING: Password not set for user — prompting first-time setup');
+        const colKPassword = (row[10] || '').toString().trim(); // Column K — default plain text
+        const storedHash   = (rowPassword || '').toString().trim(); // Column L — SHA-256 hash
+
+        if (!storedHash) {
+          // Column L empty — check Column K default password
+          if (!colKPassword) {
+            // Both empty — first time, no default set
+            Logger.log('No password set — mustChangePassword');
+            const userName = nameCol >= 0 && row[nameCol] ? row[nameCol].toString().trim() : 'User';
+            const userRole = roleCol >= 0 && row[roleCol] ? row[roleCol].toString().trim() : 'User';
+            return { success: true, data: { name: userName, email: email, role: userRole, mustChangePassword: true } };
+          }
+          // Compare against Column K plain text
+          if (submittedPassword !== colKPassword) {
+            Logger.log('Column K password mismatch');
+            return { success: false, message: 'Invalid email or password' };
+          }
+          // Column K matched — force password change
+          Logger.log('Column K matched — mustChangePassword');
           const userName = nameCol >= 0 && row[nameCol] ? row[nameCol].toString().trim() : 'User';
           const userRole = roleCol >= 0 && row[roleCol] ? row[roleCol].toString().trim() : 'User';
-          return {
-            success: true,
-            message: 'First login — please set a password',
-            data: {
-              name: userName, email: email, role: userRole,
-              mustChangePassword: true
-            }
-          };
+          return { success: true, data: { name: userName, email: email, role: userRole, mustChangePassword: true } };
         }
-        
-        // Trim and compare password (compare hashed)
-        const storedPassword = rowPassword.toString().trim();
-        Logger.log('Comparing passwords - Stored: ' + storedPassword.substring(0, 20) + '... vs Hashed: ' + hashedPassword.substring(0, 20) + '...');
-        
-        if (storedPassword === hashedPassword) {
+
+        // Column L has hash — normal login
+        const hashedSubmitted = hashPassword(submittedPassword);
+        Logger.log('Comparing hashes...');
+        if (hashedSubmitted === storedHash) {
           Logger.log('Password match! Authentication successful');
           
           // Extract user data with logging
@@ -653,7 +673,7 @@ function authenticateUser(email, password) {
           };
         } else {
           Logger.log('Password mismatch');
-          return { success: false, message: 'Invalid password' };
+          return { success: false, message: 'Invalid email or password' };
         }
       }
     }
@@ -720,6 +740,200 @@ function hashPassword(password) {
 }
 
 /**
+ * Validate password against security rules
+ */
+function validatePasswordRules(password) {
+  if (!password || password.length < 8)
+    return { valid: false, message: 'Mật khẩu phải có ít nhất 8 ký tự' };
+  if (!/[A-Z]/.test(password))
+    return { valid: false, message: 'Mật khẩu phải có ít nhất 1 chữ hoa' };
+  if (!/[0-9]/.test(password))
+    return { valid: false, message: 'Mật khẩu phải có ít nhất 1 số' };
+  if (!/[!@#$%^&*()_+\-=\[\]{};\':"\\|,.<>\/?]/.test(password))
+    return { valid: false, message: 'Mật khẩu phải có ít nhất 1 ký tự đặc biệt (!@#$%^&*)' };
+  return { valid: true };
+}
+
+/**
+ * Generate a random 6-digit OTP
+ */
+function generateOTP() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
+}
+
+/**
+ * Request password reset — send OTP to user email
+ */
+function handleRequestPasswordReset(requestBody) {
+  try {
+    const email = (requestBody.email || '').toString().trim().toLowerCase();
+    if (!email) return createResponse(false, 'Email is required');
+
+    // Always return same message to prevent user enumeration
+    const genericMsg = 'Nếu email tồn tại trong hệ thống, mã OTP đã được gửi.';
+
+    const spreadsheet = safeOpenSpreadsheet(USERS_SHEET_ID, 'handleRequestPasswordReset');
+    const sheet = safeGetSheet(spreadsheet, USERS_SHEET_NAME, 'handleRequestPasswordReset');
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    let emailCol = headers.indexOf('Email');
+    if (emailCol === -1) emailCol = 4;
+    let statusCol = headers.indexOf('Status');
+    if (statusCol === -1) statusCol = 6;
+    let nameCol = headers.indexOf('Họ và tên');
+    if (nameCol === -1) nameCol = 0;
+
+    let userEmail = null;
+    let userName = '';
+    for (let i = 1; i < data.length; i++) {
+      const rowEmail = (data[i][emailCol] || '').toString().trim().toLowerCase();
+      const rowStatus = (data[i][statusCol] || '').toString().toLowerCase();
+      if (rowEmail === email && rowStatus === 'active') {
+        userEmail = data[i][emailCol].toString().trim();
+        userName  = (data[i][nameCol] || '').toString().trim();
+        break;
+      }
+    }
+
+    if (!userEmail) {
+      Logger.log('Password reset requested for unknown email: ' + email);
+      return createResponse(true, genericMsg); // Don't reveal email not found
+    }
+
+    // Check rate limit — max 3 OTP requests per 30 min
+    const cache = CacheService.getScriptCache();
+    const rateLimitKey = 'otp_rate_' + email;
+    const attempts = parseInt(cache.get(rateLimitKey) || '0');
+    if (attempts >= 3) {
+      Logger.log('OTP rate limit hit for: ' + email);
+      return createResponse(false, 'Quá nhiều yêu cầu. Vui lòng thử lại sau 30 phút.');
+    }
+
+    // Generate OTP and store with 10 min expiry
+    const otp = generateOTP();
+    cache.put('otp_' + email, otp, 600); // 10 minutes
+    cache.put('otp_attempts_' + email, '0', 600);
+    cache.put(rateLimitKey, (attempts + 1).toString(), 1800); // 30 min window
+
+    // Send OTP email
+    const subject = '[TLCGroup] Mã xác nhận đặt lại mật khẩu';
+    const body = `
+      <div style="font-family: Arial, sans-serif; max-width: 500px; margin: 0 auto;">
+        <div style="background: #007AFF; color: white; padding: 20px; border-radius: 8px 8px 0 0;">
+          <h2 style="margin:0;">🔐 Đặt lại mật khẩu</h2>
+        </div>
+        <div style="background: white; padding: 24px; border: 1px solid #eee; border-top: none; border-radius: 0 0 8px 8px;">
+          <p>Xin chào <b>${userName}</b>,</p>
+          <p>Mã OTP của bạn là:</p>
+          <div style="font-size: 36px; font-weight: 700; letter-spacing: 8px; text-align: center; color: #007AFF; background: #F2F2F7; padding: 16px; border-radius: 8px; margin: 16px 0;">
+            ${otp}
+          </div>
+          <p style="color: #666; font-size: 13px;">Mã có hiệu lực trong <b>10 phút</b>. Không chia sẻ mã này với ai.</p>
+          <p style="color: #666; font-size: 13px;">Nếu bạn không yêu cầu đặt lại mật khẩu, hãy bỏ qua email này.</p>
+        </div>
+      </div>`;
+
+    GmailApp.sendEmail(userEmail, subject, '', { htmlBody: body });
+    Logger.log('OTP sent to: ' + userEmail);
+    return createResponse(true, genericMsg);
+  } catch (error) {
+    Logger.log('Error in handleRequestPasswordReset: ' + error.toString());
+    return createResponse(false, 'Lỗi: ' + error.message);
+  }
+}
+
+/**
+ * Verify OTP — return a one-time reset token on success
+ */
+function handleVerifyOTP(requestBody) {
+  try {
+    const email = (requestBody.email || '').toString().trim().toLowerCase();
+    const otp   = (requestBody.otp   || '').toString().trim();
+    if (!email || !otp) return createResponse(false, 'Email và mã OTP là bắt buộc');
+
+    const cache = CacheService.getScriptCache();
+
+    // Check OTP attempt rate
+    const attemptsKey = 'otp_attempts_' + email;
+    const attempts = parseInt(cache.get(attemptsKey) || '0');
+    if (attempts >= 3) {
+      return createResponse(false, 'Quá nhiều lần thử. Vui lòng yêu cầu mã mới.');
+    }
+
+    const storedOTP = cache.get('otp_' + email);
+    if (!storedOTP) {
+      return createResponse(false, 'Mã OTP đã hết hạn. Vui lòng yêu cầu mã mới.');
+    }
+    if (otp !== storedOTP) {
+      cache.put(attemptsKey, (attempts + 1).toString(), 600);
+      Logger.log('OTP mismatch for: ' + email);
+      return createResponse(false, 'Mã OTP không đúng.');
+    }
+
+    // OTP valid — generate one-time reset token (valid 5 min), invalidate OTP
+    const resetToken = Utilities.getUuid().replace(/-/g, '');
+    cache.put('reset_token_' + email, resetToken, 300); // 5 minutes
+    cache.remove('otp_' + email);
+    cache.remove(attemptsKey);
+
+    Logger.log('OTP verified for: ' + email);
+    return createResponse(true, 'OTP hợp lệ', { resetToken: resetToken });
+  } catch (error) {
+    Logger.log('Error in handleVerifyOTP: ' + error.toString());
+    return createResponse(false, 'Lỗi: ' + error.message);
+  }
+}
+
+/**
+ * Reset password using one-time token
+ */
+function handleResetPassword(requestBody) {
+  try {
+    const email      = (requestBody.email      || '').toString().trim().toLowerCase();
+    const resetToken = (requestBody.resetToken || '').toString().trim();
+    const newPassword = (requestBody.newPassword || '').toString();
+    if (!email || !resetToken || !newPassword) return createResponse(false, 'Thiếu thông tin bắt buộc');
+
+    // Validate password rules
+    const pwValidation = validatePasswordRules(newPassword);
+    if (!pwValidation.valid) return createResponse(false, pwValidation.message);
+
+    // Verify reset token
+    const cache = CacheService.getScriptCache();
+    const storedToken = cache.get('reset_token_' + email);
+    if (!storedToken || storedToken !== resetToken) {
+      return createResponse(false, 'Token không hợp lệ hoặc đã hết hạn. Vui lòng thử lại.');
+    }
+
+    // Update password in sheet
+    const spreadsheet = safeOpenSpreadsheet(USERS_SHEET_ID, 'handleResetPassword');
+    const sheet = safeGetSheet(spreadsheet, USERS_SHEET_NAME, 'handleResetPassword');
+    const data = sheet.getDataRange().getValues();
+    const headers = data[0];
+    let emailCol = headers.indexOf('Email');
+    if (emailCol === -1) emailCol = 4;
+    const colK = 10;
+    const colL = 11;
+    const mustChangeCol = headers.indexOf('mustChangePassword');
+
+    for (let i = 1; i < data.length; i++) {
+      if ((data[i][emailCol] || '').toString().trim().toLowerCase() === email) {
+        sheet.getRange(i + 1, colL + 1).setValue(hashPassword(newPassword));
+        sheet.getRange(i + 1, colK + 1).setValue('');
+        if (mustChangeCol >= 0) sheet.getRange(i + 1, mustChangeCol + 1).setValue(false);
+        cache.remove('reset_token_' + email);
+        Logger.log('Password reset successfully for: ' + email);
+        return createResponse(true, 'Đặt lại mật khẩu thành công');
+      }
+    }
+    return createResponse(false, 'User not found');
+  } catch (error) {
+    Logger.log('Error in handleResetPassword: ' + error.toString());
+    return createResponse(false, 'Lỗi: ' + error.message);
+  }
+}
+
+/**
  * Handle login request from frontend
  */
 function handleLogin(requestBody) {
@@ -751,7 +965,7 @@ function handleLogin(requestBody) {
     
     if (authResult.success) {
       Logger.log('Login successful for: ' + email);
-      return createResponse(true, 'Login successful', authResult.user);
+      return createResponse(true, 'Login successful', authResult.user || authResult.data);
     } else {
       Logger.log('Login failed: ' + authResult.message);
       return createResponse(false, authResult.message || 'Invalid credentials');
@@ -909,6 +1123,12 @@ function handleChangePassword(requestBody) {
       return createResponse(false, 'Email, current password, and new password are required');
     }
 
+    // Validate new password rules
+    const pwValidation = validatePasswordRules(newPassword);
+    if (!pwValidation.valid) {
+      return createResponse(false, pwValidation.message);
+    }
+
     const spreadsheet = safeOpenSpreadsheet(USERS_SHEET_ID, 'handleChangePassword');
     let sheet;
     try {
@@ -922,27 +1142,43 @@ function handleChangePassword(requestBody) {
     let emailCol = headers.indexOf('Email');
     if (emailCol === -1) emailCol = headers.indexOf('email');
     if (emailCol === -1) emailCol = 4;
-    const passwordCol   = 11; // Column L — SHA-256 hash
+    const colK         = 10; // Column K — default plain text password
+    const passwordCol  = 11; // Column L — SHA-256 hash
     const mustChangeCol = headers.indexOf('mustChangePassword');
 
     for (let i = 1; i < data.length; i++) {
       if (data[i][emailCol] && data[i][emailCol].toString().toLowerCase() === email.toLowerCase()) {
-        const storedHash = (data[i][passwordCol] || '').toString().trim();
+        const storedHash    = (data[i][passwordCol] || '').toString().trim();
+        const colKPlainText = (data[i][colK]         || '').toString().trim();
 
-        // currentPassword is already SHA-256 hashed by the frontend
-        // If no password set yet (first login), skip current password check
-        if (storedHash && currentPassword.trim() !== storedHash) {
-          Logger.log('Current password mismatch for: ' + email);
-          return createResponse(false, 'Mật khẩu hiện tại không đúng');
+        if (storedHash) {
+          // Normal change — verify current password against Column L hash
+          if (hashPassword(currentPassword) !== storedHash) {
+            Logger.log('Current password mismatch for: ' + email);
+            return createResponse(false, 'Mật khẩu hiện tại không đúng');
+          }
+        } else if (colKPlainText) {
+          // First login — verify current password against Column K plain text
+          if (currentPassword !== colKPlainText) {
+            Logger.log('Column K mismatch for: ' + email);
+            return createResponse(false, 'Mật khẩu hiện tại không đúng');
+          }
+          // Prevent setting same password as default
+          if (newPassword === colKPlainText) {
+            return createResponse(false, 'Mật khẩu mới không được trùng mật khẩu mặc định');
+          }
         }
 
-        // newPassword is already SHA-256 hashed by the frontend — store directly
-        sheet.getRange(i + 1, passwordCol + 1).setValue(newPassword.trim());
-        if (mustChangeCol >= 0) {
-          sheet.getRange(i + 1, mustChangeCol + 1).setValue(false);
-        }
+        // Hash new password and store in Column L
+        const newHash = hashPassword(newPassword);
+        sheet.getRange(i + 1, passwordCol + 1).setValue(newHash);
+        // Clear Column K default password
+        sheet.getRange(i + 1, colK + 1).setValue('');
+        // Clear mustChangePassword flag
+        if (mustChangeCol >= 0) sheet.getRange(i + 1, mustChangeCol + 1).setValue(false);
+
         Logger.log('Password changed successfully for: ' + email);
-        return createResponse(true, 'Password changed successfully');
+        return createResponse(true, 'Đổi mật khẩu thành công');
       }
     }
 
