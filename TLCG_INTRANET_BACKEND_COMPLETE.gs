@@ -477,69 +477,21 @@ function authenticateUser(email, password) {
     Logger.log('Sheet headers: ' + JSON.stringify(headers));
     Logger.log('Total columns: ' + headers.length);
     
-    // Find columns by header name first, then by position
-    let emailCol = headers.indexOf('Email');
-    if (emailCol === -1) emailCol = headers.indexOf('email');
-    if (emailCol === -1) emailCol = 4; // Column E (0-indexed = 4)
-    
-    // Find password column - explicitly use Column L (index 11) for hashed password
-    // Column K (index 10) contains "Login_password" which is NOT the password field
-    // Column L (index 11) contains "Password" which is the SHA-256 hashed password
-    let passwordCol = headers.indexOf('Password');
-    if (passwordCol === -1) passwordCol = headers.indexOf('password');
-    // Always default to Column L (index 11) where password hash is stored
-    if (passwordCol === -1) {
-      passwordCol = 11; // Column L - this is where the hashed password is stored
-      Logger.log('Using Column L (index 11) for password hash');
-    }
-    
-    // Verify we're using Column L
-    if (passwordCol !== 11) {
-      Logger.log('WARNING: Password column is not Column L (index 11). Current: ' + passwordCol + '. Forcing to Column L.');
-      passwordCol = 11; // Force to Column L
-    }
-    
-    let nameCol = headers.indexOf('Họ và tên');
-    if (nameCol === -1) nameCol = headers.indexOf('name');
-    if (nameCol === -1) nameCol = 0; // Column A
-    
-    // Find role column - try "Chức vụ" first (Column B), then "Role" (Column I)
-    let roleCol = headers.indexOf('Chức vụ');
-    if (roleCol === -1) roleCol = headers.indexOf('Role');
-    if (roleCol === -1) roleCol = headers.indexOf('role');
-    if (roleCol === -1) roleCol = 1; // Default to Column B (Chức vụ)
-    
-    let isAdminCol = headers.indexOf('isAdmin');
-    if (isAdminCol === -1) isAdminCol = headers.indexOf('IsAdmin');
-    if (isAdminCol === -1) isAdminCol = 9; // Column J
-    
-    // Find EmployeeId column - try multiple header names
-    let employeeIdCol = headers.indexOf('EmployeeId');
-    if (employeeIdCol === -1) employeeIdCol = headers.indexOf('employeeId');
-    if (employeeIdCol === -1) employeeIdCol = headers.indexOf('Employee ID');
-    if (employeeIdCol === -1) employeeIdCol = headers.indexOf('employee id');
-    if (employeeIdCol === -1) employeeIdCol = headers.indexOf('Mã nhân viên');
-    if (employeeIdCol === -1) employeeIdCol = 7; // Default to Column H (0-indexed = 7)
-    
-    Logger.log('EmployeeId column: ' + employeeIdCol + ' (header: ' + (headers[employeeIdCol] || 'N/A') + ')');
-    
-    let departmentCol = headers.indexOf('Phòng ban');
-    if (departmentCol === -1) departmentCol = headers.indexOf('department');
-    if (departmentCol === -1) departmentCol = 2; // Column C
-    
-    let companyCol = headers.indexOf('Công ty');
-    if (companyCol === -1) companyCol = headers.indexOf('company');
-    if (companyCol === -1) companyCol = 3; // Column D
-    
-    let phoneCol = headers.indexOf('Điện thoại');
-    if (phoneCol === -1) phoneCol = headers.indexOf('phone');
-    if (phoneCol === -1) phoneCol = 5; // Column F
-    
-    let statusCol = headers.indexOf('Status');
-    if (statusCol === -1) statusCol = headers.indexOf('status');
-    if (statusCol === -1) statusCol = 6; // Column G
+    // Find columns by header name (supports both English snake_case and Vietnamese)
+    const h = headers;
+    const findCol = (...names) => { for (const n of names) { const i = h.indexOf(n); if (i >= 0) return i; } return -1; };
 
-    const mustChangeCol = headers.indexOf('mustChangePassword'); // Column M (optional)
+    const emailCol      = findCol('employee_email', 'Email', 'email') !== -1 ? findCol('employee_email', 'Email', 'email') : 4;
+    const nameCol       = findCol('full_name', 'Họ và tên', 'name') !== -1 ? findCol('full_name', 'Họ và tên', 'name') : 0;
+    const roleCol       = findCol('position', 'Chức vụ', 'Role', 'role', 'employee_role') !== -1 ? findCol('position', 'Chức vụ', 'Role', 'role', 'employee_role') : 1;
+    const isAdminCol    = findCol('isAdmin', 'IsAdmin') !== -1 ? findCol('isAdmin', 'IsAdmin') : 9;
+    const employeeIdCol = findCol('employee_id', 'EmployeeId', 'employeeId', 'Employee ID', 'Mã nhân viên') !== -1 ? findCol('employee_id', 'EmployeeId', 'employeeId', 'Employee ID', 'Mã nhân viên') : 7;
+    const departmentCol = findCol('department_name', 'Phòng ban', 'department') !== -1 ? findCol('department_name', 'Phòng ban', 'department') : 2;
+    const companyCol    = findCol('company_name', 'Công ty', 'company') !== -1 ? findCol('company_name', 'Công ty', 'company') : 3;
+    const phoneCol      = findCol('employee_phone', 'Điện thoại', 'phone') !== -1 ? findCol('employee_phone', 'Điện thoại', 'phone') : 5;
+    const statusCol     = findCol('employee_status', 'Status', 'status') !== -1 ? findCol('employee_status', 'Status', 'status') : 6;
+    const passwordCol   = 11; // Column L — always fixed
+    const mustChangeCol = findCol('mustChangePassword');
 
     Logger.log('Column mapping:');
     Logger.log('Email: ' + emailCol + ' (header: ' + (headers[emailCol] || 'N/A') + ')');
@@ -580,7 +532,7 @@ function authenticateUser(email, password) {
       if (rowEmail.toString().toLowerCase().trim() === email.toLowerCase().trim()) {
         Logger.log('Found user: ' + rowEmail);
         Logger.log('Row password (raw): ' + (rowPassword ? rowPassword.toString().substring(0, 20) + '...' : 'EMPTY'));
-        Logger.log('Hashed password (input): ' + hashedPassword.substring(0, 20) + '...');
+        Logger.log('Submitted password received (plain text over HTTPS)');
         
         // Check status
         if (rowStatus && rowStatus.toString().toLowerCase() !== 'active') {
@@ -594,22 +546,15 @@ function authenticateUser(email, password) {
         if (!storedHash) {
           // Column L empty — check Column K default password
           if (!colKPassword) {
-            // Both empty — first time, no default set
             Logger.log('No password set — mustChangePassword');
-            const userName = nameCol >= 0 && row[nameCol] ? row[nameCol].toString().trim() : 'User';
-            const userRole = roleCol >= 0 && row[roleCol] ? row[roleCol].toString().trim() : 'User';
-            return { success: true, data: { name: userName, email: email, role: userRole, mustChangePassword: true } };
-          }
-          // Compare against Column K plain text
-          if (submittedPassword !== colKPassword) {
+          } else if (submittedPassword !== colKPassword) {
             Logger.log('Column K password mismatch');
             return { success: false, message: 'Invalid email or password' };
+          } else {
+            Logger.log('Column K matched — mustChangePassword');
           }
-          // Column K matched — force password change
-          Logger.log('Column K matched — mustChangePassword');
-          const userName = nameCol >= 0 && row[nameCol] ? row[nameCol].toString().trim() : 'User';
-          const userRole = roleCol >= 0 && row[roleCol] ? row[roleCol].toString().trim() : 'User';
-          return { success: true, data: { name: userName, email: email, role: userRole, mustChangePassword: true } };
+          // Return full user data so profile page is populated correctly
+          return { success: true, data: buildUserData(row, email, nameCol, roleCol, isAdminCol, employeeIdCol, departmentCol, companyCol, phoneCol, mustChangeCol, true) };
         }
 
         // Column L has hash — normal login
@@ -617,64 +562,15 @@ function authenticateUser(email, password) {
         Logger.log('Comparing hashes...');
         if (hashedSubmitted === storedHash) {
           Logger.log('Password match! Authentication successful');
-          
-          // Extract user data with logging
-          const userName = nameCol >= 0 && row[nameCol] ? row[nameCol].toString().trim() : 'User';
-          const userRole = roleCol >= 0 && row[roleCol] ? row[roleCol].toString().trim() : 'User';
-          
-          // Extract EmployeeId - check if column exists and has value
-          let userEmployeeId = '';
-          if (employeeIdCol >= 0 && employeeIdCol < row.length) {
-            const employeeIdValue = row[employeeIdCol];
-            if (employeeIdValue !== null && employeeIdValue !== undefined && employeeIdValue !== '') {
-              userEmployeeId = employeeIdValue.toString().trim();
-            }
-          }
-          
-          const userDepartment = departmentCol >= 0 && row[departmentCol] ? row[departmentCol].toString().trim() : '';
-          
-          // Get company - try from companyCol first, then fallback to column D
-          let userCompany = '';
-          if (companyCol >= 0 && row[companyCol]) {
-            userCompany = row[companyCol].toString().trim();
-          } else {
-            userCompany = row[3] ? row[3].toString().trim() : ''; // Fallback to Column D (0-indexed = 3)
-          }
-          
-          const userPhone = phoneCol >= 0 && row[phoneCol] ? row[phoneCol].toString().trim() : '';
-          
-          Logger.log('User data extracted:');
-          Logger.log('Name column: ' + nameCol + ', Value: ' + userName);
-          Logger.log('Role column: ' + roleCol + ', Value: ' + userRole);
-          Logger.log('EmployeeId column: ' + employeeIdCol + ', Raw value: ' + (employeeIdCol >= 0 && employeeIdCol < row.length ? row[employeeIdCol] : 'N/A') + ', Processed: ' + userEmployeeId);
-          Logger.log('Department column: ' + departmentCol + ', Value: ' + userDepartment);
-          Logger.log('Company column: ' + companyCol + ', Value: ' + userCompany);
-          Logger.log('Phone column: ' + phoneCol + ', Value: ' + userPhone);
-          Logger.log('Row length: ' + row.length + ', All row values: ' + JSON.stringify(row));
-          
-          // Return user data (DO NOT include password - security)
-          const mustChange = mustChangeCol >= 0
-            ? (row[mustChangeCol] === true || row[mustChangeCol] === 'TRUE' || row[mustChangeCol] === 'true')
-            : false;
           return {
             success: true,
-            user: {
-              email: rowEmail.toString().trim(),
-              name: userName,
-              role: userRole,
-              isAdmin: isAdminCol >= 0 ? (row[isAdminCol] === true || row[isAdminCol] === 'TRUE' || row[isAdminCol] === 'true' || row[isAdminCol] === 'True') : false,
-              employeeId: userEmployeeId,
-              department: userDepartment,
-              company: userCompany,
-              phone: userPhone,
-              mustChangePassword: mustChange
-              // Password hash is NOT included for security
-            }
+            user: buildUserData(row, rowEmail.toString().trim(), nameCol, roleCol, isAdminCol, employeeIdCol, departmentCol, companyCol, phoneCol, mustChangeCol, false)
           };
         } else {
           Logger.log('Password mismatch');
           return { success: false, message: 'Invalid email or password' };
         }
+
       }
     }
     
@@ -740,6 +636,37 @@ function hashPassword(password) {
 }
 
 /**
+ * Build full user data object from a sheet row — used by authenticateUser
+ */
+function buildUserData(row, email, nameCol, roleCol, isAdminCol, employeeIdCol, departmentCol, companyCol, phoneCol, mustChangeCol, mustChangePassword) {
+  const userName = nameCol >= 0 && row[nameCol] ? row[nameCol].toString().trim() : 'User';
+  const userRole = roleCol >= 0 && row[roleCol] ? row[roleCol].toString().trim() : 'User';
+
+  let userEmployeeId = '';
+  if (employeeIdCol >= 0 && employeeIdCol < row.length && row[employeeIdCol] !== null && row[employeeIdCol] !== '') {
+    userEmployeeId = row[employeeIdCol].toString().trim();
+  }
+
+  const userDepartment = departmentCol >= 0 && row[departmentCol] ? row[departmentCol].toString().trim() : '';
+  const userCompany    = (companyCol >= 0 && row[companyCol]) ? row[companyCol].toString().trim() : (row[3] ? row[3].toString().trim() : '');
+  const userPhone      = phoneCol >= 0 && row[phoneCol] ? row[phoneCol].toString().trim() : '';
+  const userIsAdmin    = isAdminCol >= 0 ? (row[isAdminCol] === true || row[isAdminCol] === 'TRUE' || row[isAdminCol] === 'true' || row[isAdminCol] === 'True') : false;
+  const mustChange     = mustChangePassword || (mustChangeCol >= 0 && (row[mustChangeCol] === true || row[mustChangeCol] === 'TRUE' || row[mustChangeCol] === 'true'));
+
+  return {
+    email:             email,
+    name:              userName,
+    role:              userRole,
+    isAdmin:           userIsAdmin,
+    employeeId:        userEmployeeId,
+    department:        userDepartment,
+    company:           userCompany,
+    phone:             userPhone,
+    mustChangePassword: mustChange
+  };
+}
+
+/**
  * Validate password against security rules
  */
 function validatePasswordRules(password) {
@@ -776,12 +703,10 @@ function handleRequestPasswordReset(requestBody) {
     const sheet = safeGetSheet(spreadsheet, USERS_SHEET_NAME, 'handleRequestPasswordReset');
     const data = sheet.getDataRange().getValues();
     const headers = data[0];
-    let emailCol = headers.indexOf('Email');
-    if (emailCol === -1) emailCol = 4;
-    let statusCol = headers.indexOf('Status');
-    if (statusCol === -1) statusCol = 6;
-    let nameCol = headers.indexOf('Họ và tên');
-    if (nameCol === -1) nameCol = 0;
+    const findCol2 = (...names) => { for (const n of names) { const i = headers.indexOf(n); if (i >= 0) return i; } return -1; };
+    const emailCol  = findCol2('employee_email', 'Email', 'email') !== -1 ? findCol2('employee_email', 'Email', 'email') : 4;
+    const statusCol = findCol2('employee_status', 'Status', 'status') !== -1 ? findCol2('employee_status', 'Status', 'status') : 6;
+    const nameCol   = findCol2('full_name', 'Họ và tên', 'name') !== -1 ? findCol2('full_name', 'Họ và tên', 'name') : 0;
 
     let userEmail = null;
     let userName = '';
@@ -796,9 +721,12 @@ function handleRequestPasswordReset(requestBody) {
     }
 
     if (!userEmail) {
-      Logger.log('Password reset requested for unknown email: ' + email);
+      Logger.log('❌ Password reset — email not found or inactive: ' + email);
+      Logger.log('Total rows searched: ' + (data.length - 1));
+      Logger.log('Email col used: ' + emailCol + ', Status col used: ' + statusCol);
       return createResponse(true, genericMsg); // Don't reveal email not found
     }
+    Logger.log('✅ User found for OTP: ' + userEmail);
 
     // Check rate limit — max 3 OTP requests per 30 min
     const cache = CacheService.getScriptCache();
@@ -833,7 +761,7 @@ function handleRequestPasswordReset(requestBody) {
         </div>
       </div>`;
 
-    GmailApp.sendEmail(userEmail, subject, '', { htmlBody: body });
+    MailApp.sendEmail({ to: userEmail, subject: subject, htmlBody: body });
     Logger.log('OTP sent to: ' + userEmail);
     return createResponse(true, genericMsg);
   } catch (error) {
@@ -1660,6 +1588,25 @@ function createResponse(success, message, data) {
 // ============================================================================
 // TEST FUNCTIONS
 // ============================================================================
+
+/**
+ * Test email authorization — run this once to grant MailApp access
+ * Replace the email below with your own before running
+ */
+function testGmailAccess() {
+  try {
+    MailApp.sendEmail({
+      to: Session.getActiveUser().getEmail(),
+      subject: '[TLCGroup] Test email authorization',
+      body: 'Email authorization is working correctly.'
+    });
+    Logger.log('✅ MailApp authorized and test email sent to: ' + Session.getActiveUser().getEmail());
+    return { success: true };
+  } catch (e) {
+    Logger.log('❌ MailApp not authorized: ' + e.message);
+    return { success: false, error: e.message };
+  }
+}
 
 /**
  * Test function - để test hash password
