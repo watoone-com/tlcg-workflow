@@ -150,8 +150,9 @@ export default async function handler(req, res) {
   
   console.log('[Proxy] Final extracted action:', action);
   
-  // Route login and getMasterData to TLCGroup Backend (TLCG_INTRANET_BACKEND_COMPLETE.gs)
-  if (action === 'login' || action === 'getMasterData') {
+  // Route intranet actions to TLCGroup Backend (TLCG_INTRANET_BACKEND_COMPLETE.gs)
+  const intranetActions = ['login', 'getMasterData', 'changePassword', 'requestPasswordReset', 'verifyOTP', 'resetPassword'];
+  if (intranetActions.includes(action)) {
     GAS_URL = TLCGROUP_BACKEND;
     console.log('[Proxy] Routing ' + action + ' to TLCGroup Backend');
   }
