@@ -199,6 +199,43 @@
             box-shadow: 0 4px 16px rgba(0,0,0,0.13); z-index: 200;
         }
         .vendor-dropdown-list.show { display: block; }
+
+        /* ── Vendor / Bank summary cards ───────────────────────────── */
+        .vendor-summary-card {
+            display: none;
+            background: rgba(52,199,89,0.06); border: 1px solid rgba(52,199,89,0.25);
+            border-radius: 10px; padding: 12px 14px; margin-top: 8px;
+        }
+        .vendor-summary-card.show { display: flex; align-items: flex-start; gap: 10px; }
+        .vendor-summary-card .vsc-icon {
+            width: 32px; height: 32px; border-radius: 8px;
+            background: rgba(52,199,89,0.15); display: flex; align-items: center;
+            justify-content: center; flex-shrink: 0;
+        }
+        .vendor-summary-card .vsc-body { flex: 1; min-width: 0; }
+        .vendor-summary-card .vsc-name { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+        .vendor-summary-card .vsc-meta { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+        .vendor-summary-card .vsc-clear {
+            background: none; border: none; color: var(--text-secondary);
+            cursor: pointer; font-size: 16px; padding: 0; flex-shrink: 0;
+            line-height: 1; transition: color 0.15s;
+        }
+        .vendor-summary-card .vsc-clear:hover { color: var(--error); transform: none; }
+
+        .bank-summary-card {
+            display: none;
+            background: rgba(0,122,255,0.05); border: 1px solid rgba(0,122,255,0.18);
+            border-radius: 10px; padding: 12px 14px; margin-top: 8px;
+        }
+        .bank-summary-card.show { display: flex; align-items: center; gap: 10px; }
+        .bank-summary-card .bsc-icon {
+            width: 32px; height: 32px; border-radius: 8px;
+            background: rgba(0,122,255,0.12); display: flex; align-items: center;
+            justify-content: center; flex-shrink: 0;
+        }
+        .bank-summary-card .bsc-body { flex: 1; min-width: 0; }
+        .bank-summary-card .bsc-bank { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+        .bank-summary-card .bsc-meta { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
         .vendor-dropdown-item {
             padding: 9px 12px; cursor: pointer; font-size: 14px; color: var(--text-primary);
             transition: background 0.12s;
@@ -606,23 +643,20 @@
                             <input type="text" id="vendor_new" placeholder="Tên NCC nếu không có trong DS" oninput="onVendorNewInput()">
                         </div>
                     </div>
-                    <div class="form-row" id="vendor-autofill-row" style="display: none;">
-                        <div class="form-group">
-                            <label for="vendor_final_name">Tên NCC xác nhận</label>
-                            <input type="text" id="vendor_final_name" readonly>
+                    <!-- Hidden inputs keep values for submit payload -->
+                    <input type="hidden" id="vendor_final_name">
+                    <input type="hidden" id="vendor_type_final">
+                    <input type="hidden" id="vendor_taxid_final">
+                    <input type="hidden" id="vendor_address_final">
+
+                    <!-- Vendor summary card -->
+                    <div class="vendor-summary-card" id="vendor-summary-card">
+                        <div class="vsc-icon"><i class="fas fa-check" style="color: #34C759; font-size: 14px;"></i></div>
+                        <div class="vsc-body">
+                            <div class="vsc-name" id="vsc-name"></div>
+                            <div class="vsc-meta" id="vsc-meta"></div>
                         </div>
-                        <div class="form-group">
-                            <label for="vendor_type_final">Loại NCC</label>
-                            <input type="text" id="vendor_type_final" readonly>
-                        </div>
-                        <div class="form-group">
-                            <label for="vendor_taxid_final">MST / CCCD NCC</label>
-                            <input type="text" id="vendor_taxid_final" readonly>
-                        </div>
-                        <div class="form-group w2">
-                            <label for="vendor_address_final">Địa chỉ NCC</label>
-                            <input type="text" id="vendor_address_final" readonly>
-                        </div>
+                        <button class="vsc-clear" onclick="clearVendorFields()" title="Xóa NCC">×</button>
                     </div>
 
                     <!-- Bank info -->
@@ -636,18 +670,17 @@
                                 </select>
                             </div>
                         </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label for="vendor_account_name">Tên tài khoản</label>
-                                <input type="text" id="vendor_account_name" readonly placeholder="Tự động điền">
-                            </div>
-                            <div class="form-group">
-                                <label for="vendor_account_no">Số tài khoản</label>
-                                <input type="text" id="vendor_account_no" readonly placeholder="Tự động điền">
-                            </div>
-                            <div class="form-group">
-                                <label for="vendor_bank_name">Ngân hàng</label>
-                                <input type="text" id="vendor_bank_name" readonly placeholder="Tự động điền">
+                        <!-- Hidden inputs keep values for submit payload -->
+                        <input type="hidden" id="vendor_account_name">
+                        <input type="hidden" id="vendor_account_no">
+                        <input type="hidden" id="vendor_bank_name">
+
+                        <!-- Bank summary card -->
+                        <div class="bank-summary-card" id="bank-summary-card">
+                            <div class="bsc-icon"><i class="fas fa-university" style="color: #007AFF; font-size: 13px;"></i></div>
+                            <div class="bsc-body">
+                                <div class="bsc-bank" id="bsc-bank"></div>
+                                <div class="bsc-meta" id="bsc-meta"></div>
                             </div>
                         </div>
                         <div class="form-row">
@@ -1245,14 +1278,13 @@
     function applyVendorCombine() {
         const newVal = document.getElementById('vendor_new').value.trim();
         const oldVal = document.getElementById('vendor_old').value;
-        const row    = document.getElementById('vendor-autofill-row');
 
         if (newVal) {
             document.getElementById('vendor_final_name').value    = newVal;
             document.getElementById('vendor_type_final').value    = '';
             document.getElementById('vendor_taxid_final').value   = '';
             document.getElementById('vendor_address_final').value = '';
-            row.style.display = '';
+            renderVendorCard(newVal, '', '', '');
             loadVendorBanks(newVal);
         } else if (oldVal) {
             const v = allVendors.find(x => x.vendor_name === oldVal);
@@ -1260,12 +1292,20 @@
             document.getElementById('vendor_type_final').value    = v?.vendor_type  || '';
             document.getElementById('vendor_taxid_final').value   = v?.tax_id       || '';
             document.getElementById('vendor_address_final').value = v?.address      || '';
-            row.style.display = '';
+            renderVendorCard(v?.vendor_name || oldVal, v?.vendor_type || '', v?.tax_id || '', v?.address || '');
             loadVendorBanks(v?.vendor_name || oldVal);
         } else {
-            row.style.display = 'none';
+            document.getElementById('vendor-summary-card').classList.remove('show');
             clearBankFields();
         }
+    }
+
+    function renderVendorCard(name, type, taxId, address) {
+        const card = document.getElementById('vendor-summary-card');
+        document.getElementById('vsc-name').textContent = name;
+        const meta = [type, taxId ? 'MST: ' + taxId : ''].filter(Boolean).join(' · ');
+        document.getElementById('vsc-meta').textContent = [meta, address].filter(Boolean).join(' — ');
+        card.classList.add('show');
     }
 
     function onBankPick() {
@@ -1277,6 +1317,13 @@
         document.getElementById('vendor_account_no').value         = b.account_no   || '';
         document.getElementById('vendor_bank_name').value          = b.bank_name    || '';
         document.getElementById('vendor_bank_transfer_note').value = b.note         || '';
+        renderBankCard(b.bank_name || '', b.account_name || '', b.account_no || '');
+    }
+
+    function renderBankCard(bankName, accountName, accountNo) {
+        document.getElementById('bsc-bank').textContent = bankName;
+        document.getElementById('bsc-meta').textContent = [accountName, accountNo].filter(Boolean).join(' · ');
+        document.getElementById('bank-summary-card').classList.add('show');
     }
 
     function clearVendorFields() {
@@ -1292,6 +1339,7 @@
         document.getElementById('vendor_type_final').value    = '';
         document.getElementById('vendor_taxid_final').value   = '';
         document.getElementById('vendor_address_final').value = '';
+        document.getElementById('vendor-summary-card').classList.remove('show');
         clearBankFields();
     }
 
@@ -1301,6 +1349,7 @@
         document.getElementById('vendor_account_no').value         = '';
         document.getElementById('vendor_bank_name').value          = '';
         document.getElementById('vendor_bank_transfer_note').value = '';
+        document.getElementById('bank-summary-card').classList.remove('show');
     }
 
     // ═══════════════════════════════════════════════════════════════════
