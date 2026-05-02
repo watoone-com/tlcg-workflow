@@ -546,16 +546,10 @@ function authenticateUser(email, password) {
       Logger.log('ERROR: Password is null, undefined, or empty');
       return { success: false, message: 'Password is required' };
     }
-    
-    // Hash the provided password
-    let hashedPassword;
-    try {
-      hashedPassword = hashPassword(password);
-      Logger.log('Hashed password: ' + hashedPassword.substring(0, 10) + '...');
-    } catch (hashError) {
-      Logger.log('ERROR hashing password: ' + hashError.toString());
-      return { success: false, message: 'Error processing password: ' + hashError.message };
-    }
+
+    // Password is already SHA-256 hashed by the frontend — compare directly
+    const hashedPassword = password.toString().trim();
+    Logger.log('Received hash: ' + hashedPassword.substring(0, 10) + '...');
     
     // Search for user
     for (let i = 1; i < data.length; i++) {
@@ -584,8 +578,17 @@ function authenticateUser(email, password) {
         
         // Check if password column exists and has value
         if (passwordCol < 0 || !rowPassword || rowPassword.toString().trim() === '') {
-          Logger.log('WARNING: Password not set for user. Column: ' + passwordCol + ', Value: ' + rowPassword);
-          return { success: false, message: 'Password not configured for this user. Please contact administrator.' };
+          Logger.log('WARNING: Password not set for user — prompting first-time setup');
+          const userName = nameCol >= 0 && row[nameCol] ? row[nameCol].toString().trim() : 'User';
+          const userRole = roleCol >= 0 && row[roleCol] ? row[roleCol].toString().trim() : 'User';
+          return {
+            success: true,
+            message: 'First login — please set a password',
+            data: {
+              name: userName, email: email, role: userRole,
+              mustChangePassword: true
+            }
+          };
         }
         
         // Trim and compare password (compare hashed)
@@ -905,15 +908,6 @@ function handleChangePassword(requestBody) {
     if (!email || !currentPassword || !newPassword) {
       return createResponse(false, 'Email, current password, and new password are required');
     }
-    if (newPassword.length < 8) {
-      return createResponse(false, 'New password must be at least 8 characters');
-    }
-
-    // Verify current password first
-    const authResult = authenticateUser(email, currentPassword);
-    if (!authResult.success) {
-      return createResponse(false, 'Current password is incorrect');
-    }
 
     const spreadsheet = safeOpenSpreadsheet(USERS_SHEET_ID, 'handleChangePassword');
     let sheet;
@@ -927,15 +921,23 @@ function handleChangePassword(requestBody) {
     const headers = data[0];
     let emailCol = headers.indexOf('Email');
     if (emailCol === -1) emailCol = headers.indexOf('email');
-    if (emailCol === -1) emailCol = 4; // Column E fallback
-    const passwordCol    = 11; // Column L — SHA-256 hash
-    const mustChangeCol  = headers.indexOf('mustChangePassword');
+    if (emailCol === -1) emailCol = 4;
+    const passwordCol   = 11; // Column L — SHA-256 hash
+    const mustChangeCol = headers.indexOf('mustChangePassword');
 
     for (let i = 1; i < data.length; i++) {
       if (data[i][emailCol] && data[i][emailCol].toString().toLowerCase() === email.toLowerCase()) {
-        const hashedNew = hashPassword(newPassword);
-        sheet.getRange(i + 1, passwordCol + 1).setValue(hashedNew);
-        // Clear the mustChangePassword flag if the column exists
+        const storedHash = (data[i][passwordCol] || '').toString().trim();
+
+        // currentPassword is already SHA-256 hashed by the frontend
+        // If no password set yet (first login), skip current password check
+        if (storedHash && currentPassword.trim() !== storedHash) {
+          Logger.log('Current password mismatch for: ' + email);
+          return createResponse(false, 'Mật khẩu hiện tại không đúng');
+        }
+
+        // newPassword is already SHA-256 hashed by the frontend — store directly
+        sheet.getRange(i + 1, passwordCol + 1).setValue(newPassword.trim());
         if (mustChangeCol >= 0) {
           sheet.getRange(i + 1, mustChangeCol + 1).setValue(false);
         }
