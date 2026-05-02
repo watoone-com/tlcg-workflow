@@ -3557,13 +3557,27 @@
             return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
         }
 
-        function showChangePasswordModal(email) {
+        let _isFirstLogin = false;
+
+        function showChangePasswordModal(email, isFirstLogin = false) {
             _changePasswordEmail = email || (currentUser && currentUser.email) || '';
+            _isFirstLogin = isFirstLogin;
             document.getElementById('chpw-current').value = '';
             document.getElementById('chpw-new').value = '';
             document.getElementById('chpw-confirm').value = '';
             document.getElementById('chpw-error').classList.add('hidden');
-            document.getElementById('change-password-modal').classList.remove('hidden');
+
+            // Hide current password field on first login — user has no password yet
+            const currentPwRow = document.getElementById('chpw-current').closest('div');
+            if (currentPwRow) currentPwRow.style.display = isFirstLogin ? 'none' : '';
+
+            const modal = document.getElementById('change-password-modal');
+            modal.querySelector('h2').textContent = isFirstLogin ? 'Tạo mật khẩu mới' : 'Đổi mật khẩu';
+            modal.querySelector('p').textContent = isFirstLogin
+                ? 'Vui lòng tạo mật khẩu trước khi tiếp tục.'
+                : 'Nhập mật khẩu hiện tại và mật khẩu mới.';
+
+            modal.classList.remove('hidden');
         }
 
         function hideChangePasswordModal() {
@@ -3586,8 +3600,13 @@
 
             errorEl.classList.add('hidden');
 
-            if (!currentPw || !newPw || !confirmPw) {
-                errorEl.textContent = 'All fields are required.';
+            if (!_isFirstLogin && !currentPw) {
+                errorEl.textContent = 'Vui lòng nhập mật khẩu hiện tại.';
+                errorEl.classList.remove('hidden');
+                return;
+            }
+            if (!newPw || !confirmPw) {
+                errorEl.textContent = 'Vui lòng nhập đầy đủ mật khẩu mới.';
                 errorEl.classList.remove('hidden');
                 return;
             }
@@ -3611,7 +3630,7 @@
                 const params = new URLSearchParams();
                 params.append('action', 'changePassword');
                 params.append('email', _changePasswordEmail);
-                params.append('currentPassword', await sha256(currentPw));
+                params.append('currentPassword', _isFirstLogin ? '' : await sha256(currentPw));
                 params.append('newPassword', await sha256(newPw));
 
                 const response = await fetch(INTRANET_BACKEND_URL, {
@@ -3862,7 +3881,7 @@
                     // If first login, show change-password modal instead of home
                     if (result.data.mustChangePassword) {
                         closeLogin();
-                        showChangePasswordModal(email);
+                        showChangePasswordModal(email, true);
                         submitBtn.disabled = false;
                         submitBtn.innerHTML = originalText;
                         return;
