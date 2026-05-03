@@ -1180,27 +1180,41 @@
         return (js && (js.suppliers || (js.data && js.data.suppliers))) || [];
     }
 
-    async function loadVendors(companyGroupKey, companyCode) {
-        const sel = document.getElementById('vendor_old');
-        sel.innerHTML = '<option value="">-- Đang tải... --</option>';
-        allVendors = [];
+    const VENDOR_CACHE_KEY = 'tlcg_vendors_cache';
+    const VENDOR_CACHE_TTL = 3600000; // 1 hour
+
+    async function preloadVendors() {
         try {
-            let arr = await fetchSuppliers(companyGroupKey);
-            if (arr.length <= 1 && companyCode && companyCode !== companyGroupKey) {
-                const retry = await fetchSuppliers(companyCode);
-                if (retry.length > arr.length) arr = retry;
+            const cached = JSON.parse(localStorage.getItem(VENDOR_CACHE_KEY) || 'null');
+            if (cached && Date.now() - cached.timestamp < VENDOR_CACHE_TTL && Array.isArray(cached.vendors)) {
+                allVendorsMaster = cached.vendors;
+                console.log('loadVendors -> from cache', allVendorsMaster.length);
+                return;
             }
-            if (arr.length <= 1 && (companyGroupKey || companyCode)) {
-                const retryAll = await fetchSuppliers('');
-                if (retryAll.length > arr.length) arr = retryAll;
-            }
+        } catch (_) {}
+        try {
+            const arr = await fetchSuppliers('');
             allVendorsMaster = arr || [];
-            allVendors = allVendorsMaster;
-            console.log('loadVendors -> fetched', allVendorsMaster.length, { companyGroupKey, companyCode });
-            renderVendorOptions(allVendorsMaster, false);
-        } catch (_) {
-            sel.innerHTML = '<option value="">-- Lỗi tải NCC --</option>';
+            localStorage.setItem(VENDOR_CACHE_KEY, JSON.stringify({
+                timestamp: Date.now(), vendors: allVendorsMaster
+            }));
+            console.log('loadVendors -> fetched all', allVendorsMaster.length);
+        } catch (_) {}
+    }
+
+    function loadVendors(companyGroupKey, companyCode) {
+        let arr = allVendorsMaster;
+        if (companyGroupKey && arr.length) {
+            const filtered = arr.filter(v =>
+                !v.company_group_key ||
+                v.company_group_key.toString().trim().toLowerCase() === companyGroupKey.toLowerCase()
+            );
+            if (filtered.length > 1) arr = filtered;
         }
+        allVendors = arr;
+        allVendorsMaster = arr.length ? allVendorsMaster : arr;
+        renderVendorOptions(arr, false);
+        console.log('loadVendors -> filtered', arr.length, 'from', allVendorsMaster.length);
     }
 
     async function loadVendorBanks(vendorName) {
@@ -1801,6 +1815,7 @@
         addInvoiceRow();
         await loadCompanies();
         updateStepperUI();
+        preloadVendors(); // background — no await, warms cache before user picks company
         document.addEventListener('click', (e) => {
             const vendorBox = document.getElementById('vendor-combobox');
             if (vendorBox && !vendorBox.contains(e.target))
