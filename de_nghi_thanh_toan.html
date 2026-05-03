@@ -595,14 +595,9 @@
                     <input type="hidden" id="company_key_or_taxid">
                     <div class="form-row">
                         <div class="form-group full">
-                            <label>Công ty <span class="req">*</span></label>
-                            <div class="vendor-combobox" id="company-combobox">
-                                <input type="text" id="company_search" placeholder="Gõ để tìm công ty..." autocomplete="off"
-                                       oninput="onCompanySearch()" onfocus="onCompanySearchFocus()">
-                                <div class="vendor-dropdown-list" id="company-dropdown-list"></div>
-                            </div>
-                            <select id="company_code" onchange="onCompanyChange()" style="display:none">
-                                <option value="">-- Đang tải... --</option>
+                            <label for="company_code">Công ty <span class="req">*</span></label>
+                            <select id="company_code" onchange="onCompanyChange()">
+                                <option value="">-- Chọn công ty --</option>
                             </select>
                         </div>
                     </div>
@@ -1252,51 +1247,6 @@
     // ═══════════════════════════════════════════════════════════════════
     //  CHANGE HANDLERS
     // ═══════════════════════════════════════════════════════════════════
-    function onCompanySearch() {
-        const q = (document.getElementById('company_search').value || '').trim().toLowerCase();
-        renderCompanyDropdown(q);
-    }
-
-    function onCompanySearchFocus() {
-        const q = (document.getElementById('company_search').value || '').trim().toLowerCase();
-        renderCompanyDropdown(q, true);
-    }
-
-    function renderCompanyDropdown(q = '', forceShow = false) {
-        const list = document.getElementById('company-dropdown-list');
-        if (!list) return;
-        const sel = document.getElementById('company_code');
-        const options = Array.from(sel.options).filter((o, i) => {
-            if (i === 0 || !o.value) return false;
-            if (!q) return true;
-            const hay = [o.textContent, o.dataset.name, o.dataset.key, o.dataset.code].filter(Boolean).join(' ').toLowerCase();
-            return hay.includes(q);
-        });
-
-        list.innerHTML = '';
-        if (!q && !forceShow) { list.classList.remove('show'); return; }
-
-        if (options.length === 0) {
-            list.innerHTML = '<div class="vendor-dropdown-empty">Không tìm thấy công ty</div>';
-        } else {
-            options.forEach(opt => {
-                const item = document.createElement('div');
-                item.className = 'vendor-dropdown-item';
-                const meta = opt.dataset.key || '';
-                item.innerHTML = `<div class="vdi-name">${opt.dataset.name || opt.textContent}</div>${meta ? `<div class="vdi-meta">${meta}</div>` : ''}`;
-                item.onmousedown = (e) => {
-                    e.preventDefault();
-                    document.getElementById('company_search').value = opt.dataset.name || opt.textContent;
-                    sel.selectedIndex = Array.from(sel.options).indexOf(opt);
-                    list.classList.remove('show');
-                    onCompanyChange();
-                };
-                list.appendChild(item);
-            });
-        }
-        list.classList.add('show');
-    }
-
     function onCompanyChange() {
         const sel = document.getElementById('company_code');
         const opt = sel.options[sel.selectedIndex];
@@ -1663,8 +1613,6 @@
     // ═══════════════════════════════════════════════════════════════════
     function resetForm() {
         document.getElementById('company_code').value = '';
-        document.getElementById('company_search').value = '';
-        document.getElementById('company-dropdown-list').classList.remove('show');
         document.getElementById('company_name').value = '';
         document.getElementById('company_key_or_taxid').value = '';
         clearVendorFields();
@@ -1793,10 +1741,6 @@
             const vendorBox = document.getElementById('vendor-combobox');
             if (vendorBox && !vendorBox.contains(e.target))
                 document.getElementById('vendor-dropdown-list')?.classList.remove('show');
-
-            const companyBox = document.getElementById('company-combobox');
-            if (companyBox && !companyBox.contains(e.target))
-                document.getElementById('company-dropdown-list')?.classList.remove('show');
         });
 
         // ── PO History load on open ─────────────────────────────────
