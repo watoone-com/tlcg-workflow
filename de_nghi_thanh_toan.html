@@ -685,6 +685,31 @@
                             </div>
                         </div>
                     </div>
+
+                    <!-- Vendor detail fields — shown after vendor selected -->
+                    <div id="vendor-detail-section" style="display:none; border-top: 0.5px solid rgba(0,0,0,0.08); padding-top: 14px; margin-top: 6px;">
+                        <p style="font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px;">Thông tin Nhà cung cấp</p>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Tên NCC</label>
+                                <input type="text" id="vd-name" readonly>
+                            </div>
+                            <div class="form-group">
+                                <label>Loại NCC</label>
+                                <input type="text" id="vd-type" readonly>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>MST / CCCD NCC</label>
+                                <input type="text" id="vd-taxid" readonly>
+                            </div>
+                            <div class="form-group w2">
+                                <label>Địa chỉ NCC</label>
+                                <input type="text" id="vd-address" readonly>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -1293,6 +1318,7 @@
             loadVendorBanks(v?.vendor_name || oldVal);
         } else {
             document.getElementById('vendor-summary-card').classList.remove('show');
+            updateVendorDetail('', '', '', '');
             clearBankFields();
         }
     }
@@ -1303,6 +1329,15 @@
         const meta = [type, taxId ? 'MST: ' + taxId : ''].filter(Boolean).join(' · ');
         document.getElementById('vsc-meta').textContent = [meta, address].filter(Boolean).join(' — ');
         card.classList.add('show');
+        updateVendorDetail(name, type, taxId, address);
+    }
+
+    function updateVendorDetail(name, type, taxId, address) {
+        document.getElementById('vd-name').value    = name    || '';
+        document.getElementById('vd-type').value    = type    || '';
+        document.getElementById('vd-taxid').value   = taxId   || '';
+        document.getElementById('vd-address').value = address || '';
+        document.getElementById('vendor-detail-section').style.display = name ? '' : 'none';
     }
 
     function onBankPick() {
@@ -1336,6 +1371,7 @@
         document.getElementById('vendor_taxid_final').value   = '';
         document.getElementById('vendor_address_final').value = '';
         document.getElementById('vendor-summary-card').classList.remove('show');
+        updateVendorDetail('', '', '', '');
         clearBankFields();
     }
 
