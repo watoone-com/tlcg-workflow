@@ -1287,7 +1287,7 @@
                 item.onmousedown = (e) => {
                     e.preventDefault();
                     document.getElementById('company_search').value = opt.dataset.name || opt.textContent;
-                    sel.value = opt.value;
+                    sel.selectedIndex = Array.from(sel.options).indexOf(opt);
                     list.classList.remove('show');
                     onCompanyChange();
                 };
