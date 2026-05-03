@@ -675,7 +675,7 @@
                         </div>
                         <div class="form-row">
                             <div class="form-group full">
-                                <label for="vendor_bank_transfer_note">Nội dung chuyển khoản</label>
+                                <label for="vendor_bank_transfer_note">Nội dung chuyển khoản <span class="req">*</span></label>
                                 <input type="text" id="vendor_bank_transfer_note" placeholder="Nội dung chuyển khoản">
                             </div>
                         </div>
@@ -1576,6 +1576,8 @@
 
         if (!companyCode) { showToast('Vui lòng chọn công ty.', 'error'); return; }
         if (!vendorName)  { showToast('Vui lòng chọn hoặc nhập nhà cung cấp.', 'error'); return; }
+        const transferNote = document.getElementById('vendor_bank_transfer_note').value.trim();
+        if (!transferNote) { showToast('Vui lòng nhập nội dung chuyển khoản.', 'error'); return; }
         if (!finalAmount || finalAmount <= 0) { showToast('Vui lòng nhập số tiền đề nghị.', 'error'); return; }
         if (!dueDate)     { showToast('Vui lòng chọn ngày đáo hạn.', 'error'); return; }
 
