@@ -657,14 +657,9 @@
                     <!-- Bank info -->
                     <div style="border-top: 0.5px solid rgba(0,0,0,0.08); margin: 6px 0 14px; padding-top: 14px;">
                         <p style="font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px;">Thông tin tài khoản ngân hàng</p>
-                        <div class="form-row">
-                            <div class="form-group w2">
-                                <label for="vendor_bank_pick">Chọn tài khoản ngân hàng</label>
-                                <select id="vendor_bank_pick" onchange="onBankPick()">
-                                    <option value="">-- Chọn NCC trước --</option>
-                                </select>
-                            </div>
-                        </div>
+                        <select id="vendor_bank_pick" onchange="onBankPick()" style="display:none">
+                            <option value="">-- Chọn NCC trước --</option>
+                        </select>
                         <!-- Hidden inputs keep values for submit payload -->
                         <input type="hidden" id="vendor_account_name">
                         <input type="hidden" id="vendor_account_no">
