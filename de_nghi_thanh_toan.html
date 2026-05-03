@@ -591,9 +591,11 @@
                     <h2>Công ty</h2>
                 </div>
                 <div class="form-card-body">
+                    <input type="hidden" id="company_name">
+                    <input type="hidden" id="company_key_or_taxid">
                     <div class="form-row">
-                        <div class="form-group">
-                            <label>Mã công ty <span class="req">*</span></label>
+                        <div class="form-group full">
+                            <label>Công ty <span class="req">*</span></label>
                             <div class="vendor-combobox" id="company-combobox">
                                 <input type="text" id="company_search" placeholder="Gõ để tìm công ty..." autocomplete="off"
                                        oninput="onCompanySearch()" onfocus="onCompanySearchFocus()">
@@ -603,11 +605,6 @@
                                 <option value="">-- Đang tải... --</option>
                             </select>
                         </div>
-                        <div class="form-group w2">
-                            <label for="company_name">Tên công ty</label>
-                            <input type="text" id="company_name" readonly placeholder="Tự động điền">
-                        </div>
-                        <input type="hidden" id="company_key_or_taxid">
                     </div>
                     <div class="form-row">
                         <div class="form-group">
