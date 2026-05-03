@@ -610,7 +610,7 @@
 
             <div class="step-navigation">
                 <button type="button" class="btn-secondary" disabled>← Quay lại</button>
-                <button type="button" class="btn-primary btn-next" onclick="goToStep(2)">Tiếp theo →</button>
+                <button type="button" class="btn-primary btn-next" onclick="validateAndNext(1)">Tiếp theo →</button>
             </div>
             </div>
 
@@ -710,7 +710,7 @@
 
             <div class="step-navigation">
                 <button type="button" class="btn-secondary" onclick="goToStep(1)">← Quay lại</button>
-                <button type="button" class="btn-primary btn-next" onclick="goToStep(3)">Tiếp theo →</button>
+                <button type="button" class="btn-primary btn-next" onclick="validateAndNext(2)">Tiếp theo →</button>
             </div>
             </div>
 
@@ -781,7 +781,7 @@
 
             <div class="step-navigation">
                 <button type="button" class="btn-secondary" onclick="goToStep(2)">← Quay lại</button>
-                <button type="button" class="btn-primary btn-next" onclick="goToStep(4)">Tiếp theo →</button>
+                <button type="button" class="btn-primary btn-next" onclick="validateAndNext(3)">Tiếp theo →</button>
             </div>
             </div>
 
@@ -826,7 +826,7 @@
 
             <div class="step-navigation">
                 <button type="button" class="btn-secondary" onclick="goToStep(3)">← Quay lại</button>
-                <button type="button" class="btn-primary btn-next" onclick="goToStep(5)">Tiếp theo →</button>
+                <button type="button" class="btn-primary btn-next" onclick="validateAndNext(4)">Tiếp theo →</button>
             </div>
             </div>
 
@@ -1736,6 +1736,37 @@
     // ═══════════════════════════════════════════════════════════════════
     let currentStep = 1;
     const totalSteps = 5;
+
+    function validateAndNext(currentStep) {
+        if (currentStep === 1) {
+            if (!document.getElementById('company_code').value) {
+                showToast('Vui lòng chọn công ty.', 'error'); return;
+            }
+        }
+        if (currentStep === 2) {
+            const vendor = document.getElementById('vendor_final_name').value.trim()
+                        || document.getElementById('vendor_old').value.trim();
+            if (!vendor) {
+                showToast('Vui lòng chọn hoặc nhập nhà cung cấp.', 'error'); return;
+            }
+            if (!document.getElementById('vendor_bank_transfer_note').value.trim()) {
+                showToast('Vui lòng nhập nội dung chuyển khoản.', 'error'); return;
+            }
+        }
+        if (currentStep === 3) {
+            const amount = parseFloat(document.getElementById('final_amount').value);
+            if (!amount || amount <= 0) {
+                showToast('Vui lòng nhập số tiền đề nghị.', 'error'); return;
+            }
+            if (!document.getElementById('due_date').value) {
+                showToast('Vui lòng chọn ngày đáo hạn.', 'error'); return;
+            }
+            if (!document.getElementById('payment_description').value.trim()) {
+                showToast('Vui lòng nhập nội dung đề nghị thanh toán.', 'error'); return;
+            }
+        }
+        goToStep(currentStep + 1);
+    }
 
     function goToStep(step) {
         if (step < 1 || step > totalSteps) return;
