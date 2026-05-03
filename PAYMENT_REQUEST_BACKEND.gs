@@ -242,7 +242,8 @@ function handleSendPaymentRequest(data) {
       implementationTime: data.implementationTime,
       legalComment: data.legalComment || '',
       accountingComment: data.accountingComment || '',
-      directorComment: data.directorComment || ''
+      directorComment: data.directorComment || '',
+      isNewVendor: data.isNewVendor === true || data.isNewVendor === 'true'
     };
     rowData[CONFIG.COLUMNS.METADATA] = JSON.stringify(metadata);
     

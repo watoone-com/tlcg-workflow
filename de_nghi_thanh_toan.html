@@ -659,6 +659,12 @@
                         <button class="vsc-clear" onclick="clearVendorFields()" title="Xóa NCC">×</button>
                     </div>
 
+                    <!-- New NCC warning -->
+                    <div id="new-ncc-warning" style="display:none; margin-top: 8px; padding: 10px 14px; background: rgba(255,149,0,0.08); border: 1px solid rgba(255,149,0,0.3); border-radius: 8px; font-size: 13px; color: #c07000;">
+                        <i class="fas fa-triangle-exclamation" style="margin-right: 6px;"></i>
+                        NCC mới chưa có trong danh sách — sẽ được admin xem xét trước khi xử lý
+                    </div>
+
                     <!-- Bank info -->
                     <div style="border-top: 0.5px solid rgba(0,0,0,0.08); margin: 6px 0 14px; padding-top: 14px;">
                         <p style="font-size: 13px; font-weight: 600; color: var(--text-secondary); margin-bottom: 10px;">Thông tin tài khoản ngân hàng</p>
@@ -1330,6 +1336,7 @@
         const newVal = document.getElementById('vendor_new').value.trim();
         const oldVal = document.getElementById('vendor_old').value;
 
+        const warning = document.getElementById('new-ncc-warning');
         if (newVal) {
             document.getElementById('vendor_final_name').value    = newVal;
             document.getElementById('vendor_type_final').value    = '';
@@ -1337,6 +1344,7 @@
             document.getElementById('vendor_address_final').value = '';
             renderVendorCard(newVal, '', '', '');
             loadVendorBanks(newVal);
+            if (warning) warning.style.display = '';
         } else if (oldVal) {
             const v = allVendors.find(x => x.vendor_name === oldVal);
             document.getElementById('vendor_final_name').value    = v?.vendor_name  || oldVal;
@@ -1345,9 +1353,11 @@
             document.getElementById('vendor_address_final').value = v?.address      || '';
             renderVendorCard(v?.vendor_name || oldVal, v?.vendor_type || '', v?.tax_id || '', v?.address || '');
             loadVendorBanks(v?.vendor_name || oldVal);
+            if (warning) warning.style.display = 'none';
         } else {
             document.getElementById('vendor-summary-card').classList.remove('show');
             updateVendorDetail('', '', '', '');
+            if (warning) warning.style.display = 'none';
             clearBankFields();
         }
     }
@@ -1401,6 +1411,8 @@
         document.getElementById('vendor_address_final').value = '';
         document.getElementById('vendor-summary-card').classList.remove('show');
         updateVendorDetail('', '', '', '');
+        const w = document.getElementById('new-ncc-warning');
+        if (w) w.style.display = 'none';
         clearBankFields();
     }
 
@@ -1661,6 +1673,7 @@
             companyName:      document.getElementById('company_name').value,
             companyKey:       document.getElementById('company_key_or_taxid').value,
             vendorName:       document.getElementById('vendor_final_name').value || document.getElementById('vendor_old').value,
+            isNewVendor:      document.getElementById('vendor_new').value.trim() !== '',
             vendorType:       document.getElementById('vendor_type_final').value,
             vendorTaxId:      document.getElementById('vendor_taxid_final').value,
             vendorAddress:    document.getElementById('vendor_address_final').value,
@@ -1841,6 +1854,9 @@
             if (!document.getElementById('vendor_bank_transfer_note').value.trim()) {
                 showToast('Vui lòng nhập nội dung chuyển khoản.', 'error'); return;
             }
+            if (document.getElementById('vendor_new').value.trim()) {
+                showToast('NCC mới — admin sẽ xem xét trước khi xử lý thanh toán.', 'info', 5000);
+            }
         }
         if (currentStep === 3) {
             const amount = parseFloat(document.getElementById('final_amount').value);
@@ -1890,7 +1906,8 @@
         addInvoiceRow();
         await loadCompanies();
         updateStepperUI();
-        preloadVendors(); // background — no await, warms cache before user picks company
+        preloadVendors();
+        document.getElementById('due_date').min = new Date().toISOString().split('T')[0]; // background — no await, warms cache before user picks company
         document.addEventListener('click', (e) => {
             const vendorBox = document.getElementById('vendor-combobox');
             if (vendorBox && !vendorBox.contains(e.target))
