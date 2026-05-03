@@ -798,32 +798,46 @@
                     <h2>Tài liệu đính kèm</h2>
                 </div>
                 <div class="form-card-body">
+                    <!-- Upload zone -->
                     <div class="form-row" style="align-items: flex-end;">
                         <div class="form-group">
                             <div class="upload-zone" onclick="document.getElementById('file-input').click()">
                                 <i class="fas fa-cloud-upload-alt" style="font-size: 24px; color: var(--primary); margin-bottom: 6px;"></i>
                                 <p style="font-size: 13px; color: var(--text-secondary);">Nhấn để chọn file hoặc kéo thả vào đây</p>
+                                <p style="font-size: 12px; color: #b0b0b5; margin-top: 4px;">PDF, Word, Excel, ảnh — tối đa 20MB/file</p>
                             </div>
                             <input type="file" id="file-input" multiple style="display:none" onchange="onFilePick(event)">
                             <div class="file-list" id="file-list"></div>
                         </div>
-                        <div class="form-group" style="min-width: 160px; max-width: 200px;">
-                            <label>Thao tác Drive</label>
-                            <div style="display: flex; flex-direction: column; gap: 8px;">
-                                <button class="btn-secondary btn-sm" onclick="doCreateFolder()">
-                                    <i class="fas fa-folder-plus"></i> Tạo folder
-                                </button>
-                                <button class="btn-primary btn-sm" id="upload-btn" onclick="doUpload()" disabled>
-                                    <i class="fas fa-upload"></i> Upload
-                                </button>
-                            </div>
+                        <div class="form-group" style="min-width: 140px; max-width: 160px;">
+                            <button class="btn-primary btn-sm" id="upload-btn" onclick="doUpload()" disabled>
+                                <i class="fas fa-upload"></i> Upload lên Drive
+                            </button>
                             <div class="drive-status" id="drive-status"></div>
+                            <!-- Clickable folder link — shown after folder created -->
+                            <a id="drive-folder-link-card" href="#" target="_blank"
+                               style="display:none; margin-top: 8px; font-size: 13px; color: var(--primary); text-decoration: none; display: none; align-items: center; gap: 4px;">
+                                <i class="fas fa-folder-open"></i> Xem folder Drive →
+                            </a>
                         </div>
                     </div>
-                    <div class="form-row" style="margin-top: 4px;">
+
+                    <!-- Hidden drive_link for submit payload -->
+                    <input type="hidden" id="drive_link">
+
+                    <!-- Manual Drive link fallback -->
+                    <div class="form-row" style="margin-top: 12px;">
                         <div class="form-group full">
-                            <label for="drive_link">Link folder Drive</label>
-                            <input type="text" id="drive_link" placeholder="Tự động điền sau khi tạo folder">
+                            <label for="drive_link_manual">Hoặc dán link Google Drive</label>
+                            <input type="text" id="drive_link_manual"
+                                   placeholder="https://drive.google.com/..."
+                                   oninput="onDriveLinkPaste(this.value)">
+                            <p id="drive-link-warning" style="display:none; font-size: 12px; color: #FF9500; margin-top: 4px;">
+                                ⚠️ Đảm bảo link đã được chia sẻ công khai hoặc với người phê duyệt
+                            </p>
+                            <p id="drive-link-error" style="display:none; font-size: 12px; color: var(--error); margin-top: 4px;">
+                                Link không hợp lệ — vui lòng dán link từ Google Drive
+                            </p>
                         </div>
                     </div>
                 </div>
@@ -1527,7 +1541,14 @@
         pendingFiles.push(...files);
         evt.target.value = '';
         renderFileList();
-        document.getElementById('upload-btn').disabled = pendingFiles.length === 0;
+        // Auto-create folder silently if not yet created
+        if (pendingFiles.length > 0 && !driveFolderId) {
+            document.getElementById('upload-btn').disabled = true;
+            setDriveStatus('Đang chuẩn bị folder...', false);
+            doCreateFolder();
+        } else {
+            document.getElementById('upload-btn').disabled = pendingFiles.length === 0;
+        }
     }
 
     function renderFileList() {
@@ -1563,8 +1584,10 @@
             driveFolderId = await getOrCreateDriveFolder(token, name, DRIVE_CONFIG.DRIVE_FOLDER_ID || null);
             const link = `https://drive.google.com/drive/folders/${driveFolderId}`;
             document.getElementById('drive_link').value = link;
-            const linkEl = document.getElementById('drive-folder-link');
-            linkEl.href  = link; linkEl.style.display = '';
+            // Show clickable link inside card
+            const cardLink = document.getElementById('drive-folder-link-card');
+            cardLink.href = link;
+            cardLink.style.display = 'flex';
             setDriveStatus('✓ Folder đã tạo', true);
             document.getElementById('upload-btn').disabled = pendingFiles.length === 0;
         } catch (err) {
@@ -1683,6 +1706,24 @@
     // ═══════════════════════════════════════════════════════════════════
     //  RESET
     // ═══════════════════════════════════════════════════════════════════
+    function onDriveLinkPaste(val) {
+        const warning = document.getElementById('drive-link-warning');
+        const error   = document.getElementById('drive-link-error');
+        warning.style.display = 'none';
+        error.style.display   = 'none';
+        if (!val.trim()) {
+            document.getElementById('drive_link').value = '';
+            return;
+        }
+        if (!val.trim().startsWith('https://drive.google.com/')) {
+            error.style.display = 'block';
+            document.getElementById('drive_link').value = '';
+        } else {
+            warning.style.display = 'block';
+            document.getElementById('drive_link').value = val.trim();
+        }
+    }
+
     function resetForm() {
         document.getElementById('company_code').value = '';
         document.getElementById('company_name').value = '';
@@ -1711,6 +1752,14 @@
         document.getElementById('upload-btn').disabled = true;
         document.getElementById('drive-status').textContent = '';
         document.getElementById('drive-folder-link').style.display = 'none';
+        const cardLink = document.getElementById('drive-folder-link-card');
+        if (cardLink) cardLink.style.display = 'none';
+        const manualInput = document.getElementById('drive_link_manual');
+        if (manualInput) manualInput.value = '';
+        const warning = document.getElementById('drive-link-warning');
+        if (warning) warning.style.display = 'none';
+        const error = document.getElementById('drive-link-error');
+        if (error) error.style.display = 'none';
         document.getElementById('req-no-pill').textContent = '';
         document.getElementById('req-no-row').style.display = 'none';
         document.getElementById('request_id').value = '';
