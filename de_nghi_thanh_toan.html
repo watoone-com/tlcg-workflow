@@ -1182,28 +1182,29 @@
 
     const VENDOR_CACHE_KEY = 'tlcg_vendors_cache';
     const VENDOR_CACHE_TTL = 3600000; // 1 hour
+    let _vendorPreloadCache = []; // never cleared — survives clearVendorFields()
 
     async function preloadVendors() {
         try {
             const cached = JSON.parse(localStorage.getItem(VENDOR_CACHE_KEY) || 'null');
             if (cached && Date.now() - cached.timestamp < VENDOR_CACHE_TTL && Array.isArray(cached.vendors)) {
-                allVendorsMaster = cached.vendors;
-                console.log('loadVendors -> from cache', allVendorsMaster.length);
+                _vendorPreloadCache = cached.vendors;
+                console.log('loadVendors -> from cache', _vendorPreloadCache.length);
                 return;
             }
         } catch (_) {}
         try {
             const arr = await fetchSuppliers('');
-            allVendorsMaster = arr || [];
+            _vendorPreloadCache = arr || [];
             localStorage.setItem(VENDOR_CACHE_KEY, JSON.stringify({
-                timestamp: Date.now(), vendors: allVendorsMaster
+                timestamp: Date.now(), vendors: _vendorPreloadCache
             }));
-            console.log('loadVendors -> fetched all', allVendorsMaster.length);
+            console.log('loadVendors -> fetched all', _vendorPreloadCache.length);
         } catch (_) {}
     }
 
     function loadVendors(companyGroupKey, companyCode) {
-        let arr = allVendorsMaster;
+        let arr = _vendorPreloadCache; // use protected cache, not allVendorsMaster
         if (companyGroupKey && arr.length) {
             const filtered = arr.filter(v =>
                 !v.company_group_key ||
@@ -1211,10 +1212,10 @@
             );
             if (filtered.length > 1) arr = filtered;
         }
+        allVendorsMaster = arr;
         allVendors = arr;
-        allVendorsMaster = arr.length ? allVendorsMaster : arr;
         renderVendorOptions(arr, false);
-        console.log('loadVendors -> filtered', arr.length, 'from', allVendorsMaster.length);
+        console.log('loadVendors -> filtered', arr.length, 'from', _vendorPreloadCache.length);
     }
 
     async function loadVendorBanks(vendorName) {
