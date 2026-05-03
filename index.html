@@ -2880,11 +2880,11 @@
                 <div class="p2p-doc-header" style="flex-direction:column; align-items:stretch; gap:14px;">
                     <!-- Top row: icon + title + badge -->
                     <div style="display:flex; align-items:center; gap:14px;">
-                        <div class="p2p-doc-icon">
-                            <i class="fas fa-bag-shopping"></i>
+                        <div class="p2p-doc-icon" id="p2p-card-icon-box">
+                            <i class="fas fa-file-pen" id="p2p-card-icon"></i>
                         </div>
                         <div style="flex:1; min-width:0;">
-                            <p class="p2p-doc-title">Purchase to Pay</p>
+                            <p class="p2p-doc-title" id="p2p-card-title">Purchase Request</p>
                             <p class="p2p-doc-meta">
                                 <span id="p2p-header-pr-no">New Request</span>
                                 <span style="margin:0 6px; color:#d1d1d6;">·</span>
@@ -2893,8 +2893,12 @@
                                 <span id="p2p-header-date">—</span>
                             </p>
                         </div>
+                        <a href="de_nghi_mua_hang.html" target="_blank" id="p2p-card-link"
+                           style="padding:8px 14px; background:linear-gradient(135deg,#007AFF,#5856D6); color:white; border-radius:10px; font-size:13px; font-weight:600; text-decoration:none; display:flex; align-items:center; gap:6px; flex-shrink:0;">
+                            <i class="fas fa-arrow-up-right-from-square"></i> Open
+                        </a>
                         <span id="p2p-doc-status-badge" class="approval-badge badge-pending" style="flex-shrink:0;">
-                            <i class="fas fa-circle" style="font-size:8px;"></i> Draft
+                            <i class="fas fa-circle" style="font-size:8px;"></i> Active
                         </span>
                     </div>
                     <!-- Mini pipeline: 3 linked steps -->
@@ -2915,29 +2919,31 @@
                         <!-- Connector -->
                         <div id="p2p-mini-conn-1" style="width:24px; height:2px; background:#e2e8f0; flex-shrink:0; transition:background 0.3s;"></div>
                         <!-- Step 2: Acceptance Minutes -->
-                        <div id="p2p-mini-step-2" style="display:flex; align-items:center; gap:8px; flex:1; padding:8px 10px; border-radius:10px; opacity:0.45; transition:background 0.15s, opacity 0.3s;">
-                            <div id="p2p-mini-dot-2" style="width:22px; height:22px; border-radius:50%; background:#e2e8f0; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all 0.25s;">
-                                <i class="fas fa-lock" style="font-size:9px; color:#8e8e93;"></i>
+                        <div id="p2p-mini-step-2" style="display:flex; align-items:center; gap:8px; flex:1; padding:8px 10px; border-radius:10px; transition:background 0.15s;"
+                             onmouseover="this.style.background='rgba(88,86,214,0.06)'" onmouseout="this.style.background='transparent'">
+                            <div id="p2p-mini-dot-2" style="width:22px; height:22px; border-radius:50%; background:#5856D6; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all 0.25s;">
+                                <i class="fas fa-file-signature" style="font-size:9px; color:white;"></i>
                             </div>
                             <div style="min-width:0;">
-                                <a href="nghiem_thu.html" target="_blank" style="font-size:12px; font-weight:600; color:#3c3c43; white-space:nowrap; text-decoration:none; display:flex; align-items:center; gap:4px; pointer-events:none;" id="p2p-mini-link-2">
+                                <a href="nghiem_thu.html" target="_blank" style="font-size:12px; font-weight:600; color:#5856D6; white-space:nowrap; text-decoration:none; display:flex; align-items:center; gap:4px;" id="p2p-mini-link-2">
                                     Acceptance Minutes <i class="fas fa-arrow-up-right-from-square" style="font-size:9px; opacity:0.7;"></i>
                                 </a>
-                                <div id="p2p-mini-sub-2" style="font-size:11px; color:#8e8e93;">Waiting</div>
+                                <div id="p2p-mini-sub-2" style="font-size:11px; color:#8e8e93;">Ready</div>
                             </div>
                         </div>
                         <!-- Connector -->
                         <div id="p2p-mini-conn-2" style="width:24px; height:2px; background:#e2e8f0; flex-shrink:0; transition:background 0.3s;"></div>
                         <!-- Step 3: Payment Request -->
-                        <div id="p2p-mini-step-3" style="display:flex; align-items:center; gap:8px; flex:1; padding:8px 10px; border-radius:10px; opacity:0.45; transition:background 0.15s, opacity 0.3s;">
-                            <div id="p2p-mini-dot-3" style="width:22px; height:22px; border-radius:50%; background:#e2e8f0; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all 0.25s;">
-                                <i class="fas fa-lock" style="font-size:9px; color:#8e8e93;"></i>
+                        <div id="p2p-mini-step-3" style="display:flex; align-items:center; gap:8px; flex:1; padding:8px 10px; border-radius:10px; transition:background 0.15s;"
+                             onmouseover="this.style.background='rgba(255,149,0,0.06)'" onmouseout="this.style.background='transparent'">
+                            <div id="p2p-mini-dot-3" style="width:22px; height:22px; border-radius:50%; background:#FF9500; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:all 0.25s;">
+                                <i class="fas fa-money-bill-transfer" style="font-size:9px; color:white;"></i>
                             </div>
                             <div style="min-width:0;">
-                                <a href="de_nghi_thanh_toan.html" target="_blank" style="font-size:12px; font-weight:600; color:#3c3c43; white-space:nowrap; text-decoration:none; display:flex; align-items:center; gap:4px; pointer-events:none;" id="p2p-mini-link-3">
+                                <a href="de_nghi_thanh_toan.html" target="_blank" style="font-size:12px; font-weight:600; color:#FF9500; white-space:nowrap; text-decoration:none; display:flex; align-items:center; gap:4px;" id="p2p-mini-link-3">
                                     Payment Request <i class="fas fa-arrow-up-right-from-square" style="font-size:9px; opacity:0.7;"></i>
                                 </a>
-                                <div id="p2p-mini-sub-3" style="font-size:11px; color:#8e8e93;">Waiting</div>
+                                <div id="p2p-mini-sub-3" style="font-size:11px; color:#8e8e93;">Ready</div>
                             </div>
                         </div>
                     </div>
@@ -2953,17 +2959,17 @@
                     </div>
                     <div class="p2p-tracker-connector" id="p2p-conn-1"></div>
                     <!-- Step 2 -->
-                    <div class="p2p-tracker-step locked" id="p2p-tracker-2" onclick="p2pGoToPanel(2)">
-                        <div class="p2p-tracker-num"><i class="fas fa-lock" style="font-size:11px;"></i></div>
+                    <div class="p2p-tracker-step" id="p2p-tracker-2" onclick="p2pGoToPanel(2)">
+                        <div class="p2p-tracker-num">2</div>
                         <div class="p2p-tracker-label">Acceptance Minutes</div>
-                        <div class="p2p-tracker-sublabel" id="p2p-tracker-sub-2">Waiting</div>
+                        <div class="p2p-tracker-sublabel" id="p2p-tracker-sub-2">Ready</div>
                     </div>
                     <div class="p2p-tracker-connector" id="p2p-conn-2"></div>
                     <!-- Step 3 -->
-                    <div class="p2p-tracker-step locked" id="p2p-tracker-3" onclick="p2pGoToPanel(3)">
-                        <div class="p2p-tracker-num"><i class="fas fa-lock" style="font-size:11px;"></i></div>
+                    <div class="p2p-tracker-step" id="p2p-tracker-3" onclick="p2pGoToPanel(3)">
+                        <div class="p2p-tracker-num">3</div>
                         <div class="p2p-tracker-label">Payment Request</div>
-                        <div class="p2p-tracker-sublabel" id="p2p-tracker-sub-3">Waiting</div>
+                        <div class="p2p-tracker-sublabel" id="p2p-tracker-sub-3">Ready</div>
                     </div>
                 </div>
 
@@ -3155,14 +3161,11 @@
                     </div>
 
                     <!-- ── Panel 2: Acceptance Minutes ── -->
-                    <div class="p2p-step-panel locked" id="p2p-panel-2">
-                        <div class="p2p-panel-header locked-header" onclick="p2pTogglePanel(2)">
+                    <div class="p2p-step-panel" id="p2p-panel-2">
+                        <div class="p2p-panel-header" onclick="p2pTogglePanel(2)">
                             <div class="p2p-panel-step-badge">2</div>
                             <div style="flex:1; min-width:0;">
                                 <div class="p2p-panel-title">Acceptance Minutes</div>
-                                <div class="p2p-locked-hint" id="p2p-panel-2-lock-hint">
-                                    <i class="fas fa-lock" style="font-size:10px;"></i> Complete Purchase Request first
-                                </div>
                                 <div class="p2p-panel-summary">
                                     <i class="fas fa-check-circle" style="font-size:12px;"></i>
                                     <span id="p2p-panel-2-summary">Signed</span>
@@ -3197,14 +3200,11 @@
                     </div>
 
                     <!-- ── Panel 3: Payment Request ── -->
-                    <div class="p2p-step-panel locked" id="p2p-panel-3">
-                        <div class="p2p-panel-header locked-header" onclick="p2pTogglePanel(3)">
+                    <div class="p2p-step-panel" id="p2p-panel-3">
+                        <div class="p2p-panel-header" onclick="p2pTogglePanel(3)">
                             <div class="p2p-panel-step-badge">3</div>
                             <div style="flex:1; min-width:0;">
                                 <div class="p2p-panel-title">Payment Request</div>
-                                <div class="p2p-locked-hint" id="p2p-panel-3-lock-hint">
-                                    <i class="fas fa-lock" style="font-size:10px;"></i> Complete Acceptance Minutes first
-                                </div>
                                 <div class="p2p-panel-summary">
                                     <i class="fas fa-check-circle" style="font-size:12px;"></i>
                                     <span id="p2p-panel-3-summary">Submitted</span>
@@ -6019,99 +6019,91 @@
         };
 
         /* ── P2P Accordion & Step State ── */
-        const p2pState = { step1: false, step2: false, step3: false };
+        const P2P_STEPS = {
+            1: { title: 'Purchase Request',   icon: 'fa-file-pen',           color: 'linear-gradient(135deg,#007AFF,#5856D6)', link: 'de_nghi_mua_hang.html'  },
+            2: { title: 'Acceptance Minutes', icon: 'fa-file-signature',     color: 'linear-gradient(135deg,#5856D6,#AF52DE)', link: 'nghiem_thu.html'         },
+            3: { title: 'Payment Request',    icon: 'fa-money-bill-transfer', color: 'linear-gradient(135deg,#FF9500,#e08600)', link: 'de_nghi_thanh_toan.html' },
+        };
+
+        function p2pUpdateHeader(num) {
+            const cfg = P2P_STEPS[num];
+            if (!cfg) return;
+            const iconBox = document.getElementById('p2p-card-icon-box');
+            const icon    = document.getElementById('p2p-card-icon');
+            const title   = document.getElementById('p2p-card-title');
+            const link    = document.getElementById('p2p-card-link');
+            if (iconBox) iconBox.style.background = cfg.color;
+            if (icon)    icon.className = 'fas ' + cfg.icon;
+            if (title)   title.textContent = cfg.title;
+            if (link)    link.href = cfg.link;
+        }
 
         function p2pTogglePanel(num) {
             const panel = document.getElementById('p2p-panel-' + num);
-            if (!panel) return;
-            if (panel.classList.contains('locked')) return;
+            if (!panel || panel.classList.contains('completed')) return;
             const isActive = panel.classList.contains('active');
-            // Collapse all panels first
+            // Collapse non-completed panels
             [1, 2, 3].forEach(n => {
                 const p = document.getElementById('p2p-panel-' + n);
-                if (p && !p.classList.contains('locked')) {
-                    if (!p2pState['step' + n]) p.classList.remove('active');
-                }
+                if (p && !p.classList.contains('completed')) p.classList.remove('active');
             });
-            if (!isActive) panel.classList.add('active');
-            else panel.classList.remove('active');
+            if (!isActive) {
+                panel.classList.add('active');
+                p2pUpdateHeader(num);
+                // Sync big tracker highlight
+                [1,2,3].forEach(n => {
+                    const t = document.getElementById('p2p-tracker-' + n);
+                    if (t && !t.classList.contains('completed')) t.classList.remove('active');
+                });
+                const tracker = document.getElementById('p2p-tracker-' + num);
+                if (tracker && !tracker.classList.contains('completed')) tracker.classList.add('active');
+            }
         }
 
         function p2pGoToPanel(num) {
             const panel = document.getElementById('p2p-panel-' + num);
-            if (!panel || panel.classList.contains('locked')) return;
-            panel.classList.add('active');
+            if (!panel) return;
+            if (!panel.classList.contains('completed')) {
+                [1, 2, 3].forEach(n => {
+                    const p = document.getElementById('p2p-panel-' + n);
+                    if (p && !p.classList.contains('completed')) p.classList.remove('active');
+                });
+                panel.classList.add('active');
+                p2pUpdateHeader(num);
+            }
             panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
         }
 
         function p2pCompleteStep(num) {
-            p2pState['step' + num] = true;
-            const panel = document.getElementById('p2p-panel-' + num);
+            const panel   = document.getElementById('p2p-panel-' + num);
             const tracker = document.getElementById('p2p-tracker-' + num);
+            const miniDot = document.getElementById('p2p-mini-dot-' + num);
+            const miniSub = document.getElementById('p2p-mini-sub-' + num);
+            const miniConn = document.getElementById('p2p-mini-conn-' + num);
+            const subLabels = { 1: 'Approved', 2: 'Signed', 3: 'Submitted' };
 
             // Mark panel completed + collapse
-            panel.classList.remove('active', 'locked');
-            panel.classList.add('completed');
+            if (panel) { panel.classList.remove('active'); panel.classList.add('completed'); }
 
-            // Update big tracker
+            // Big tracker → green
             if (tracker) {
-                tracker.classList.remove('active', 'locked');
+                tracker.classList.remove('active');
                 tracker.classList.add('completed');
                 tracker.querySelector('.p2p-tracker-num').innerHTML = '<i class="fas fa-check" style="font-size:12px;"></i>';
             }
             const conn = document.getElementById('p2p-conn-' + num);
             if (conn) conn.classList.add('done');
 
-            // Update mini pipeline in header
-            const subLabels = { 1: 'Approved', 2: 'Signed', 3: 'Submitted' };
-            const miniDot = document.getElementById('p2p-mini-dot-' + num);
-            const miniStep = document.getElementById('p2p-mini-step-' + num);
-            const miniSub = document.getElementById('p2p-mini-sub-' + num);
-            const miniConn = document.getElementById('p2p-mini-conn-' + num);
-            const miniLabel = miniStep ? miniStep.querySelector('div > div:first-child') : null;
+            // Big tracker sub-label
+            const subEl = document.getElementById('p2p-tracker-sub-' + num);
+            if (subEl) subEl.textContent = subLabels[num];
+
+            // Mini pipeline dot → green
             if (miniDot) { miniDot.style.background = '#34C759'; miniDot.innerHTML = '<i class="fas fa-check" style="font-size:9px; color:white;"></i>'; }
-            if (miniStep) miniStep.style.opacity = '1';
-            if (miniSub) { miniSub.textContent = subLabels[num] || 'Done'; miniSub.style.color = '#34C759'; }
-            if (miniLabel) miniLabel.style.color = '#34C759';
+            if (miniSub) { miniSub.textContent = subLabels[num]; miniSub.style.color = '#34C759'; }
             if (miniConn) miniConn.style.background = '#34C759';
 
-            // Unlock next step
-            const next = num + 1;
-            const nextPanel = document.getElementById('p2p-panel-' + next);
-            const nextTracker = document.getElementById('p2p-tracker-' + next);
-            const lockHint = document.getElementById('p2p-panel-' + next + '-lock-hint');
-            const nextMiniDot = document.getElementById('p2p-mini-dot-' + next);
-            const nextMiniStep = document.getElementById('p2p-mini-step-' + next);
-            const nextMiniSub = document.getElementById('p2p-mini-sub-' + next);
-            const nextMiniLabel = nextMiniStep ? nextMiniStep.querySelector('div > div:first-child') : null;
-
-            if (nextPanel) {
-                nextPanel.classList.remove('locked');
-                nextPanel.classList.add('active');
-                nextPanel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-            }
-            if (nextTracker) {
-                nextTracker.classList.remove('locked');
-                nextTracker.classList.add('active');
-                nextTracker.querySelector('.p2p-tracker-num').textContent = next;
-            }
-            if (lockHint) lockHint.style.display = 'none';
-            if (nextMiniDot && next <= 3) { nextMiniDot.style.background = '#007AFF'; nextMiniDot.innerHTML = next === 2 ? '<i class="fas fa-file-signature" style="font-size:9px; color:white;"></i>' : '<i class="fas fa-paper-plane" style="font-size:9px; color:white;"></i>'; }
-            if (nextMiniStep && next <= 3) { nextMiniStep.style.opacity = '1'; }
-            if (nextMiniSub && next <= 3) { nextMiniSub.textContent = 'In Progress'; nextMiniSub.style.color = '#007AFF'; }
-            if (nextMiniLabel && next <= 3) nextMiniLabel.style.color = '#007AFF';
-            const nextMiniLink = document.getElementById('p2p-mini-link-' + next);
-            if (nextMiniLink && next <= 3) { nextMiniLink.style.pointerEvents = 'auto'; nextMiniLink.style.color = '#007AFF'; }
-
-            // Sub-label updates (big tracker)
-            const subEl = document.getElementById('p2p-tracker-sub-' + num);
-            if (subEl) subEl.textContent = subLabels[num] || 'Done';
-            if (next <= 3) {
-                const nextSub = document.getElementById('p2p-tracker-sub-' + next);
-                if (nextSub) nextSub.textContent = 'In Progress';
-            }
-
-            // Show completion banner + update header badge after step 3
+            // After step 3: show banner + update badge
             if (num === 3) {
                 const banner = document.getElementById('p2p-complete-banner');
                 if (banner) banner.classList.add('visible');
@@ -6122,9 +6114,6 @@
                 }
             }
         }
-
-        // Update doc header status badge when P2P page is shown
-        const _origShowPage = typeof showPage === 'function' ? showPage : null;
     </script>
 
 </body>
