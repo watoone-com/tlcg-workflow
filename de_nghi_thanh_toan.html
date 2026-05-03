@@ -601,11 +601,9 @@
                             </select>
                         </div>
                     </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>Số phiếu</label>
-                            <input type="text" id="req-no-pill" readonly placeholder="Tự động tạo sau khi chọn công ty">
-                        </div>
+                    <div id="req-no-row" style="display:none; margin-top: 8px;">
+                        <span style="font-size: 12px; color: var(--text-secondary);">Số phiếu:</span>
+                        <span id="req-no-pill" class="req-no-pill" style="margin-left: 8px;"></span>
                     </div>
                 </div>
             </div>
@@ -1224,7 +1222,8 @@
         const raw = getSelectedCompanyMaj() || (sel.value || '');
         const companyCode = (raw || '').replace(/[^A-Z0-9]/gi, '').toUpperCase();
         if (!companyCode) {
-            document.getElementById('req-no-pill').value = '';
+            document.getElementById('req-no-pill').textContent = '';
+            document.getElementById('req-no-row').style.display = 'none';
             document.getElementById('request_id').value = '';
             return;
         }
@@ -1240,7 +1239,8 @@
         localStorage.setItem(counterKey, counter);
 
         const reqNo = `${companyCode}-PO${dateStr}${String(counter).padStart(6, '0')}`;
-        document.getElementById('req-no-pill').value = reqNo;
+        document.getElementById('req-no-pill').textContent = reqNo;
+        document.getElementById('req-no-row').style.display = '';
         document.getElementById('request_id').value = reqNo;
     }
 
@@ -1639,7 +1639,8 @@
         document.getElementById('upload-btn').disabled = true;
         document.getElementById('drive-status').textContent = '';
         document.getElementById('drive-folder-link').style.display = 'none';
-        document.getElementById('req-no-pill').value = '';
+        document.getElementById('req-no-pill').textContent = '';
+        document.getElementById('req-no-row').style.display = 'none';
         document.getElementById('request_id').value = '';
     }
 
