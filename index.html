@@ -1742,7 +1742,157 @@
         }
 
         /* ============================================
-           P2P Modern Redesign — Accordion Workflow
+           P2P iOS Segmented Redesign
+           ============================================ */
+
+        /* Sticky top area */
+        .p2p-sticky-top {
+            position: sticky;
+            top: 0;
+            z-index: 9;
+            background: rgba(242,242,247,0.96);
+            backdrop-filter: saturate(180%) blur(20px);
+            -webkit-backdrop-filter: saturate(180%) blur(20px);
+            border-bottom: 0.5px solid rgba(60,60,67,0.29);
+            padding: 10px 16px 10px;
+        }
+
+        /* Segmented control */
+        .p2p-seg {
+            display: flex;
+            background: rgba(118,118,128,0.12);
+            border-radius: 9px;
+            padding: 2px;
+            position: relative;
+        }
+        .p2p-seg-indicator {
+            position: absolute;
+            top: 2px; bottom: 2px;
+            width: calc(33.33% - 1.33px);
+            background: #ffffff;
+            border-radius: 7px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.12);
+            transition: transform 0.25s cubic-bezier(0.4,0,0.2,1);
+            left: 2px;
+            pointer-events: none;
+        }
+        .p2p-seg-btn {
+            flex: 1;
+            padding: 7px 4px;
+            border: none; background: none;
+            font-size: 12px; font-weight: 600;
+            color: #8E8E93;
+            cursor: pointer;
+            border-radius: 7px;
+            font-family: var(--font-body);
+            display: flex; align-items: center; justify-content: center; gap: 4px;
+            position: relative; z-index: 1;
+            white-space: nowrap;
+            transition: color 0.2s;
+        }
+        .p2p-seg-btn.active { color: #000000; }
+
+        /* Section label */
+        .p2p-sec-label {
+            font-size: 13px; font-weight: 400;
+            color: #8E8E93;
+            text-transform: uppercase; letter-spacing: 0.3px;
+            padding: 16px 20px 6px;
+        }
+
+        /* iOS grouped form */
+        .p2p-ios-group {
+            margin: 0 16px;
+            background: #FFFFFF;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        }
+        .p2p-ios-row {
+            display: flex; align-items: center;
+            padding: 12px 16px;
+            border-bottom: 0.5px solid rgba(60,60,67,0.12);
+            min-height: 46px;
+        }
+        .p2p-ios-row:last-child { border-bottom: none; }
+        .p2p-ios-row.p2p-col { flex-direction: column; align-items: flex-start; }
+        .p2p-ios-row.p2p-col .p2p-ios-lbl { margin-bottom: 6px; }
+        .p2p-ios-lbl { font-size: 15px; color: #000; flex-shrink: 0; min-width: 120px; }
+        .p2p-ios-input {
+            flex: 1; font-size: 15px; border: none; outline: none;
+            background: transparent; text-align: right;
+            font-family: var(--font-body); color: #8E8E93; min-width: 0;
+        }
+        .p2p-ios-input::placeholder { color: #AEAEB2; }
+        .p2p-ios-select {
+            flex: 1; font-size: 15px; border: none; outline: none;
+            background: transparent; text-align: right;
+            font-family: var(--font-body); color: #8E8E93;
+            -webkit-appearance: none; cursor: pointer; min-width: 0;
+        }
+        .p2p-ios-ta {
+            width: 100%; font-size: 15px; border: none; outline: none;
+            background: transparent; font-family: var(--font-body);
+            resize: none; min-height: 64px; line-height: 1.5; color: #000;
+        }
+        .p2p-ios-inline { display: flex; align-items: center; gap: 6px; flex: 1; justify-content: flex-end; }
+
+        /* Flat step panels */
+        .p2p-flat-panel { display: none; padding-bottom: 32px; }
+        .p2p-flat-panel.active { display: block; }
+
+        /* Summary rows */
+        .p2p-sum-row {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 12px 16px;
+            border-bottom: 0.5px solid rgba(60,60,67,0.12);
+            font-size: 15px;
+        }
+        .p2p-sum-row:last-child { border-bottom: none; }
+        .p2p-sum-lbl { color: #8E8E93; }
+
+        /* iOS CTA button */
+        .p2p-ios-cta {
+            display: flex; align-items: center; justify-content: center; gap: 8px;
+            margin: 16px 16px 0;
+            width: calc(100% - 32px);
+            padding: 15px; border: none; border-radius: 14px;
+            font-size: 16px; font-weight: 700; color: white;
+            cursor: pointer; font-family: var(--font-body);
+            transition: opacity 0.15s;
+        }
+        .p2p-ios-cta:active { opacity: 0.85; }
+
+        /* iOS sig grid */
+        .p2p-sig-grid {
+            display: grid; grid-template-columns: repeat(2, 1fr);
+            gap: 10px; margin: 0 16px;
+        }
+        @media (min-width: 640px) { .p2p-sig-grid { grid-template-columns: repeat(4, 1fr); } }
+        .p2p-sig-box {
+            background: #FFFFFF; border-radius: 12px;
+            padding: 12px; text-align: center;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+        }
+        .p2p-sig-box label {
+            font-size: 10px; font-weight: 700; color: #8E8E93;
+            text-transform: uppercase; letter-spacing: 0.4px;
+            display: block; margin-bottom: 6px;
+        }
+        .p2p-sig-box select, .p2p-sig-box input {
+            width: 100%; padding: 6px 8px;
+            border: 0.5px solid rgba(60,60,67,0.18); border-radius: 8px;
+            font-size: 12px; text-align: center; font-family: var(--font-body);
+            background: #F2F2F7; margin-bottom: 5px;
+            -webkit-appearance: none;
+        }
+        .p2p-sig-box .sig-line {
+            border-top: 1px dashed rgba(60,60,67,0.18); margin: 5px 0;
+            font-size: 9px; color: #AEAEB2; padding-top: 3px;
+        }
+
+        /* ============================================
+           P2P Modern Redesign — Accordion Workflow (legacy, kept for CSS refs)
            ============================================ */
 
         /* Document header card */
@@ -2862,9 +3012,9 @@
             </main>
 
             <!-- P2P DETAILED -->
-            <main id="page-process-p2p" class="hidden max-w-7xl mx-auto p-6 page-section animate-in fade-in">
+            <main id="page-process-p2p" class="hidden page-section animate-in fade-in" style="padding:0; max-width:none; background:#F2F2F7;">
                 <!-- Breadcrumb -->
-                <nav class="breadcrumb" aria-label="Breadcrumb">
+                <nav class="breadcrumb" style="padding:10px 16px 6px;" aria-label="Breadcrumb">
                     <div class="breadcrumb-item">
                         <a href="#" onclick="showPage('home'); return false;" class="breadcrumb-link">
                             <i class="fas fa-home mr-1"></i>Dashboard
@@ -2876,347 +3026,287 @@
                     </div>
                 </nav>
 
-                <!-- Document Header Card -->
-                <div class="p2p-doc-header" style="padding:4px 0; gap:0;">
-                    <!-- Row 1: Purchase Request -->
-                    <div style="display:flex; align-items:center; gap:14px; padding:14px 18px; border-bottom:1px solid rgba(0,0,0,0.06); transition:background 0.15s;"
-                         onmouseover="this.style.background='rgba(0,0,0,0.015)'" onmouseout="this.style.background='transparent'">
-                        <div id="p2p-mini-dot-1" style="width:40px; height:40px; border-radius:10px; background:linear-gradient(135deg,#007AFF,#5856D6); display:flex; align-items:center; justify-content:center; flex-shrink:0; box-shadow:0 2px 6px rgba(0,0,0,0.15); transition:background 0.3s;">
-                            <i class="fas fa-file-pen" style="font-size:16px; color:white;"></i>
-                        </div>
-                        <div style="flex:1; font-size:15px; font-weight:600; color:#000;">Purchase Request</div>
-                        <span class="approval-badge badge-pending" id="p2p-mini-sub-1" style="flex-shrink:0;">
-                            <i class="fas fa-circle" style="font-size:6px;"></i> In Progress
-                        </span>
-                        <a href="de_nghi_mua_hang.html" target="_blank"
-                           style="padding:6px 13px; background:linear-gradient(135deg,#007AFF,#5856D6); color:white; border-radius:9px; font-size:12px; font-weight:600; text-decoration:none; display:flex; align-items:center; gap:5px; flex-shrink:0;">
-                            <i class="fas fa-arrow-up-right-from-square" style="font-size:10px;"></i> Open
-                        </a>
-                    </div>
-                    <!-- Row 2: Acceptance Minutes -->
-                    <div style="display:flex; align-items:center; gap:14px; padding:14px 18px; border-bottom:1px solid rgba(0,0,0,0.06); transition:background 0.15s;"
-                         onmouseover="this.style.background='rgba(0,0,0,0.015)'" onmouseout="this.style.background='transparent'">
-                        <div id="p2p-mini-dot-2" style="width:40px; height:40px; border-radius:10px; background:linear-gradient(135deg,#5856D6,#AF52DE); display:flex; align-items:center; justify-content:center; flex-shrink:0; box-shadow:0 2px 6px rgba(0,0,0,0.15); transition:background 0.3s;">
-                            <i class="fas fa-file-signature" style="font-size:16px; color:white;"></i>
-                        </div>
-                        <div style="flex:1; font-size:15px; font-weight:600; color:#000;">Acceptance Minutes</div>
-                        <span style="display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:9999px; font-size:11px; font-weight:600; background:rgba(0,0,0,0.06); color:#6e6e73; flex-shrink:0; transition:all 0.3s;" id="p2p-mini-sub-2">
-                            <i class="fas fa-circle" style="font-size:6px;"></i> Ready
-                        </span>
-                        <a href="nghiem_thu.html" target="_blank"
-                           style="padding:6px 13px; background:linear-gradient(135deg,#5856D6,#AF52DE); color:white; border-radius:9px; font-size:12px; font-weight:600; text-decoration:none; display:flex; align-items:center; gap:5px; flex-shrink:0;">
-                            <i class="fas fa-arrow-up-right-from-square" style="font-size:10px;"></i> Open
-                        </a>
-                    </div>
-                    <!-- Row 3: Payment Request -->
-                    <div style="display:flex; align-items:center; gap:14px; padding:14px 18px; transition:background 0.15s;"
-                         onmouseover="this.style.background='rgba(0,0,0,0.015)'" onmouseout="this.style.background='transparent'">
-                        <div id="p2p-mini-dot-3" style="width:40px; height:40px; border-radius:10px; background:linear-gradient(135deg,#FF9500,#e08600); display:flex; align-items:center; justify-content:center; flex-shrink:0; box-shadow:0 2px 6px rgba(0,0,0,0.15); transition:background 0.3s;">
-                            <i class="fas fa-money-bill-transfer" style="font-size:16px; color:white;"></i>
-                        </div>
-                        <div style="flex:1; font-size:15px; font-weight:600; color:#000;">Payment Request</div>
-                        <span style="display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:9999px; font-size:11px; font-weight:600; background:rgba(0,0,0,0.06); color:#6e6e73; flex-shrink:0; transition:all 0.3s;" id="p2p-mini-sub-3">
-                            <i class="fas fa-circle" style="font-size:6px;"></i> Ready
-                        </span>
-                        <a href="de_nghi_thanh_toan.html" target="_blank"
-                           style="padding:6px 13px; background:linear-gradient(135deg,#FF9500,#e08600); color:white; border-radius:9px; font-size:12px; font-weight:600; text-decoration:none; display:flex; align-items:center; gap:5px; flex-shrink:0;">
-                            <i class="fas fa-arrow-up-right-from-square" style="font-size:10px;"></i> Open
-                        </a>
-                    </div>
-                </div>
-
-                <!-- Accordion Panels -->
-                <div class="p2p-panels">
-
-                    <!-- ── Panel 1: Purchase Request ── -->
-                    <div class="p2p-step-panel active" id="p2p-panel-1" style="border-left:4px solid #007AFF;">
-                        <div class="p2p-panel-header" onclick="p2pTogglePanel(1)">
-                            <div style="width:32px; height:32px; border-radius:8px; background:linear-gradient(135deg,#007AFF,#5856D6); display:flex; align-items:center; justify-content:center; flex-shrink:0; box-shadow:0 1px 4px rgba(0,0,0,0.12);">
-                                <i class="fas fa-file-pen" style="font-size:13px; color:white;"></i>
+                <!-- Sticky: Header Card + Segmented Control -->
+                <div class="p2p-sticky-top">
+                    <!-- Header card: 3 rows -->
+                    <div class="p2p-doc-header" style="padding:0; gap:0; margin-bottom:10px;">
+                        <div style="display:flex; align-items:center; gap:12px; padding:12px 16px; border-bottom:0.5px solid rgba(60,60,67,0.12);">
+                            <div id="p2p-mini-dot-1" style="width:36px; height:36px; border-radius:9px; background:linear-gradient(135deg,#007AFF,#5856D6); display:flex; align-items:center; justify-content:center; flex-shrink:0; box-shadow:0 2px 5px rgba(0,0,0,0.15); transition:background 0.3s;">
+                                <i class="fas fa-file-pen" style="font-size:14px; color:white;"></i>
                             </div>
-                            <div style="flex:1; min-width:0;">
-                                <div class="p2p-panel-title">Purchase Request</div>
-                                <div class="p2p-panel-summary">
-                                    <i class="fas fa-check-circle" style="font-size:12px;"></i>
-                                    <span id="p2p-panel-1-summary">Approved</span>
-                                </div>
-                            </div>
-                            <i class="fas fa-chevron-down p2p-panel-chevron"></i>
+                            <div style="flex:1; font-size:14px; font-weight:600; color:#000;">Purchase Request</div>
+                            <span id="p2p-mini-sub-1" class="approval-badge badge-pending" style="flex-shrink:0; font-size:10px;">
+                                <i class="fas fa-circle" style="font-size:5px;"></i> Active
+                            </span>
+                            <a href="de_nghi_mua_hang.html" target="_blank" style="padding:5px 11px; background:linear-gradient(135deg,#007AFF,#5856D6); color:white; border-radius:8px; font-size:11px; font-weight:600; text-decoration:none; display:flex; align-items:center; gap:4px; flex-shrink:0; margin-left:6px;">
+                                <i class="fas fa-arrow-up-right-from-square" style="font-size:9px;"></i> Open
+                            </a>
                         </div>
-                        <div class="p2p-panel-body">
-                            <div class="p2p-pr-layout">
-                                <!-- Left: Form Fields -->
-                                <div class="space-y-4">
-                                    <p style="font-size:11px; font-weight:700; color:#6e6e73; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:8px;">Request Details</p>
-                                    <div>
-                                        <label style="font-size:12px; font-weight:600; color:#6e6e73; display:block; margin-bottom:4px;">PR Request No</label>
-                                        <input type="text" id="p2p-pr-no" readonly style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:10px; font-size:14px; background:#f8fafc; color:#000;">
-                                    </div>
-                                    <div>
-                                        <label style="font-size:12px; font-weight:600; color:#6e6e73; display:block; margin-bottom:4px;">Company</label>
-                                        <select id="p2p-co-select" onchange="lookupCompany('p2p-co')" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:10px; font-size:14px; background:#fff; color:#000;">
-                                            <option value="">-- Select --</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label style="font-size:12px; font-weight:600; color:#6e6e73; display:block; margin-bottom:4px;">Item / Service Description</label>
-                                        <textarea rows="3" placeholder="Describe the goods or services..." style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:10px; font-size:14px; resize:vertical; box-sizing:border-box;"></textarea>
-                                    </div>
-                                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
-                                        <div>
-                                            <label style="font-size:12px; font-weight:600; color:#6e6e73; display:block; margin-bottom:4px;">Amount</label>
-                                            <input type="number" placeholder="0" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:10px; font-size:14px; box-sizing:border-box;">
-                                        </div>
-                                        <div>
-                                            <label style="font-size:12px; font-weight:600; color:#6e6e73; display:block; margin-bottom:4px;">Currency</label>
-                                            <select style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:10px; font-size:14px;">
-                                                <option>VND</option><option>USD</option>
-                                            </select>
-                                        </div>
-                                    </div>
-                                    <div>
-                                        <label style="font-size:12px; font-weight:600; color:#6e6e73; display:block; margin-bottom:4px;">Requested Date</label>
-                                        <input type="date" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:10px; font-size:14px; box-sizing:border-box;">
-                                    </div>
-                                    <div>
-                                        <label style="font-size:12px; font-weight:600; color:#6e6e73; display:block; margin-bottom:4px;">Justification / Notes</label>
-                                        <textarea rows="2" placeholder="Reason for purchase..." style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:10px; font-size:14px; resize:vertical; box-sizing:border-box;"></textarea>
-                                    </div>
-                                </div>
-
-                                <!-- Right: Approval Chain -->
-                                <div>
-                                    <p style="font-size:11px; font-weight:700; color:#6e6e73; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:12px;">Approval Chain</p>
-                                    <div class="approval-block border-blue-200 bg-blue-50/30">
-                                        <div class="flex items-center justify-between mb-4">
-                                            <h4 class="font-bold text-blue-800 flex items-center gap-2" style="font-size:14px;">
-                                                <i class="fas fa-clipboard-check"></i>
-                                                Approval Workflow
-                                            </h4>
-                                            <span class="approval-badge badge-pending" id="p2p-workflow-badge">
-                                                <i class="fas fa-clock"></i> In Progress
-                                            </span>
-                                        </div>
-
-                                        <div class="approval-timeline">
-                                            <!-- Budget Approval -->
-                                            <div class="approval-step active" id="p2p-appr-step-1">
-                                                <div class="approval-card">
-                                                    <div class="flex items-center justify-between mb-2">
-                                                        <div>
-                                                            <p class="font-semibold text-slate-800 flex items-center gap-2" style="font-size:13px;">
-                                                                <i class="fas fa-dollar-sign text-emerald-600"></i>
-                                                                Budget Approval
-                                                            </p>
-                                                            <p class="text-xs text-slate-500 mt-1">Assigned to:
-                                                                <select class="inline-block border-none bg-transparent text-xs font-semibold text-slate-700" id="p2p-budget-app">
-                                                                    <option>Select Approver</option>
-                                                                </select>
-                                                            </p>
-                                                        </div>
-                                                        <span class="approval-badge badge-pending" id="p2p-badge-budget">Active</span>
-                                                    </div>
-                                                    <div class="approval-actions">
-                                                        <button onclick="approveStep('p2p-pr', 1)" class="flex-1 bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-emerald-700 transition">
-                                                            <i class="fas fa-check mr-1"></i>Approve
-                                                        </button>
-                                                        <button onclick="rejectStep('p2p-pr', 1)" class="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-700 transition">
-                                                            <i class="fas fa-times mr-1"></i>Reject
-                                                        </button>
-                                                    </div>
-                                                    <textarea id="p2p-pr-comment-1" placeholder="Add comment" class="mt-2 w-full text-sm border border-slate-200 rounded-lg p-2 resize-y" rows="2"></textarea>
-                                                </div>
-                                            </div>
-
-                                            <!-- Supplier Approval (parallel) -->
-                                            <div class="approval-step active" id="p2p-appr-step-2">
-                                                <div class="approval-card">
-                                                    <div class="flex items-center justify-between mb-2">
-                                                        <div>
-                                                            <p class="font-semibold text-slate-800 flex items-center gap-2" style="font-size:13px;">
-                                                                <i class="fas fa-truck text-blue-600"></i>
-                                                                Supplier Approval
-                                                            </p>
-                                                            <p class="text-xs text-slate-500 mt-1" style="display:flex; align-items:center; gap:4px;">
-                                                                <i class="fas fa-code-branch" style="font-size:10px; color:#007AFF;"></i>
-                                                                Parallel with Budget
-                                                            </p>
-                                                            <p class="text-xs text-slate-500">Assigned to:
-                                                                <select class="inline-block border-none bg-transparent text-xs font-semibold text-slate-700" id="p2p-supp-app">
-                                                                    <option>Select Approver</option>
-                                                                </select>
-                                                            </p>
-                                                        </div>
-                                                        <span class="approval-badge badge-pending" id="p2p-badge-supplier">Active</span>
-                                                    </div>
-                                                    <div class="approval-actions">
-                                                        <button onclick="approveStep('p2p-pr', 2)" class="flex-1 bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-emerald-700 transition">
-                                                            <i class="fas fa-check mr-1"></i>Approve
-                                                        </button>
-                                                        <button onclick="rejectStep('p2p-pr', 2)" class="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-700 transition">
-                                                            <i class="fas fa-times mr-1"></i>Reject
-                                                        </button>
-                                                    </div>
-                                                    <textarea id="p2p-pr-comment-2" placeholder="Add comment" class="mt-2 w-full text-sm border border-slate-200 rounded-lg p-2 resize-y" rows="2"></textarea>
-                                                </div>
-                                            </div>
-
-                                            <!-- Final Approval (sequential) -->
-                                            <div class="approval-step pending" id="p2p-appr-step-3">
-                                                <div class="approval-card" style="opacity:0.6;">
-                                                    <div class="flex items-center justify-between">
-                                                        <div>
-                                                            <p class="font-semibold text-slate-800 flex items-center gap-2" style="font-size:13px;">
-                                                                <i class="fas fa-check-double text-purple-600"></i>
-                                                                Final Approval
-                                                            </p>
-                                                            <p class="text-xs text-slate-500 mt-1">
-                                                                <i class="fas fa-lock" style="font-size:10px;"></i>
-                                                                Unlocks after Budget &amp; Supplier
-                                                            </p>
-                                                            <p class="text-xs text-slate-500">Assigned to:
-                                                                <select class="inline-block border-none bg-transparent text-xs font-semibold text-slate-700" id="p2p-final-app-pr">
-                                                                    <option>Select Approver</option>
-                                                                </select>
-                                                            </p>
-                                                        </div>
-                                                        <span class="approval-badge badge-pending" id="p2p-badge-final">Waiting</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-
-                                        <!-- Progress bar -->
-                                        <div class="mt-4 pt-4 border-t border-slate-200">
-                                            <div class="flex items-center justify-between mb-2">
-                                                <span class="text-sm font-semibold text-slate-700">Approval Progress</span>
-                                                <span class="text-sm text-slate-500" id="p2p-progress-label">0 of 3 completed</span>
-                                            </div>
-                                            <div class="w-full bg-slate-200 rounded-full h-2">
-                                                <div id="p2p-pr-approval-progress" class="bg-emerald-600 h-2 rounded-full transition-all duration-300" style="width:0%;"></div>
-                                            </div>
-                                        </div>
-
-                                        <!-- History -->
-                                        <div class="mt-4 pt-4 border-t border-slate-200">
-                                            <button onclick="toggleApprovalHistory('p2p-pr-history')" class="text-sm text-blue-600 font-semibold hover:text-blue-700 flex items-center gap-2">
-                                                <i class="fas fa-history"></i>
-                                                View Approval History
-                                                <i class="fas fa-chevron-down text-xs" id="p2p-pr-history-icon"></i>
-                                            </button>
-                                            <div id="p2p-pr-history" class="approval-history hidden mt-3 space-y-2">
-                                                <div class="text-xs text-slate-500 italic">No history yet</div>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
+                        <div style="display:flex; align-items:center; gap:12px; padding:12px 16px; border-bottom:0.5px solid rgba(60,60,67,0.12);">
+                            <div id="p2p-mini-dot-2" style="width:36px; height:36px; border-radius:9px; background:linear-gradient(135deg,#5856D6,#AF52DE); display:flex; align-items:center; justify-content:center; flex-shrink:0; box-shadow:0 2px 5px rgba(0,0,0,0.15); transition:background 0.3s;">
+                                <i class="fas fa-file-signature" style="font-size:14px; color:white;"></i>
                             </div>
+                            <div style="flex:1; font-size:14px; font-weight:600; color:#000;">Acceptance Minutes</div>
+                            <span id="p2p-mini-sub-2" style="display:inline-flex; align-items:center; gap:3px; padding:2px 9px; border-radius:9999px; font-size:10px; font-weight:600; background:rgba(0,0,0,0.06); color:#8E8E93; flex-shrink:0; transition:all 0.3s;">
+                                <i class="fas fa-circle" style="font-size:5px;"></i> Ready
+                            </span>
+                            <a href="nghiem_thu.html" target="_blank" style="padding:5px 11px; background:linear-gradient(135deg,#5856D6,#AF52DE); color:white; border-radius:8px; font-size:11px; font-weight:600; text-decoration:none; display:flex; align-items:center; gap:4px; flex-shrink:0; margin-left:6px;">
+                                <i class="fas fa-arrow-up-right-from-square" style="font-size:9px;"></i> Open
+                            </a>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:12px; padding:12px 16px;">
+                            <div id="p2p-mini-dot-3" style="width:36px; height:36px; border-radius:9px; background:linear-gradient(135deg,#FF9500,#e08600); display:flex; align-items:center; justify-content:center; flex-shrink:0; box-shadow:0 2px 5px rgba(0,0,0,0.15); transition:background 0.3s;">
+                                <i class="fas fa-money-bill-transfer" style="font-size:14px; color:white;"></i>
+                            </div>
+                            <div style="flex:1; font-size:14px; font-weight:600; color:#000;">Payment Request</div>
+                            <span id="p2p-mini-sub-3" style="display:inline-flex; align-items:center; gap:3px; padding:2px 9px; border-radius:9999px; font-size:10px; font-weight:600; background:rgba(0,0,0,0.06); color:#8E8E93; flex-shrink:0; transition:all 0.3s;">
+                                <i class="fas fa-circle" style="font-size:5px;"></i> Ready
+                            </span>
+                            <a href="de_nghi_thanh_toan.html" target="_blank" style="padding:5px 11px; background:linear-gradient(135deg,#FF9500,#e08600); color:white; border-radius:8px; font-size:11px; font-weight:600; text-decoration:none; display:flex; align-items:center; gap:4px; flex-shrink:0; margin-left:6px;">
+                                <i class="fas fa-arrow-up-right-from-square" style="font-size:9px;"></i> Open
+                            </a>
                         </div>
                     </div>
-
-                    <!-- ── Panel 2: Acceptance Minutes ── -->
-                    <div class="p2p-step-panel" id="p2p-panel-2" style="border-left:4px solid #5856D6;">
-                        <div class="p2p-panel-header" onclick="p2pTogglePanel(2)">
-                            <div style="width:32px; height:32px; border-radius:8px; background:linear-gradient(135deg,#5856D6,#AF52DE); display:flex; align-items:center; justify-content:center; flex-shrink:0; box-shadow:0 1px 4px rgba(0,0,0,0.12);">
-                                <i class="fas fa-file-signature" style="font-size:13px; color:white;"></i>
-                            </div>
-                            <div style="flex:1; min-width:0;">
-                                <div class="p2p-panel-title">Acceptance Minutes</div>
-                                <div class="p2p-panel-summary">
-                                    <i class="fas fa-check-circle" style="font-size:12px;"></i>
-                                    <span id="p2p-panel-2-summary">Signed</span>
-                                </div>
-                            </div>
-                            <i class="fas fa-chevron-down p2p-panel-chevron"></i>
-                        </div>
-                        <div class="p2p-panel-body">
-                            <div style="margin-top:16px;">
-                                <h3 style="font-size:16px; font-weight:700; text-align:center; border-bottom:1px solid #e2e8f0; padding-bottom:12px; margin-bottom:20px; letter-spacing:1px;">BIÊN BẢN NGHIỆM THU</h3>
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                                    <div style="padding:14px; border:1px solid #e2e8f0; border-radius:12px; background:#f8fafc;">
-                                        <p style="font-size:10px; font-weight:800; color:#007AFF; text-transform:uppercase; margin-bottom:6px;">Bên A (Nghiệm thu)</p>
-                                        <p id="p2p-side-a-name" style="font-weight:600; font-size:14px;">---</p>
-                                    </div>
-                                    <div style="padding:14px; border:1px solid #e2e8f0; border-radius:12px; background:#f8fafc;">
-                                        <p style="font-size:10px; font-weight:800; color:#007AFF; text-transform:uppercase; margin-bottom:6px;">Bên B (Cung cấp)</p>
-                                        <input type="text" placeholder="Nhà cung cấp / Supplier..." style="width:100%; border:none; background:transparent; font-size:14px; font-weight:600; outline:none; box-sizing:border-box;">
-                                    </div>
-                                </div>
-                                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                    <div class="signature-box"><label>Người lập</label><select id="acc-creator"></select><input type="text" class="mt-2 text-xs" placeholder="Sign..."></div>
-                                    <div class="signature-box"><label>Người nghiệm thu</label><select id="acc-acceptor"></select><input type="text" class="mt-2 text-xs" placeholder="Sign..."></div>
-                                    <div class="signature-box"><label>Kế toán trưởng</label><input type="text" class="bg-slate-50" readonly id="p2p-acc-accountant"><input type="text" class="mt-2 text-xs" placeholder="Sign..."></div>
-                                    <div class="signature-box"><label>Giám đốc</label><input type="text" class="bg-slate-50" readonly id="p2p-acc-director"><input type="text" class="mt-2 text-xs" placeholder="Sign..."></div>
-                                </div>
-                                <button onclick="p2pCompleteStep(2)" style="margin-top:20px; width:100%; padding:12px; background:linear-gradient(135deg,#007AFF,#5856D6); color:white; border:none; border-radius:12px; font-size:15px; font-weight:700; cursor:pointer; letter-spacing:0.3px;">
-                                    <i class="fas fa-file-signature mr-2"></i>Confirm Acceptance
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- ── Panel 3: Payment Request ── -->
-                    <div class="p2p-step-panel" id="p2p-panel-3" style="border-left:4px solid #FF9500;">
-                        <div class="p2p-panel-header" onclick="p2pTogglePanel(3)">
-                            <div style="width:32px; height:32px; border-radius:8px; background:linear-gradient(135deg,#FF9500,#e08600); display:flex; align-items:center; justify-content:center; flex-shrink:0; box-shadow:0 1px 4px rgba(0,0,0,0.12);">
-                                <i class="fas fa-money-bill-transfer" style="font-size:13px; color:white;"></i>
-                            </div>
-                            <div style="flex:1; min-width:0;">
-                                <div class="p2p-panel-title">Payment Request</div>
-                                <div class="p2p-panel-summary">
-                                    <i class="fas fa-check-circle" style="font-size:12px;"></i>
-                                    <span id="p2p-panel-3-summary">Submitted</span>
-                                </div>
-                            </div>
-                            <i class="fas fa-chevron-down p2p-panel-chevron"></i>
-                        </div>
-                        <div class="p2p-panel-body">
-                            <div style="margin-top:16px;">
-                                <!-- Summary of previous steps -->
-                                <div style="background:#f8fafc; border:1px solid #e2e8f0; border-radius:12px; padding:14px; margin-bottom:16px;">
-                                    <p style="font-size:11px; font-weight:700; color:#6e6e73; text-transform:uppercase; margin-bottom:10px;">Request Summary</p>
-                                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:13px;">
-                                        <div><span style="color:#6e6e73;">PR No:</span> <strong id="p2p-pay-pr-no">—</strong></div>
-                                        <div><span style="color:#6e6e73;">Company:</span> <strong id="p2p-pay-company">—</strong></div>
-                                        <div><span style="color:#6e6e73;">Amount:</span> <strong id="p2p-pay-amount">—</strong></div>
-                                        <div><span style="color:#6e6e73;">Acceptance:</span> <strong style="color:#34C759;">Confirmed</strong></div>
-                                    </div>
-                                </div>
-                                <div class="approval-block border-orange-200" style="background:rgba(255,149,0,0.05);">
-                                    <h4 style="font-weight:700; color:#c2410c; text-align:center; text-transform:uppercase; font-size:14px; letter-spacing:0.5px; margin-bottom:16px;">
-                                        <i class="fas fa-money-bill-transfer mr-2"></i>Đề nghị thanh toán
-                                    </h4>
-                                    <div style="margin-bottom:12px;">
-                                        <label style="font-size:12px; font-weight:600; color:#6e6e73; display:block; margin-bottom:4px;">Final Approver</label>
-                                        <select id="p2p-final-app" style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:10px; font-size:14px;"></select>
-                                    </div>
-                                    <div style="margin-bottom:12px;">
-                                        <label style="font-size:12px; font-weight:600; color:#6e6e73; display:block; margin-bottom:4px;">Payment Note</label>
-                                        <textarea rows="2" placeholder="Additional instructions..." style="width:100%; padding:10px 12px; border:1px solid #e2e8f0; border-radius:10px; font-size:14px; resize:vertical; box-sizing:border-box;"></textarea>
-                                    </div>
-                                    <button onclick="p2pCompleteStep(3)" style="width:100%; padding:14px; background:linear-gradient(135deg,#FF9500,#e08600); color:white; border:none; border-radius:12px; font-size:15px; font-weight:700; cursor:pointer; letter-spacing:0.3px; margin-top:4px;">
-                                        <i class="fas fa-paper-plane mr-2"></i>SUBMIT FINAL PAYMENT
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Completion Banner -->
-                    <div class="p2p-complete-banner" id="p2p-complete-banner">
-                        <div style="width:48px; height:48px; background:rgba(255,255,255,0.25); border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
-                            <i class="fas fa-check" style="font-size:22px;"></i>
-                        </div>
-                        <div style="flex:1;">
-                            <p style="font-size:17px; font-weight:700; margin:0 0 2px;">Purchase to Pay Complete</p>
-                            <p style="font-size:13px; opacity:0.85; margin:0;" id="p2p-complete-summary">All steps approved and payment submitted.</p>
-                        </div>
-                        <button onclick="window.print()" style="padding:8px 16px; background:rgba(255,255,255,0.25); color:white; border:none; border-radius:10px; font-size:13px; font-weight:600; cursor:pointer; flex-shrink:0;">
-                            <i class="fas fa-download mr-1"></i>Export PDF
+                    <!-- Segmented Control -->
+                    <div class="p2p-seg">
+                        <div class="p2p-seg-indicator" id="p2p-seg-indicator"></div>
+                        <button class="p2p-seg-btn active" onclick="p2pSwitchTab(1)">
+                            <i class="fas fa-file-pen" style="font-size:11px; color:#007AFF;"></i> Purchase Request
+                        </button>
+                        <button class="p2p-seg-btn" onclick="p2pSwitchTab(2)">
+                            <i class="fas fa-file-signature" style="font-size:11px; color:#5856D6;"></i> Acceptance
+                        </button>
+                        <button class="p2p-seg-btn" onclick="p2pSwitchTab(3)">
+                            <i class="fas fa-money-bill-transfer" style="font-size:11px; color:#FF9500;"></i> Payment
                         </button>
                     </div>
+                </div>
+
+                <!-- ── Panel 1: Purchase Request ── -->
+                <div id="p2p-panel-1" class="p2p-flat-panel active">
+
+                    <div class="p2p-sec-label">Request Details</div>
+                    <div class="p2p-ios-group">
+                        <div class="p2p-ios-row">
+                            <span class="p2p-ios-lbl">PR No</span>
+                            <input type="text" id="p2p-pr-no" readonly class="p2p-ios-input" placeholder="Auto-generated">
+                        </div>
+                        <div class="p2p-ios-row">
+                            <span class="p2p-ios-lbl">Company</span>
+                            <select id="p2p-co-select" onchange="lookupCompany('p2p-co')" class="p2p-ios-select">
+                                <option value="">— Select —</option>
+                            </select>
+                        </div>
+                        <div class="p2p-ios-row p2p-col">
+                            <span class="p2p-ios-lbl">Description</span>
+                            <textarea class="p2p-ios-ta" placeholder="Describe goods or services…"></textarea>
+                        </div>
+                        <div class="p2p-ios-row">
+                            <span class="p2p-ios-lbl">Amount</span>
+                            <div class="p2p-ios-inline">
+                                <input type="number" class="p2p-ios-input" placeholder="0" style="max-width:100px;">
+                                <select class="p2p-ios-select" style="max-width:60px; flex:unset;">
+                                    <option>VND</option><option>USD</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="p2p-ios-row">
+                            <span class="p2p-ios-lbl">Date</span>
+                            <input type="date" class="p2p-ios-input">
+                        </div>
+                        <div class="p2p-ios-row p2p-col">
+                            <span class="p2p-ios-lbl">Justification</span>
+                            <textarea class="p2p-ios-ta" placeholder="Reason for purchase…" style="min-height:48px;"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="p2p-sec-label">Approval Chain</div>
+                    <div style="padding:0 16px;">
+                        <div class="approval-block border-blue-200 bg-blue-50/30">
+                            <div class="flex items-center justify-between mb-4">
+                                <h4 class="font-bold text-blue-800 flex items-center gap-2" style="font-size:14px;">
+                                    <i class="fas fa-clipboard-check"></i> Approval Workflow
+                                </h4>
+                                <span class="approval-badge badge-pending" id="p2p-workflow-badge">
+                                    <i class="fas fa-clock"></i> In Progress
+                                </span>
+                            </div>
+                            <div class="approval-timeline">
+                                <div class="approval-step active" id="p2p-appr-step-1">
+                                    <div class="approval-card">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <div>
+                                                <p class="font-semibold text-slate-800 flex items-center gap-2" style="font-size:13px;">
+                                                    <i class="fas fa-dollar-sign text-emerald-600"></i> Budget Approval
+                                                </p>
+                                                <p class="text-xs text-slate-500 mt-1">Assigned to:
+                                                    <select class="inline-block border-none bg-transparent text-xs font-semibold text-slate-700" id="p2p-budget-app"><option>Select Approver</option></select>
+                                                </p>
+                                            </div>
+                                            <span class="approval-badge badge-pending" id="p2p-badge-budget">Active</span>
+                                        </div>
+                                        <div class="approval-actions">
+                                            <button onclick="approveStep('p2p-pr', 1)" class="flex-1 bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-emerald-700 transition"><i class="fas fa-check mr-1"></i>Approve</button>
+                                            <button onclick="rejectStep('p2p-pr', 1)" class="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-700 transition"><i class="fas fa-times mr-1"></i>Reject</button>
+                                        </div>
+                                        <textarea id="p2p-pr-comment-1" placeholder="Add comment" class="mt-2 w-full text-sm border border-slate-200 rounded-lg p-2 resize-y" rows="2"></textarea>
+                                    </div>
+                                </div>
+                                <div class="approval-step active" id="p2p-appr-step-2">
+                                    <div class="approval-card">
+                                        <div class="flex items-center justify-between mb-2">
+                                            <div>
+                                                <p class="font-semibold text-slate-800 flex items-center gap-2" style="font-size:13px;">
+                                                    <i class="fas fa-truck text-blue-600"></i> Supplier Approval
+                                                </p>
+                                                <p class="text-xs text-slate-500 mt-1" style="display:flex; align-items:center; gap:4px;">
+                                                    <i class="fas fa-code-branch" style="font-size:10px; color:#007AFF;"></i> Parallel with Budget
+                                                </p>
+                                                <p class="text-xs text-slate-500">Assigned to:
+                                                    <select class="inline-block border-none bg-transparent text-xs font-semibold text-slate-700" id="p2p-supp-app"><option>Select Approver</option></select>
+                                                </p>
+                                            </div>
+                                            <span class="approval-badge badge-pending" id="p2p-badge-supplier">Active</span>
+                                        </div>
+                                        <div class="approval-actions">
+                                            <button onclick="approveStep('p2p-pr', 2)" class="flex-1 bg-emerald-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-emerald-700 transition"><i class="fas fa-check mr-1"></i>Approve</button>
+                                            <button onclick="rejectStep('p2p-pr', 2)" class="flex-1 bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-red-700 transition"><i class="fas fa-times mr-1"></i>Reject</button>
+                                        </div>
+                                        <textarea id="p2p-pr-comment-2" placeholder="Add comment" class="mt-2 w-full text-sm border border-slate-200 rounded-lg p-2 resize-y" rows="2"></textarea>
+                                    </div>
+                                </div>
+                                <div class="approval-step pending" id="p2p-appr-step-3">
+                                    <div class="approval-card" style="opacity:0.6;">
+                                        <div class="flex items-center justify-between">
+                                            <div>
+                                                <p class="font-semibold text-slate-800 flex items-center gap-2" style="font-size:13px;">
+                                                    <i class="fas fa-check-double text-purple-600"></i> Final Approval
+                                                </p>
+                                                <p class="text-xs text-slate-500 mt-1"><i class="fas fa-lock" style="font-size:10px;"></i> Unlocks after Budget &amp; Supplier</p>
+                                                <p class="text-xs text-slate-500">Assigned to:
+                                                    <select class="inline-block border-none bg-transparent text-xs font-semibold text-slate-700" id="p2p-final-app-pr"><option>Select Approver</option></select>
+                                                </p>
+                                            </div>
+                                            <span class="approval-badge badge-pending" id="p2p-badge-final">Waiting</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mt-4 pt-4 border-t border-slate-200">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-sm font-semibold text-slate-700">Approval Progress</span>
+                                    <span class="text-sm text-slate-500" id="p2p-progress-label">0 of 3 completed</span>
+                                </div>
+                                <div class="w-full bg-slate-200 rounded-full h-2">
+                                    <div id="p2p-pr-approval-progress" class="bg-emerald-600 h-2 rounded-full transition-all duration-300" style="width:0%;"></div>
+                                </div>
+                            </div>
+                            <div class="mt-4 pt-4 border-t border-slate-200">
+                                <button onclick="toggleApprovalHistory('p2p-pr-history')" class="text-sm text-blue-600 font-semibold hover:text-blue-700 flex items-center gap-2">
+                                    <i class="fas fa-history"></i> View Approval History
+                                    <i class="fas fa-chevron-down text-xs" id="p2p-pr-history-icon"></i>
+                                </button>
+                                <div id="p2p-pr-history" class="approval-history hidden mt-3 space-y-2">
+                                    <div class="text-xs text-slate-500 italic">No history yet</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
                 </div>
+
+                <!-- ── Panel 2: Acceptance Minutes ── -->
+                <div id="p2p-panel-2" class="p2p-flat-panel">
+
+                    <div class="p2p-sec-label">Parties</div>
+                    <div class="p2p-ios-group">
+                        <div class="p2p-ios-row">
+                            <span class="p2p-ios-lbl">Bên A</span>
+                            <span id="p2p-side-a-name" class="p2p-ios-input" style="color:#8E8E93;">---</span>
+                        </div>
+                        <div class="p2p-ios-row">
+                            <span class="p2p-ios-lbl">Bên B</span>
+                            <input type="text" class="p2p-ios-input" placeholder="Nhà cung cấp / Supplier…">
+                        </div>
+                    </div>
+
+                    <div class="p2p-sec-label">BIÊN BẢN NGHIỆM THU — Signatures</div>
+                    <div class="p2p-sig-grid">
+                        <div class="p2p-sig-box">
+                            <label>Người lập</label>
+                            <select id="acc-creator"></select>
+                            <div class="sig-line">Signature</div>
+                            <input type="text" placeholder="Sign…">
+                        </div>
+                        <div class="p2p-sig-box">
+                            <label>Người nghiệm thu</label>
+                            <select id="acc-acceptor"></select>
+                            <div class="sig-line">Signature</div>
+                            <input type="text" placeholder="Sign…">
+                        </div>
+                        <div class="p2p-sig-box">
+                            <label>Kế toán trưởng</label>
+                            <input type="text" id="p2p-acc-accountant" readonly>
+                            <div class="sig-line">Signature</div>
+                            <input type="text" placeholder="Sign…">
+                        </div>
+                        <div class="p2p-sig-box">
+                            <label>Giám đốc</label>
+                            <input type="text" id="p2p-acc-director" readonly>
+                            <div class="sig-line">Signature</div>
+                            <input type="text" placeholder="Sign…">
+                        </div>
+                    </div>
+
+                    <button onclick="p2pCompleteStep(2)" class="p2p-ios-cta" style="background:linear-gradient(135deg,#5856D6,#AF52DE);">
+                        <i class="fas fa-file-signature"></i> Confirm Acceptance
+                    </button>
+
+                </div>
+
+                <!-- ── Panel 3: Payment Request ── -->
+                <div id="p2p-panel-3" class="p2p-flat-panel">
+
+                    <div class="p2p-sec-label">From Previous Steps</div>
+                    <div class="p2p-ios-group">
+                        <div class="p2p-sum-row"><span class="p2p-sum-lbl">PR No</span><strong id="p2p-pay-pr-no">—</strong></div>
+                        <div class="p2p-sum-row"><span class="p2p-sum-lbl">Company</span><strong id="p2p-pay-company">—</strong></div>
+                        <div class="p2p-sum-row"><span class="p2p-sum-lbl">Amount</span><strong id="p2p-pay-amount">—</strong></div>
+                        <div class="p2p-sum-row"><span class="p2p-sum-lbl">Acceptance</span><strong style="color:#34C759;">✓ Confirmed</strong></div>
+                    </div>
+
+                    <div class="p2p-sec-label">Payment Details</div>
+                    <div class="p2p-ios-group">
+                        <div class="p2p-ios-row">
+                            <span class="p2p-ios-lbl">Final Approver</span>
+                            <select id="p2p-final-app" class="p2p-ios-select"><option value="">— Select —</option></select>
+                        </div>
+                        <div class="p2p-ios-row p2p-col">
+                            <span class="p2p-ios-lbl">Payment Note</span>
+                            <textarea class="p2p-ios-ta" placeholder="Additional instructions…" style="min-height:52px;"></textarea>
+                        </div>
+                    </div>
+
+                    <button onclick="p2pCompleteStep(3)" class="p2p-ios-cta" style="background:linear-gradient(135deg,#FF9500,#e08600);">
+                        <i class="fas fa-paper-plane"></i> SUBMIT FINAL PAYMENT
+                    </button>
+
+                </div>
+
+                <!-- Completion Banner -->
+                <div class="p2p-complete-banner" id="p2p-complete-banner" style="margin:16px;">
+                    <div style="width:48px; height:48px; background:rgba(255,255,255,0.25); border-radius:50%; display:flex; align-items:center; justify-content:center; flex-shrink:0;">
+                        <i class="fas fa-check" style="font-size:22px;"></i>
+                    </div>
+                    <div style="flex:1;">
+                        <p style="font-size:17px; font-weight:700; margin:0 0 2px;">Purchase to Pay Complete</p>
+                        <p style="font-size:13px; opacity:0.85; margin:0;" id="p2p-complete-summary">All steps approved and payment submitted.</p>
+                    </div>
+                    <button onclick="window.print()" style="padding:8px 16px; background:rgba(255,255,255,0.25); color:white; border:none; border-radius:10px; font-size:13px; font-weight:600; cursor:pointer; flex-shrink:0;">
+                        <i class="fas fa-download mr-1"></i>Export PDF
+                    </button>
+                </div>
+
             </main>
 
             <!-- CASH DETAILED -->
@@ -5996,59 +6086,51 @@
             if (link)    link.href = cfg.link;
         }
 
-        function p2pTogglePanel(num) {
-            const panel = document.getElementById('p2p-panel-' + num);
-            if (!panel || panel.classList.contains('completed')) return;
-            const isActive = panel.classList.contains('active');
+        function p2pSwitchTab(num) {
             [1, 2, 3].forEach(n => {
                 const p = document.getElementById('p2p-panel-' + n);
-                if (p && !p.classList.contains('completed')) p.classList.remove('active');
+                if (p) p.classList.toggle('active', n === num);
             });
-            if (!isActive) panel.classList.add('active');
+            const btns = document.querySelectorAll('.p2p-seg-btn');
+            btns.forEach((b, i) => b.classList.toggle('active', i === num - 1));
+            const ind = document.getElementById('p2p-seg-indicator');
+            if (ind) ind.style.transform = 'translateX(' + ((num - 1) * 100) + '%)';
+            const page = document.getElementById('page-process-p2p');
+            if (page) page.scrollTop = 0;
+            // also scroll the ipad-main wrapper if needed
+            const main = document.querySelector('.ipad-main');
+            if (main) main.scrollTop = 0;
         }
 
-        function p2pGoToPanel(num) {
-            const panel = document.getElementById('p2p-panel-' + num);
-            if (!panel) return;
-            if (!panel.classList.contains('completed')) {
-                [1, 2, 3].forEach(n => {
-                    const p = document.getElementById('p2p-panel-' + n);
-                    if (p && !p.classList.contains('completed')) p.classList.remove('active');
-                });
-                panel.classList.add('active');
-            }
-            panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }
+        function p2pTogglePanel(num) { p2pSwitchTab(num); }
+
+        function p2pGoToPanel(num) { p2pSwitchTab(num); }
 
         function p2pCompleteStep(num) {
-            const panel   = document.getElementById('p2p-panel-' + num);
-            const miniDot = document.getElementById('p2p-mini-dot-' + num);
-            const miniSub = document.getElementById('p2p-mini-sub-' + num);
             const subLabels = { 1: 'Approved', 2: 'Signed', 3: 'Submitted' };
-            const doneColors = { 1: '#34C759', 2: '#34C759', 3: '#34C759' };
 
-            // Mark panel completed + collapse
-            if (panel) { panel.classList.remove('active'); panel.classList.add('completed'); }
-
-            // Header icon → green
+            // Header icon → green ✓
+            const miniDot = document.getElementById('p2p-mini-dot-' + num);
             if (miniDot) {
                 miniDot.style.background = 'linear-gradient(135deg,#34C759,#28a745)';
-                miniDot.innerHTML = '<i class="fas fa-check" style="font-size:16px; color:white;"></i>';
+                miniDot.innerHTML = '<i class="fas fa-check" style="font-size:14px; color:white;"></i>';
             }
-            // Header badge → Done (green)
+            // Header badge → Done
+            const miniSub = document.getElementById('p2p-mini-sub-' + num);
             if (miniSub) {
-                miniSub.style.background = '#d1fae5';
-                miniSub.style.color = '#065f46';
+                miniSub.style.cssText = 'display:inline-flex; align-items:center; gap:3px; padding:2px 9px; border-radius:9999px; font-size:10px; font-weight:600; background:#d1fae5; color:#065f46; flex-shrink:0; transition:all 0.3s;';
                 miniSub.innerHTML = '<i class="fas fa-check-circle" style="font-size:9px;"></i> ' + subLabels[num];
             }
-
             // Next step badge → In Progress
             const next = num + 1;
-            const nextSub = document.getElementById('p2p-mini-sub-' + next);
-            if (nextSub && next <= 3) {
-                nextSub.style.background = '#dbeafe';
-                nextSub.style.color = '#1d4ed8';
-                nextSub.innerHTML = '<i class="fas fa-circle" style="font-size:6px;"></i> In Progress';
+            if (next <= 3) {
+                const nextSub = document.getElementById('p2p-mini-sub-' + next);
+                if (nextSub) {
+                    nextSub.style.cssText = 'display:inline-flex; align-items:center; gap:3px; padding:2px 9px; border-radius:9999px; font-size:10px; font-weight:600; background:#dbeafe; color:#1d4ed8; flex-shrink:0; transition:all 0.3s;';
+                    nextSub.innerHTML = '<i class="fas fa-circle" style="font-size:5px;"></i> Active';
+                }
+                // Auto-advance to next tab
+                p2pSwitchTab(next);
             }
 
             // After step 3: show completion banner
