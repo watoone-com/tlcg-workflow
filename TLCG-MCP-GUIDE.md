@@ -94,7 +94,7 @@ Scans all project files and lists every GAS URL with the file path and line numb
 - `approve_voucher.html.bak`
 - `script.js`
 - `index.html`
-- `phieu_thu_chi.html`
+- `voucher.html`
 
 **Example prompts:**
 - "find all GAS URLs in the project"

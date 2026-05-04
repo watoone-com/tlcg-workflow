@@ -17,7 +17,7 @@ rotate IDs / folders / approver lists without touching source code.
 
 ## Projects
 
-### `VOUCHER_WORKFLOW_BACKEND.gs` — phieu_thu_chi
+### `VOUCHER_WORKFLOW_BACKEND.gs` — voucher
 
 Maps to [VOUCHER_WORKFLOW_BACKEND.gs](VOUCHER_WORKFLOW_BACKEND.gs).
 
@@ -41,7 +41,7 @@ required but allowed inside the string):
 If `IMPORT_APPROVERS` is missing or not valid JSON, the backend falls back to
 the hardcoded roster shown above.
 
-### `PAYMENT_REQUEST_BACKEND.gs` — de_nghi_thanh_toan
+### `PAYMENT_REQUEST_BACKEND.gs` — payment_request
 
 Maps to [PAYMENT_REQUEST_BACKEND.gs](PAYMENT_REQUEST_BACKEND.gs).
 
@@ -52,7 +52,7 @@ Maps to [PAYMENT_REQUEST_BACKEND.gs](PAYMENT_REQUEST_BACKEND.gs).
 Note: this backend reads the **same** `MASTER_SPREADSHEET_ID` property as
 `VOUCHER_WORKFLOW_BACKEND.gs`. If both scripts live in the same Apps Script
 project, setting the property once covers both flows. If they are separate
-projects, set it in each. The frontend for this flow (`de_nghi_thanh_toan.html`)
+projects, set it in each. The frontend for this flow (`payment_request.html`)
 reuses the Vercel-side `DRIVE_VOUCHER_FOLDER_ID`, `GOOGLE_CLIENT_ID` and
 `GOOGLE_API_KEY` via `/api/config` — no additional backend property is needed
 for Drive uploads because the client performs them directly with GIS.

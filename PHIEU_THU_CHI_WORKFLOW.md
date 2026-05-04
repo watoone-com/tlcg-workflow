@@ -2,14 +2,14 @@
 
 ## Overview
 
-A financial voucher (Receipt/Payment) management system for TLCGroup. Built as a single-page app (`phieu_thu_chi.html`) backed by Google Apps Script (`VOUCHER_WORKFLOW_BACKEND.gs`). Employees create vouchers through a 5-step form; vouchers go through a sequential 3-tier approval chain via email.
+A financial voucher (Receipt/Payment) management system for TLCGroup. Built as a single-page app (`voucher.html`) backed by Google Apps Script (`VOUCHER_WORKFLOW_BACKEND.gs`). Employees create vouchers through a 5-step form; vouchers go through a sequential 3-tier approval chain via email.
 
 ---
 
 ## Architecture
 
 ```
-phieu_thu_chi.html (SPA frontend)
+voucher.html (SPA frontend)
         ↕  HTTPS POST/GET  (FormData, JSON body)
 VOUCHER_WORKFLOW_BACKEND.gs  (Google Apps Script Web App)
         ↕
@@ -75,7 +75,7 @@ Backend reads **columns A–N only (indices 0–13)**. Columns O–BZ (79 total)
 
 **Lookup logic**: `handleGetCompanyApprovers()` matches `row[0] === companyName AND row[2] === companyKey`
 
-**Also embedded** as base64 blob in `phieu_thu_chi.html` (columns A–N only) for offline/fast initial load — company dropdown populates from this before API calls.
+**Also embedded** as base64 blob in `voucher.html` (columns A–N only) for offline/fast initial load — company dropdown populates from this before API calls.
 
 ---
 
@@ -383,7 +383,7 @@ Approve: https://workflow.egg-ventures.com/approve_voucher.html
 Reject:  https://workflow.egg-ventures.com/reject_voucher.html
          ?voucherNumber=...&approverEmail=...
 
-Status:  https://workflow.egg-ventures.com/phieu_thu_chi.html
+Status:  https://workflow.egg-ventures.com/voucher.html
          ?viewStatus={voucherNumber}
 ```
 
@@ -445,7 +445,7 @@ Click voucher card → openVoucherDetail(voucherNumber)
    - Execute as: **Me**
    - Who has access: **Anyone**
 4. Copy the new deployment URL
-5. If URL changed → update `GOOGLE_APPS_SCRIPT_WEB_APP_URL` constant in `phieu_thu_chi.html`
+5. If URL changed → update `GOOGLE_APPS_SCRIPT_WEB_APP_URL` constant in `voucher.html`
 
 ### 2. Google Sheet — `Voucher_History` Headers
 Ensure row 1 contains exactly these 18 headers (A1–R1):
@@ -458,7 +458,7 @@ attachments | description | note | approver_email | approved_at | MetaJSON
 
 > ⚠️ **Historical data**: Rows submitted before this deployment have the old 13-column structure. Old data in cols D–R will be misaligned. New submissions will be correct from this deployment forward.
 
-### 3. Frontend (`phieu_thu_chi.html`)
+### 3. Frontend (`voucher.html`)
 1. Save file
 2. Deploy to web server (Netlify drag-and-drop or git push)
 3. Hard-refresh browser (`Ctrl+Shift+R` / `Cmd+Shift+R`) to clear cached JS

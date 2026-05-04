@@ -488,7 +488,7 @@
                 <div class="sidebar-icon-box" style="background: #5856D6;"><i class="fas fa-file-invoice-dollar"></i></div>
                 <span>Đề Nghị Thanh Toán</span>
             </button>
-            <button onclick="window.open('phieu_thu_chi.html', '_blank')" class="sidebar-item">
+            <button onclick="window.open('voucher.html', '_blank')" class="sidebar-item">
                 <div class="sidebar-icon-box" style="background: #FF9500;"><i class="fas fa-file-invoice"></i></div>
                 <span>Phiếu Thu Chi</span>
             </button>
@@ -1162,7 +1162,7 @@
 
     // ═══════════════════════════════════════════════════════════════════
     //  DATA LOADING
-    //  Companies: same source as phieu_thu_chi (tlcg_companies_embed.js)
+    //  Companies: same source as voucher (tlcg_companies_embed.js)
     // ═══════════════════════════════════════════════════════════════════
     function getSelectedCompanyMaj() {
         const sel = document.getElementById('company_code');
@@ -1275,7 +1275,7 @@
     }
 
     // ═══════════════════════════════════════════════════════════════════
-    //  REQUEST NUMBER  (mirrors phieu_thu_chi.html pattern, type = PO)
+    //  REQUEST NUMBER  (mirrors voucher.html pattern, type = PO)
     // ═══════════════════════════════════════════════════════════════════
     function generateRequestNumber() {
         const sel = document.getElementById('company_code');

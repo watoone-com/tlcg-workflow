@@ -342,7 +342,7 @@ export default async function handler(req, res) {
         }
       }
       
-      // Check if we have a 'data' field with a JSON string (from phieu_thu_chi.html)
+      // Check if we have a 'data' field with a JSON string (from voucher.html)
       // This is used for large payloads with file attachments
       let hasDataField = false;
       let dataFieldValue = null;

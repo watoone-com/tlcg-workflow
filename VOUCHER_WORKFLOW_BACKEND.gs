@@ -783,7 +783,7 @@ function handleSendEmail(requestBody) {
         );
         
         // Add status review link
-        const statusLink = 'https://workflow.egg-ventures.com/phieu_thu_chi.html?viewStatus=' + voucherNo;
+        const statusLink = 'https://workflow.egg-ventures.com/voucher.html?viewStatus=' + voucherNo;
         requesterEmailData.body += `
           <p style="margin-top: 15px;">
             <a href="${statusLink}" style="background: #4285f4; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
@@ -1324,7 +1324,7 @@ function sendApprovalEmailToNextApprover(voucher, nextApprover, approverRole, me
       `approverEmail=${encodeURIComponent(nextApprover.email)}&` +
       `approverRole=${approverRole}`;
     
-    const statusLink = `${baseUrl}/phieu_thu_chi.html?viewStatus=${voucherNumber}`;
+    const statusLink = `${baseUrl}/voucher.html?viewStatus=${voucherNumber}`;
     const roleName = getApproverRoleName(approverRole);
     
     // Get previous approver info
@@ -1411,7 +1411,7 @@ function sendProgressEmail(voucher, approvalCount, meta, voucherNumber, existing
       return;
     }
     
-    const statusLink = `https://workflow.egg-ventures.com/phieu_thu_chi.html?viewStatus=${voucherNumber}`;
+    const statusLink = `https://workflow.egg-ventures.com/voucher.html?viewStatus=${voucherNumber}`;
     const roleName = meta.currentApprover ? getApproverRoleName(meta.currentApprover) : '';
     
     // Update subject format: [ĐANG DUYỆT (X/3)] instead of [TIẾN ĐỘ PHÊ DUYỆT]
@@ -1679,7 +1679,7 @@ function sendReminderEmails() {
         const voucherType = (row[1] || '').toString();
         const employee = (row[4] || '').toString();
         const amount = Number(row[8] || 0).toLocaleString('vi-VN') + ' ₫';
-        const approveUrl = `https://workflow.egg-ventures.com/phieu_thu_chi.html?approveVoucher=${encodeURIComponent(voucherNumber)}`;
+        const approveUrl = `https://workflow.egg-ventures.com/voucher.html?approveVoucher=${encodeURIComponent(voucherNumber)}`;
 
         const emailBody = `
           <p>Kính gửi ${approverName || 'Anh/Chị'},</p>
@@ -1753,7 +1753,7 @@ function sendFinalApprovalEmail(voucher, meta, voucherNumber) {
     }
 
     const isThu = (voucher.voucherType || '').toUpperCase().includes('THU');
-    const receiptUrl = 'https://workflow.egg-ventures.com/phieu_thu_chi.html'
+    const receiptUrl = 'https://workflow.egg-ventures.com/voucher.html'
       + '?acknowledgeReceipt=' + encodeURIComponent(voucherNumber)
       + '&voucherType=' + encodeURIComponent(voucher.voucherType || '')
       + '&requestorEmail=' + encodeURIComponent(requesterEmail);
@@ -1899,7 +1899,7 @@ function handleRejectVoucher(requestBody) {
 
       // Send rejection email to requester + all 3 approvers
       const requesterEmail = v.requestorEmail || existingVoucher.requestorEmail;
-      const statusLink = `https://workflow.egg-ventures.com/phieu_thu_chi.html?viewStatus=${voucherNumber}`;
+      const statusLink = `https://workflow.egg-ventures.com/voucher.html?viewStatus=${voucherNumber}`;
       const emailSubject = "[TỪ CHỐI] Phiếu " + voucherNumber;
       const rejectionEmailBody = `
         <p>Kính gửi Anh/Chị,</p>
@@ -3300,7 +3300,7 @@ function handleGetEmployees(requestBody) {
 
 /**
  * Get all companies from "Master Company" sheet.
- * Returns companies_data[] in the same shape as the embedded blob in phieu_thu_chi.html
+ * Returns companies_data[] in the same shape as the embedded blob in voucher.html
  * so that any page can build a live company dropdown without embedding static data.
  */
 function handleGetCompanies() {

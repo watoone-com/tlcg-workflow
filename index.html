@@ -3038,7 +3038,7 @@
                             <span id="p2p-mini-sub-1" class="approval-badge badge-pending" style="flex-shrink:0; font-size:10px;">
                                 <i class="fas fa-circle" style="font-size:5px;"></i> Active
                             </span>
-                            <a href="de_nghi_mua_hang.html" target="_blank" style="padding:5px 11px; background:linear-gradient(135deg,#007AFF,#5856D6); color:white; border-radius:8px; font-size:11px; font-weight:600; text-decoration:none; display:flex; align-items:center; gap:4px; flex-shrink:0; margin-left:6px;">
+                            <a href="purchase_request.html" target="_blank" style="padding:5px 11px; background:linear-gradient(135deg,#007AFF,#5856D6); color:white; border-radius:8px; font-size:11px; font-weight:600; text-decoration:none; display:flex; align-items:center; gap:4px; flex-shrink:0; margin-left:6px;">
                                 <i class="fas fa-arrow-up-right-from-square" style="font-size:9px;"></i> Open
                             </a>
                         </div>
@@ -3062,7 +3062,7 @@
                             <span id="p2p-mini-sub-3" style="display:inline-flex; align-items:center; gap:3px; padding:2px 9px; border-radius:9999px; font-size:10px; font-weight:600; background:rgba(0,0,0,0.06); color:#8E8E93; flex-shrink:0; transition:all 0.3s;">
                                 <i class="fas fa-circle" style="font-size:5px;"></i> Ready
                             </span>
-                            <a href="de_nghi_thanh_toan.html" target="_blank" style="padding:5px 11px; background:linear-gradient(135deg,#FF9500,#e08600); color:white; border-radius:8px; font-size:11px; font-weight:600; text-decoration:none; display:flex; align-items:center; gap:4px; flex-shrink:0; margin-left:6px;">
+                            <a href="payment_request.html" target="_blank" style="padding:5px 11px; background:linear-gradient(135deg,#FF9500,#e08600); color:white; border-radius:8px; font-size:11px; font-weight:600; text-decoration:none; display:flex; align-items:center; gap:4px; flex-shrink:0; margin-left:6px;">
                                 <i class="fas fa-arrow-up-right-from-square" style="font-size:9px;"></i> Open
                             </a>
                         </div>
@@ -3346,7 +3346,7 @@
                             </div>
                             <button
                                 type="button"
-                                onclick="window.open('phieu_thu_chi.html', '_blank')"
+                                onclick="window.open('voucher.html', '_blank')"
                                 class="inline-flex items-center gap-2 bg-purple-50 text-purple-700 hover:bg-purple-100 px-3 py-1.5 rounded-lg text-sm font-semibold transition">
                                 <span>Open Vouchers</span>
                                 <i class="fas fa-arrow-up-right-from-square text-xs"></i>
@@ -3445,7 +3445,7 @@
                         <!-- Vouchers (Phiếu Thu/Chi) Card -->
                         <button
                             type="button"
-                            onclick="window.open('phieu_thu_chi.html', '_blank')"
+                            onclick="window.open('voucher.html', '_blank')"
                             class="w-full text-left form-section-container hover:shadow-xl transition transform hover:-translate-y-0.5">
                             <div class="p-6 flex items-center justify-between">
                                 <div>
@@ -6068,9 +6068,9 @@
 
         /* ── P2P Accordion & Step State ── */
         const P2P_STEPS = {
-            1: { title: 'Purchase Request',   icon: 'fa-file-pen',           color: 'linear-gradient(135deg,#007AFF,#5856D6)', link: 'de_nghi_mua_hang.html'  },
+            1: { title: 'Purchase Request',   icon: 'fa-file-pen',           color: 'linear-gradient(135deg,#007AFF,#5856D6)', link: 'purchase_request.html'  },
             2: { title: 'Acceptance Minutes', icon: 'fa-file-signature',     color: 'linear-gradient(135deg,#5856D6,#AF52DE)', link: 'nghiem_thu.html'         },
-            3: { title: 'Payment Request',    icon: 'fa-money-bill-transfer', color: 'linear-gradient(135deg,#FF9500,#e08600)', link: 'de_nghi_thanh_toan.html' },
+            3: { title: 'Payment Request',    icon: 'fa-money-bill-transfer', color: 'linear-gradient(135deg,#FF9500,#e08600)', link: 'payment_request.html' },
         };
 
         function p2pUpdateHeader(num) {

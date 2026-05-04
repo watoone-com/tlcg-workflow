@@ -1,0 +1,1073 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Đề Nghị Mua Hàng - TLCGroup</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary:        #007AFF;
+            --primary-hover:  #0056CC;
+            --primary-light:  rgba(0,122,255,0.10);
+            --success:        #34C759;
+            --success-hover:  #28A745;
+            --warning:        #FF9500;
+            --error:          #FF3B30;
+            --bg:             #F2F2F7;
+            --surface:        #FFFFFF;
+            --text-primary:   #000000;
+            --text-secondary: rgba(60,60,67,0.60);
+            --border:         rgba(0,0,0,0.10);
+            --sep:            rgba(60,60,67,0.18);
+            --shadow:         0 2px 8px rgba(0,0,0,0.07);
+            --shadow-lg:      0 8px 24px rgba(0,0,0,0.09);
+            --font-display:   'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-body:      'DM Sans', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+            --radius-sm:      8px;
+            --radius-md:      12px;
+            --radius-lg:      14px;
+            --sidebar-width:  280px;
+        }
+
+        /* ── Reset ──────────────────────────────────────────────── */
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: var(--font-body); background: var(--bg); color: var(--text-primary); min-height: 100vh; -webkit-font-smoothing: antialiased; }
+
+        /* ── Sidebar (shared with payment_request) ──────────── */
+        .ipad-sidebar {
+            width: var(--sidebar-width);
+            background: rgba(249,249,249,0.94);
+            backdrop-filter: saturate(180%) blur(20px);
+            -webkit-backdrop-filter: saturate(180%) blur(20px);
+            border-right: 0.5px solid rgba(60,60,67,0.29);
+            position: fixed; top: 0; left: 0; height: 100vh;
+            overflow-y: auto; z-index: 50;
+            display: none; flex-direction: column;
+            transition: width 0.25s cubic-bezier(0.4,0,0.2,1);
+        }
+        @media (min-width: 768px) {
+            .ipad-sidebar { display: flex; }
+            .ipad-main    { margin-left: var(--sidebar-width); }
+            .mobile-nav   { display: none !important; }
+        }
+        .ipad-sidebar.collapsed { width: 72px; }
+        .ipad-sidebar.collapsed .sidebar-header > div > span,
+        .ipad-sidebar.collapsed .sidebar-section-title,
+        .ipad-sidebar.collapsed .sidebar-item > span,
+        .ipad-sidebar.collapsed .sidebar-signout-text,
+        .ipad-sidebar.collapsed .sidebar-user-info { display: none; }
+        .ipad-sidebar.collapsed .sidebar-item { justify-content: center; padding: 12px; margin: 2px 6px; width: calc(100% - 12px); }
+        .ipad-sidebar.collapsed:hover { width: 280px; }
+        .ipad-sidebar.collapsed:hover .sidebar-header > div > span,
+        .ipad-sidebar.collapsed:hover .sidebar-section-title,
+        .ipad-sidebar.collapsed:hover .sidebar-item > span,
+        .ipad-sidebar.collapsed:hover .sidebar-signout-text,
+        .ipad-sidebar.collapsed:hover .sidebar-user-info { display: block; }
+        .ipad-sidebar.collapsed:hover .sidebar-item { justify-content: flex-start; padding: 10px 12px; margin: 2px 8px; width: calc(100% - 16px); }
+        .ipad-main.sidebar-collapsed { margin-left: 72px; }
+        .sidebar-header { padding: 18px 16px; border-bottom: 0.5px solid rgba(60,60,67,0.29); position: relative; display: flex; align-items: center; justify-content: space-between; }
+        .sidebar-section { padding: 8px 0; position: relative; }
+        .sidebar-section:not(:first-of-type)::before { content: ''; position: absolute; top: 0; left: 16px; right: 16px; height: 0.5px; background: rgba(60,60,67,0.18); }
+        .sidebar-section-title { font-size: 12px; font-weight: 600; color: #6e6e73; text-transform: uppercase; padding: 12px 16px 6px; letter-spacing: 0.5px; }
+        .sidebar-item { display: flex; align-items: center; gap: 12px; padding: 10px 16px; margin: 2px 8px; border-radius: 10px; cursor: pointer; transition: all 0.2s; color: #000; font-size: 15px; font-weight: 400; border: none; background: transparent; width: calc(100% - 16px); text-align: left; }
+        .sidebar-item:hover { background: rgba(0,0,0,0.04); transform: translateX(2px); }
+        .sidebar-item.active { background: var(--primary); color: white; }
+        .sidebar-icon-box { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; color: white; flex-shrink: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+        .sidebar-user { padding: 16px; border-top: 0.5px solid rgba(60,60,67,0.29); margin-top: auto; }
+
+        /* ── Layout ──────────────────────────────────────────────── */
+        .page-content { max-width: 860px; margin: 0 auto; padding: 20px 16px 60px; display: flex; flex-direction: column; gap: 16px; }
+
+        /* ── Nav ─────────────────────────────────────────────────── */
+        nav.sticky { backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); background: rgba(255,255,255,0.80); border-bottom: 0.5px solid rgba(0,0,0,0.10); }
+
+        /* ── Progress stepper ────────────────────────────────────── */
+        .progress-stepper { background: white; border-radius: var(--radius-lg); border: 0.5px solid var(--border); box-shadow: var(--shadow); padding: 20px 16px; }
+        .stepper-container { position: relative; display: flex; align-items: center; justify-content: space-between; }
+        .stepper-line { position: absolute; top: 20px; left: 0; right: 0; height: 2px; background: rgba(0,0,0,0.10); z-index: 1; }
+        .stepper-line-progress { position: absolute; top: 0; left: 0; height: 100%; background: var(--primary); transition: width 0.3s cubic-bezier(0.4,0,0.2,1); }
+        .stepper-step { display: flex; flex-direction: column; align-items: center; gap: 8px; position: relative; z-index: 2; cursor: pointer; }
+        .stepper-circle { width: 40px; height: 40px; border-radius: 50%; background: white; border: 2px solid rgba(0,0,0,0.15); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; transition: all 0.2s cubic-bezier(0.4,0,0.2,1); }
+        .stepper-step.active   .stepper-circle { background: var(--primary); border-color: var(--primary); color: white; box-shadow: 0 2px 8px rgba(0,122,255,0.24); }
+        .stepper-step.completed .stepper-circle { background: var(--success); border-color: var(--success); color: white; }
+        .stepper-label { font-size: 12px; font-weight: 500; color: var(--text-secondary); text-align: center; max-width: 80px; }
+        .stepper-step.active    .stepper-label { color: var(--primary); font-weight: 600; }
+        .stepper-step.completed .stepper-label { color: var(--success); }
+        @media (max-width: 640px) {
+            .stepper-circle { width: 32px; height: 32px; font-size: 12px; }
+            .stepper-label  { font-size: 10px; max-width: 60px; }
+        }
+
+        /* ── Form cards ──────────────────────────────────────────── */
+        .form-step { display: none; }
+        .form-step.active { display: block; }
+        .form-card { background: white; border-radius: var(--radius-lg); border: 0.5px solid var(--border); box-shadow: var(--shadow); overflow: hidden; }
+        .form-card + .form-card { margin-top: 12px; }
+        .form-card-header { display: flex; align-items: center; gap: 10px; padding: 14px 20px 12px; border-bottom: 0.5px solid rgba(0,0,0,0.08); background: rgba(242,242,247,0.6); }
+        .form-card-header h2 { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+        .form-card-body { padding: 18px 20px; }
+
+        /* ── Form fields ─────────────────────────────────────────── */
+        .form-row   { display: flex; flex-wrap: wrap; gap: 14px; }
+        .form-group { flex: 1; min-width: 200px; display: flex; flex-direction: column; }
+        .form-group.full { flex: 1 1 100%; }
+        .form-group.w2   { flex: 2 1 300px; }
+        label { font-size: 12px; font-weight: 500; color: var(--text-secondary); margin-bottom: 4px; }
+        .req  { color: var(--error); margin-left: 2px; }
+        input, select, textarea {
+            width: 100%; padding: 9px 12px;
+            border: 1px solid rgba(0,0,0,0.15); border-radius: var(--radius-sm);
+            font-size: 14px; font-family: var(--font-body); color: var(--text-primary);
+            background: white; outline: none;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(0,122,255,0.12);
+        }
+        input[readonly], input:disabled { background: var(--bg); color: #64748b; cursor: default; }
+        textarea { resize: vertical; min-height: 80px; }
+        input[type=number]::-webkit-inner-spin-button,
+        input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+        input[type=number] { -moz-appearance: textfield; }
+
+        /* ── Priority pills ──────────────────────────────────────── */
+        .priority-group { display: flex; gap: 8px; flex-wrap: wrap; }
+        .priority-btn {
+            padding: 7px 16px; border-radius: 20px; border: 1.5px solid rgba(0,0,0,0.15);
+            font-size: 13px; font-weight: 500; cursor: pointer; background: white;
+            font-family: var(--font-body); transition: all 0.15s; color: var(--text-secondary);
+        }
+        .priority-btn.selected-high   { background: rgba(255,59,48,0.10);  border-color: #FF3B30; color: #FF3B30; }
+        .priority-btn.selected-medium { background: rgba(255,149,0,0.10);  border-color: #FF9500; color: #c07000; }
+        .priority-btn.selected-low    { background: rgba(52,199,89,0.10);  border-color: #34C759; color: #1a7a3c; }
+
+        /* ── Items table ─────────────────────────────────────────── */
+        .items-wrap { overflow-x: auto; margin: 0 -4px; }
+        .items-table { width: 100%; border-collapse: collapse; min-width: 640px; font-size: 13px; }
+        .items-table th {
+            background: var(--bg); font-weight: 500; color: var(--text-secondary);
+            padding: 8px 10px; border-bottom: 1px solid rgba(0,0,0,0.10);
+            text-align: left; white-space: nowrap;
+        }
+        .items-table td { padding: 4px 6px; border-bottom: 0.5px solid rgba(0,0,0,0.06); vertical-align: middle; }
+        .items-table tr:last-child td { border-bottom: none; }
+        .items-table td input, .items-table td select {
+            border: none; background: transparent; padding: 6px 8px;
+            border-radius: 6px; font-size: 13px; width: 100%;
+        }
+        .items-table td input:focus, .items-table td select:focus {
+            background: rgba(0,122,255,0.06); outline: none; box-shadow: none;
+        }
+        .items-table .col-no    { width: 36px;  text-align: center; color: var(--text-secondary); font-size: 12px; }
+        .items-table .col-del   { width: 40px;  text-align: center; }
+        .items-table .col-qty   { width: 80px;  }
+        .items-table .col-unit  { width: 80px;  }
+        .items-table .col-price { width: 120px; }
+        .items-table .col-total { width: 120px; font-weight: 500; color: var(--text-primary); padding-right: 10px; }
+        .items-total-row td { padding: 10px 10px 4px; font-size: 14px; }
+        .del-btn {
+            width: 26px; height: 26px; border-radius: 50%; border: none;
+            background: rgba(255,59,48,0.08); color: #FF3B30;
+            cursor: pointer; font-size: 12px; transition: background 0.15s;
+            display: inline-flex; align-items: center; justify-content: center;
+        }
+        .del-btn:hover { background: rgba(255,59,48,0.18); }
+        .add-row-btn {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 7px 14px; border-radius: 8px; border: 1.5px dashed rgba(0,0,0,0.18);
+            background: transparent; font-size: 13px; font-weight: 500;
+            color: var(--primary); cursor: pointer; font-family: var(--font-body);
+            transition: all 0.15s; margin-top: 10px;
+        }
+        .add-row-btn:hover { border-color: var(--primary); background: rgba(0,122,255,0.05); }
+
+        /* ── Total display ───────────────────────────────────────── */
+        .total-pill {
+            display: inline-flex; align-items: center; gap: 8px;
+            background: rgba(0,122,255,0.08); border: 1px solid rgba(0,122,255,0.20);
+            border-radius: 10px; padding: 10px 16px; font-size: 15px; font-weight: 600; color: var(--primary);
+        }
+
+        /* ── Req-no pill ─────────────────────────────────────────── */
+        .req-no-pill {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: rgba(0,122,255,0.10); color: var(--primary);
+            border-radius: 20px; padding: 4px 12px;
+            font-size: 13px; font-weight: 600; font-family: var(--font-body);
+        }
+
+        /* ── Approval chain ──────────────────────────────────────── */
+        .approver-card {
+            background: white; border-radius: var(--radius-md);
+            border: 0.5px solid var(--border); box-shadow: var(--shadow);
+            padding: 16px;
+        }
+        .approver-card + .approver-card { margin-top: 10px; }
+        .approver-header { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+        .approver-num { width: 28px; height: 28px; border-radius: 50%; background: var(--primary); color: white; font-size: 13px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+        .approver-num.success { background: var(--success); }
+        .approver-title { font-size: 14px; font-weight: 600; }
+        .approver-sub   { font-size: 12px; color: var(--text-secondary); margin-top: 1px; }
+
+        /* ── Summary (step 3 review) ─────────────────────────────── */
+        .summary-section { background: white; border-radius: var(--radius-md); border: 0.5px solid var(--border); box-shadow: var(--shadow); overflow: hidden; }
+        .summary-header  { padding: 12px 16px; background: rgba(242,242,247,0.6); border-bottom: 0.5px solid var(--sep); font-size: 13px; font-weight: 600; color: var(--text-secondary); display: flex; align-items: center; gap: 8px; }
+        .summary-row { display: flex; padding: 10px 16px; border-bottom: 0.5px solid rgba(0,0,0,0.06); font-size: 14px; gap: 12px; }
+        .summary-row:last-child { border-bottom: none; }
+        .summary-lbl { color: var(--text-secondary); flex-shrink: 0; min-width: 140px; }
+        .summary-val { font-weight: 500; }
+
+        /* ── Step navigation ─────────────────────────────────────── */
+        .step-navigation {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 14px 20px; border-top: 0.5px solid rgba(0,0,0,0.08);
+            background: rgba(242,242,247,0.4); margin-top: 12px; gap: 8px;
+        }
+        .step-navigation button {
+            border: none; border-radius: var(--radius-sm); font-family: var(--font-body);
+            font-size: 14px; font-weight: 500; cursor: pointer; padding: 9px 18px;
+            transition: all 0.15s cubic-bezier(0.4,0,0.2,1);
+            display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+        }
+        .step-navigation button:hover:not(:disabled) { transform: translateY(-1px); }
+        .step-navigation button:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
+        .btn-secondary { background: white; border: 1px solid rgba(0,0,0,0.15) !important; color: var(--text-primary); }
+        .btn-secondary:hover:not(:disabled) { background: var(--bg); }
+        .btn-primary  { background: var(--primary); color: white; }
+        .btn-primary:hover:not(:disabled) { background: var(--primary-hover); }
+        .btn-success  { background: var(--success); color: white; }
+        .btn-success:hover:not(:disabled) { background: var(--success-hover); }
+        .step-actions { display: flex; gap: 8px; margin-left: auto; }
+        @media (max-width: 640px) {
+            .step-navigation { flex-direction: column; }
+            .step-navigation button { width: 100%; }
+            .step-actions { width: 100%; margin-left: 0; }
+        }
+
+        /* ── Toast ───────────────────────────────────────────────── */
+        .toast-container { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
+        .toast { background: white; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,0.15); padding: 12px 18px; font-size: 14px; min-width: 260px; max-width: 420px; pointer-events: auto; animation: toastIn 0.3s ease; border-left: 4px solid #ccc; }
+        .toast.success { border-left-color: var(--success); }
+        .toast.error   { border-left-color: var(--error); }
+        .toast.info    { border-left-color: var(--primary); }
+        @keyframes toastIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* ── Success screen ──────────────────────────────────────── */
+        #success-screen {
+            display: none; flex-direction: column; align-items: center;
+            text-align: center; padding: 48px 24px; gap: 16px;
+        }
+        .success-icon { width: 80px; height: 80px; border-radius: 50%; background: rgba(52,199,89,0.12); display: flex; align-items: center; justify-content: center; }
+
+        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
+    </style>
+</head>
+<body>
+
+<!-- ── Sidebar ──────────────────────────────────────────────────── -->
+<aside class="ipad-sidebar" id="ipad-sidebar">
+    <div class="sidebar-header">
+        <div style="display:flex; align-items:center; gap:10px; cursor:pointer;" onclick="window.location.href='index.html'">
+            <img src="brand_assets/tlc logo transparancy.png" alt="TLC Logo" style="height:60px; width:auto; object-fit:contain;">
+            <span style="font-weight:600; font-size:17px; color:#000;">TLCGroup</span>
+        </div>
+        <button id="sidebar-toggle" onclick="event.stopPropagation(); toggleSidebar();"
+                style="width:28px; height:28px; border-radius:6px; background:rgba(0,0,0,0.05); border:none; cursor:pointer; display:flex; align-items:center; justify-content:center;"
+                onmouseover="this.style.background='rgba(0,0,0,0.1)'" onmouseout="this.style.background='rgba(0,0,0,0.05)'">
+            <i id="sidebar-toggle-icon" class="fas fa-chevron-left" style="font-size:11px; color:#8e8e93;"></i>
+        </button>
+    </div>
+    <div class="sidebar-section">
+        <div class="sidebar-section-title">Menu</div>
+        <button onclick="window.location.href='index.html'" class="sidebar-item">
+            <div class="sidebar-icon-box" style="background:#007AFF;"><i class="fas fa-house"></i></div>
+            <span>Dashboard</span>
+        </button>
+        <button onclick="window.location.href='index.html'" class="sidebar-item">
+            <div class="sidebar-icon-box" style="background:#FF9500;"><i class="fas fa-user"></i></div>
+            <span>My Profile</span>
+        </button>
+    </div>
+    <div class="sidebar-section">
+        <div class="sidebar-section-title">Workflows</div>
+        <button class="sidebar-item active">
+            <div class="sidebar-icon-box" style="background:#007AFF;"><i class="fas fa-file-pen"></i></div>
+            <span>Purchase Request</span>
+        </button>
+        <button onclick="window.open('payment_request.html','_blank')" class="sidebar-item">
+            <div class="sidebar-icon-box" style="background:#5856D6;"><i class="fas fa-file-invoice-dollar"></i></div>
+            <span>Đề Nghị Thanh Toán</span>
+        </button>
+        <button onclick="window.open('voucher.html','_blank')" class="sidebar-item">
+            <div class="sidebar-icon-box" style="background:#FF9500;"><i class="fas fa-file-invoice"></i></div>
+            <span>Phiếu Thu Chi</span>
+        </button>
+    </div>
+    <div class="sidebar-user">
+        <div id="sidebar-logged-in" style="display:none;">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <img id="sidebar-avatar" src="" style="width:40px; height:40px; border-radius:50%;" alt="User">
+                <div class="sidebar-user-info" style="flex:1; min-width:0;">
+                    <p id="sidebar-user-name" style="font-size:15px; font-weight:600; margin:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;"></p>
+                    <p id="sidebar-user-role" style="font-size:13px; color:#6e6e73; margin:0;"></p>
+                </div>
+            </div>
+            <button onclick="handleLogout()" style="width:100%; margin-top:12px; padding:8px; background:rgba(255,59,48,0.1); color:#FF3B30; border:none; border-radius:8px; font-size:14px; font-weight:500; cursor:pointer; font-family:var(--font-body);">
+                <i class="fas fa-sign-out-alt" style="margin-right:6px;"></i>
+                <span class="sidebar-signout-text">Sign Out</span>
+            </button>
+        </div>
+    </div>
+</aside>
+
+<!-- ── Main ─────────────────────────────────────────────────────── -->
+<div class="ipad-main" id="ipad-main">
+
+    <!-- Mobile nav -->
+    <nav class="mobile-nav sticky top-0 z-50 bg-white border-b border-gray-200 px-4 py-3 shadow-sm" style="display:flex;">
+        <div class="flex items-center justify-between w-full">
+            <div class="flex items-center gap-3 cursor-pointer" onclick="window.location.href='index.html'">
+                <img src="brand_assets/tlc logo transparancy.png" alt="TLC Logo" style="height:36px; width:auto;">
+                <span class="font-semibold text-gray-900">TLCGroup</span>
+            </div>
+            <button onclick="window.history.back()" style="background:transparent; border:none; color:#6e6e73; cursor:pointer; font-size:13px; display:flex; align-items:center; gap:6px;">
+                <i class="fas fa-chevron-left"></i> Quay lại
+            </button>
+        </div>
+    </nav>
+
+    <!-- Desktop nav -->
+    <nav class="hidden md:block sticky top-0 z-40" style="background:rgba(249,249,249,0.94); backdrop-filter:saturate(180%) blur(20px); -webkit-backdrop-filter:saturate(180%) blur(20px); border-bottom:0.5px solid rgba(60,60,67,0.29); padding:18px 16px;">
+        <div style="display:flex; align-items:center; justify-content:space-between; max-width:1200px; margin:0 auto;">
+            <div style="display:flex; align-items:center; gap:12px; cursor:pointer;" onclick="window.location.href='index.html'">
+                <img src="brand_assets/tlc logo transparancy.png" alt="TLC Logo" style="height:60px; width:auto; object-fit:contain;">
+                <span style="font-weight:600; font-size:17px; color:#000;">Business Process Management (BPM)</span>
+            </div>
+            <div id="nav-user-section" class="flex items-center gap-2">
+                <div id="nav-user-avatar" class="hidden">
+                    <img id="nav-avatar" src="" class="w-8 h-8 rounded-full cursor-pointer" alt="User">
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Toast -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- ── Page content ────────────────────────────────────────── -->
+    <div class="page-content">
+
+        <h1 style="font-family:var(--font-display); font-size:22px; font-weight:700; text-align:center; margin:4px 0 0;">ĐỀ NGHỊ MUA HÀNG</h1>
+
+        <!-- Progress stepper -->
+        <div class="progress-stepper">
+            <div class="stepper-container">
+                <div class="stepper-line"><div class="stepper-line-progress" id="stepper-progress"></div></div>
+                <div class="stepper-step active" data-step="1" onclick="goToStep(1)">
+                    <div class="stepper-circle">1</div>
+                    <div class="stepper-label">Công ty</div>
+                </div>
+                <div class="stepper-step" data-step="2" onclick="goToStep(2)">
+                    <div class="stepper-circle">2</div>
+                    <div class="stepper-label">Hàng hóa</div>
+                </div>
+                <div class="stepper-step" data-step="3" onclick="goToStep(3)">
+                    <div class="stepper-circle">3</div>
+                    <div class="stepper-label">Phê duyệt</div>
+                </div>
+                <div class="stepper-step" data-step="4" onclick="goToStep(4)">
+                    <div class="stepper-circle">4</div>
+                    <div class="stepper-label">Xác nhận</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════
+             STEP 1 — CÔNG TY
+        ════════════════════════════════════════════════════════ -->
+        <div class="form-step active" id="step-1">
+            <div class="form-card">
+                <div class="form-card-header">
+                    <i class="fas fa-building" style="color:var(--primary); font-size:14px;"></i>
+                    <h2>Công ty &amp; Thông tin chung</h2>
+                </div>
+                <div class="form-card-body">
+                    <input type="hidden" id="company_name">
+                    <div class="form-row">
+                        <div class="form-group full">
+                            <label for="company_code">Công ty <span class="req">*</span></label>
+                            <select id="company_code" onchange="onCompanyChange()">
+                                <option value="">-- Chọn công ty --</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="req-no-row" style="display:none; margin-top:10px; display:none; align-items:center; gap:8px;">
+                        <span style="font-size:12px; color:var(--text-secondary);">Số phiếu:</span>
+                        <span id="req-no-pill" class="req-no-pill"></span>
+                    </div>
+                    <div class="form-row" style="margin-top:14px;">
+                        <div class="form-group">
+                            <label for="department">Bộ phận / Phòng ban</label>
+                            <input type="text" id="department" placeholder="Nhập tên bộ phận...">
+                        </div>
+                        <div class="form-group">
+                            <label for="requester_name">Người đề nghị <span class="req">*</span></label>
+                            <input type="text" id="requester_name" placeholder="Họ và tên">
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="required_date">Ngày cần hàng <span class="req">*</span></label>
+                            <input type="date" id="required_date">
+                        </div>
+                        <div class="form-group">
+                            <label>Mức độ ưu tiên</label>
+                            <div class="priority-group" style="margin-top:4px;">
+                                <button type="button" class="priority-btn" id="pri-high"   onclick="setPriority('high')">
+                                    <i class="fas fa-circle" style="font-size:8px; margin-right:4px;"></i>Cao
+                                </button>
+                                <button type="button" class="priority-btn selected-medium" id="pri-medium" onclick="setPriority('medium')">
+                                    <i class="fas fa-circle" style="font-size:8px; margin-right:4px;"></i>Trung bình
+                                </button>
+                                <button type="button" class="priority-btn" id="pri-low"    onclick="setPriority('low')">
+                                    <i class="fas fa-circle" style="font-size:8px; margin-right:4px;"></i>Thấp
+                                </button>
+                            </div>
+                            <input type="hidden" id="priority_value" value="medium">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="step-navigation" style="background:transparent; border:none; padding:16px 0 0;">
+                <button class="btn-secondary" disabled>← Quay lại</button>
+                <button class="btn-primary" onclick="validateAndNext(1)">Tiếp theo →</button>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════
+             STEP 2 — HÀNG HÓA / DỊCH VỤ
+        ════════════════════════════════════════════════════════ -->
+        <div class="form-step" id="step-2">
+            <div class="form-card">
+                <div class="form-card-header">
+                    <i class="fas fa-boxes-stacked" style="color:var(--warning); font-size:14px;"></i>
+                    <h2>Danh sách hàng hóa / dịch vụ</h2>
+                </div>
+                <div class="form-card-body" style="padding-left:12px; padding-right:12px;">
+                    <div class="items-wrap">
+                        <table class="items-table">
+                            <thead>
+                                <tr>
+                                    <th class="col-no">#</th>
+                                    <th>Mô tả hàng hóa / dịch vụ <span class="req">*</span></th>
+                                    <th class="col-qty">Số lượng</th>
+                                    <th class="col-unit">Đơn vị</th>
+                                    <th class="col-price">Đơn giá (VND)</th>
+                                    <th class="col-total">Thành tiền</th>
+                                    <th class="col-del"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="items-body"></tbody>
+                            <tfoot>
+                                <tr class="items-total-row">
+                                    <td colspan="5" style="text-align:right; font-size:13px; color:var(--text-secondary); padding-right:12px;">Tổng cộng:</td>
+                                    <td colspan="2">
+                                        <span class="total-pill" id="grand-total-display">0 ₫</span>
+                                    </td>
+                                </tr>
+                            </tfoot>
+                        </table>
+                    </div>
+                    <button type="button" class="add-row-btn" onclick="addItemRow()">
+                        <i class="fas fa-plus" style="font-size:11px;"></i> Thêm dòng
+                    </button>
+                </div>
+            </div>
+
+            <div class="form-card">
+                <div class="form-card-header">
+                    <i class="fas fa-align-left" style="color:var(--primary); font-size:14px;"></i>
+                    <h2>Mục đích &amp; Lý do</h2>
+                </div>
+                <div class="form-card-body">
+                    <div class="form-row">
+                        <div class="form-group full">
+                            <label for="purpose">Mục đích mua hàng <span class="req">*</span></label>
+                            <textarea id="purpose" placeholder="Mô tả mục đích và lý do cần mua hàng hóa / dịch vụ này..." style="min-height:90px;"></textarea>
+                        </div>
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label for="suggested_vendor">Nhà cung cấp đề xuất (nếu có)</label>
+                            <input type="text" id="suggested_vendor" placeholder="Tên NCC đề xuất...">
+                        </div>
+                        <div class="form-group">
+                            <label for="budget_code">Mã ngân sách / Cost center</label>
+                            <input type="text" id="budget_code" placeholder="VD: MKT-2025, IT-Q2...">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="step-navigation" style="background:transparent; border:none; padding:16px 0 0;">
+                <button class="btn-secondary" onclick="goToStep(1)">← Quay lại</button>
+                <button class="btn-primary" onclick="validateAndNext(2)">Tiếp theo →</button>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════
+             STEP 3 — PHÊ DUYỆT
+        ════════════════════════════════════════════════════════ -->
+        <div class="form-step" id="step-3">
+            <div class="form-card">
+                <div class="form-card-header">
+                    <i class="fas fa-user-check" style="color:var(--success); font-size:14px;"></i>
+                    <h2>Chuỗi phê duyệt</h2>
+                </div>
+                <div class="form-card-body" style="display:flex; flex-direction:column; gap:12px;">
+
+                    <!-- Approver 1: Budget -->
+                    <div class="approver-card">
+                        <div class="approver-header">
+                            <div class="approver-num">1</div>
+                            <div>
+                                <div class="approver-title">Người phê duyệt ngân sách <span class="req">*</span></div>
+                                <div class="approver-sub">Chạy song song với Người phê duyệt NCC</div>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="budget_approver">Chọn người phê duyệt</label>
+                                <select id="budget_approver">
+                                    <option value="">-- Chọn --</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="budget_approver_note">Ghi chú cho người phê duyệt</label>
+                                <input type="text" id="budget_approver_note" placeholder="Ghi chú thêm (tuỳ chọn)">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Approver 2: Supplier -->
+                    <div class="approver-card">
+                        <div class="approver-header">
+                            <div class="approver-num">2</div>
+                            <div>
+                                <div class="approver-title">Người phê duyệt NCC</div>
+                                <div class="approver-sub">Chạy song song với Người phê duyệt ngân sách</div>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="supplier_approver">Chọn người phê duyệt</label>
+                                <select id="supplier_approver">
+                                    <option value="">-- Chọn --</option>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label for="supplier_approver_note">Ghi chú</label>
+                                <input type="text" id="supplier_approver_note" placeholder="Ghi chú thêm (tuỳ chọn)">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Approver 3: Final -->
+                    <div class="approver-card" style="opacity:0.6; pointer-events:none;">
+                        <div class="approver-header">
+                            <div class="approver-num" style="background:rgba(0,0,0,0.18);">3</div>
+                            <div>
+                                <div class="approver-title">Phê duyệt cuối <span style="font-size:11px; color:var(--text-secondary); font-weight:400;">(tự động sau khi 1 &amp; 2 hoàn thành)</span></div>
+                                <div class="approver-sub">Chờ phê duyệt ngân sách &amp; NCC</div>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Người phê duyệt cuối</label>
+                                <select id="final_approver" disabled>
+                                    <option value="">-- Chọn --</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+
+            <div class="step-navigation" style="background:transparent; border:none; padding:16px 0 0;">
+                <button class="btn-secondary" onclick="goToStep(2)">← Quay lại</button>
+                <button class="btn-primary" onclick="validateAndNext(3)">Tiếp theo →</button>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════
+             STEP 4 — XÁC NHẬN & GỬI
+        ════════════════════════════════════════════════════════ -->
+        <div class="form-step" id="step-4">
+            <div class="summary-section">
+                <div class="summary-header"><i class="fas fa-building"></i> Công ty &amp; Thông tin chung</div>
+                <div class="summary-row"><span class="summary-lbl">Số phiếu</span><span class="summary-val" id="sum-pr-no">—</span></div>
+                <div class="summary-row"><span class="summary-lbl">Công ty</span><span class="summary-val" id="sum-company">—</span></div>
+                <div class="summary-row"><span class="summary-lbl">Bộ phận</span><span class="summary-val" id="sum-dept">—</span></div>
+                <div class="summary-row"><span class="summary-lbl">Người đề nghị</span><span class="summary-val" id="sum-requester">—</span></div>
+                <div class="summary-row"><span class="summary-lbl">Ngày cần hàng</span><span class="summary-val" id="sum-date">—</span></div>
+                <div class="summary-row"><span class="summary-lbl">Ưu tiên</span><span class="summary-val" id="sum-priority">—</span></div>
+            </div>
+
+            <div class="summary-section">
+                <div class="summary-header"><i class="fas fa-boxes-stacked"></i> Hàng hóa / Dịch vụ</div>
+                <div id="sum-items-list"></div>
+                <div class="summary-row" style="background:rgba(0,122,255,0.04);">
+                    <span class="summary-lbl" style="font-weight:600;">Tổng cộng</span>
+                    <span class="summary-val" id="sum-total" style="color:var(--primary); font-size:15px;">—</span>
+                </div>
+            </div>
+
+            <div class="summary-section">
+                <div class="summary-header"><i class="fas fa-align-left"></i> Mục đích &amp; Lý do</div>
+                <div class="summary-row"><span class="summary-lbl">Mục đích</span><span class="summary-val" id="sum-purpose" style="white-space:pre-wrap;">—</span></div>
+                <div class="summary-row"><span class="summary-lbl">NCC đề xuất</span><span class="summary-val" id="sum-vendor">—</span></div>
+                <div class="summary-row"><span class="summary-lbl">Mã ngân sách</span><span class="summary-val" id="sum-budget-code">—</span></div>
+            </div>
+
+            <div class="summary-section">
+                <div class="summary-header"><i class="fas fa-user-check"></i> Người phê duyệt</div>
+                <div class="summary-row"><span class="summary-lbl">Ngân sách</span><span class="summary-val" id="sum-budget-approver">—</span></div>
+                <div class="summary-row"><span class="summary-lbl">NCC</span><span class="summary-val" id="sum-supplier-approver">—</span></div>
+            </div>
+
+            <div class="step-navigation" style="background:transparent; border:none; padding:16px 0 0;">
+                <button class="btn-secondary" onclick="goToStep(3)">← Quay lại</button>
+                <div class="step-actions">
+                    <button class="btn-secondary" onclick="resetForm()"><i class="fas fa-rotate-left"></i> Làm lại</button>
+                    <button class="btn-success" id="submit-btn" onclick="submitForm()">
+                        <i class="fas fa-paper-plane"></i> Gửi đề nghị
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════
+             SUCCESS SCREEN
+        ════════════════════════════════════════════════════════ -->
+        <div id="success-screen" style="background:white; border-radius:var(--radius-lg); padding:48px 24px; display:none; flex-direction:column; align-items:center; gap:16px; text-align:center; box-shadow:var(--shadow);">
+            <div class="success-icon">
+                <i class="fas fa-check" style="font-size:36px; color:var(--success);"></i>
+            </div>
+            <h2 style="font-family:var(--font-display); font-size:22px; font-weight:700;">Đề nghị đã được gửi!</h2>
+            <p style="color:var(--text-secondary); max-width:400px;">
+                Đề nghị mua hàng của bạn đã được gửi thành công. Người phê duyệt sẽ nhận được thông báo qua email.
+            </p>
+            <p id="success-pr-no" style="font-size:15px; font-weight:600; color:var(--primary);"></p>
+            <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-top:8px;">
+                <button onclick="resetForm()" class="btn-primary" style="padding:10px 20px; border:none; border-radius:8px; font-family:var(--font-body); font-size:14px; cursor:pointer;">
+                    <i class="fas fa-plus" style="margin-right:6px;"></i> Tạo đề nghị mới
+                </button>
+                <button onclick="window.location.href='index.html'" style="padding:10px 20px; border:1px solid rgba(0,0,0,0.15); border-radius:8px; background:white; font-family:var(--font-body); font-size:14px; cursor:pointer;">
+                    <i class="fas fa-house" style="margin-right:6px;"></i> Về Dashboard
+                </button>
+            </div>
+        </div>
+
+    </div><!-- /page-content -->
+</div><!-- /ipad-main -->
+
+<script>
+    /* ── Config ─────────────────────────────────────────────────── */
+    const BACKEND_URL = 'https://script.google.com/macros/s/AKfycbzPRHqtSW6JSef5A4tiDJbHnIhm2jhK9c8RH6lOBFPEMLR-EjF0iVJO2ndinMZRwbJ4Xw/exec';
+
+    /* ── State ──────────────────────────────────────────────────── */
+    let currentStep   = 1;
+    const TOTAL_STEPS = 4;
+    let isSubmitting  = false;
+    let _priority     = 'medium';
+    let _prNo         = '';
+    let _grandTotal   = 0;
+
+    /* ── Toast ──────────────────────────────────────────────────── */
+    function showToast(msg, type = 'info', duration = 3500) {
+        const c = document.getElementById('toast-container');
+        const t = document.createElement('div');
+        t.className = 'toast ' + type;
+        t.textContent = msg;
+        c.appendChild(t);
+        setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s'; setTimeout(() => t.remove(), 350); }, duration);
+    }
+
+    /* ── Sidebar toggle ─────────────────────────────────────────── */
+    function toggleSidebar() {
+        const sb = document.getElementById('ipad-sidebar');
+        const mn = document.getElementById('ipad-main');
+        const ic = document.getElementById('sidebar-toggle-icon');
+        sb.classList.toggle('collapsed');
+        mn.classList.toggle('sidebar-collapsed');
+        const collapsed = sb.classList.contains('collapsed');
+        ic.className = collapsed ? 'fas fa-chevron-right' : 'fas fa-chevron-left';
+        ic.style.fontSize = '11px'; ic.style.color = '#8e8e93';
+        localStorage.setItem('pr_sidebar_collapsed', collapsed);
+    }
+
+    /* ── Stepper ────────────────────────────────────────────────── */
+    function updateStepper(step) {
+        document.querySelectorAll('.stepper-step').forEach((el, i) => {
+            const n = i + 1;
+            el.classList.toggle('active',    n === step);
+            el.classList.toggle('completed', n < step);
+            const circle = el.querySelector('.stepper-circle');
+            if (n < step)      circle.innerHTML = '<i class="fas fa-check" style="font-size:13px;"></i>';
+            else if (n === step) circle.textContent = n;
+            else                 circle.textContent = n;
+        });
+        const pct = Math.max(0, ((step - 1) / (TOTAL_STEPS - 1)) * 100);
+        document.getElementById('stepper-progress').style.width = pct + '%';
+    }
+
+    function goToStep(n) {
+        if (n < 1 || n > TOTAL_STEPS) return;
+        document.querySelectorAll('.form-step').forEach(el => el.classList.remove('active'));
+        document.getElementById('step-' + n).classList.add('active');
+        currentStep = n;
+        updateStepper(n);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    /* ── Validation ─────────────────────────────────────────────── */
+    function validateAndNext(step) {
+        if (step === 1) {
+            if (!document.getElementById('company_code').value) { showToast('Vui lòng chọn công ty.', 'error'); return; }
+            if (!document.getElementById('requester_name').value.trim()) { showToast('Vui lòng nhập tên người đề nghị.', 'error'); return; }
+            if (!document.getElementById('required_date').value) { showToast('Vui lòng chọn ngày cần hàng.', 'error'); return; }
+        }
+        if (step === 2) {
+            const rows = document.querySelectorAll('#items-body tr');
+            if (rows.length === 0) { showToast('Vui lòng thêm ít nhất 1 hàng hóa.', 'error'); return; }
+            let hasDesc = false;
+            rows.forEach(r => { if (r.querySelector('.item-desc')?.value.trim()) hasDesc = true; });
+            if (!hasDesc) { showToast('Vui lòng nhập mô tả cho ít nhất 1 hàng hóa.', 'error'); return; }
+            if (!document.getElementById('purpose').value.trim()) { showToast('Vui lòng nhập mục đích mua hàng.', 'error'); return; }
+        }
+        if (step === 3) {
+            if (!document.getElementById('budget_approver').value) { showToast('Vui lòng chọn người phê duyệt ngân sách.', 'error'); return; }
+            buildSummary();
+        }
+        goToStep(step + 1);
+    }
+
+    /* ── Priority ───────────────────────────────────────────────── */
+    function setPriority(p) {
+        _priority = p;
+        document.getElementById('priority_value').value = p;
+        ['high','medium','low'].forEach(k => {
+            const btn = document.getElementById('pri-' + k);
+            btn.className = 'priority-btn' + (k === p ? ' selected-' + k : '');
+        });
+    }
+
+    /* ── Company change ─────────────────────────────────────────── */
+    function onCompanyChange() {
+        const sel  = document.getElementById('company_code');
+        const code = sel.value;
+        if (!code) { document.getElementById('req-no-row').style.display = 'none'; return; }
+        const now  = new Date();
+        const ds   = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
+        _prNo = `${code}-PR${ds}001`;
+        document.getElementById('req-no-pill').textContent = _prNo;
+        document.getElementById('req-no-row').style.display = 'flex';
+        document.getElementById('company_name').value = sel.options[sel.selectedIndex]?.text || code;
+    }
+
+    /* ── Items table ─────────────────────────────────────────────── */
+    let _rowCount = 0;
+    function addItemRow() {
+        _rowCount++;
+        const n = _rowCount;
+        const tbody = document.getElementById('items-body');
+        const tr = document.createElement('tr');
+        tr.id = 'item-row-' + n;
+        tr.innerHTML = `
+            <td class="col-no">${tbody.children.length + 1}</td>
+            <td><input type="text" class="item-desc" placeholder="Mô tả hàng hóa / dịch vụ..." oninput="recalcRow(${n})"></td>
+            <td class="col-qty"><input type="number" class="item-qty" value="1" min="1" oninput="recalcRow(${n})"></td>
+            <td class="col-unit"><select class="item-unit">
+                <option>Cái</option><option>Bộ</option><option>Kg</option>
+                <option>Lít</option><option>m²</option><option>Chiếc</option>
+                <option>Thùng</option><option>Gói</option><option>Dịch vụ</option>
+            </select></td>
+            <td class="col-price"><input type="number" class="item-price" value="0" min="0" step="1000" oninput="recalcRow(${n})"></td>
+            <td class="col-total item-total" data-row="${n}">0 ₫</td>
+            <td class="col-del"><button class="del-btn" onclick="removeItemRow('item-row-${n}')" title="Xóa dòng"><i class="fas fa-times"></i></button></td>
+        `;
+        tbody.appendChild(tr);
+        renumberRows();
+        recalcRow(n);
+    }
+
+    function removeItemRow(id) {
+        document.getElementById(id)?.remove();
+        renumberRows();
+        recalcTotal();
+    }
+
+    function renumberRows() {
+        document.querySelectorAll('#items-body tr').forEach((tr, i) => {
+            tr.querySelector('.col-no').textContent = i + 1;
+        });
+    }
+
+    function recalcRow(n) {
+        const tr    = document.getElementById('item-row-' + n);
+        if (!tr) return;
+        const qty   = parseFloat(tr.querySelector('.item-qty')?.value)  || 0;
+        const price = parseFloat(tr.querySelector('.item-price')?.value) || 0;
+        const total = qty * price;
+        tr.querySelector('.item-total').textContent = formatMoney(total);
+        tr.querySelector('.item-total').dataset.value = total;
+        recalcTotal();
+    }
+
+    function recalcTotal() {
+        let sum = 0;
+        document.querySelectorAll('#items-body .item-total').forEach(td => { sum += parseFloat(td.dataset.value || 0); });
+        _grandTotal = sum;
+        document.getElementById('grand-total-display').textContent = formatMoney(sum);
+    }
+
+    function formatMoney(n) {
+        return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(n);
+    }
+
+    /* ── Summary builder ────────────────────────────────────────── */
+    function buildSummary() {
+        document.getElementById('sum-pr-no').textContent       = _prNo || '(chưa có)';
+        document.getElementById('sum-company').textContent     = document.getElementById('company_name').value || '—';
+        document.getElementById('sum-dept').textContent        = document.getElementById('department').value.trim() || '—';
+        document.getElementById('sum-requester').textContent   = document.getElementById('requester_name').value.trim() || '—';
+        const rd = document.getElementById('required_date').value;
+        document.getElementById('sum-date').textContent        = rd ? new Date(rd).toLocaleDateString('vi-VN') : '—';
+        const priLabel = { high: 'Cao', medium: 'Trung bình', low: 'Thấp' };
+        document.getElementById('sum-priority').textContent    = priLabel[_priority] || '—';
+        document.getElementById('sum-purpose').textContent     = document.getElementById('purpose').value.trim() || '—';
+        document.getElementById('sum-vendor').textContent      = document.getElementById('suggested_vendor').value.trim() || '—';
+        document.getElementById('sum-budget-code').textContent = document.getElementById('budget_code').value.trim() || '—';
+        document.getElementById('sum-total').textContent       = formatMoney(_grandTotal);
+
+        const sel1 = document.getElementById('budget_approver');
+        document.getElementById('sum-budget-approver').textContent = sel1.options[sel1.selectedIndex]?.text || '—';
+        const sel2 = document.getElementById('supplier_approver');
+        document.getElementById('sum-supplier-approver').textContent = sel2.value ? sel2.options[sel2.selectedIndex]?.text : '—';
+
+        // Items list
+        const list = document.getElementById('sum-items-list');
+        list.innerHTML = '';
+        document.querySelectorAll('#items-body tr').forEach((tr, i) => {
+            const desc  = tr.querySelector('.item-desc')?.value.trim() || '(trống)';
+            const qty   = tr.querySelector('.item-qty')?.value || 0;
+            const unit  = tr.querySelector('.item-unit')?.value || '';
+            const total = parseFloat(tr.querySelector('.item-total')?.dataset.value || 0);
+            const div = document.createElement('div');
+            div.className = 'summary-row';
+            div.innerHTML = `<span class="summary-lbl" style="font-size:13px;">${i+1}. ${desc}</span><span class="summary-val" style="font-size:13px;">${qty} ${unit} — ${formatMoney(total)}</span>`;
+            list.appendChild(div);
+        });
+    }
+
+    /* ── Submit ─────────────────────────────────────────────────── */
+    async function submitForm() {
+        if (isSubmitting) return;
+        isSubmitting = true;
+        const btn = document.getElementById('submit-btn');
+        const orig = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang gửi...';
+
+        // Collect items
+        const items = [];
+        document.querySelectorAll('#items-body tr').forEach(tr => {
+            items.push({
+                desc:  tr.querySelector('.item-desc')?.value.trim(),
+                qty:   tr.querySelector('.item-qty')?.value,
+                unit:  tr.querySelector('.item-unit')?.value,
+                price: tr.querySelector('.item-price')?.value,
+                total: tr.querySelector('.item-total')?.dataset.value,
+            });
+        });
+
+        const payload = {
+            action:           'purchaseRequest',
+            prNo:             _prNo,
+            companyCode:      document.getElementById('company_code').value,
+            companyName:      document.getElementById('company_name').value,
+            department:       document.getElementById('department').value.trim(),
+            requesterName:    document.getElementById('requester_name').value.trim(),
+            requiredDate:     document.getElementById('required_date').value,
+            priority:         _priority,
+            items:            JSON.stringify(items),
+            grandTotal:       _grandTotal,
+            purpose:          document.getElementById('purpose').value.trim(),
+            suggestedVendor:  document.getElementById('suggested_vendor').value.trim(),
+            budgetCode:       document.getElementById('budget_code').value.trim(),
+            budgetApprover:   document.getElementById('budget_approver').value,
+            supplierApprover: document.getElementById('supplier_approver').value,
+            submittedAt:      new Date().toISOString(),
+        };
+
+        try {
+            const params = new URLSearchParams(payload);
+            const res    = await fetch(BACKEND_URL, {
+                method: 'POST', mode: 'cors', redirect: 'follow',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: params.toString(),
+            });
+            const result = JSON.parse(await res.text());
+            if (result.success) {
+                // Show success screen
+                document.querySelector('.page-content').querySelectorAll('.form-step, .progress-stepper, h1').forEach(el => el.style.display = 'none');
+                const ss = document.getElementById('success-screen');
+                ss.style.display = 'flex';
+                document.getElementById('success-pr-no').textContent = 'Số phiếu: ' + _prNo;
+                showToast('Đề nghị mua hàng đã được gửi thành công!', 'success', 4000);
+            } else {
+                showToast('Lỗi: ' + (result.message || 'Gửi thất bại.'), 'error');
+                btn.disabled = false;
+                btn.innerHTML = orig;
+            }
+        } catch (err) {
+            // Offline / network error — still show success since form data is captured
+            showToast('Kết nối không ổn định. Vui lòng thử lại.', 'error');
+            btn.disabled = false;
+            btn.innerHTML = orig;
+        }
+        isSubmitting = false;
+    }
+
+    /* ── Reset ──────────────────────────────────────────────────── */
+    function resetForm() {
+        document.getElementById('company_code').value    = '';
+        document.getElementById('department').value      = '';
+        document.getElementById('requester_name').value  = '';
+        document.getElementById('required_date').value   = '';
+        document.getElementById('purpose').value         = '';
+        document.getElementById('suggested_vendor').value = '';
+        document.getElementById('budget_code').value     = '';
+        document.getElementById('budget_approver').value  = '';
+        document.getElementById('supplier_approver').value = '';
+        document.getElementById('req-no-row').style.display = 'none';
+        document.getElementById('items-body').innerHTML  = '';
+        _rowCount = 0; _grandTotal = 0; _prNo = '';
+        recalcTotal();
+        setPriority('medium');
+        document.getElementById('success-screen').style.display = 'none';
+        document.querySelectorAll('.form-step, .progress-stepper, h1').forEach(el => el.style.display = '');
+        goToStep(1);
+    }
+
+    /* ── Load master data ───────────────────────────────────────── */
+    async function loadMasterData() {
+        try {
+            const cached = localStorage.getItem('tlc_master_data');
+            const ts     = localStorage.getItem('tlc_master_data_timestamp');
+            const stale  = !ts || (Date.now() - new Date(ts).getTime() > 3_600_000);
+            let data;
+            if (cached && !stale) {
+                data = JSON.parse(cached);
+            } else {
+                const params = new URLSearchParams({ action: 'getMasterData' });
+                const res = await fetch(BACKEND_URL, { method: 'POST', mode: 'cors', redirect: 'follow', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() });
+                const result = JSON.parse(await res.text());
+                if (!result.success) return;
+                data = result.data;
+                localStorage.setItem('tlc_master_data', JSON.stringify(data));
+                localStorage.setItem('tlc_master_data_timestamp', new Date().toISOString());
+            }
+            seedCompanies(data.employees || []);
+            seedApprovers(data.employees || []);
+        } catch (e) { console.warn('Master data load failed:', e); }
+    }
+
+    function seedCompanies(employees) {
+        const sel  = document.getElementById('company_code');
+        const seen = new Set();
+        employees.forEach(e => {
+            const co   = (e.company_name || e['Công ty'] || '').trim();
+            const code = (e.company_name || e['Công ty'] || '').trim().toUpperCase().replace(/\s+/g,'_').slice(0, 10);
+            if (co && !seen.has(co)) {
+                seen.add(co);
+                const opt = document.createElement('option');
+                opt.value = code; opt.textContent = co;
+                sel.appendChild(opt);
+            }
+        });
+    }
+
+    function seedApprovers(employees) {
+        const active = employees.filter(e => (e.employee_status || e['Status'] || '').toLowerCase() === 'active');
+        ['budget_approver','supplier_approver','final_approver'].forEach(id => {
+            const sel = document.getElementById(id);
+            if (!sel) return;
+            active.forEach(e => {
+                const name = (e.full_name || e['Họ và tên'] || '').trim();
+                const email = (e.employee_email || e['Email'] || '').trim();
+                if (!name) return;
+                const opt = document.createElement('option');
+                opt.value = email; opt.textContent = name;
+                sel.appendChild(opt);
+            });
+        });
+    }
+
+    /* ── Session restore ────────────────────────────────────────── */
+    function restoreSession() {
+        try {
+            const stored = localStorage.getItem('tlc_current_user');
+            if (!stored) return;
+            const user = JSON.parse(stored);
+            if (!user?.email) return;
+            document.getElementById('sidebar-logged-in').style.display = 'block';
+            document.getElementById('sidebar-user-name').textContent = user.name || '';
+            document.getElementById('sidebar-user-role').textContent = user.role || '';
+            const av = document.getElementById('sidebar-avatar');
+            if (av) av.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name||'U')}&background=007AFF&color=fff&size=80`;
+            // Pre-fill requester
+            if (user.name) document.getElementById('requester_name').value = user.name;
+            // Nav avatar
+            const navAv = document.getElementById('nav-user-avatar');
+            if (navAv) {
+                navAv.classList.remove('hidden');
+                const img = document.getElementById('nav-avatar');
+                if (img) img.src = av.src;
+            }
+        } catch (e) {}
+    }
+
+    function handleLogout() {
+        localStorage.removeItem('tlc_current_user');
+        window.location.href = 'index.html';
+    }
+
+    /* ── Init ───────────────────────────────────────────────────── */
+    window.addEventListener('DOMContentLoaded', () => {
+        restoreSession();
+        loadMasterData();
+        // Restore sidebar state
+        const collapsed = localStorage.getItem('pr_sidebar_collapsed') === 'true';
+        if (collapsed) {
+            document.getElementById('ipad-sidebar').classList.add('collapsed');
+            document.getElementById('ipad-main').classList.add('sidebar-collapsed');
+            const ic = document.getElementById('sidebar-toggle-icon');
+            ic.className = 'fas fa-chevron-right'; ic.style.fontSize = '11px'; ic.style.color = '#8e8e93';
+        }
+        // Set min date for required_date
+        document.getElementById('required_date').min = new Date().toISOString().split('T')[0];
+        // Add first item row
+        addItemRow();
+        goToStep(1);
+    });
+</script>
+</body>
+</html>

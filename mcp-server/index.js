@@ -28,7 +28,7 @@ const GAS_URL_FILES = [
   'approve_voucher.html.bak',
   'script.js',
   'index.html',
-  'phieu_thu_chi.html',
+  'voucher.html',
 ];
 
 const GAS_URL_PATTERN = /https:\/\/script\.google\.com\/macros\/s\/[A-Za-z0-9_-]+\/exec/g;
