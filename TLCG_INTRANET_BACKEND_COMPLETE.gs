@@ -1072,7 +1072,8 @@ function handleChangePassword(requestBody) {
     if (emailCol === -1) emailCol = 4;
     const colK         = 10; // Column K — default plain text password
     const passwordCol  = 11; // Column L — SHA-256 hash
-    const mustChangeCol = headers.indexOf('mustChangePassword');
+    let mustChangeCol = headers.indexOf('mustChangePassword');
+    if (mustChangeCol === -1) mustChangeCol = 12; // Column M fallback
 
     for (let i = 1; i < data.length; i++) {
       if (data[i][emailCol] && data[i][emailCol].toString().toLowerCase() === email.toLowerCase()) {
@@ -1103,7 +1104,8 @@ function handleChangePassword(requestBody) {
         // Clear Column K default password
         sheet.getRange(i + 1, colK + 1).setValue('');
         // Clear mustChangePassword flag
-        if (mustChangeCol >= 0) sheet.getRange(i + 1, mustChangeCol + 1).setValue(false);
+        sheet.getRange(i + 1, mustChangeCol + 1).setValue(false);
+        SpreadsheetApp.flush();
 
         Logger.log('Password changed successfully for: ' + email);
         return createResponse(true, 'Đổi mật khẩu thành công');
