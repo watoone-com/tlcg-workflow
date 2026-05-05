@@ -298,7 +298,7 @@
         <div class="sidebar-section-title">Workflows</div>
         <button class="sidebar-item active">
             <div class="sidebar-icon-box" style="background:#007AFF;"><i class="fas fa-file-pen"></i></div>
-            <span>Purchase Request</span>
+            <span>Đề Nghị Mua Hàng</span>
         </button>
         <button onclick="window.open('payment_request.html','_blank')" class="sidebar-item">
             <div class="sidebar-icon-box" style="background:#5856D6;"><i class="fas fa-file-invoice-dollar"></i></div>
@@ -414,11 +414,13 @@
                     <div class="form-row" style="margin-top:14px;">
                         <div class="form-group">
                             <label for="department">Bộ phận / Phòng ban</label>
-                            <input type="text" id="department" placeholder="Nhập tên bộ phận...">
+                            <select id="department">
+                                <option value="">-- Chọn bộ phận --</option>
+                            </select>
                         </div>
                         <div class="form-group">
                             <label for="requester_name">Người đề nghị <span class="req">*</span></label>
-                            <input type="text" id="requester_name" placeholder="Họ và tên">
+                            <input type="text" id="requester_name" placeholder="Họ và tên" readonly>
                         </div>
                     </div>
                     <div class="form-row">
@@ -986,6 +988,7 @@
                 localStorage.setItem('tlc_master_data_timestamp', new Date().toISOString());
             }
             seedCompanies(data.employees || []);
+            seedDepartments(data.employees || []);
             seedApprovers(data.employees || []);
         } catch (e) { console.warn('Master data load failed:', e); }
     }
@@ -1000,6 +1003,20 @@
                 seen.add(co);
                 const opt = document.createElement('option');
                 opt.value = code; opt.textContent = co;
+                sel.appendChild(opt);
+            }
+        });
+    }
+
+    function seedDepartments(employees) {
+        const sel  = document.getElementById('department');
+        const seen = new Set();
+        employees.forEach(e => {
+            const dept = (e.department_name || e['Bộ phận'] || '').trim();
+            if (dept && !seen.has(dept)) {
+                seen.add(dept);
+                const opt = document.createElement('option');
+                opt.value = dept; opt.textContent = dept;
                 sel.appendChild(opt);
             }
         });
