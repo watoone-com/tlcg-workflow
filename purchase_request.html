@@ -149,8 +149,7 @@
 
         /* ── Items table ─────────────────────────────────────────── */
         .items-wrap { overflow-x: auto; margin: 0 -4px; }
-        .items-table { width: 100%; border-collapse: collapse; min-width: 780px; font-size: 13px; }
-        .items-table .col-loai  { width: 115px; }
+        .items-table { width: 100%; border-collapse: collapse; min-width: 640px; font-size: 13px; }
         .items-table th {
             background: var(--bg); font-weight: 500; color: var(--text-secondary);
             padding: 8px 10px; border-bottom: 1px solid rgba(0,0,0,0.10);
@@ -187,6 +186,17 @@
             transition: all 0.15s; margin-top: 10px;
         }
         .add-row-btn:hover { border-color: var(--primary); background: rgba(0,122,255,0.05); }
+
+        /* ── Section cards ──────────────────────────────────────── */
+        .section-toggle { cursor: pointer; -webkit-user-select: none; user-select: none; justify-content: space-between; }
+        .section-toggle:hover { background: rgba(0,0,0,0.02); }
+        .section-chevron { font-size: 12px; color: var(--text-secondary); transition: transform 0.2s; }
+        .section-subtotal { font-size: 13px; font-weight: 600; color: var(--primary); }
+        .section-body { border-top: 0.5px solid var(--border); }
+        .section-title { display: flex; align-items: center; gap: 8px; }
+        .section-meta  { display: flex; align-items: center; gap: 12px; }
+        .grand-total-bar { display: flex; justify-content: flex-end; align-items: center; gap: 12px; padding: 4px 0 8px; }
+        .grand-total-label { font-size: 14px; font-weight: 600; color: var(--text-secondary); }
 
         /* ── Total display ───────────────────────────────────────── */
         .total-pill {
@@ -459,41 +469,151 @@
              STEP 2 — HÀNG HÓA / DỊCH VỤ
         ════════════════════════════════════════════════════════ -->
         <div class="form-step" id="step-2">
+
+            <!-- Section 1: Hàng Hóa -->
             <div class="form-card">
-                <div class="form-card-header">
-                    <i class="fas fa-boxes-stacked" style="color:var(--warning); font-size:14px;"></i>
-                    <h2>Danh sách hàng hóa / dịch vụ</h2>
+                <div class="form-card-header section-toggle" onclick="toggleSection('hang-hoa')">
+                    <div class="section-title">
+                        <i class="fas fa-box" style="color:#FF9500;font-size:14px;"></i>
+                        <h2>Hàng Hóa</h2>
+                    </div>
+                    <div class="section-meta">
+                        <span class="section-subtotal" id="subtotal-hang-hoa">0 ₫</span>
+                        <i class="fas fa-chevron-down section-chevron" id="chevron-hang-hoa"></i>
+                    </div>
                 </div>
-                <div class="form-card-body" style="padding-left:12px; padding-right:12px;">
-                    <div class="items-wrap">
-                        <table class="items-table">
-                            <thead>
-                                <tr>
+                <div class="section-body" id="body-hang-hoa">
+                    <div class="form-card-body" style="padding:12px;">
+                        <div class="items-wrap">
+                            <table class="items-table">
+                                <thead><tr>
                                     <th class="col-no">#</th>
-                                    <th class="col-loai">Loại <span class="req">*</span></th>
                                     <th>Tên hàng / Mô tả <span class="req">*</span></th>
                                     <th class="col-qty">Số lượng</th>
                                     <th class="col-unit">Đơn vị</th>
                                     <th class="col-price">Đơn giá (VND)</th>
                                     <th class="col-total">Thành tiền</th>
                                     <th class="col-del"></th>
-                                </tr>
-                            </thead>
-                            <tbody id="items-body"></tbody>
-                            <tfoot>
-                                <tr class="items-total-row">
-                                    <td colspan="6" style="text-align:right; font-size:13px; color:var(--text-secondary); padding-right:12px;">Tổng cộng:</td>
-                                    <td colspan="2">
-                                        <span class="total-pill" id="grand-total-display">0 ₫</span>
-                                    </td>
-                                </tr>
-                            </tfoot>
-                        </table>
+                                </tr></thead>
+                                <tbody id="tbody-hang-hoa"></tbody>
+                            </table>
+                        </div>
+                        <button type="button" class="add-row-btn" onclick="addSectionRow('hang-hoa')">
+                            <i class="fas fa-plus" style="font-size:11px;"></i> Thêm dòng
+                        </button>
                     </div>
-                    <button type="button" class="add-row-btn" onclick="addItemRow()">
-                        <i class="fas fa-plus" style="font-size:11px;"></i> Thêm dòng
-                    </button>
                 </div>
+            </div>
+
+            <!-- Section 2: Thiết Bị -->
+            <div class="form-card">
+                <div class="form-card-header section-toggle" onclick="toggleSection('thiet-bi')">
+                    <div class="section-title">
+                        <i class="fas fa-computer" style="color:#5856D6;font-size:14px;"></i>
+                        <h2>Thiết Bị (TSCD / CCDC)</h2>
+                    </div>
+                    <div class="section-meta">
+                        <span class="section-subtotal" id="subtotal-thiet-bi">0 ₫</span>
+                        <i class="fas fa-chevron-down section-chevron" id="chevron-thiet-bi"></i>
+                    </div>
+                </div>
+                <div class="section-body" id="body-thiet-bi">
+                    <div class="form-card-body" style="padding:12px;">
+                        <div class="items-wrap">
+                            <table class="items-table">
+                                <thead><tr>
+                                    <th class="col-no">#</th>
+                                    <th>Tên thiết bị / Mô tả <span class="req">*</span></th>
+                                    <th class="col-qty">Số lượng</th>
+                                    <th class="col-unit">Đơn vị</th>
+                                    <th class="col-price">Đơn giá (VND)</th>
+                                    <th class="col-total">Thành tiền</th>
+                                    <th class="col-del"></th>
+                                </tr></thead>
+                                <tbody id="tbody-thiet-bi"></tbody>
+                            </table>
+                        </div>
+                        <button type="button" class="add-row-btn" onclick="addSectionRow('thiet-bi')">
+                            <i class="fas fa-plus" style="font-size:11px;"></i> Thêm dòng
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 3: Dịch Vụ -->
+            <div class="form-card">
+                <div class="form-card-header section-toggle" onclick="toggleSection('dich-vu')">
+                    <div class="section-title">
+                        <i class="fas fa-handshake" style="color:#34C759;font-size:14px;"></i>
+                        <h2>Dịch Vụ</h2>
+                    </div>
+                    <div class="section-meta">
+                        <span class="section-subtotal" id="subtotal-dich-vu">0 ₫</span>
+                        <i class="fas fa-chevron-down section-chevron" id="chevron-dich-vu"></i>
+                    </div>
+                </div>
+                <div class="section-body" id="body-dich-vu">
+                    <div class="form-card-body" style="padding:12px;">
+                        <div class="items-wrap">
+                            <table class="items-table">
+                                <thead><tr>
+                                    <th class="col-no">#</th>
+                                    <th>Tên dịch vụ / Mô tả <span class="req">*</span></th>
+                                    <th class="col-qty">Số lượng</th>
+                                    <th class="col-unit">Đơn vị</th>
+                                    <th class="col-price">Đơn giá (VND)</th>
+                                    <th class="col-total">Thành tiền</th>
+                                    <th class="col-del"></th>
+                                </tr></thead>
+                                <tbody id="tbody-dich-vu"></tbody>
+                            </table>
+                        </div>
+                        <button type="button" class="add-row-btn" onclick="addSectionRow('dich-vu')">
+                            <i class="fas fa-plus" style="font-size:11px;"></i> Thêm dòng
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Section 4: Sữa Chữa -->
+            <div class="form-card">
+                <div class="form-card-header section-toggle" onclick="toggleSection('sua-chua')">
+                    <div class="section-title">
+                        <i class="fas fa-screwdriver-wrench" style="color:#FF3B30;font-size:14px;"></i>
+                        <h2>Sữa Chữa (TSCD)</h2>
+                    </div>
+                    <div class="section-meta">
+                        <span class="section-subtotal" id="subtotal-sua-chua">0 ₫</span>
+                        <i class="fas fa-chevron-down section-chevron" id="chevron-sua-chua"></i>
+                    </div>
+                </div>
+                <div class="section-body" id="body-sua-chua">
+                    <div class="form-card-body" style="padding:12px;">
+                        <div class="items-wrap">
+                            <table class="items-table">
+                                <thead><tr>
+                                    <th class="col-no">#</th>
+                                    <th>Tên TSCD / Nội dung sữa chữa <span class="req">*</span></th>
+                                    <th class="col-qty">Số lượng</th>
+                                    <th class="col-unit">Đơn vị</th>
+                                    <th class="col-price">Đơn giá (VND)</th>
+                                    <th class="col-total">Thành tiền</th>
+                                    <th class="col-del"></th>
+                                </tr></thead>
+                                <tbody id="tbody-sua-chua"></tbody>
+                            </table>
+                        </div>
+                        <button type="button" class="add-row-btn" onclick="addSectionRow('sua-chua')">
+                            <i class="fas fa-plus" style="font-size:11px;"></i> Thêm dòng
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Grand total -->
+            <div class="grand-total-bar">
+                <span class="grand-total-label">Tổng cộng tất cả:</span>
+                <span class="total-pill" id="grand-total-display">0 ₫</span>
             </div>
 
             <div class="form-card">
@@ -751,11 +871,13 @@
             if (!document.getElementById('required_date').value) { showToast('Vui lòng chọn ngày cần hàng.', 'error'); return; }
         }
         if (step === 2) {
-            const rows = document.querySelectorAll('#items-body tr');
-            if (rows.length === 0) { showToast('Vui lòng thêm ít nhất 1 hàng hóa.', 'error'); return; }
             let hasDesc = false;
-            rows.forEach(r => { if (r.querySelector('.item-desc')?.value.trim()) hasDesc = true; });
-            if (!hasDesc) { showToast('Vui lòng nhập mô tả cho ít nhất 1 hàng hóa.', 'error'); return; }
+            SECTIONS.forEach(s => {
+                document.querySelectorAll('#tbody-' + s.id + ' .item-desc').forEach(inp => {
+                    if (inp.value.trim()) hasDesc = true;
+                });
+            });
+            if (!hasDesc) { showToast('Vui lòng nhập ít nhất 1 hàng hóa / dịch vụ.', 'error'); return; }
             if (!document.getElementById('purpose').value.trim()) { showToast('Vui lòng nhập mục đích mua hàng.', 'error'); return; }
         }
         if (step === 3) {
@@ -833,78 +955,95 @@
         document.getElementById('request_id').value           = _prNo;
     }
 
-    /* ── Items table ─────────────────────────────────────────────── */
+    /* ── Section items ───────────────────────────────────────────── */
+    const SECTIONS = [
+        { id: 'hang-hoa',  label: 'Hàng Hóa',            defaultRows: 10 },
+        { id: 'thiet-bi',  label: 'Thiết Bị (TSCD/CCDC)', defaultRows: 10 },
+        { id: 'dich-vu',   label: 'Dịch Vụ',              defaultRows: 5  },
+        { id: 'sua-chua',  label: 'Sữa Chữa (TSCD)',      defaultRows: 5  },
+    ];
+
     let _rowCount = 0;
-    function addItemRow() {
+
+    function initSections() {
+        SECTIONS.forEach(s => {
+            for (let i = 0; i < s.defaultRows; i++) addSectionRow(s.id);
+            // All sections start collapsed
+            document.getElementById('body-' + s.id).style.display = 'none';
+        });
+    }
+
+    function toggleSection(id) {
+        const body    = document.getElementById('body-' + id);
+        const chevron = document.getElementById('chevron-' + id);
+        const isOpen  = body.style.display !== 'none';
+        body.style.display       = isOpen ? 'none' : '';
+        chevron.style.transform  = isOpen ? '' : 'rotate(180deg)';
+    }
+
+    function addSectionRow(sectionId) {
         _rowCount++;
-        const n = _rowCount;
-        const tbody = document.getElementById('items-body');
-        const tr = document.createElement('tr');
-        tr.id = 'item-row-' + n;
+        const n     = _rowCount;
+        const tbody = document.getElementById('tbody-' + sectionId);
+        const tr    = document.createElement('tr');
+        tr.id              = 'item-row-' + n;
+        tr.dataset.section = sectionId;
         tr.innerHTML = `
             <td class="col-no">${tbody.children.length + 1}</td>
-            <td class="col-loai"><select class="item-loai" onchange="onLoaiChange(${n})">
-                <option value="hang_hoa">Hàng hóa</option>
-                <option value="thiet_bi">Thiết bị</option>
-                <option value="dich_vu">Dịch vụ</option>
-                <option value="van_phong_pham">Văn phòng phẩm</option>
-                <option value="bao_bi">Bao bì</option>
-                <option value="khac">Khác</option>
-            </select></td>
-            <td><input type="text" class="item-desc" placeholder="Tên hàng / mô tả..." oninput="recalcRow(${n})"></td>
-            <td class="col-qty"><input type="number" class="item-qty" value="1" min="1" oninput="recalcRow(${n})"></td>
+            <td><input type="text" class="item-desc" placeholder="Mô tả..." oninput="recalcRow(${n}, '${sectionId}')"></td>
+            <td class="col-qty"><input type="number" class="item-qty" value="1" min="1" oninput="recalcRow(${n}, '${sectionId}')"></td>
             <td class="col-unit"><select class="item-unit">
                 <option>Cái</option><option>Bộ</option><option>Kg</option>
                 <option>Lít</option><option>m²</option><option>Chiếc</option>
                 <option>Thùng</option><option>Gói</option><option>Dịch vụ</option>
             </select></td>
-            <td class="col-price"><input type="number" class="item-price" value="0" min="0" step="1000" oninput="recalcRow(${n})"></td>
-            <td class="col-total item-total" data-row="${n}">0 ₫</td>
-            <td class="col-del"><button class="del-btn" onclick="removeItemRow('item-row-${n}')" title="Xóa dòng"><i class="fas fa-times"></i></button></td>
+            <td class="col-price"><input type="number" class="item-price" value="0" min="0" step="1000" oninput="recalcRow(${n}, '${sectionId}')"></td>
+            <td class="col-total item-total" data-value="0">0 ₫</td>
+            <td class="col-del"><button class="del-btn" onclick="removeSectionRow('item-row-${n}','${sectionId}')" title="Xóa dòng"><i class="fas fa-times"></i></button></td>
         `;
         tbody.appendChild(tr);
-        renumberRows();
-        recalcRow(n);
+        renumberSection(sectionId);
     }
 
-    function onLoaiChange(n) {
-        const tr = document.getElementById('item-row-' + n);
-        const isService = tr.querySelector('.item-loai').value === 'dich_vu';
-        tr.querySelector('.item-qty').closest('td').style.display  = isService ? 'none' : '';
-        tr.querySelector('.item-unit').closest('td').style.display = isService ? 'none' : '';
-        if (isService) {
-            tr.querySelector('.item-qty').value  = 1;
-            tr.querySelector('.item-unit').value = 'Dịch vụ';
-        }
-        recalcRow(n);
+    function removeSectionRow(rowId, sectionId) {
+        document.getElementById(rowId)?.remove();
+        renumberSection(sectionId);
+        recalcSection(sectionId);
     }
 
-    function removeItemRow(id) {
-        document.getElementById(id)?.remove();
-        renumberRows();
-        recalcTotal();
-    }
-
-    function renumberRows() {
-        document.querySelectorAll('#items-body tr').forEach((tr, i) => {
+    function renumberSection(sectionId) {
+        document.querySelectorAll('#tbody-' + sectionId + ' tr').forEach((tr, i) => {
             tr.querySelector('.col-no').textContent = i + 1;
         });
     }
 
-    function recalcRow(n) {
-        const tr    = document.getElementById('item-row-' + n);
+    function recalcRow(n, sectionId) {
+        const tr = document.getElementById('item-row-' + n);
         if (!tr) return;
-        const qty   = parseFloat(tr.querySelector('.item-qty')?.value)  || 0;
+        const qty   = parseFloat(tr.querySelector('.item-qty')?.value)   || 0;
         const price = parseFloat(tr.querySelector('.item-price')?.value) || 0;
         const total = qty * price;
-        tr.querySelector('.item-total').textContent = formatMoney(total);
+        tr.querySelector('.item-total').textContent   = formatMoney(total);
         tr.querySelector('.item-total').dataset.value = total;
-        recalcTotal();
+        recalcSection(sectionId);
     }
 
-    function recalcTotal() {
+    function recalcSection(sectionId) {
         let sum = 0;
-        document.querySelectorAll('#items-body .item-total').forEach(td => { sum += parseFloat(td.dataset.value || 0); });
+        document.querySelectorAll('#tbody-' + sectionId + ' .item-total').forEach(td => {
+            sum += parseFloat(td.dataset.value || 0);
+        });
+        document.getElementById('subtotal-' + sectionId).textContent = formatMoney(sum);
+        recalcGrandTotal();
+    }
+
+    function recalcGrandTotal() {
+        let sum = 0;
+        SECTIONS.forEach(s => {
+            document.querySelectorAll('#tbody-' + s.id + ' .item-total').forEach(td => {
+                sum += parseFloat(td.dataset.value || 0);
+            });
+        });
         _grandTotal = sum;
         document.getElementById('grand-total-display').textContent = formatMoney(sum);
     }
@@ -933,21 +1072,33 @@
         const sel2 = document.getElementById('supplier_approver');
         document.getElementById('sum-supplier-approver').textContent = sel2.value ? sel2.options[sel2.selectedIndex]?.text : '—';
 
-        // Items list
+        // Items list grouped by section
         const list = document.getElementById('sum-items-list');
         list.innerHTML = '';
-        const LOAI_LABEL = { hang_hoa:'Hàng hóa', thiet_bi:'Thiết bị', dich_vu:'Dịch vụ', van_phong_pham:'VPP', bao_bi:'Bao bì', khac:'Khác' };
-        document.querySelectorAll('#items-body tr').forEach((tr, i) => {
-            const loai  = tr.querySelector('.item-loai')?.value || '';
-            const desc  = tr.querySelector('.item-desc')?.value.trim() || '(trống)';
-            const qty   = tr.querySelector('.item-qty')?.value || 0;
-            const unit  = tr.querySelector('.item-unit')?.value || '';
-            const total = parseFloat(tr.querySelector('.item-total')?.dataset.value || 0);
-            const loaiTag = loai ? `[${LOAI_LABEL[loai] || loai}] ` : '';
-            const div = document.createElement('div');
-            div.className = 'summary-row';
-            div.innerHTML = `<span class="summary-lbl" style="font-size:13px;">${i+1}. ${loaiTag}${desc}</span><span class="summary-val" style="font-size:13px;">${qty} ${unit} — ${formatMoney(total)}</span>`;
-            list.appendChild(div);
+        let globalIdx = 0;
+        SECTIONS.forEach(s => {
+            const sectionRows = [];
+            document.querySelectorAll('#tbody-' + s.id + ' tr').forEach(tr => {
+                const desc = tr.querySelector('.item-desc')?.value.trim();
+                if (!desc) return;
+                sectionRows.push(tr);
+            });
+            if (sectionRows.length === 0) return;
+            const hdr = document.createElement('div');
+            hdr.className = 'summary-row';
+            hdr.innerHTML = `<span class="summary-lbl" style="font-size:12px;font-weight:600;color:var(--text-secondary);text-transform:uppercase;letter-spacing:.4px;">${s.label}</span>`;
+            list.appendChild(hdr);
+            sectionRows.forEach(tr => {
+                globalIdx++;
+                const desc  = tr.querySelector('.item-desc')?.value.trim();
+                const qty   = tr.querySelector('.item-qty')?.value || 0;
+                const unit  = tr.querySelector('.item-unit')?.value || '';
+                const total = parseFloat(tr.querySelector('.item-total')?.dataset.value || 0);
+                const div = document.createElement('div');
+                div.className = 'summary-row';
+                div.innerHTML = `<span class="summary-lbl" style="font-size:13px;">${globalIdx}. ${desc}</span><span class="summary-val" style="font-size:13px;">${qty} ${unit} — ${formatMoney(total)}</span>`;
+                list.appendChild(div);
+            });
         });
     }
 
@@ -960,16 +1111,21 @@
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang gửi...';
 
-        // Collect items
+        // Collect items — skip empty rows
         const items = [];
-        document.querySelectorAll('#items-body tr').forEach(tr => {
-            items.push({
-                loai:  tr.querySelector('.item-loai')?.value,
-                desc:  tr.querySelector('.item-desc')?.value.trim(),
-                qty:   tr.querySelector('.item-qty')?.value,
-                unit:  tr.querySelector('.item-unit')?.value,
-                price: tr.querySelector('.item-price')?.value,
-                total: tr.querySelector('.item-total')?.dataset.value,
+        SECTIONS.forEach(s => {
+            document.querySelectorAll('#tbody-' + s.id + ' tr').forEach(tr => {
+                const desc = tr.querySelector('.item-desc')?.value.trim();
+                if (!desc) return;
+                items.push({
+                    section: s.id,
+                    loai:    s.label,
+                    desc,
+                    qty:     tr.querySelector('.item-qty')?.value,
+                    unit:    tr.querySelector('.item-unit')?.value,
+                    price:   tr.querySelector('.item-price')?.value,
+                    total:   tr.querySelector('.item-total')?.dataset.value,
+                });
             });
         });
 
@@ -1036,9 +1192,15 @@
         document.getElementById('budget_approver').value  = '';
         document.getElementById('supplier_approver').value = '';
         document.getElementById('req-no-row').style.display = 'none';
-        document.getElementById('items-body').innerHTML  = '';
+        SECTIONS.forEach(s => {
+            document.getElementById('tbody-' + s.id).innerHTML = '';
+            document.getElementById('subtotal-' + s.id).textContent = '0 ₫';
+            document.getElementById('body-' + s.id).style.display = 'none';
+            document.getElementById('chevron-' + s.id).style.transform = '';
+        });
         _rowCount = 0; _grandTotal = 0; _prNo = '';
-        recalcTotal();
+        document.getElementById('grand-total-display').textContent = '0 ₫';
+        initSections();
         setPriority('medium');
         document.getElementById('success-screen').style.display = 'none';
         document.querySelectorAll('.form-step, .progress-stepper, h1').forEach(el => el.style.display = '');
@@ -1163,8 +1325,7 @@
         }
         // Set min date for required_date
         document.getElementById('required_date').min = new Date().toISOString().split('T')[0];
-        // Add first item row
-        addItemRow();
+        initSections();
         goToStep(1);
     });
 </script>
