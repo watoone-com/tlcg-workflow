@@ -970,6 +970,8 @@
             for (let i = 0; i < s.defaultRows; i++) addSectionRow(s.id);
             // All sections start collapsed
             document.getElementById('body-' + s.id).style.display = 'none';
+            // Excel paste support
+            document.getElementById('tbody-' + s.id).addEventListener('paste', e => handleSectionPaste(e, s.id));
         });
     }
 
@@ -1035,6 +1037,51 @@
         });
         document.getElementById('subtotal-' + sectionId).textContent = formatMoney(sum);
         recalcGrandTotal();
+    }
+
+    /* ── Excel paste handler ─────────────────────────────────────── */
+    function handleSectionPaste(e, sectionId) {
+        const text = (e.clipboardData || window.clipboardData).getData('text');
+        if (!text.includes('\t') && !text.includes('\n')) return; // single cell, let browser handle
+        e.preventDefault();
+
+        // Parse Excel data: rows by newline, cols by tab
+        const rows = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n').trimEnd().split('\n');
+        if (!rows.length) return;
+
+        const UNIT_OPTIONS = ['Cái','Bộ','Kg','Lít','m²','Chiếc','Thùng','Gói','Dịch vụ'];
+        const tbody = document.getElementById('tbody-' + sectionId);
+
+        // Find which row the paste started in
+        const targetInput = e.target.closest('tr');
+        let startRowIndex = targetInput
+            ? [...tbody.querySelectorAll('tr')].indexOf(targetInput)
+            : tbody.children.length;
+
+        rows.forEach((rowText, i) => {
+            const cols = rowText.split('\t');
+            const desc  = (cols[0] || '').trim();
+            const qty   = parseFloat((cols[1] || '').trim().replace(/,/g, '')) || 1;
+            const unitRaw = (cols[2] || '').trim();
+            const unit  = UNIT_OPTIONS.includes(unitRaw) ? unitRaw : 'Cái';
+            const price = parseFloat((cols[cols.length > 3 ? 3 : cols.length - 1] || '').trim().replace(/,/g, '')) || 0;
+
+            const rowIdx = startRowIndex + i;
+            let tr = tbody.querySelectorAll('tr')[rowIdx];
+
+            // Create new row if needed
+            if (!tr) { addSectionRow(sectionId); tr = tbody.querySelectorAll('tr')[rowIdx]; }
+            if (!tr) return;
+
+            const rowId = tr.id.replace('item-row-', '');
+            tr.querySelector('.item-desc').value  = desc;
+            tr.querySelector('.item-qty').value   = qty;
+            tr.querySelector('.item-unit').value  = unit;
+            tr.querySelector('.item-price').value = price;
+            recalcRow(rowId, sectionId);
+        });
+
+        renumberSection(sectionId);
     }
 
     function recalcGrandTotal() {
