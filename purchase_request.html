@@ -170,6 +170,7 @@
         .items-table .col-unit  { width: 80px;  }
         .items-table .col-price { width: 120px; }
         .items-table .col-total { width: 120px; font-weight: 500; color: var(--text-primary); padding-right: 10px; }
+        .items-table .col-note  { width: 140px; }
         .items-total-row td { padding: 10px 10px 4px; font-size: 14px; }
         .del-btn {
             width: 26px; height: 26px; border-radius: 50%; border: none;
@@ -493,6 +494,7 @@
                                     <th class="col-unit">Đơn vị</th>
                                     <th class="col-price">Đơn giá (VND)</th>
                                     <th class="col-total">Thành tiền</th>
+                                    <th class="col-note">Ghi chú</th>
                                     <th class="col-del"></th>
                                 </tr></thead>
                                 <tbody id="tbody-hang-hoa"></tbody>
@@ -528,6 +530,7 @@
                                     <th class="col-unit">Đơn vị</th>
                                     <th class="col-price">Đơn giá (VND)</th>
                                     <th class="col-total">Thành tiền</th>
+                                    <th class="col-note">Ghi chú</th>
                                     <th class="col-del"></th>
                                 </tr></thead>
                                 <tbody id="tbody-thiet-bi"></tbody>
@@ -563,6 +566,7 @@
                                     <th class="col-unit">Đơn vị</th>
                                     <th class="col-price">Đơn giá (VND)</th>
                                     <th class="col-total">Thành tiền</th>
+                                    <th class="col-note">Ghi chú</th>
                                     <th class="col-del"></th>
                                 </tr></thead>
                                 <tbody id="tbody-dich-vu"></tbody>
@@ -598,6 +602,7 @@
                                     <th class="col-unit">Đơn vị</th>
                                     <th class="col-price">Đơn giá (VND)</th>
                                     <th class="col-total">Thành tiền</th>
+                                    <th class="col-note">Ghi chú</th>
                                     <th class="col-del"></th>
                                 </tr></thead>
                                 <tbody id="tbody-sua-chua"></tbody>
@@ -1001,6 +1006,7 @@
             </select></td>
             <td class="col-price"><input type="number" class="item-price" value="0" min="0" step="1000" oninput="recalcRow(${n}, '${sectionId}')"></td>
             <td class="col-total item-total" data-value="0">0 ₫</td>
+            <td class="col-note"><input type="text" class="item-note" placeholder="Ghi chú..."></td>
             <td class="col-del"><button class="del-btn" onclick="removeSectionRow('item-row-${n}','${sectionId}')" title="Xóa dòng"><i class="fas fa-times"></i></button></td>
         `;
         tbody.appendChild(tr);
@@ -1172,6 +1178,7 @@
                     unit:    tr.querySelector('.item-unit')?.value,
                     price:   tr.querySelector('.item-price')?.value,
                     total:   tr.querySelector('.item-total')?.dataset.value,
+                    note:    tr.querySelector('.item-note')?.value.trim(),
                 });
             });
         });
