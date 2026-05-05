@@ -415,14 +415,14 @@
                     </div>
                     <div class="form-row" style="margin-top:14px;">
                         <div class="form-group">
-                            <label for="department">Bộ phận / Phòng ban</label>
-                            <select id="department">
-                                <option value="">-- Chọn bộ phận --</option>
+                            <label for="requester_name">Người đề nghị <span class="req">*</span></label>
+                            <select id="requester_name" onchange="onRequesterChange()">
+                                <option value="">-- Chọn người đề nghị --</option>
                             </select>
                         </div>
                         <div class="form-group">
-                            <label for="requester_name">Người đề nghị <span class="req">*</span></label>
-                            <input type="text" id="requester_name" placeholder="Họ và tên" readonly>
+                            <label for="department">Bộ phận / Phòng ban</label>
+                            <input type="text" id="department" readonly>
                         </div>
                     </div>
                     <div class="form-row">
@@ -1037,23 +1037,45 @@
                 localStorage.setItem('tlc_master_data', JSON.stringify(data));
                 localStorage.setItem('tlc_master_data_timestamp', new Date().toISOString());
             }
-            seedDepartments(data.employees || []);
+            seedRequesters(data.employees || []);
             seedApprovers(data.employees || []);
         } catch (e) { console.warn('Master data load failed:', e); }
     }
 
-    function seedDepartments(employees) {
-        const sel  = document.getElementById('department');
-        const seen = new Set();
-        employees.forEach(e => {
+    let _allEmployees = [];
+
+    function seedRequesters(employees) {
+        _allEmployees = employees;
+        const sel    = document.getElementById('requester_name');
+        const active = employees.filter(e => (e.employee_status || e['Status'] || '').toLowerCase() === 'active');
+        sel.innerHTML = '<option value="">-- Chọn người đề nghị --</option>';
+        active.forEach(e => {
+            const name = (e.full_name || e['Họ và tên'] || '').trim();
             const dept = (e.department_name || e['Bộ phận'] || '').trim();
-            if (dept && !seen.has(dept)) {
-                seen.add(dept);
-                const opt = document.createElement('option');
-                opt.value = dept; opt.textContent = dept;
-                sel.appendChild(opt);
-            }
+            if (!name) return;
+            const opt = document.createElement('option');
+            opt.value        = name;
+            opt.textContent  = name;
+            opt.dataset.dept = dept;
+            sel.appendChild(opt);
         });
+        // Pre-select logged-in user if found
+        const stored = localStorage.getItem('tlc_current_user');
+        if (stored) {
+            try {
+                const u = JSON.parse(stored);
+                if (u?.name) {
+                    const match = [...sel.options].find(o => o.value === u.name);
+                    if (match) { sel.value = u.name; onRequesterChange(); }
+                }
+            } catch (_) {}
+        }
+    }
+
+    function onRequesterChange() {
+        const sel  = document.getElementById('requester_name');
+        const opt  = sel.options[sel.selectedIndex];
+        document.getElementById('department').value = opt?.dataset?.dept || '';
     }
 
     function seedApprovers(employees) {
@@ -1084,8 +1106,7 @@
             document.getElementById('sidebar-user-role').textContent = user.role || '';
             const av = document.getElementById('sidebar-avatar');
             if (av) av.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name||'U')}&background=007AFF&color=fff&size=80`;
-            // Pre-fill requester
-            if (user.name) document.getElementById('requester_name').value = user.name;
+            // Requester pre-select is handled in seedRequesters() after employee list loads
             // Nav avatar
             const navAv = document.getElementById('nav-user-avatar');
             if (navAv) {
