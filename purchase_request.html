@@ -149,7 +149,8 @@
 
         /* ── Items table ─────────────────────────────────────────── */
         .items-wrap { overflow-x: auto; margin: 0 -4px; }
-        .items-table { width: 100%; border-collapse: collapse; min-width: 640px; font-size: 13px; }
+        .items-table { width: 100%; border-collapse: collapse; min-width: 780px; font-size: 13px; }
+        .items-table .col-loai  { width: 115px; }
         .items-table th {
             background: var(--bg); font-weight: 500; color: var(--text-secondary);
             padding: 8px 10px; border-bottom: 1px solid rgba(0,0,0,0.10);
@@ -469,7 +470,8 @@
                             <thead>
                                 <tr>
                                     <th class="col-no">#</th>
-                                    <th>Mô tả hàng hóa / dịch vụ <span class="req">*</span></th>
+                                    <th class="col-loai">Loại <span class="req">*</span></th>
+                                    <th>Tên hàng / Mô tả <span class="req">*</span></th>
                                     <th class="col-qty">Số lượng</th>
                                     <th class="col-unit">Đơn vị</th>
                                     <th class="col-price">Đơn giá (VND)</th>
@@ -480,7 +482,7 @@
                             <tbody id="items-body"></tbody>
                             <tfoot>
                                 <tr class="items-total-row">
-                                    <td colspan="5" style="text-align:right; font-size:13px; color:var(--text-secondary); padding-right:12px;">Tổng cộng:</td>
+                                    <td colspan="6" style="text-align:right; font-size:13px; color:var(--text-secondary); padding-right:12px;">Tổng cộng:</td>
                                     <td colspan="2">
                                         <span class="total-pill" id="grand-total-display">0 ₫</span>
                                     </td>
@@ -841,7 +843,15 @@
         tr.id = 'item-row-' + n;
         tr.innerHTML = `
             <td class="col-no">${tbody.children.length + 1}</td>
-            <td><input type="text" class="item-desc" placeholder="Mô tả hàng hóa / dịch vụ..." oninput="recalcRow(${n})"></td>
+            <td class="col-loai"><select class="item-loai" onchange="onLoaiChange(${n})">
+                <option value="hang_hoa">Hàng hóa</option>
+                <option value="thiet_bi">Thiết bị</option>
+                <option value="dich_vu">Dịch vụ</option>
+                <option value="van_phong_pham">Văn phòng phẩm</option>
+                <option value="bao_bi">Bao bì</option>
+                <option value="khac">Khác</option>
+            </select></td>
+            <td><input type="text" class="item-desc" placeholder="Tên hàng / mô tả..." oninput="recalcRow(${n})"></td>
             <td class="col-qty"><input type="number" class="item-qty" value="1" min="1" oninput="recalcRow(${n})"></td>
             <td class="col-unit"><select class="item-unit">
                 <option>Cái</option><option>Bộ</option><option>Kg</option>
@@ -854,6 +864,18 @@
         `;
         tbody.appendChild(tr);
         renumberRows();
+        recalcRow(n);
+    }
+
+    function onLoaiChange(n) {
+        const tr = document.getElementById('item-row-' + n);
+        const isService = tr.querySelector('.item-loai').value === 'dich_vu';
+        tr.querySelector('.item-qty').closest('td').style.display  = isService ? 'none' : '';
+        tr.querySelector('.item-unit').closest('td').style.display = isService ? 'none' : '';
+        if (isService) {
+            tr.querySelector('.item-qty').value  = 1;
+            tr.querySelector('.item-unit').value = 'Dịch vụ';
+        }
         recalcRow(n);
     }
 
@@ -914,14 +936,17 @@
         // Items list
         const list = document.getElementById('sum-items-list');
         list.innerHTML = '';
+        const LOAI_LABEL = { hang_hoa:'Hàng hóa', thiet_bi:'Thiết bị', dich_vu:'Dịch vụ', van_phong_pham:'VPP', bao_bi:'Bao bì', khac:'Khác' };
         document.querySelectorAll('#items-body tr').forEach((tr, i) => {
+            const loai  = tr.querySelector('.item-loai')?.value || '';
             const desc  = tr.querySelector('.item-desc')?.value.trim() || '(trống)';
             const qty   = tr.querySelector('.item-qty')?.value || 0;
             const unit  = tr.querySelector('.item-unit')?.value || '';
             const total = parseFloat(tr.querySelector('.item-total')?.dataset.value || 0);
+            const loaiTag = loai ? `[${LOAI_LABEL[loai] || loai}] ` : '';
             const div = document.createElement('div');
             div.className = 'summary-row';
-            div.innerHTML = `<span class="summary-lbl" style="font-size:13px;">${i+1}. ${desc}</span><span class="summary-val" style="font-size:13px;">${qty} ${unit} — ${formatMoney(total)}</span>`;
+            div.innerHTML = `<span class="summary-lbl" style="font-size:13px;">${i+1}. ${loaiTag}${desc}</span><span class="summary-val" style="font-size:13px;">${qty} ${unit} — ${formatMoney(total)}</span>`;
             list.appendChild(div);
         });
     }
@@ -939,6 +964,7 @@
         const items = [];
         document.querySelectorAll('#items-body tr').forEach(tr => {
             items.push({
+                loai:  tr.querySelector('.item-loai')?.value,
                 desc:  tr.querySelector('.item-desc')?.value.trim(),
                 qty:   tr.querySelector('.item-qty')?.value,
                 unit:  tr.querySelector('.item-unit')?.value,
