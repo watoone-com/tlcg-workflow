@@ -4698,23 +4698,23 @@
                         return resolve(driveAccessToken);
                     }
 
-                    if (!driveTokenClient) {
-                        driveTokenClient = google.accounts.oauth2.initTokenClient({
-                            client_id: DRIVE_CONFIG.CLIENT_ID,
-                            scope: DRIVE_CONFIG.SCOPES,
-                            callback: (response) => {
-                                if (response.error) {
-                                    logDriveInitError('gis.token', response);
-                                    return reject(response);
-                                }
-                                driveAccessToken = response.access_token;
-                                driveTokenExpiry = Date.now() + ((response.expires_in || 1800) - 60) * 1000; // buffer 60s
-                                driveAPIReady = true;
-                                console.log('✅ Drive token acquired via GIS');
-                                resolve(driveAccessToken);
+                    // Always create a fresh token client so the callback captures
+                    // the CURRENT promise's resolve/reject (fixes stale closure hang)
+                    driveTokenClient = google.accounts.oauth2.initTokenClient({
+                        client_id: DRIVE_CONFIG.CLIENT_ID,
+                        scope: DRIVE_CONFIG.SCOPES,
+                        callback: (response) => {
+                            if (response.error) {
+                                logDriveInitError('gis.token', response);
+                                return reject(response);
                             }
-                        });
-                    }
+                            driveAccessToken = response.access_token;
+                            driveTokenExpiry = Date.now() + ((response.expires_in || 1800) - 60) * 1000; // buffer 60s
+                            driveAPIReady = true;
+                            console.log('✅ Drive token acquired via GIS');
+                            resolve(driveAccessToken);
+                        }
+                    });
 
                     // Request token (prompt consent if needed)
                     driveTokenClient.requestAccessToken({
