@@ -4881,8 +4881,8 @@
                 const uploadResult = await uploadResp.json();
                 console.log(`✅ File uploaded: ${uploadResult.name}`);
 
-                // Set sharing
-                await setDriveFilePublic(accessToken, uploadResult.id, uploadResult.name);
+                // Set sharing — fire-and-forget: URL already available, no need to block on this
+                setDriveFilePublic(accessToken, uploadResult.id, uploadResult.name);
 
                 return {
                     fileName: uploadResult.name,
@@ -9296,34 +9296,61 @@
             // NEW: Upload files directly to Google Drive (no size limit!)
             // Force Drive path when configured to avoid legacy upload errors
             const useDriveAPI = isDriveConfigured();
-            
+
             // Define constants for legacy method (used later for payload size check)
             const MAX_FILE_SIZE = 500 * 1024; // 500KB max per file
             const MAX_TOTAL_PAYLOAD_SIZE = 800 * 1024; // 800KB max total payload
-            
+
+            // Start signature compression in parallel with Drive uploads (independent operations)
+            const signatureCompressPromise = (async () => {
+                let sig = currentSignatureData || '';
+                if (sig && sig.length / 1024 > 200) {
+                    try {
+                        sig = await ensureSignatureCompressed(sig, 200);
+                        if (sig && sig.trim() !== '') {
+                            localStorage.setItem(SIGNATURE_STORAGE_KEY, sig);
+                            currentSignatureData = sig;
+                        }
+                    } catch (_) {}
+                }
+                return sig;
+            })();
+
             if (useDriveAPI) {
                 console.log('📤 Using Google Drive API for file uploads (no size limit)');
-                let uploadErrors = [];
-                
-                // Upload files sequentially
+
+                // Collect all File objects across all expense items
+                const allFiles = [];
                 for (let i = 0; i < expenseItems.length; i++) {
                     const item = expenseItems[i];
                     if (item.attachments && item.attachments.length > 0) {
                         for (const file of item.attachments) {
                             if (file instanceof File) {
-                                try {
-                                    showToast(`Đang tải lên ${file.name}...`, 'info');
-                                    const driveFile = await uploadToDrive(file, voucherNumber);
-                                    filesToUpload.push(driveFile);
-                                    console.log(`✅ Uploaded to Drive: ${driveFile.fileName}`);
-                                } catch (err) {
-                                    console.error(`❌ Failed to upload ${file.name}:`, err);
-                                    uploadErrors.push({ file: file.name, error: err });
-                                }
+                                allFiles.push(file);
                             }
                         }
                     }
                 }
+
+                if (allFiles.length > 0) {
+                    showToast(`Đang tải lên ${allFiles.length} file...`, 'info');
+                }
+
+                // Upload all files in parallel
+                const uploadResults = await Promise.allSettled(
+                    allFiles.map(file => uploadToDrive(file, voucherNumber))
+                );
+
+                let uploadErrors = [];
+                uploadResults.forEach((result, idx) => {
+                    if (result.status === 'fulfilled') {
+                        filesToUpload.push(result.value);
+                        console.log(`✅ Uploaded to Drive: ${result.value.fileName}`);
+                    } else {
+                        console.error(`❌ Failed to upload ${allFiles[idx].name}:`, result.reason);
+                        uploadErrors.push({ file: allFiles[idx].name, error: result.reason });
+                    }
+                });
 
                 if (uploadErrors.length > 0) {
                     const names = uploadErrors.map(e => e.file).join(', ');
@@ -9560,27 +9587,8 @@
             
             console.log('✅ Email bodies regenerated with Drive links');
 
-            // Compress requester signature MORE aggressively to reduce payload
-            let finalRequesterSignature = currentSignatureData || '';
-            if (finalRequesterSignature && finalRequesterSignature.trim() !== '') {
-                const signatureSizeKB = finalRequesterSignature.length / 1024;
-                // Always compress signature to max 200KB (more aggressive)
-                if (signatureSizeKB > 200) {
-                    console.log('⚠️ Requester signature is large (' + signatureSizeKB.toFixed(2) + 'KB), compressing to max 200KB...');
-                    try {
-                        finalRequesterSignature = await ensureSignatureCompressed(finalRequesterSignature, 200);
-                        if (finalRequesterSignature && finalRequesterSignature.trim() !== '') {
-                            console.log('✅ Requester signature compressed to: ' + (finalRequesterSignature.length / 1024).toFixed(2) + 'KB');
-                            // Update localStorage with compressed version
-                            localStorage.setItem(SIGNATURE_STORAGE_KEY, finalRequesterSignature);
-                            currentSignatureData = finalRequesterSignature;
-                        }
-                    } catch (compressError) {
-                        console.warn('⚠️ Failed to compress requester signature, using original:', compressError);
-                        // Keep original if compression fails
-                    }
-                }
-            }
+            // Await the signature compression that was started in parallel with Drive uploads
+            const finalRequesterSignature = await signatureCompressPromise;
 
             const payload = {
                 action: 'sendApprovalEmail',
