@@ -4325,10 +4325,6 @@
             // the user never uploads anything.
             if (!isDriveConfigured()) {
                 console.log('ℹ️ Google Drive API not configured - using legacy upload (500KB limit)');
-            } else {
-                // Pre-warm Drive token silently in background — no popup, no await.
-                // By the time user fills the form and clicks submit, token will be ready.
-                setTimeout(() => ensureDriveToken(false).catch(() => {}), 1000);
             }
             
             // Verify user data is valid
@@ -4848,10 +4844,8 @@
             try {
                 console.log(`📤 Uploading ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB) to Drive...`);
 
-                // Get/refresh token — silent first, prompt only if needed
-                let accessToken;
-                try { accessToken = await ensureDriveToken(false); }
-                catch (_) { accessToken = await ensureDriveToken(true); }
+                // Use cached token (warmed when user picked file) or prompt if expired
+                const accessToken = await ensureDriveToken(true);
 
                 // Get or create voucher folder — use cached ID if available
                 if (!uploadToDrive._folderCache) uploadToDrive._folderCache = {};
@@ -9311,31 +9305,24 @@
                 console.log('📤 Using Google Drive API for file uploads (no size limit)');
                 let uploadErrors = [];
                 
-                // Collect all File objects across all expense items
-                const allFiles = [];
-                expenseItems.forEach(item => {
-                    if (item.attachments) {
-                        item.attachments.forEach(f => { if (f instanceof File) allFiles.push(f); });
-                    }
-                });
-
-                if (allFiles.length > 0) {
-                    showToast(`Đang tải lên ${allFiles.length} file...`, 'info');
-                    // Upload all files in parallel
-                    const results = await Promise.allSettled(
-                        allFiles.map(file => uploadToDrive(file, voucherNumber))
-                    );
-                    results.forEach((result, idx) => {
-                        if (result.status === 'fulfilled') {
-                            filesToUpload.push(result.value);
-                            console.log(`✅ Uploaded: ${result.value.fileName}`);
-                        } else {
-                            const name = allFiles[idx].name;
-                            console.error(`❌ Failed: ${name}`, result.reason);
-                            uploadErrors.push({ file: name, error: result.reason });
+                // Upload files sequentially
+                for (let i = 0; i < expenseItems.length; i++) {
+                    const item = expenseItems[i];
+                    if (item.attachments && item.attachments.length > 0) {
+                        for (const file of item.attachments) {
+                            if (file instanceof File) {
+                                try {
+                                    showToast(`Đang tải lên ${file.name}...`, 'info');
+                                    const driveFile = await uploadToDrive(file, voucherNumber);
+                                    filesToUpload.push(driveFile);
+                                    console.log(`✅ Uploaded to Drive: ${driveFile.fileName}`);
+                                } catch (err) {
+                                    console.error(`❌ Failed to upload ${file.name}:`, err);
+                                    uploadErrors.push({ file: file.name, error: err });
+                                }
+                            }
                         }
-                    });
-                    if (uploadErrors.length === 0) showToast(`✅ Đã tải lên ${filesToUpload.length} file`, 'success');
+                    }
                 }
 
                 if (uploadErrors.length > 0) {
@@ -9949,6 +9936,8 @@
         }
 
         function handleRowFileSelect(event, index) {
+            // Warm Drive token as soon as user picks a file — by submit time it'll be ready
+            if (isDriveConfigured()) ensureDriveToken(false).catch(() => {});
             const files = Array.from(event.target.files);
             const validFiles = [];
             let hasError = false;
