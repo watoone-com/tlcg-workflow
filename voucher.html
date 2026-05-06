@@ -9799,6 +9799,17 @@
                     response: error.response
                 });
                 
+                // Backend lock conflict — auto-retry after 5s
+                if (error.message && error.message.includes('đang xử lý yêu cầu khác')) {
+                    showToast('Hệ thống bận, tự động thử lại sau 5 giây...', 'warning');
+                    isSubmitting = false;
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalButtonText;
+                    loadingIndicator.classList.remove('show');
+                    setTimeout(() => sendForApproval(), 5000);
+                    return;
+                }
+
                 // More detailed error message for user
                 let errorMessage = 'Không thể gửi yêu cầu phê duyệt tự động. ';
                 if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
@@ -9809,7 +9820,7 @@
                     errorMessage += `Lỗi: ${error.message || 'Không xác định'}`;
                 }
                 errorMessage += ' Đang chuyển sang gửi qua email client...';
-                
+
                 showToast(errorMessage, 'warning', 'Cảnh báo');
                 
                 // Fallback to mailto: if webhook fails
