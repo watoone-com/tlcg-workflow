@@ -196,6 +196,12 @@
         .section-body { border-top: 0.5px solid var(--border); }
         .section-title { display: flex; align-items: center; gap: 8px; }
         .section-meta  { display: flex; align-items: center; gap: 12px; }
+        .goods-wrap    { position: relative; }
+        .goods-dropdown { position:absolute; top:100%; left:0; right:0; background:white; border:1px solid rgba(0,0,0,0.15); border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,0.12); z-index:200; max-height:180px; overflow-y:auto; }
+        .goods-dropdown-item { display:flex; justify-content:space-between; align-items:center; padding:7px 10px; font-size:13px; cursor:pointer; gap:8px; }
+        .goods-dropdown-item:hover { background:rgba(0,122,255,0.07); }
+        .goods-dropdown-item small { color:var(--text-secondary); font-size:11px; white-space:nowrap; }
+        .moq-error td { background:rgba(255,59,48,0.06); }
         .grand-total-bar { display: flex; justify-content: flex-end; align-items: center; gap: 12px; padding: 4px 0 8px; }
         .grand-total-label { font-size: 14px; font-weight: 600; color: var(--text-secondary); }
 
@@ -883,6 +889,24 @@
                 });
             });
             if (!hasDesc) { showToast('Vui lòng nhập ít nhất 1 hàng hóa / dịch vụ.', 'error'); return; }
+            // MOQ check — Hàng Hóa section only
+            let moqError = null;
+            document.querySelectorAll('#tbody-hang-hoa tr').forEach(tr => {
+                if (moqError) return;
+                const moq = parseFloat(tr.dataset.moq || 0);
+                if (!moq) return;
+                const qty = parseFloat(tr.querySelector('.item-qty')?.value || 0);
+                if (qty < moq) {
+                    tr.classList.add('moq-error');
+                    const name = tr.querySelector('.item-desc')?.value || '';
+                    const unit = tr.dataset.moqUnit || '';
+                    const spec = tr.dataset.moqSpec || '';
+                    moqError = `"${name}": số lượng tối thiểu là ${moq} ${unit}${spec ? ' — ' + spec : ''}`;
+                } else {
+                    tr.classList.remove('moq-error');
+                }
+            });
+            if (moqError) { showToast('Số lượng chưa đạt tối thiểu — ' + moqError, 'error', 5000); return; }
             if (!document.getElementById('purpose').value.trim()) { showToast('Vui lòng nhập mục đích mua hàng.', 'error'); return; }
         }
         if (step === 3) {
@@ -995,10 +1019,17 @@
         const tr    = document.createElement('tr');
         tr.id              = 'item-row-' + n;
         tr.dataset.section = sectionId;
+        const descCell = sectionId === 'hang-hoa'
+            ? `<td class="goods-wrap"><input type="text" class="item-desc" placeholder="Tìm hoặc nhập tên hàng..." autocomplete="off"
+                   oninput="filterGoodsDropdown(${n}); onDescManualEdit(${n})"
+                   onfocus="filterGoodsDropdown(${n})"
+                   onblur="hideGoodsDropdown(${n})">
+               <div class="goods-dropdown" id="goods-drop-${n}" style="display:none;"></div></td>`
+            : `<td><input type="text" class="item-desc" placeholder="Mô tả..."></td>`;
         tr.innerHTML = `
             <td class="col-no">${tbody.children.length + 1}</td>
-            <td><input type="text" class="item-desc" placeholder="Mô tả..." oninput="recalcRow(${n}, '${sectionId}')"></td>
-            <td class="col-qty"><input type="number" class="item-qty" value="1" min="1" oninput="recalcRow(${n}, '${sectionId}')"></td>
+            ${descCell}
+            <td class="col-qty"><input type="number" class="item-qty" value="1" min="1" oninput="recalcRow(${n}, '${sectionId}'); clearMoqError(this.closest('tr'))"></td>
             <td class="col-unit"><select class="item-unit">
                 <option>Cái</option><option>Bộ</option><option>Kg</option>
                 <option>Lít</option><option>m²</option><option>Chiếc</option>
@@ -1046,6 +1077,65 @@
     }
 
     /* ── Excel paste handler ─────────────────────────────────────── */
+    /* ── Goods catalog combobox (Hàng Hóa section) ──────────────── */
+    function filterGoodsDropdown(n) {
+        const tr    = document.getElementById('item-row-' + n);
+        if (!tr) return;
+        const input = tr.querySelector('.item-desc');
+        const drop  = document.getElementById('goods-drop-' + n);
+        if (!drop) return;
+        const q       = input.value.trim().toLowerCase();
+        const matches = q
+            ? _goodsCatalog.filter(g => g.name.toLowerCase().includes(q))
+            : _goodsCatalog;
+        drop.innerHTML = '';
+        if (!matches.length) { drop.style.display = 'none'; return; }
+        matches.slice(0, 10).forEach(g => {
+            const div = document.createElement('div');
+            div.className = 'goods-dropdown-item';
+            div.innerHTML = `<span>${g.name}</span><small>${g.spec || (g.moq + ' ' + g.unit)} · ${g.category}</small>`;
+            div.onmousedown = () => selectGoodsItem(n, g);
+            drop.appendChild(div);
+        });
+        drop.style.display = 'block';
+    }
+
+    function hideGoodsDropdown(n) {
+        setTimeout(() => {
+            const d = document.getElementById('goods-drop-' + n);
+            if (d) d.style.display = 'none';
+        }, 150);
+    }
+
+    function selectGoodsItem(n, g) {
+        const tr = document.getElementById('item-row-' + n);
+        tr.querySelector('.item-desc').value = g.name;
+        tr.dataset.moq     = g.moq;
+        tr.dataset.moqUnit = g.unit;
+        tr.dataset.moqSpec = g.spec;
+        clearMoqError(tr);
+        hideGoodsDropdown(n);
+        recalcRow(n, 'hang-hoa');
+    }
+
+    function onDescManualEdit(n) {
+        // Clear MOQ binding when user edits desc away from a catalog selection
+        const tr = document.getElementById('item-row-' + n);
+        if (!tr) return;
+        const val = tr.querySelector('.item-desc')?.value.trim();
+        const bound = _goodsCatalog.find(g => g.name === val);
+        if (!bound) {
+            delete tr.dataset.moq;
+            delete tr.dataset.moqUnit;
+            delete tr.dataset.moqSpec;
+            clearMoqError(tr);
+        }
+    }
+
+    function clearMoqError(tr) {
+        if (tr) tr.classList.remove('moq-error');
+    }
+
     function handleSectionPaste(e, sectionId) {
         const text = (e.clipboardData || window.clipboardData).getData('text');
         if (!text.includes('\t') && !text.includes('\n')) return; // single cell, let browser handle
@@ -1281,10 +1371,26 @@
             }
             seedRequesters(data.employees || []);
             seedApprovers(data.employees || []);
+            seedGoods(data.goods || []);
         } catch (e) { console.warn('Master data load failed:', e); }
     }
 
     let _allEmployees = [];
+    let _goodsCatalog = [];
+
+    function seedGoods(goods) {
+        _goodsCatalog = goods
+            .filter(g => (g['Status'] || '').toString().toLowerCase() === 'active')
+            .map(g => ({
+                name:     (g['Items'] || '').trim(),
+                category: (g['Category'] || '').trim(),
+                moq:      parseFloat(g['Min. Order'] || 0),
+                unit:     (g['Unit'] || '').trim(),
+                spec:     (g['Specification'] || '').trim(),
+                code:     (g['CUKCUK/QBO Code'] || '').trim(),
+            }))
+            .filter(g => g.name && g.moq > 0);
+    }
 
     function seedRequesters(employees) {
         _allEmployees = employees;

@@ -1685,10 +1685,27 @@ function handleGetMasterData(requestBody) {
       Logger.log('⚠️ Sheet "Nhà cung cấp" not found');
     }
     
+    // Fetch Goods-KTT (MOQ catalog)
+    const goodsSheet = ss.getSheetByName('Goods-KTT');
+    let goodsData = [];
+    if (goodsSheet) {
+      const goodsValues = goodsSheet.getDataRange().getValues();
+      const goodsHeaders = goodsValues[0];
+      goodsData = goodsValues.slice(1).map(row => {
+        const obj = {};
+        goodsHeaders.forEach((header, index) => { obj[header] = row[index]; });
+        return obj;
+      }).filter(r => r[goodsHeaders[0]]);
+      Logger.log('Goods-KTT records: ' + goodsData.length);
+    } else {
+      Logger.log('⚠️ Sheet "Goods-KTT" not found');
+    }
+
     const masterData = {
       employees: employeesData,
       customers: customersData,
       suppliers: suppliersData,
+      goods:     goodsData,
       timestamp: new Date().toISOString()
     };
     
