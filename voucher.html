@@ -3441,6 +3441,7 @@
         };
 
         // Augment employeeEmailMap and approverEmailMap with emails from companies_data
+        // (full employee augmentation is now handled by loadEmployeesFromBackend → _applyVoucherMasterData)
         data.companies_data.forEach(company => {
             if (company["Đại diện pháp luật"] && company["Email Đại diện pháp luật"]) {
                 employeeEmailMap[company["Đại diện pháp luật"]] = company["Email Đại diện pháp luật"];
@@ -3501,116 +3502,67 @@
         /**
          * Fetch employees from backend and build employee_departments map from column C (Phòng ban)
          */
-        async function loadEmployeesFromBackend() {
-            try {
-                console.log('📥 Fetching employees from backend...');
-                console.log('Backend URL:', `${GOOGLE_APPS_SCRIPT_WEB_APP_URL}?action=getEmployees`);
-                
-                const response = await fetch(`${GOOGLE_APPS_SCRIPT_WEB_APP_URL}?action=getEmployees`);
-                console.log('Response status:', response.status, response.statusText);
-                console.log('Response ok:', response.ok);
-                
-                const responseText = await response.text();
-                console.log('Response text (first 500 chars):', responseText.substring(0, 500));
-                
-                if (responseText.trim().startsWith('<!') || responseText.includes('<!DOCTYPE')) {
-                    console.error('❌ Backend returned HTML instead of JSON. This usually means the action is not recognized.');
-                    throw new Error('Backend returned HTML error page instead of JSON. Make sure the backend code is deployed with getEmployees action.');
-                }
-                
-                let result;
-                try {
-                    result = JSON.parse(responseText);
-                } catch (parseError) {
-                    console.error('❌ Failed to parse JSON response:', parseError);
-                    console.error('Response text:', responseText);
-                    throw new Error('Invalid JSON response from backend: ' + parseError.message);
-                }
-                
-                console.log('Parsed result:', result);
-                console.log('Result structure check:', {
-                    hasSuccess: 'success' in result,
-                    success: result.success,
-                    hasData: 'data' in result,
-                    dataType: typeof result.data,
-                    dataValue: result.data,
-                    dataKeys: result.data ? Object.keys(result.data) : 'N/A',
-                    hasEmployees: result.employees ? 'yes' : 'no',
-                    hasDataEmployees: result.data && result.data.employees ? 'yes' : 'no'
-                });
-                
-                if (!result.success) {
-                    console.warn('⚠️ Backend returned error:', result.message);
-                    console.warn('⚠️ Using fallback department mapping');
-                    createFallbackDepartmentMapping();
-                    return false;
-                }
-                
-                // Handle different response structures - backend may return:
-                // Option 1: { success, message, data: { employees: [...] } }
-                // Option 2: { success, message, employees: [...] } (top-level)
-                let employees = [];
-                
-                // Try result.data.employees first (nested structure)
-                if (result.data && Array.isArray(result.data.employees)) {
-                    employees = result.data.employees;
-                    console.log('✅ Found employees in result.data.employees');
-                } 
-                // Try result.employees (top-level structure - actual backend response)
-                else if (Array.isArray(result.employees)) {
-                    employees = result.employees;
-                    console.log('✅ Found employees in result.employees (top-level)');
-                }
-                // Fallback: try nested data.data
-                else if (result.data && result.data.data && Array.isArray(result.data.data.employees)) {
-                    employees = result.data.data.employees;
-                    console.log('✅ Found employees in result.data.data.employees');
-                }
-                // Last resort: check if data itself is an array
-                else if (result.data && Array.isArray(result.data)) {
-                    employees = result.data;
-                    console.log('✅ Using result.data as employees array');
-                }
-                else {
-                    console.error('❌ Could not find employees array in response');
-                    console.error('❌ Available keys in result:', Object.keys(result));
-                    console.error('❌ result.data:', result.data);
-                    console.error('❌ result.employees:', result.employees);
-                    console.warn('⚠️ Using fallback department mapping');
-                    createFallbackDepartmentMapping();
-                    return false;
-                }
-                
-                console.log(`✅ Fetched ${employees.length} employees from backend`);
-                
-                if (employees.length === 0) {
-                    console.warn('⚠️ No employees returned from backend');
-                    console.warn('⚠️ Using fallback department mapping');
-                    createFallbackDepartmentMapping();
-                    return false;
-                }
-                
-                // Build employee departments map and populate dropdowns live
-                data.employee_departments = {};
-                employees.forEach(emp => {
-                    if (emp.name) data.employee_departments[emp.name] = emp.department || '';
-                });
+        /* ── Master data: stale-while-revalidate, 30min TTL ──────── */
+        const _MASTER_GAS_URL = 'https://script.google.com/macros/s/AKfycbzPRHqtSW6JSef5A4tiDJbHnIhm2jhK9c8RH6lOBFPEMLR-EjF0iVJO2ndinMZRwbJ4Xw/exec';
+        const _MASTER_KEY     = 'tlc_master_data';
+        const _MASTER_TS_KEY  = 'tlc_master_data_timestamp';
+        const _MASTER_TTL     = 30 * 60 * 1000;
 
-                populateEmployeeDropdowns(employees);
-                return true;
-            } catch (error) {
-                console.error('❌ Error loading employees from backend:', error);
-                console.error('Error details:', {
-                    message: error.message,
-                    stack: error.stack,
-                    name: error.name
-                });
+        function _applyVoucherMasterData(masterData) {
+            const employees = masterData.employees || [];
+            // Augment email maps
+            employees.forEach(emp => {
+                const name  = (emp['full_name'] || emp['Họ và tên'] || '').trim();
+                const email = (emp['employee_email'] || emp['Email'] || '').trim();
+                if (name && email) {
+                    employeeEmailMap[name] = email;
+                    approverEmailMap[name] = email;
+                }
+            });
+            // Build department map and populate dropdowns
+            data.employee_departments = {};
+            const active = employees.filter(e =>
+                (e.employee_status || e['Status'] || '').toLowerCase() === 'active'
+            );
+            active.forEach(emp => {
+                const name = (emp['full_name'] || emp['Họ và tên'] || '').trim();
+                const dept = (emp['department_name'] || emp['Bộ phận'] || '').trim();
+                if (name) data.employee_departments[name] = dept;
+            });
+            populateEmployeeDropdowns(active.map(e => ({
+                name:       (e['full_name'] || e['Họ và tên'] || '').trim(),
+                department: (e['department_name'] || e['Bộ phận'] || '').trim(),
+            })));
+        }
+
+        async function _fetchAndCacheMaster() {
+            const params = new URLSearchParams({ action: 'getMasterData' });
+            const res    = await fetch(_MASTER_GAS_URL, { method: 'POST', mode: 'cors', redirect: 'follow', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() });
+            const result = JSON.parse(await res.text());
+            if (!result.success) return null;
+            localStorage.setItem(_MASTER_KEY,    JSON.stringify(result.data));
+            localStorage.setItem(_MASTER_TS_KEY, new Date().toISOString());
+            return result.data;
+        }
+
+        function loadEmployeesFromBackend() {
+            // 1. Serve from cache immediately
+            const cached = localStorage.getItem(_MASTER_KEY);
+            if (cached) {
+                try { _applyVoucherMasterData(JSON.parse(cached)); }
+                catch (_) { createFallbackDepartmentMapping(); }
+            } else {
                 createFallbackDepartmentMapping();
-                populateEmployeeDropdowns(
-                    (data.employee_names || []).map(n => ({ name: n, department: data.employee_departments[n] || '' }))
-                );
-                return false;
             }
+            // 2. Background refresh if stale or missing
+            const ts  = localStorage.getItem(_MASTER_TS_KEY);
+            const age = ts ? Date.now() - new Date(ts).getTime() : Infinity;
+            if (age > _MASTER_TTL || !cached) {
+                _fetchAndCacheMaster()
+                    .then(data => { if (data) _applyVoucherMasterData(data); })
+                    .catch(() => {});
+            }
+            return Promise.resolve(true);
         }
 
         function populateEmployeeDropdowns(employees) {

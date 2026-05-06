@@ -1352,29 +1352,41 @@
     }
 
     /* ── Load master data ───────────────────────────────────────── */
-    async function loadMasterData() {
-        try {
-            const cached = localStorage.getItem('tlc_master_data');
-            const ts     = localStorage.getItem('tlc_master_data_timestamp');
-            const stale  = !ts || (Date.now() - new Date(ts).getTime() > 3_600_000);
-            let data;
-            const cachedParsed = cached ? JSON.parse(cached) : null;
-            const missingGoods = !cachedParsed || !Array.isArray(cachedParsed.goods);
-            if (cached && !stale && !missingGoods) {
-                data = cachedParsed;
-            } else {
-                const params = new URLSearchParams({ action: 'getMasterData' });
-                const res = await fetch(BACKEND_URL, { method: 'POST', mode: 'cors', redirect: 'follow', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() });
-                const result = JSON.parse(await res.text());
-                if (!result.success) return;
-                data = result.data;
-                localStorage.setItem('tlc_master_data', JSON.stringify(data));
-                localStorage.setItem('tlc_master_data_timestamp', new Date().toISOString());
-            }
-            seedRequesters(data.employees || []);
-            seedApprovers(data.employees || []);
-            seedGoods(data.goods || []);
-        } catch (e) { console.warn('Master data load failed:', e); }
+    /* ── Master data: stale-while-revalidate, 30min TTL ────────── */
+    const _MASTER_KEY    = 'tlc_master_data';
+    const _MASTER_TS_KEY = 'tlc_master_data_timestamp';
+    const _MASTER_TTL    = 30 * 60 * 1000;
+
+    function _applyMasterData(data) {
+        seedRequesters(data.employees || []);
+        seedApprovers(data.employees  || []);
+        seedGoods(data.goods          || []);
+    }
+
+    async function _fetchAndCacheMaster() {
+        const params = new URLSearchParams({ action: 'getMasterData' });
+        const res    = await fetch(BACKEND_URL, { method: 'POST', mode: 'cors', redirect: 'follow', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() });
+        const result = JSON.parse(await res.text());
+        if (!result.success) return null;
+        localStorage.setItem(_MASTER_KEY,    JSON.stringify(result.data));
+        localStorage.setItem(_MASTER_TS_KEY, new Date().toISOString());
+        return result.data;
+    }
+
+    function loadMasterData() {
+        // 1. Serve cache immediately if available
+        const cached = localStorage.getItem(_MASTER_KEY);
+        if (cached) {
+            try { _applyMasterData(JSON.parse(cached)); } catch (_) {}
+        }
+        // 2. Background refresh if stale or missing
+        const ts  = localStorage.getItem(_MASTER_TS_KEY);
+        const age = ts ? Date.now() - new Date(ts).getTime() : Infinity;
+        if (age > _MASTER_TTL || !cached) {
+            _fetchAndCacheMaster()
+                .then(data => { if (data) _applyMasterData(data); })
+                .catch(e  => console.warn('Master data refresh failed:', e));
+        }
     }
 
     let _allEmployees = [];

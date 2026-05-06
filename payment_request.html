@@ -1170,6 +1170,58 @@
         return (opt && opt.dataset && opt.dataset.code) ? String(opt.dataset.code).trim() : '';
     }
 
+    /* ── Master data: stale-while-revalidate, 30min TTL ────────── */
+    const _MASTER_GAS_URL = 'https://script.google.com/macros/s/AKfycbzPRHqtSW6JSef5A4tiDJbHnIhm2jhK9c8RH6lOBFPEMLR-EjF0iVJO2ndinMZRwbJ4Xw/exec';
+    const _MASTER_KEY     = 'tlc_master_data';
+    const _MASTER_TS_KEY  = 'tlc_master_data_timestamp';
+    const _MASTER_TTL     = 30 * 60 * 1000;
+
+    async function _fetchAndCacheMaster() {
+        const params = new URLSearchParams({ action: 'getMasterData' });
+        const res    = await fetch(_MASTER_GAS_URL, { method: 'POST', mode: 'cors', redirect: 'follow', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() });
+        const result = JSON.parse(await res.text());
+        if (!result.success) return null;
+        localStorage.setItem(_MASTER_KEY,    JSON.stringify(result.data));
+        localStorage.setItem(_MASTER_TS_KEY, new Date().toISOString());
+        return result.data;
+    }
+
+    function loadMasterData() {
+        const cached = localStorage.getItem(_MASTER_KEY);
+        if (cached) {
+            try { _applyMasterData(JSON.parse(cached)); } catch (_) {}
+        }
+        const ts  = localStorage.getItem(_MASTER_TS_KEY);
+        const age = ts ? Date.now() - new Date(ts).getTime() : Infinity;
+        if (age > _MASTER_TTL || !cached) {
+            _fetchAndCacheMaster()
+                .then(data => { if (data) _applyMasterData(data); })
+                .catch(e  => console.warn('Master data refresh failed:', e));
+        }
+    }
+
+    function _applyMasterData(data) {
+        const active = (data.employees || []).filter(e =>
+            (e.employee_status || e['Status'] || '').toLowerCase() === 'active'
+        );
+        // Seed any approver selects present on this page
+        ['budget_approver', 'supplier_approver', 'final_approver'].forEach(id => {
+            const sel = document.getElementById(id);
+            if (!sel) return;
+            const current = sel.value;
+            sel.innerHTML = '<option value="">-- Chọn người phê duyệt --</option>';
+            active.forEach(e => {
+                const name  = (e.full_name || e['Họ và tên'] || '').trim();
+                const email = (e.employee_email || e['Email'] || '').trim();
+                if (!name) return;
+                const opt = document.createElement('option');
+                opt.value = email; opt.textContent = name;
+                sel.appendChild(opt);
+            });
+            if (current) sel.value = current; // restore previous selection
+        });
+    }
+
     async function loadCompanies() {
         const sel = document.getElementById('company_code');
         const embed = (typeof TLCG_COMPANIES_DATA !== 'undefined' && TLCG_COMPANIES_DATA) || null;
@@ -1905,6 +1957,7 @@
         bootstrapConfig();
         addInvoiceRow();
         await loadCompanies();
+        loadMasterData();
         updateStepperUI();
         preloadVendors();
         document.getElementById('due_date').min = new Date().toISOString().split('T')[0]; // background — no await, warms cache before user picks company
