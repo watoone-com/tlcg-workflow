@@ -10,8 +10,6 @@
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link href="dist/output.css" rel="stylesheet">
-    <!-- Google Identity Services for Drive API -->
-    <script src="https://accounts.google.com/gsi/client"></script>
     <style>
         :root {
             --primary: #007AFF;
@@ -931,16 +929,10 @@
     //  CONFIG & STATE
     // ═══════════════════════════════════════════════════════════════════
     const DRIVE_CONFIG = {
-        CLIENT_ID:    'YOUR_CLIENT_ID_HERE.apps.googleusercontent.com',
-        API_KEY:      'YOUR_API_KEY_HERE',
-        DRIVE_FOLDER_ID: '',
-        SCOPES: 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/drive.file'
+        DRIVE_FOLDER_ID: ''
     };
 
-    let driveAPIReady   = false;
-    let driveTokenClient = null;
-    let driveAccessToken = null;
-    let driveTokenExpiry = 0;
+    let currentSubfolderName = '';
 
     let allCompanies = [];
     let allVendors   = [];
@@ -1057,8 +1049,6 @@
                 if (!r.ok) return;
                 const c = await r.json();
                 if (c && typeof c === 'object') {
-                    if (c.GOOGLE_CLIENT_ID)        DRIVE_CONFIG.CLIENT_ID    = c.GOOGLE_CLIENT_ID;
-                    if (c.GOOGLE_API_KEY)           DRIVE_CONFIG.API_KEY      = c.GOOGLE_API_KEY;
                     const payParent =
                         (c.PAYMENT_REQUEST_FOLDER_ID || c.PAY_DRAFT_PARENT_FOLDER_ID || '').trim();
                     if (payParent) DRIVE_CONFIG.DRIVE_FOLDER_ID = payParent;
@@ -1069,97 +1059,18 @@
     }
 
     function isDriveConfigured() {
-        return DRIVE_CONFIG.CLIENT_ID !== 'YOUR_CLIENT_ID_HERE.apps.googleusercontent.com' &&
-               DRIVE_CONFIG.API_KEY   !== 'YOUR_API_KEY_HERE';
+        return !!DRIVE_CONFIG.DRIVE_FOLDER_ID;
     }
 
-    // ═══════════════════════════════════════════════════════════════════
-    //  GOOGLE IDENTITY SERVICES — DRIVE TOKEN
-    // ═══════════════════════════════════════════════════════════════════
-    function ensureGISLoaded() {
-        return new Promise((resolve, reject) => {
-            if (window.google && google.accounts && google.accounts.oauth2) return resolve(true);
-            let n = 0;
-            const t = setInterval(() => {
-                if (window.google && google.accounts && google.accounts.oauth2) { clearInterval(t); resolve(true); }
-                else if (++n > 40) { clearInterval(t); reject(new Error('GIS not loaded')); }
-            }, 200);
-        });
-    }
-
-    function ensureDriveToken(promptConsent = false) {
-        return new Promise(async (resolve, reject) => {
-            try {
-                await bootstrapConfig();
-                await ensureGISLoaded();
-                if (driveAccessToken && Date.now() < driveTokenExpiry) {
-                    driveAPIReady = true; return resolve(driveAccessToken);
-                }
-                if (!driveTokenClient) {
-                    driveTokenClient = google.accounts.oauth2.initTokenClient({
-                        client_id: DRIVE_CONFIG.CLIENT_ID,
-                        scope: DRIVE_CONFIG.SCOPES,
-                        callback: (resp) => {
-                            if (resp.error) return reject(resp);
-                            driveAccessToken = resp.access_token;
-                            driveTokenExpiry = Date.now() + ((resp.expires_in || 1800) - 60) * 1000;
-                            driveAPIReady = true;
-                            resolve(driveAccessToken);
-                        }
-                    });
-                }
-                driveTokenClient.requestAccessToken({ prompt: promptConsent ? 'consent' : '' });
-            } catch (err) { reject(err); }
-        });
-    }
-
-    async function getOrCreateDriveFolder(accessToken, folderName, parentId) {
-        const pf  = parentId ? ` and '${parentId}' in parents` : '';
-        const q   = encodeURIComponent(`name='${folderName}'${pf} and mimeType='application/vnd.google-apps.folder' and trashed=false`);
-        const lr  = await fetch(`https://www.googleapis.com/drive/v3/files?q=${q}&fields=files(id,name)`,
-                                { headers: { Authorization: `Bearer ${accessToken}` } });
-        if (lr.ok) {
-            const d = await lr.json();
-            if (d.files && d.files.length > 0) return d.files[0].id;
-        }
-        const body = { name: folderName, mimeType: 'application/vnd.google-apps.folder' };
-        if (parentId) body.parents = [parentId];
-        const cr = await fetch('https://www.googleapis.com/drive/v3/files', {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-            body: JSON.stringify(body)
-        });
-        if (!cr.ok) {
-            if (cr.status === 404 && parentId) return getOrCreateDriveFolder(accessToken, folderName, null);
-            throw new Error('Folder create failed: ' + cr.status);
-        }
-        return (await cr.json()).id;
-    }
-
-    async function setDriveFilePublic(accessToken, fileId) {
-        try {
-            await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}/permissions`, {
-                method: 'POST',
-                headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
-                body: JSON.stringify({ role: 'reader', type: 'anyone' })
-            });
-        } catch (_) {}
-    }
-
-    async function uploadFileToDrive(accessToken, file, folderId) {
-        const meta = { name: file.name, parents: [folderId] };
-        const form = new FormData();
-        form.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
-        form.append('file', file);
-        const r = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink', {
-            method: 'POST',
-            headers: { Authorization: `Bearer ${accessToken}` },
-            body: form
-        });
-        if (!r.ok) throw new Error('Upload failed: ' + r.status);
-        const d = await r.json();
-        await setDriveFilePublic(accessToken, d.id);
-        return d.webViewLink || `https://drive.google.com/file/d/${d.id}/view`;
+    async function uploadFileToDrive(file) {
+        const fd = new FormData();
+        fd.append('parentFolderId', DRIVE_CONFIG.DRIVE_FOLDER_ID);
+        fd.append('subfolderName', currentSubfolderName);
+        fd.append('file', file);
+        const res = await fetch('/api/drive-upload', { method: 'POST', body: fd });
+        if (!res.ok) throw new Error('Upload failed: ' + res.status);
+        const d = await res.json();
+        return d.webViewLink || `https://drive.google.com/file/d/${d.fileId}/view`;
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -1643,16 +1554,20 @@
         const now  = new Date();
         const ds   = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
         const name = `DNTT_${ds}_${vendorName}`;
-        setDriveStatus('Đang xác thực...', false);
+        currentSubfolderName = name;
+        setDriveStatus('Đang tạo folder...', false);
         try {
-            const token = await ensureDriveToken(true);
-            setDriveStatus('Đang tạo folder...', false);
-            driveFolderId = await getOrCreateDriveFolder(token, name, DRIVE_CONFIG.DRIVE_FOLDER_ID || null);
-            const link = `https://drive.google.com/drive/folders/${driveFolderId}`;
-            document.getElementById('drive_link').value = link;
-            // Show clickable link inside card
+            await bootstrapConfig();
+            const fd = new FormData();
+            fd.append('parentFolderId', DRIVE_CONFIG.DRIVE_FOLDER_ID);
+            fd.append('subfolderName', name);
+            const res = await fetch('/api/drive-upload', { method: 'POST', body: fd });
+            if (!res.ok) throw new Error(await res.text());
+            const d = await res.json();
+            driveFolderId = d.subFolderId;
+            document.getElementById('drive_link').value = d.subFolderLink;
             const cardLink = document.getElementById('drive-folder-link-card');
-            cardLink.href = link;
+            cardLink.href = d.subFolderLink;
             cardLink.style.display = 'flex';
             setDriveStatus('✓ Folder đã tạo', true);
             document.getElementById('upload-btn').disabled = pendingFiles.length === 0;
@@ -1662,16 +1577,15 @@
     }
 
     async function doUpload() {
-        if (!driveFolderId) { showToast('Vui lòng tạo folder trước.', 'error'); return; }
+        if (!currentSubfolderName) { showToast('Vui lòng tạo folder trước.', 'error'); return; }
         if (pendingFiles.length === 0) { showToast('Chưa chọn file.', 'error'); return; }
         const btn = document.getElementById('upload-btn');
         btn.disabled = true;
         setDriveStatus('Đang upload...', false);
         try {
-            const token = await ensureDriveToken();
             uploadedLinks = [];
             for (const f of pendingFiles) {
-                const link = await uploadFileToDrive(token, f, driveFolderId);
+                const link = await uploadFileToDrive(f);
                 uploadedLinks.push(link);
             }
             pendingFiles = [];

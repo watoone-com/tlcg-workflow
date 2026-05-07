@@ -24,8 +24,6 @@ export default function handler(req, res) {
 
   // PAY_DRAFT_PARENT_FOLDER_ID: legacy alias for payment_request.html.
   return res.status(200).json({
-    GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
-    GOOGLE_API_KEY: process.env.GOOGLE_API_KEY || '',
     DRIVE_VOUCHER_FOLDER_ID: process.env.DRIVE_VOUCHER_FOLDER_ID || '',
     MASTER_SPREADSHEET_ID: process.env.MASTER_SPREADSHEET_ID || '',
     PURCHASE_REQUEST_FOLDER_ID: process.env.PURCHASE_REQUEST_FOLDER_ID || '',

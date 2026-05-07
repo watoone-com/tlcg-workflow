@@ -9,6 +9,7 @@
   "dependencies": {
     "@tailwindcss/cli": "^4.2.2",
     "busboy": "^1.6.0",
+    "googleapis": "^144.0.0",
     "tailwindcss": "^4.2.2"
   },
   "engines": {

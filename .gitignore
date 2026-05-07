@@ -29,3 +29,7 @@ npm-debug.log*
 .vercel
 .env
 .env*.local
+
+# Google Service Account key files — NEVER commit these
+*-[0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f][0-9a-f]*.json
+vast-torus-*.json
