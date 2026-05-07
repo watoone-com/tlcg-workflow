@@ -12,13 +12,13 @@ TLCG Workflow is a BPM system with:
 
 ### Running the Dev Server
 
-The canonical dev command is `npm start` which runs `vercel dev`. This **requires Vercel CLI authentication** (`VERCEL_TOKEN` env var or interactive login).
-
-**Without Vercel auth**, use the alternative dev server:
+Use the local dev server (faster startup, no auth required):
 ```bash
 node dev-server.js 3000
 ```
 This serves static files and loads `api/*.js` serverless functions locally on port 3000. It loads `.env.local` for environment variables.
+
+Alternative: `npm start` runs `vercel dev` but requires `VERCEL_TOKEN` env var or interactive login.
 
 ### Environment Variables
 
@@ -29,8 +29,7 @@ Copy `.env` to `.env.local` and fill in real values. The `api/voucher.js` has ha
 | Task | Command |
 |------|---------|
 | Install dependencies | `npm install` |
-| Dev server (with Vercel auth) | `npm start` |
-| Dev server (without Vercel auth) | `node dev-server.js 3000` |
+| Dev server | `node dev-server.js 3000` |
 | Build (no-op for static site) | `npm run build` |
 | Tailwind CSS rebuild | `npx @tailwindcss/cli -i src/input.css -o dist/output.css` |
 | MCP server | `cd mcp-server && npm start` |
