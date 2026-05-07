@@ -3293,6 +3293,7 @@
         // 10. Ensure your Google account has permissions to send emails via Gmail (usually default).
         // Use proxy URL like index.html (Cash & Admin) does - this works correctly
         const GOOGLE_APPS_SCRIPT_WEB_APP_URL = '/api/voucher'; // Voucher operations proxy
+        const VOUCHER_SUBMIT_FETCH_TIMEOUT_MS = 120000;
 
         // ==================== API REQUEST QUEUE & RETRY LOGIC ====================
         /**
@@ -3424,6 +3425,32 @@
         let driveTokenClient = null;
         let driveAccessToken = null;
         let driveTokenExpiry = 0;
+        let driveTokenGen = 0;
+        let _ensureDriveTokenFlight = null;
+
+        const GIS_TOKEN_TIMEOUT_MS = 120000;
+        const DRIVE_METADATA_TIMEOUT_MS = 90000;
+        const DRIVE_UPLOAD_MAX_MS = 900000;
+
+        function httpTimeoutSignal(ms) {
+            if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
+                return AbortSignal.timeout(ms);
+            }
+            const c = new AbortController();
+            setTimeout(() => {
+                try {
+                    c.abort(new DOMException('The operation timed out.', 'TimeoutError'));
+                } catch (e) {
+                    c.abort();
+                }
+            }, ms);
+            return c.signal;
+        }
+
+        function driveMultipartUploadTimeoutMs(fileSize) {
+            const mb = fileSize / (1024 * 1024);
+            return Math.min(DRIVE_UPLOAD_MAX_MS, Math.round(120000 + mb * 120000));
+        }
 
         // Initialize email mappings based on provided exact emails and company data
         const employeeEmailMap = {
@@ -4685,46 +4712,69 @@
             });
         }
 
-        // GIS: get or refresh an access token
-        function ensureDriveToken(promptConsent = false) {
+        function ensureDriveTokenInner(promptConsent = false) {
             return new Promise(async (resolve, reject) => {
+                const myGen = ++driveTokenGen;
                 try {
                     await bootstrapConfig();
                     await ensureGISLoaded();
+                    if (myGen !== driveTokenGen) return;
 
-                    // Reuse valid token
                     if (driveAccessToken && Date.now() < driveTokenExpiry) {
                         driveAPIReady = true;
                         return resolve(driveAccessToken);
                     }
 
-                    // Always create a fresh token client so the callback captures
-                    // the CURRENT promise's resolve/reject (fixes stale closure hang)
                     driveTokenClient = google.accounts.oauth2.initTokenClient({
                         client_id: DRIVE_CONFIG.CLIENT_ID,
                         scope: DRIVE_CONFIG.SCOPES,
                         callback: (response) => {
+                            if (myGen !== driveTokenGen) return;
                             if (response.error) {
                                 logDriveInitError('gis.token', response);
                                 return reject(response);
                             }
                             driveAccessToken = response.access_token;
-                            driveTokenExpiry = Date.now() + ((response.expires_in || 1800) - 60) * 1000; // buffer 60s
+                            driveTokenExpiry = Date.now() + ((response.expires_in || 1800) - 60) * 1000;
                             driveAPIReady = true;
                             console.log('✅ Drive token acquired via GIS');
                             resolve(driveAccessToken);
                         }
                     });
 
-                    // Request token (prompt consent if needed)
                     driveTokenClient.requestAccessToken({
                         prompt: promptConsent ? 'consent' : ''
                     });
                 } catch (err) {
+                    if (myGen !== driveTokenGen) return;
                     logDriveInitError('gis.ensureToken', err);
                     reject(err);
                 }
             });
+        }
+
+        function ensureDriveToken(promptConsent = false) {
+            if (_ensureDriveTokenFlight) {
+                return _ensureDriveTokenFlight;
+            }
+            let timeoutId;
+            _ensureDriveTokenFlight = (async () => {
+                try {
+                    return await Promise.race([
+                        ensureDriveTokenInner(promptConsent),
+                        new Promise((_, reject) => {
+                            timeoutId = setTimeout(() => {
+                                driveTokenGen++;
+                                reject(new Error('Hết thời gian chờ Google Drive (120 giây). Cho phép popup, hoàn tất đăng nhập Google, rồi thử lại.'));
+                            }, GIS_TOKEN_TIMEOUT_MS);
+                        })
+                    ]);
+                } finally {
+                    if (timeoutId) clearTimeout(timeoutId);
+                    _ensureDriveTokenFlight = null;
+                }
+            })();
+            return _ensureDriveTokenFlight;
         }
 
         // Legacy gapi init (kept for backward compatibility if ever needed)
@@ -4776,7 +4826,10 @@
             const parentFilter = parentId ? ` and '${parentId}' in parents` : '';
             const query = encodeURIComponent(`name='${voucherNumber}'${parentFilter} and mimeType='application/vnd.google-apps.folder' and trashed=false`);
             const listUrl = `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name)`;
-            const listResp = await fetch(listUrl, { headers: { 'Authorization': `Bearer ${accessToken}` } });
+            const listResp = await fetch(listUrl, {
+                headers: { 'Authorization': `Bearer ${accessToken}` },
+                signal: httpTimeoutSignal(DRIVE_METADATA_TIMEOUT_MS)
+            });
             if (listResp.ok) {
                 const data = await listResp.json();
                 if (data.files && data.files.length > 0) {
@@ -4799,7 +4852,8 @@
                     'Authorization': `Bearer ${accessToken}`,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify(body)
+                body: JSON.stringify(body),
+                signal: httpTimeoutSignal(DRIVE_METADATA_TIMEOUT_MS)
             });
 
             // If parent not found (404), retry without parent (create in My Drive)
@@ -4827,7 +4881,8 @@
                     body: JSON.stringify({
                         role: 'reader',
                         type: 'anyone'
-                    })
+                    }),
+                    signal: httpTimeoutSignal(DRIVE_METADATA_TIMEOUT_MS)
                 });
                 if (!permResp.ok) {
                     const errText = await permResp.text();
@@ -4844,8 +4899,10 @@
             try {
                 console.log(`📤 Uploading ${file.name} (${(file.size / 1024 / 1024).toFixed(2)} MB) to Drive...`);
 
-                // Use cached token (warmed when user picked file) or prompt if expired
-                const accessToken = await ensureDriveToken(true);
+                // Use cached token (warmed when user picks files via ensureDriveToken(false)).
+                // Do not use prompt: 'consent' here — that forces the full consent UI on every
+                // refresh and feels "stuck"; false allows Google's normal silent refresh when possible.
+                const accessToken = await ensureDriveToken(false);
 
                 // Get or create voucher folder — use cached ID if available
                 if (!uploadToDrive._folderCache) uploadToDrive._folderCache = {};
@@ -4864,12 +4921,14 @@
                 form.append('metadata', new Blob([JSON.stringify(metadata)], { type: 'application/json' }));
                 form.append('file', file);
 
+                const uploadMs = driveMultipartUploadTimeoutMs(file.size);
                 const uploadResp = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id,name,webViewLink,size', {
                     method: 'POST',
                     headers: {
                         'Authorization': `Bearer ${accessToken}`
                     },
-                    body: form
+                    body: form,
+                    signal: httpTimeoutSignal(uploadMs)
                 });
 
                 if (!uploadResp.ok) {
@@ -4892,6 +4951,12 @@
                 };
 
             } catch (error) {
+                const name = error && error.name;
+                if (name === 'AbortError' || name === 'TimeoutError') {
+                    const msg = `Tải file "${file.name}" lên Drive quá lâu hoặc bị hủy. Kiểm tra mạng hoặc thử file nhỏ hơn.`;
+                    console.error(`❌ Drive upload timeout (${file.name}):`, error);
+                    throw new Error(msg);
+                }
                 console.error(`❌ Failed to upload ${file.name} to Drive:`, error);
                 throw error;
             }
@@ -9712,7 +9777,8 @@
                     method: 'POST',
                     mode: 'cors',
                     redirect: 'follow',
-                    body: formData
+                    body: formData,
+                    signal: httpTimeoutSignal(VOUCHER_SUBMIT_FETCH_TIMEOUT_MS)
                 });
                 
                 console.log('✅ Response received');
@@ -9812,7 +9878,9 @@
 
                 // More detailed error message for user
                 let errorMessage = 'Không thể gửi yêu cầu phê duyệt tự động. ';
-                if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
+                if (error.name === 'AbortError' || error.name === 'TimeoutError') {
+                    errorMessage += 'Hết thời gian chờ máy chủ khi gửi phiếu. Kiểm tra mạng và thử lại.';
+                } else if (error.message.includes('Failed to fetch') || error.message.includes('NetworkError')) {
                     errorMessage += 'Lỗi kết nối đến server. Vui lòng kiểm tra kết nối internet hoặc URL Google Apps Script.';
                 } else if (error.message.includes('Invalid response')) {
                     errorMessage += 'Server trả về phản hồi không hợp lệ. Vui lòng kiểm tra Google Apps Script.';
