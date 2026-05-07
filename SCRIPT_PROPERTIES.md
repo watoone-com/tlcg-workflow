@@ -60,13 +60,18 @@ for Drive uploads because the client performs them directly with GIS.
 ## Relationship to Vercel environment variables
 
 The frontend-facing identifiers (`GOOGLE_CLIENT_ID`, `GOOGLE_API_KEY`,
-`DRIVE_VOUCHER_FOLDER_ID`, `MASTER_SPREADSHEET_ID`) also live in Vercel env
-vars so the browser can fetch them via `/api/config`. Keep the two sides in
-sync:
+`DRIVE_VOUCHER_FOLDER_ID`, `MASTER_SPREADSHEET_ID`, optional Drive parents
+`PURCHASE_REQUEST_FOLDER_ID`, `ACCEPTANCE_MINUTES_FOLDER_ID`,
+`PAYMENT_REQUEST_FOLDER_ID`) also live in Vercel env vars so the browser can
+fetch them via `/api/config`. Keep the two sides in sync:
 
 - `MASTER_SPREADSHEET_ID` on Vercel == `MASTER_SPREADSHEET_ID` in GAS.
 - `DRIVE_VOUCHER_FOLDER_ID` on Vercel == `DRIVE_VOUCHER_FOLDER_ID` in GAS.
 - `GOOGLE_CLIENT_ID` / `GOOGLE_API_KEY` live only on Vercel (browser-only).
 - `IMPORT_APPROVERS` lives only in GAS (server-only).
 
-See [.env.example](.env.example) for the Vercel side.
+Server-only GAS web app URLs are set on Vercel (not exposed to the browser):
+`VOUCHER_BACKEND_URL`, `TLCGROUP_BACKEND_URL`, and `PAYMENT_REQUEST_BACKEND_URL`
+— see `api/voucher.js`.
+
+Use [`.env.example`](.env.example) as the template — copy it to `.env` locally (`.env` is git-ignored). Set the same keys in Vercel.

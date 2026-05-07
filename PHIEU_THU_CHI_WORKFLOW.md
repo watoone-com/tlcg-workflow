@@ -445,7 +445,7 @@ Click voucher card → openVoucherDetail(voucherNumber)
    - Execute as: **Me**
    - Who has access: **Anyone**
 4. Copy the new deployment URL
-5. If URL changed → update `GOOGLE_APPS_SCRIPT_WEB_APP_URL` constant in `voucher.html`
+5. If URL changed → set **`VOUCHER_BACKEND_URL`** on Vercel (Project → Settings → Environment Variables) and redeploy. If you open `voucher.html` over `file://`, also update the `GOOGLE_APPS_SCRIPT_WEB_APP_URL` constant (normally `/api/voucher` behind Vercel).
 
 ### 2. Google Sheet — `Voucher_History` Headers
 Ensure row 1 contains exactly these 18 headers (A1–R1):
@@ -467,7 +467,7 @@ attachments | description | note | approver_email | approved_at | MetaJSON
 
 ## Backend API Reference
 
-**Base URL**: `GOOGLE_APPS_SCRIPT_WEB_APP_URL` (set in HTML)
+**Base URL**: In production this is normally the `/api/voucher` proxy (`GOOGLE_APPS_SCRIPT_WEB_APP_URL` in `voucher.html`). The real GAS `/exec` URL is configured server-side as **`VOUCHER_BACKEND_URL`** on Vercel (`api/voucher.js`).
 
 | Action | Method | Handler | Key Input | Key Output |
 |--------|--------|---------|-----------|-----------|

@@ -2,35 +2,68 @@
 // Access at: /api/test-env
 // This helps verify that environment variables are set correctly in Vercel
 
+function flagSet(v) {
+  return v ? '✅ Set' : '❌ Not set';
+}
+
+function urlPreview(url) {
+  if (!url) return '(empty)';
+  if (url.length <= 42) return url;
+  return url.substring(0, 34) + '...' + url.substring(url.length - 8);
+}
+
+function idPreview(id) {
+  if (!id) return '(empty)';
+  if (id.length <= 24) return id.substring(0, 6) + '…';
+  return id.substring(0, 10) + '…' + id.substring(id.length - 6);
+}
+
 export default async function handler(req, res) {
-  // Only allow in development or with authentication
-  // For production, you might want to add authentication
-  
+  const voucherUrl = process.env.VOUCHER_BACKEND_URL;
+  const tlgroupUrl = process.env.TLCGROUP_BACKEND_URL;
+  const paymentBackendUrl = process.env.PAYMENT_REQUEST_BACKEND_URL;
+
   const envStatus = {
-    GOOGLE_APPS_SCRIPT_URL: process.env.GOOGLE_APPS_SCRIPT_URL ? '✅ Set' : '❌ Not set (using fallback)',
-    TLCGROUP_BACKEND_URL: process.env.TLCGROUP_BACKEND_URL ? '✅ Set' : '❌ Not set (using fallback)',
-    // Security: Don't expose actual URLs
-    hasGoogleAppsScriptUrl: !!process.env.GOOGLE_APPS_SCRIPT_URL,
-    hasTlcGroupBackendUrl: !!process.env.TLCGROUP_BACKEND_URL,
-    // Show first/last few characters for verification (not full URL)
-    googleAppsScriptUrlPreview: process.env.GOOGLE_APPS_SCRIPT_URL 
-      ? process.env.GOOGLE_APPS_SCRIPT_URL.substring(0, 30) + '...' + process.env.GOOGLE_APPS_SCRIPT_URL.substring(process.env.GOOGLE_APPS_SCRIPT_URL.length - 10)
-      : 'Using fallback URL',
-    tlcGroupBackendUrlPreview: process.env.TLCGROUP_BACKEND_URL
-      ? process.env.TLCGROUP_BACKEND_URL.substring(0, 30) + '...' + process.env.TLCGROUP_BACKEND_URL.substring(process.env.TLCGROUP_BACKEND_URL.length - 10)
-      : 'Using fallback URL'
+    voucher: {
+      VOUCHER_BACKEND_URL: voucherUrl ? '✅ Set' : '❌ Not set (using fallback)',
+      urlPreview: urlPreview(voucherUrl || '')
+    },
+    tlcgroup: {
+      TLCGROUP_BACKEND_URL: flagSet(tlgroupUrl),
+      urlPreview: urlPreview(tlgroupUrl || '')
+    },
+    paymentBackend: {
+      PAYMENT_REQUEST_BACKEND_URL: flagSet(paymentBackendUrl),
+      urlPreview: urlPreview(paymentBackendUrl || '')
+    },
+    frontendConfigWhitelist: {
+      GOOGLE_CLIENT_ID: flagSet(process.env.GOOGLE_CLIENT_ID),
+      GOOGLE_API_KEY: flagSet(process.env.GOOGLE_API_KEY),
+      DRIVE_VOUCHER_FOLDER_ID: flagSet(process.env.DRIVE_VOUCHER_FOLDER_ID),
+      MASTER_SPREADSHEET_ID: flagSet(process.env.MASTER_SPREADSHEET_ID),
+      PURCHASE_REQUEST_FOLDER_ID: flagSet(process.env.PURCHASE_REQUEST_FOLDER_ID),
+      ACCEPTANCE_MINUTES_FOLDER_ID: flagSet(process.env.ACCEPTANCE_MINUTES_FOLDER_ID),
+      PAYMENT_REQUEST_FOLDER_ID: flagSet(process.env.PAYMENT_REQUEST_FOLDER_ID)
+    },
+    idPreviews: {
+      DRIVE_VOUCHER_FOLDER_ID: idPreview(process.env.DRIVE_VOUCHER_FOLDER_ID),
+      MASTER_SPREADSHEET_ID: idPreview(process.env.MASTER_SPREADSHEET_ID),
+      PURCHASE_REQUEST_FOLDER_ID: idPreview(process.env.PURCHASE_REQUEST_FOLDER_ID),
+      ACCEPTANCE_MINUTES_FOLDER_ID: idPreview(process.env.ACCEPTANCE_MINUTES_FOLDER_ID),
+      PAYMENT_REQUEST_FOLDER_ID: idPreview(process.env.PAYMENT_REQUEST_FOLDER_ID)
+    }
   };
-  
+
   return res.status(200).json({
     success: true,
     message: 'Environment Variables Status',
     environment: envStatus,
-    note: 'Both backends have fallback URLs hardcoded, so the app works with or without environment variables.',
+    note:
+      'Proxy routes use built-in fallback /exec URLs when backend env vars are unset. GET /api/config exposes only keys listed under frontendConfigWhitelist.',
     instructions: {
       setVariables: 'Go to Vercel Dashboard → Settings → Environment Variables',
       verify: 'Redeploy after setting environment variables for changes to take effect',
-      checkLogs: 'Check Vercel function logs to see if warnings about environment variables are gone'
+      template: 'Copy .env.example to .env locally (see repo root)'
     }
   });
 }
-

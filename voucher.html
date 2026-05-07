@@ -3386,7 +3386,7 @@
         // Values below are safe fallbacks used when /api/config is unreachable
         // (e.g. opening this file directly with the file:// protocol). At
         // runtime, bootstrapConfig() overrides CLIENT_ID / API_KEY /
-        // DRIVE_FOLDER_ID from Vercel env via /api/config.
+        // DRIVE_FOLDER_ID / default spreadsheet ID from Vercel env via /api/config.
         let DRIVE_CONFIG = {
             CLIENT_ID: '773968721126-cjd4l27jqv5jfs3s1avvrpnss5943lm8.apps.googleusercontent.com',
             API_KEY: 'AIzaSyDroLwCZlmqlp3z8y5V4u3AfXCdC0GOl74',
@@ -3411,6 +3411,9 @@
                         if (c.GOOGLE_CLIENT_ID) DRIVE_CONFIG.CLIENT_ID = c.GOOGLE_CLIENT_ID;
                         if (c.GOOGLE_API_KEY) DRIVE_CONFIG.API_KEY = c.GOOGLE_API_KEY;
                         if (c.DRIVE_VOUCHER_FOLDER_ID) DRIVE_CONFIG.DRIVE_FOLDER_ID = c.DRIVE_VOUCHER_FOLDER_ID;
+                        if (c.MASTER_SPREADSHEET_ID && !localStorage.getItem('google_sheets_id') && typeof GOOGLE_SHEETS_CONFIG !== 'undefined') {
+                            GOOGLE_SHEETS_CONFIG.spreadsheetId = c.MASTER_SPREADSHEET_ID;
+                        }
                     }
                 } catch (_) {
                     // keep hardcoded fallback

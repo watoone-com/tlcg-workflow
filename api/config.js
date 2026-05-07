@@ -6,9 +6,8 @@
 // HTML today) but centralizing them here means we can rotate in one place and
 // keep Vercel env as the single source of truth.
 //
-// SECURITY: Only values listed in the whitelist below are exposed. Anything
-// else in process.env (backend URLs, tokens, webhook URLs, ...) stays
-// server-only.
+// SECURITY: Only values listed in the whitelist below are exposed. Backend
+// /exec URLs, tokens, and webhooks stay server-only.
 
 export default function handler(req, res) {
   if (req.method !== 'GET') {
@@ -19,10 +18,19 @@ export default function handler(req, res) {
   res.setHeader('Cache-Control', 'public, max-age=60, s-maxage=60');
   res.setHeader('Content-Type', 'application/json; charset=utf-8');
 
+  const paymentParentFolder =
+    process.env.PAYMENT_REQUEST_FOLDER_ID ||
+    '';
+
+  // PAY_DRAFT_PARENT_FOLDER_ID: legacy alias for payment_request.html.
   return res.status(200).json({
     GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID || '',
     GOOGLE_API_KEY: process.env.GOOGLE_API_KEY || '',
     DRIVE_VOUCHER_FOLDER_ID: process.env.DRIVE_VOUCHER_FOLDER_ID || '',
-    MASTER_SPREADSHEET_ID: process.env.MASTER_SPREADSHEET_ID || ''
+    MASTER_SPREADSHEET_ID: process.env.MASTER_SPREADSHEET_ID || '',
+    PURCHASE_REQUEST_FOLDER_ID: process.env.PURCHASE_REQUEST_FOLDER_ID || '',
+    ACCEPTANCE_MINUTES_FOLDER_ID: process.env.ACCEPTANCE_MINUTES_FOLDER_ID || '',
+    PAYMENT_REQUEST_FOLDER_ID: paymentParentFolder,
+    PAY_DRAFT_PARENT_FOLDER_ID: paymentParentFolder
   });
 }

@@ -11,7 +11,7 @@ This repo has a three-tier architecture:
 Browser (index.html / phieu_thu_chi.html / de_nghi_thanh_toan.html)
     ↓ fetch('/api/voucher', …)
 Vercel proxy (api/voucher/[action].js — simple pass-through, no cache)
-    ↓ fetch(GOOGLE_APPS_SCRIPT_URL, …)
+    ↓ fetch(process.env.VOUCHER_BACKEND_URL or built-in fallback, …)
 Google Apps Script (VOUCHER_WORKFLOW_BACKEND.gs / PAYMENT_REQUEST_BACKEND.gs)
     ↓ SpreadsheetApp.openById(…).getDataRange().getValues()
 Google Sheets (Voucher_History, Master Employee, Master Company, …)
@@ -68,9 +68,7 @@ Red flags:
 
 ### Step 3 — Find the proxy route + cache headers
 
-The proxy is [api/voucher/[action].js](../../api/voucher/[action].js). It
-pass-throughs POST bodies as FormData to the GAS URL stored in
-`process.env.GOOGLE_APPS_SCRIPT_URL`. Check it for:
+The main proxy is [api/voucher.js](../../api/voucher.js) — it picks the voucher, intranet, or payment GAS deployment by `action`. The dynamic route [api/voucher/[action].js](../../api/voucher/[action].js) forwards directly to **`process.env.VOUCHER_BACKEND_URL`** (voucher Apps Script only). Check for:
 
 - `res.setHeader('Cache-Control', …)` — if absent on read-only actions
   (`getVoucherSummary`, `getEmployees`, `getCompanyApprovers`), that's a

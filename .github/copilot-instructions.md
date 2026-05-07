@@ -64,10 +64,10 @@ netlify deploy --prod
 # OR: Drag & drop folder to https://app.netlify.app/drop
 ```
 
-### 3. Update Frontend After GAS Deploy
-1. Copy new GAS Web App URL
-2. In [script.js](../script.js) line ~48: `const GOOGLE_APPS_SCRIPT_WEB_APP_URL = '...'`
-3. Save and redeploy to Netlify
+### 3. Update frontend / Vercel after GAS deploy
+1. Copy the new GAS Web App `/exec` URL.
+2. In **Vercel** → Project → Environment Variables → set **`VOUCHER_BACKEND_URL`** to that URL (Production + Preview). Redeploy.
+3. If you still maintain a standalone HTML deploy (non-Vercel), update the Web App URL in [script.js](../script.js) only if those pages bypass `/api/voucher` and hit GAS directly.
 
 ### 4. Debugging
 - **Frontend console errors:** Check browser DevTools

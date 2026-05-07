@@ -30,14 +30,12 @@ export default async function handler(req, res) {
   // Get GAS URL from environment variable
   // ⚠️ IMPORTANT: This is a SERVER-SIDE variable (no prefix needed for Vercel Serverless Functions)
   // If undefined, log warning and use fallback
-  // PHIEU_THU_CHI_BACKEND - For voucher operations (getVoucherSummary, getVoucherHistory, approveVoucher, rejectVoucher, sendApprovalEmail)
-  const GAS_URL = process.env.GOOGLE_APPS_SCRIPT_URL ||
+  // Voucher workflow backend (same URL as api/voucher.js default route)
+  const GAS_URL = process.env.VOUCHER_BACKEND_URL ||
     'https://script.google.com/macros/s/AKfycby8ed1o2d7Cf6dU0zZwnDnHYpuoQEo4wVQ99UmgMY0btzTolsC_90QBvb056UZyXMG7/exec';
   
-  // Log warning if using fallback (environment variable not set)
-  if (!process.env.GOOGLE_APPS_SCRIPT_URL) {
-    console.warn('[Proxy Warning] GOOGLE_APPS_SCRIPT_URL environment variable not set. Using fallback URL.');
-    console.warn('[Proxy Warning] Please set GOOGLE_APPS_SCRIPT_URL in Vercel Dashboard → Settings → Environment Variables');
+  if (!process.env.VOUCHER_BACKEND_URL) {
+    console.warn('[Proxy Warning] VOUCHER_BACKEND_URL not set. Using built-in fallback URL.');
   }
   
   // CORS headers - allow your domain

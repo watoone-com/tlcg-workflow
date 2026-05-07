@@ -1059,7 +1059,9 @@
                 if (c && typeof c === 'object') {
                     if (c.GOOGLE_CLIENT_ID)        DRIVE_CONFIG.CLIENT_ID    = c.GOOGLE_CLIENT_ID;
                     if (c.GOOGLE_API_KEY)           DRIVE_CONFIG.API_KEY      = c.GOOGLE_API_KEY;
-                    if (c.PAY_DRAFT_PARENT_FOLDER_ID) DRIVE_CONFIG.DRIVE_FOLDER_ID = c.PAY_DRAFT_PARENT_FOLDER_ID;
+                    const payParent =
+                        (c.PAYMENT_REQUEST_FOLDER_ID || c.PAY_DRAFT_PARENT_FOLDER_ID || '').trim();
+                    if (payParent) DRIVE_CONFIG.DRIVE_FOLDER_ID = payParent;
                 }
             } catch (_) {}
         })();
