@@ -39,6 +39,7 @@ function getDriveClient() {
   const auth = new google.auth.GoogleAuth({
     credentials: key,
     scopes: ['https://www.googleapis.com/auth/drive'],
+    subject: 'admin@tl-c.com.vn',
   });
   return google.drive({ version: 'v3', auth });
 }
