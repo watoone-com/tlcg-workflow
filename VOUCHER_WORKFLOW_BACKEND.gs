@@ -659,8 +659,8 @@ function handleSendEmail(requestBody) {
 
     const voucherNo = voucher.voucherNumber || 'AUTO-' + new Date().getTime();
     
-    // Acquire document lock to prevent race-condition duplicate submissions
-    const submitLock = LockService.getDocumentLock();
+    // Acquire script lock to prevent race-condition duplicate submissions
+    const submitLock = LockService.getScriptLock();
     try {
       submitLock.waitLock(10000);
     } catch (lockErr) {
