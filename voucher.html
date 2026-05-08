@@ -9087,13 +9087,12 @@
             console.log('validCCRecipients:', validCCRecipients);
 
             // ==================== FILE UPLOAD TO GOOGLE DRIVE ====================
-            // NEW: Upload files directly to Google Drive (no size limit!)
-            // Force Drive path when configured to avoid legacy upload errors
-            const useDriveAPI = isDriveConfigured();
+            // Use GAS/DriveApp path — Service Account has no Drive quota on personal folders
+            const useDriveAPI = false;
 
-            // Define constants for legacy method (used later for payload size check)
-            const MAX_FILE_SIZE = 500 * 1024; // 500KB max per file
-            const MAX_TOTAL_PAYLOAD_SIZE = 800 * 1024; // 800KB max total payload
+            // Limits for base64-in-payload upload via GAS doPost
+            const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB per file
+            const MAX_TOTAL_PAYLOAD_SIZE = 30 * 1024 * 1024; // 30MB total
 
             // Start signature compression in parallel with Drive uploads (independent operations)
             const signatureCompressPromise = (async () => {
@@ -9105,7 +9104,7 @@
                             localStorage.setItem(SIGNATURE_STORAGE_KEY, sig);
                             currentSignatureData = sig;
                         }
-                    } catch (_) {}
+                    } catch (e) { console.warn('Signature compression failed, using original:', e); }
                 }
                 return sig;
             })();
@@ -9169,43 +9168,32 @@
                     return;
                 }
             } else {
-                console.log('📦 Using legacy base64 upload (Drive API not configured)');
-                console.warn('⚠️ File size limited to 500KB. Configure Drive API for unlimited uploads.');
-                
-                // FALLBACK: Use old base64 method if Drive API not configured
+                console.log('📦 Using GAS base64 path. Limits: 5MB/file, 30MB total');
+
+                const skippedFiles = [];
+
                 for (let i = 0; i < expenseItems.length; i++) {
                     const item = expenseItems[i];
                     if (item.attachments && item.attachments.length > 0) {
                         for (const file of item.attachments) {
                             if (file instanceof File) {
-                                // Check file size
                                 if (file.size > MAX_FILE_SIZE) {
-                                    showToast(`File "${file.name}" quá lớn (${(file.size / 1024 / 1024).toFixed(2)} MB). Kích thước tối đa là ${MAX_FILE_SIZE / 1024 / 1024}MB.`, 'error', 'File quá lớn');
-                                    console.warn(`File ${file.name} is too large. Skipping.`);
+                                    skippedFiles.push(`${file.name} (quá lớn: ${(file.size / 1024 / 1024).toFixed(1)}MB)`);
                                     continue;
                                 }
-                                
+
                                 try {
-                                    // Convert file to base64
                                     const base64Data = await fileToBase64(file);
-                                    
-                                    // Calculate estimated size
-                                    let estimatedSize = 100000;
-                                    filesToUpload.forEach(f => {
-                                        estimatedSize += (f.fileData ? f.fileData.length : 0);
-                                    });
+
+                                    let estimatedSize = filesToUpload.reduce((sum, f) => sum + (f.fileData ? f.fileData.length : 0), 0);
                                     estimatedSize += base64Data.length;
-                                    
-                                    if (currentSignatureData) {
-                                        estimatedSize += currentSignatureData.length;
-                                    }
-                                    
+                                    if (currentSignatureData) estimatedSize += currentSignatureData.length;
+
                                     if (estimatedSize > MAX_TOTAL_PAYLOAD_SIZE) {
-                                        const sizeKB = (estimatedSize / 1024).toFixed(2);
-                                        showToast(`Tổng kích thước quá lớn (${sizeKB} KB). File "${file.name}" sẽ không được tải lên.`, 'error');
+                                        skippedFiles.push(`${file.name} (tổng payload vượt ${MAX_TOTAL_PAYLOAD_SIZE / 1024 / 1024}MB)`);
                                         continue;
                                     }
-                                    
+
                                     filesToUpload.push({
                                         fileName: file.name,
                                         fileData: base64Data,
@@ -9215,10 +9203,20 @@
                                     });
                                 } catch (err) {
                                     console.error('Error converting file to base64:', file.name, err);
+                                    skippedFiles.push(`${file.name} (lỗi đọc file)`);
                                 }
                             }
                         }
                     }
+                }
+
+                if (skippedFiles.length > 0) {
+                    showToast(`${skippedFiles.length} file không được đính kèm: ${skippedFiles.join(', ')}. Vui lòng kiểm tra lại.`, 'error', 'File bị bỏ qua');
+                    loadingIndicator.classList.remove('show');
+                    isSubmitting = false;
+                    submitBtn.disabled = false;
+                    submitBtn.innerHTML = originalButtonText;
+                    return;
                 }
             }
 
@@ -9417,7 +9415,7 @@
                     expenseItems: expenseItems || [],
                     files: filesToUpload,
                     companyApprovers: data.selectedCompanyApprovers || null,
-                    useDriveAPI: true,
+                    useDriveAPI: useDriveAPI,
                     requesterSignature: finalRequesterSignature || ''
                 }
             };
@@ -9488,20 +9486,14 @@
                 return;
             }
             
-            if (payloadSizeBytes > 700 * 1024) { // Warn if > 700KB (close to 800KB limit)
-                console.warn('⚠️ Payload is large (' + payloadSizeKB + 'KB), close to limit. Consider reducing file sizes.');
+            if (payloadSizeBytes > 20 * 1024 * 1024) { // Warn if > 20MB (close to 30MB limit)
+                console.warn('⚠️ Payload is large (' + payloadSizeMB + 'MB). Consider reducing file sizes.');
             }
 
-            try {
+            const submitToGAS = async () => {
                 console.log('🚀 Sending request to backend...');
-                console.log('Payload keys:', Object.keys(payload));
-                console.log('Action:', payload.action);
-                
-                // Use FormData to avoid CORS preflight issues
-                // FormData doesn't trigger OPTIONS preflight request
                 const formData = new FormData();
-                formData.append('data', payloadString); // Send JSON as FormData field
-                
+                formData.append('data', payloadString);
                 const response = await fetch(GOOGLE_APPS_SCRIPT_WEB_APP_URL, {
                     method: 'POST',
                     mode: 'cors',
@@ -9509,42 +9501,18 @@
                     body: formData,
                     signal: httpTimeoutSignal(VOUCHER_SUBMIT_FETCH_TIMEOUT_MS)
                 });
-                
-                console.log('✅ Response received');
-                console.log('Response status:', response.status);
-                console.log('Response ok:', response.ok);
-                
-                // Read response text once (can only be read once)
                 const responseText = await response.text();
-                console.log('Response text (first 500 chars):', responseText.substring(0, 500));
-                
-                // Check if response is ok
-                if (!response.ok) {
-                    console.error('❌ HTTP Error:', response.status, response.statusText);
-                    console.error('❌ Error response body:', responseText);
-                    throw new Error(`HTTP ${response.status}: ${response.statusText}. ${responseText.substring(0, 200)}`);
-                }
-                
+                console.log('Response status:', response.status, '| body (first 500):', responseText.substring(0, 500));
+                if (!response.ok) throw new Error(`HTTP ${response.status}: ${response.statusText}. ${responseText.substring(0, 200)}`);
+                if (!responseText || responseText.trim() === '') throw new Error('Empty response from server');
                 let result;
-                try {
-                    // Try to parse as JSON
-                    if (!responseText || responseText.trim() === '') {
-                        throw new Error('Empty response from server');
-                    }
-                    
-                    result = JSON.parse(responseText);
-                    console.log('Parsed result:', result);
-                } catch (parseError) {
-                    console.error('❌ Failed to parse response:', parseError);
-                    console.error('❌ Response was:', responseText);
-                    throw new Error(`Invalid response from server: ${parseError.message}`);
-                }
-                
-                if (!result.success) {
-                    console.error('❌ Backend returned error:', result.message);
-                    throw new Error(result.message || 'Failed to send approval email');
-                }
-                
+                try { result = JSON.parse(responseText); } catch (e) { throw new Error(`Invalid response from server: ${e.message}`); }
+                if (!result.success) throw new Error(result.message || 'Failed to send approval email');
+                return result;
+            };
+
+            try {
+                const result = await submitToGAS();
                 console.log('✅ Backend confirmed success:', result.message);
 
                 // Update UI status and history
@@ -9594,14 +9562,24 @@
                     response: error.response
                 });
                 
-                // Backend lock conflict — auto-retry after 5s
+                // Backend lock conflict — retry only the GAS fetch after 5s
                 if (error.message && error.message.includes('đang xử lý yêu cầu khác')) {
                     showToast('Hệ thống bận, tự động thử lại sau 5 giây...', 'warning');
-                    isSubmitting = false;
-                    submitBtn.disabled = false;
-                    submitBtn.innerHTML = originalButtonText;
-                    loadingIndicator.classList.remove('show');
-                    setTimeout(() => sendForApproval(), 5000);
+                    setTimeout(async () => {
+                        try {
+                            const result = await submitToGAS();
+                            console.log('✅ Retry succeeded:', result.message);
+                            showToast('Gửi yêu cầu thành công!', 'success');
+                        } catch (retryErr) {
+                            console.error('❌ Retry failed:', retryErr);
+                            showToast(`Thử lại thất bại: ${retryErr.message}`, 'error');
+                        } finally {
+                            loadingIndicator.classList.remove('show');
+                            isSubmitting = false;
+                            submitBtn.disabled = false;
+                            submitBtn.innerHTML = originalButtonText;
+                        }
+                    }, 5000);
                     return;
                 }
 

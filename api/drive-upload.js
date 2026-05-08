@@ -46,7 +46,7 @@ function getDriveClient() {
 async function getOrCreateSubfolder(drive, parentFolderId, subfolderName) {
   const safe = subfolderName.replace(/'/g, "\\'");
   const q = `name='${safe}' and '${parentFolderId}' in parents and mimeType='application/vnd.google-apps.folder' and trashed=false`;
-  const list = await drive.files.list({ q, fields: 'files(id)', pageSize: 1 });
+  const list = await drive.files.list({ q, fields: 'files(id)', pageSize: 1, supportsAllDrives: true, includeItemsFromAllDrives: true });
   if (list.data.files && list.data.files.length > 0) {
     return list.data.files[0].id;
   }
@@ -57,6 +57,7 @@ async function getOrCreateSubfolder(drive, parentFolderId, subfolderName) {
       parents: [parentFolderId],
     },
     fields: 'id',
+    supportsAllDrives: true,
   });
   return created.data.id;
 }
@@ -98,12 +99,14 @@ export default async function handler(req, res) {
         body: Readable.from(fileBuffer),
       },
       fields: 'id,name,webViewLink',
+      supportsAllDrives: true,
     });
 
     // Set public reader permission so webViewLink works for anyone
     await drive.permissions.create({
       fileId: uploaded.data.id,
       requestBody: { role: 'reader', type: 'anyone' },
+      supportsAllDrives: true,
     });
 
     return res.status(200).json({
