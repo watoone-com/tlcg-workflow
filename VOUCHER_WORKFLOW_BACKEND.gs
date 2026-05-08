@@ -2,6 +2,10 @@
  * GOOGLE APPS SCRIPT - PHIẾU THU CHI
  */
 
+// Single source of truth for the frontend URL used in all email links.
+// Override via Script Properties: APP_BASE_URL
+const BASE_URL = getCfg_('APP_BASE_URL', 'https://workflow.egg-ventures.com');
+
 /**
  * Read a script property with a safe fallback. If PropertiesService throws
  * (e.g. during limited execution contexts) we still return the fallback so
@@ -783,7 +787,7 @@ function handleSendEmail(requestBody) {
         );
         
         // Add status review link
-        const statusLink = 'https://workflow.egg-ventures.com/voucher.html?viewStatus=' + voucherNo;
+        const statusLink = BASE_URL + '/voucher.html?viewStatus=' + voucherNo;
         requesterEmailData.body += `
           <p style="margin-top: 15px;">
             <a href="${statusLink}" style="background: #4285f4; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
@@ -1293,7 +1297,7 @@ function sendApprovalEmailToNextApprover(voucher, nextApprover, approverRole, me
       return;
     }
     
-    const baseUrl = 'https://workflow.egg-ventures.com';
+    const baseUrl = BASE_URL;
 
     // Get voucher details from existingVoucher or voucher object
     const voucherType = voucher.voucherType || existingVoucher.voucherType || '';
@@ -1411,7 +1415,7 @@ function sendProgressEmail(voucher, approvalCount, meta, voucherNumber, existing
       return;
     }
     
-    const statusLink = `https://workflow.egg-ventures.com/voucher.html?viewStatus=${voucherNumber}`;
+    const statusLink = `${BASE_URL}/voucher.html?viewStatus=${voucherNumber}`;
     const roleName = meta.currentApprover ? getApproverRoleName(meta.currentApprover) : '';
     
     // Update subject format: [ĐANG DUYỆT (X/3)] instead of [TIẾN ĐỘ PHÊ DUYỆT]
@@ -1679,7 +1683,7 @@ function sendReminderEmails() {
         const voucherType = (row[1] || '').toString();
         const employee = (row[4] || '').toString();
         const amount = Number(row[8] || 0).toLocaleString('vi-VN') + ' ₫';
-        const approveUrl = `https://workflow.egg-ventures.com/voucher.html?approveVoucher=${encodeURIComponent(voucherNumber)}`;
+        const approveUrl = `${BASE_URL}/voucher.html?approveVoucher=${encodeURIComponent(voucherNumber)}`;
 
         const emailBody = `
           <p>Kính gửi ${approverName || 'Anh/Chị'},</p>
@@ -1753,7 +1757,7 @@ function sendFinalApprovalEmail(voucher, meta, voucherNumber) {
     }
 
     const isThu = (voucher.voucherType || '').toUpperCase().includes('THU');
-    const receiptUrl = 'https://workflow.egg-ventures.com/voucher.html'
+    const receiptUrl = BASE_URL + '/voucher.html'
       + '?acknowledgeReceipt=' + encodeURIComponent(voucherNumber)
       + '&voucherType=' + encodeURIComponent(voucher.voucherType || '')
       + '&requestorEmail=' + encodeURIComponent(requesterEmail);
@@ -1899,7 +1903,7 @@ function handleRejectVoucher(requestBody) {
 
       // Send rejection email to requester + all 3 approvers
       const requesterEmail = v.requestorEmail || existingVoucher.requestorEmail;
-      const statusLink = `https://workflow.egg-ventures.com/voucher.html?viewStatus=${voucherNumber}`;
+      const statusLink = `${BASE_URL}/voucher.html?viewStatus=${voucherNumber}`;
       const emailSubject = "[TỪ CHỐI] Phiếu " + voucherNumber;
       const rejectionEmailBody = `
         <p>Kính gửi Anh/Chị,</p>
@@ -4039,7 +4043,7 @@ function testSpreadsheetAccess() {
     
     // Test 3: Try to open the spreadsheet using direct ID string
     Logger.log('Test 3: Opening spreadsheet with direct ID string...');
-    const spreadsheetId = '1ujmPbtEdkGLgEshfhV8gRB6R0GLI31jsZM5rDOJS0g';
+    const spreadsheetId = TLCG_MASTER_DATA_SHEET_ID;
     Logger.log('Using ID: ' + spreadsheetId);
     let ss;
     try {
