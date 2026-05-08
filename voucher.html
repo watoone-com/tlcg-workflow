@@ -9562,24 +9562,36 @@
                     response: error.response
                 });
                 
-                // Backend lock conflict — retry only the GAS fetch after 5s
+                // Backend lock conflict — retry up to 3 times, 10s apart
                 if (error.message && error.message.includes('đang xử lý yêu cầu khác')) {
-                    showToast('Hệ thống bận, tự động thử lại sau 5 giây...', 'warning');
-                    setTimeout(async () => {
+                    const maxRetries = 3;
+                    let attempt = 0;
+                    const retryLoop = async () => {
+                        attempt++;
+                        showToast(`Hệ thống bận, thử lại lần ${attempt}/${maxRetries} sau 10 giây...`, 'warning');
+                        await new Promise(r => setTimeout(r, 10000));
                         try {
                             const result = await submitToGAS();
                             console.log('✅ Retry succeeded:', result.message);
                             showToast('Gửi yêu cầu thành công!', 'success');
-                        } catch (retryErr) {
-                            console.error('❌ Retry failed:', retryErr);
-                            showToast(`Thử lại thất bại: ${retryErr.message}`, 'error');
-                        } finally {
                             loadingIndicator.classList.remove('show');
                             isSubmitting = false;
                             submitBtn.disabled = false;
                             submitBtn.innerHTML = originalButtonText;
+                        } catch (retryErr) {
+                            console.error(`❌ Retry ${attempt} failed:`, retryErr);
+                            if (retryErr.message && retryErr.message.includes('đang xử lý yêu cầu khác') && attempt < maxRetries) {
+                                retryLoop();
+                            } else {
+                                showToast(`Không thể gửi sau ${attempt} lần thử. Vui lòng thử lại sau.`, 'error');
+                                loadingIndicator.classList.remove('show');
+                                isSubmitting = false;
+                                submitBtn.disabled = false;
+                                submitBtn.innerHTML = originalButtonText;
+                            }
                         }
-                    }, 5000);
+                    };
+                    retryLoop();
                     return;
                 }
 

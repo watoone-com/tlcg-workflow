@@ -658,7 +658,7 @@ function handleSendEmail(requestBody) {
     // Acquire document lock to prevent race-condition duplicate submissions
     const submitLock = LockService.getDocumentLock();
     try {
-      submitLock.waitLock(3000);
+      submitLock.waitLock(10000);
     } catch (lockErr) {
       return createResponse(false, 'Hệ thống đang xử lý yêu cầu khác. Vui lòng thử lại sau giây lát.');
     }
