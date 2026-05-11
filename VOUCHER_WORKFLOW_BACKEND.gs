@@ -569,8 +569,8 @@ function getVoucherFromHistory(voucherNumber) {
                     }
                   }
                 }
-                // ✅ FALLBACK: If approvedBy not found, check rowMeta.companyApprovers directly
-                else if (rowMeta && rowMeta.companyApprovers && rowMeta.companyApprovers.approvers) {
+                // ✅ ALWAYS check rowMeta.companyApprovers — email mismatch between approvedBy and registered email must not block this
+                if (rowMeta && rowMeta.companyApprovers && rowMeta.companyApprovers.approvers) {
                   const rowApprovers = rowMeta.companyApprovers.approvers;
                   for (const role in rowApprovers) {
                     if (rowApprovers[role].status === 'approved' &&
@@ -2581,7 +2581,8 @@ function _getVoucherFromData_(voucherNumber, data) {
                     break;
                   }
                 }
-              } else if (rowMeta && rowMeta.companyApprovers && rowMeta.companyApprovers.approvers) {
+              }
+              if (rowMeta && rowMeta.companyApprovers && rowMeta.companyApprovers.approvers) {
                 const rowApprovers = rowMeta.companyApprovers.approvers;
                 for (const role in rowApprovers) {
                   if (rowApprovers[role].status === 'approved' &&
@@ -3624,7 +3625,10 @@ function handleGetVoucherSummary(requestBody) {
     // Get latest entry for each voucher number, and track highest approvalProgress
     const voucherMap = new Map();
     const progressMap = new Map(); // tracks best approvalProgress per voucher
-    const approvalActionCountMap = new Map(); // tracks # of approval-action rows per voucher
+    // Fallback for old data without "(N/3)" in status: track unique approver emails per voucher.
+    // Using a Set ensures that duplicate approval rows from the same person only count once.
+    // e.g. Nhanh×3 rows = 1 unique approver = 1/3, not 3/3.
+    const approvalEmailSetMap = new Map(); // Map<vNum, Set<approverEmail>>
 
     rows.forEach(row => {
       const voucherNumber = row[0]; // Column A
@@ -3643,9 +3647,16 @@ function handleGetVoucherSummary(requestBody) {
         progressMap.set(vNum, rowProgress);
       }
 
-      // Count approval action rows (fallback for old data where status didn't carry progress)
+      // Fallback approval count: track unique approver emails from Column P.
+      // Falls back to extracting name from "Duyệt bởi X" in action column when email is absent.
       if (isApprovalAction(row[11])) {
-        approvalActionCountMap.set(vNum, Math.min((approvalActionCountMap.get(vNum) || 0) + 1, 3));
+        const approverEmail = (row[15] || '').toString().trim().toLowerCase();
+        // Use email if present; otherwise use the name extracted from the action string as a key
+        const approverKey = approverEmail || (row[11].toString().replace(/^Duyệt bởi\s*/i, '').trim()) || ('_row_' + vNum);
+        if (approverKey) {
+          if (!approvalEmailSetMap.has(vNum)) approvalEmailSetMap.set(vNum, new Set());
+          approvalEmailSetMap.get(vNum).add(approverKey);
+        }
       }
 
       const entry = {
@@ -3694,8 +3705,10 @@ function handleGetVoucherSummary(requestBody) {
     // so that old vouchers (without "(N/3)" in status) are counted correctly.
     function getEffectiveProgress(vNum, status) {
       const sp = progressMap.get(vNum) || 0;
-      const ap = approvalActionCountMap.get(vNum) || 0;
-      const best = Math.max(sp, ap);
+      const ap = Math.min((approvalEmailSetMap.get(vNum) || new Set()).size, 3);
+      // Only use action-count as a fallback when the status column carries no progress info (old data).
+      // Never let duplicate approval rows inflate the count above what the status column says.
+      const best = sp > 0 ? sp : ap;
       // If status says fully approved/received/rejected, honour that regardless of best
       const s = (status || '').toString();
       if (s === 'Approved' || s === 'Đã duyệt' || s === 'Fully Approved') return 3;
@@ -3747,8 +3760,10 @@ function handleGetVoucherSummary(requestBody) {
       // 1. From the status column "(N/3)" pattern (new format)
       // 2. Fallback: count approval-action rows (old data without progress in status)
       const statusProgress = progressMap.get(v.voucherNumber) || 0;
-      const actionProgress = approvalActionCountMap.get(v.voucherNumber) || 0;
-      const bestProgress = Math.max(statusProgress, actionProgress);
+      const actionProgress = Math.min((approvalEmailSetMap.get(v.voucherNumber) || new Set()).size, 3);
+      // Only use action-count as a fallback when the status column carries no progress info (old data).
+      // Never let duplicate approval rows inflate the count above what the status column says.
+      const bestProgress = statusProgress > 0 ? statusProgress : actionProgress;
       // Build a lightweight companyApprovers with just approvalProgress & currentApprover
       const companyApprovers = {
         approvalProgress: bestProgress + '/3',

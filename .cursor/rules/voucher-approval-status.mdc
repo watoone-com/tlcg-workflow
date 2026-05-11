@@ -1,0 +1,108 @@
+---
+description: Voucher approval status reconstruction and display rules for TLCG Workflow. Covers GAS backend logic (getVoucherSummary, getVoucherFromHistory, _getVoucherFromData_) and the frontend normalizeVoucherState / getVoucherSummary display path.
+globs: "**/*.gs,**/*.html,**/*.js"
+alwaysApply: false
+---
+
+# Voucher Approval Status Rules
+
+## Sequential Approval Flow (3-step)
+
+Steps in order: `accountant (1/3) → legalRep (2/3) → treasurer (3/3)`
+
+Configured in `Master Company` sheet Column I (approver emails, comma-separated in role order). Always read approver emails from `Master Company` — never hardcode them.
+
+## `getVoucherSummary` — Progress Calculation (`handleGetVoucherSummary`)
+
+The summary endpoint serves the dashboard card list. It must correctly compute `approvalProgress` for each voucher without reading the large MetaJSON column (Column R).
+
+### Primary: status column "(N/3)" pattern
+Parse the `(N/3)` substring from Column J (status). This is authoritative and always takes precedence.
+
+```js
+function progressFromStatus(status) {
+  const m = (status || '').toString().match(/\((\d)\/3\)/);
+  if (m) return parseInt(m[1]);
+  if (status === 'Approved' || status === 'Đã duyệt' || status === 'Fully Approved' || status === 'Received') return 3;
+  return 0;
+}
+```
+
+### Fallback: unique approver email Set (old data only)
+For rows without `(N/3)` in status (pre-format data), count **unique approver emails** from Column P across all rows of the same voucher. Use a `Set` — never a plain counter.
+
+**Critical:** Duplicate approval rows from the same person must count as 1, not N.
+- `nhanh.nguyen@tl-c.com.vn` × 3 rows → Set size = **1** → 1/3 ✓
+- `nhanh@x.com` + `le@x.com` + `linh@x.com` → Set size = **3** → 3/3 ✓
+
+```js
+// Map<voucherNumber, Set<approverEmail|approverName>>
+const approvalEmailSetMap = new Map();
+
+if (isApprovalAction(row[11])) {
+  const approverEmail = (row[15] || '').toString().trim().toLowerCase();
+  const approverKey = approverEmail
+    || row[11].toString().replace(/^Duyệt bởi\s*/i, '').trim()
+    || ('_row_' + vNum);
+  if (!approvalEmailSetMap.has(vNum)) approvalEmailSetMap.set(vNum, new Set());
+  approvalEmailSetMap.get(vNum).add(approverKey);
+}
+```
+
+### Combining primary + fallback
+Always prefer `statusProgress` when non-zero. The fallback (`actionProgress`) is only used when the status column carries no progress info at all:
+
+```js
+const statusProgress = progressMap.get(vNum) || 0;
+const actionProgress = Math.min((approvalEmailSetMap.get(vNum) || new Set()).size, 3);
+const bestProgress = statusProgress > 0 ? statusProgress : actionProgress;
+```
+
+**Never use `Math.max(statusProgress, actionProgress)`** — this lets duplicate rows override a correct status-based value.
+
+## `getVoucherFromHistory` / `_getVoucherFromData_` — Approval Reconstruction
+
+Both functions scan `Voucher_History` rows and reconstruct the current approval state. Two independent checks run per row — do NOT use `else if` between them:
+
+```js
+// 1. Email match: advance role if this approver's email matches a configured role
+if (rowApproverEmail) {
+  // match against companyApprovers[role].email for each role
+}
+
+// 2. Meta check: read stored companyApprovers from metaJson for this row
+if (rowMeta && rowMeta.companyApprovers) {
+  // apply stored approval state from this row's metaJson
+}
+```
+
+**Why both must run:** If the configured email later changes (e.g. `nguyennhanh863@gmail.com` → `nhanh.nguyen@tl-c.com.vn`), the email branch may not match old rows, but the meta branch can still reconstruct from the stored `companyApprovers`. Using `else if` would silently skip the meta branch whenever `rowApproverEmail` is truthy.
+
+## Approver Email Consistency
+
+- Approver emails in `Master Company` Column I **must exactly match** the `approvedBy` field written into `Voucher_History` MetaJSON Column R at approval time.
+- Mismatched emails (e.g. personal Gmail vs workspace email) cause approval reconstruction to fail and allow duplicate approvals for the same step.
+- Always verify: `Master Company` email = the email the approver is **logged in with** when approving.
+
+## Frontend Display (`normalizeVoucherState` / `deriveVoucherStatusBadge`)
+
+The frontend reads `voucher.meta.companyApprovers.approvalProgress` from the `getVoucherSummary` response:
+
+```js
+const progressRaw = voucher?.meta?.companyApprovers?.approvalProgress || '0/3';
+const progressNum = parseInt(progressRaw.split('/')[0], 10) || 0;
+// progressNum >= 3  →  "Đã Duyệt (3/3)"  (approved bucket)
+// progressNum 1-2   →  "Đang Duyệt (N/3)" (in-progress bucket)
+// progressNum === 0 →  "Chờ Duyệt (0/3)"  (pending bucket)
+```
+
+The `approvalProgress` field set by `getVoucherSummary` (via `bestProgress + '/3'`) is the single source of truth for dashboard badge display. If the backend sets it correctly, the frontend will display correctly without any separate `getApprovalStatus` call.
+
+## Common Bugs to Avoid
+
+| Bug | Symptom | Fix |
+|-----|---------|-----|
+| `Math.max(statusProgress, actionProgress)` with a plain counter | 3 duplicate rows = "Đã duyệt (3/3)" on dashboard | Use `Set` for action fallback; use `statusProgress > 0 ? sp : ap` |
+| `else if (rowMeta && rowMeta.companyApprovers)` after email check | Reconstruction skips meta when email is present but doesn't match | Change to independent `if` blocks |
+| Approver email mismatch between `Master Company` and history | Duplicate approvals for same step; `getApprovalStatus` returns wrong count | Align emails in `Master Company` Col I with login email |
+| `setSharing` failure stopping file URL return | File uploads but shows "Lỗi upload" instead of link | Wrap `setSharing` in non-fatal try/catch |
