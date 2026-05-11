@@ -3608,6 +3608,35 @@
         let highestStepReached = 1; // Track the highest step user has reached
         let editingFromReview = false; // Flag to know if user is editing from review step
 
+        function isLocalDemoHost() {
+            const h = (location.hostname || '').toLowerCase();
+            return h === 'localhost' || h === '127.0.0.1' || h === '[::1]';
+        }
+
+        /** Local static server only: seed session so voucher page opens without index login. */
+        function ensureDemoSessionForVoucher() {
+            if (!isLocalDemoHost()) return;
+            try {
+                if (localStorage.getItem('tlc_current_user')) return;
+                const mock = {
+                    email: 'preview@local.invalid',
+                    name: 'Preview User',
+                    role: 'Preview',
+                    isAdmin: true,
+                    id: 'preview',
+                    employeeId: 'preview',
+                    department: '',
+                    company: '',
+                    phone: '',
+                    loginTimestamp: Date.now()
+                };
+                localStorage.setItem('tlc_current_user', JSON.stringify(mock));
+                console.info('[TLCG Demo] Localhost preview session applied (no password).');
+            } catch (e) {
+                console.warn('[TLCG Demo] Could not apply preview session:', e);
+            }
+        }
+
         // Toast Notification Functions
         function showToast(message, type = 'info', title = '') {
             const toastContainer = document.getElementById('toast-container');
@@ -4301,6 +4330,8 @@
                     openAcknowledgeModal();
                 }, 1200);
             }
+
+            ensureDemoSessionForVoucher();
 
             // ==================== AUTHENTICATION CHECK ====================
             console.log('🔍 PHIEU AUTH DEBUG: Page loaded at', new Date().toISOString());

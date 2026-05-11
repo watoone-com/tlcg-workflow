@@ -3788,6 +3788,49 @@
         let currentUser = null;
         let requestedPage = 'home'; // Store the page user wants to access
         const publicPages = ['home']; // Pages that don't require login
+
+        function isLocalDemoHost() {
+            const h = (location.hostname || '').toLowerCase();
+            return h === 'localhost' || h === '127.0.0.1' || h === '[::1]';
+        }
+
+        function createDemoUserPayload() {
+            return {
+                email: 'preview@local.invalid',
+                name: 'Preview User',
+                role: 'Preview',
+                isAdmin: true,
+                id: 'preview',
+                employeeId: 'preview',
+                department: '',
+                company: '',
+                phone: '',
+                loginTimestamp: Date.now()
+            };
+        }
+
+        /** Local static server only: skip password when no session exists yet. */
+        function ensureDemoSessionForIndex() {
+            if (!isLocalDemoHost()) return;
+            try {
+                if (localStorage.getItem('tlc_current_user')) return;
+            } catch (e) {
+                return;
+            }
+            const mock = createDemoUserPayload();
+            currentUser = mock;
+            try {
+                localStorage.setItem('tlc_current_user', JSON.stringify(mock));
+            } catch (e) {
+                console.warn('[TLCG Demo] Could not persist preview session:', e);
+            }
+            const lp = document.getElementById('login-page');
+            const mc = document.getElementById('main-content');
+            if (lp) lp.classList.add('hidden');
+            if (mc) mc.classList.remove('hidden');
+            updateUI();
+            console.info('[TLCG Demo] Localhost preview session applied (no password).');
+        }
         
         // Sidebar expand/collapse state
         let sidebarCollapsed = localStorage.getItem('tlc_sidebar_collapsed') === 'true';
@@ -6006,6 +6049,8 @@
             }).catch(error => {
                 console.error('Failed to load master data on page load:', error);
             });
+
+            ensureDemoSessionForIndex();
 
             // Restore login session from localStorage if available
             const SESSION_TIMEOUT_MS = 8 * 60 * 60 * 1000; // 8 hours
