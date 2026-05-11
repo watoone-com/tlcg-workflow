@@ -3910,7 +3910,11 @@ function uploadFilesToDrive_(files, folderName) {
       let data = file.fileData.includes(',') ? file.fileData.split(',')[1] : file.fileData;
       const blob = Utilities.newBlob(Utilities.base64Decode(data), file.mimeType, file.fileName);
       const f = folder.createFile(blob);
-      f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      try {
+        f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+      } catch (shareErr) {
+        Logger.log('⚠️ Could not set public sharing for ' + file.fileName + ': ' + shareErr.message);
+      }
       Logger.log('✅ Uploaded: ' + file.fileName + ' → ' + f.getId());
       return { 
         fileName: file.fileName, 
