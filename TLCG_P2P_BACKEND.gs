@@ -1,17 +1,15 @@
 /**
- * PAYMENT REQUEST WORKFLOW BACKEND
- * Google Apps Script for handling Payment Request (Đề nghị mua hàng) workflow
- * 
- * Features:
- * - Submit payment requests
- * - Multi-stage approval workflow (Budget, Supplier, Legal, Accounting, Director, Final)
- * - Email notifications with signatures
- * - History tracking
- * - File attachments via Google Drive
- * - Duplicate prevention
- * 
- * Version: 1.0
- * Created: January 2026
+ * TLCG P2P BACKEND (Purchase-to-Pay)
+ * Canonical file: TLCG_P2P_BACKEND.gs
+ * Domain: P2P — Mua hàng
+ *
+ * Workflows:
+ *   - Purchase Request  (Đề nghị mua hàng)    — purchaseRequest, getPurchaseRequestHistory
+ *   - Payment Request   (Đề nghị thanh toán)  — sendPaymentRequest, approvePaymentRequest, …
+ *
+ * Proxy routing: /api/voucher.js → TLCG_P2P_BACKEND_URL (or PAYMENT_REQUEST_BACKEND_URL fallback)
+ *
+ * Version: 2.0  (renamed from PAYMENT_REQUEST_BACKEND.gs, May 2026)
  */
 
 // ==================== CONFIGURATION ====================
@@ -108,6 +106,12 @@ function doPost(e) {
     
     // Route to appropriate handler
     switch (action) {
+      // ── Purchase Request ─────────────────────────────────────
+      case 'purchaseRequest':
+        return handlePurchaseRequest(data);
+      case 'getPurchaseRequestHistory':
+        return handleGetPurchaseRequestHistory(data);
+      // ── Payment Request ──────────────────────────────────────
       case 'submitPaymentRequest':
       case 'sendPaymentRequest':
         return handleSendPaymentRequest(data);
@@ -1248,6 +1252,156 @@ function handleGetPurchaseOrderTypes(data) {
   } catch (error) {
     Logger.log('[Payment Request] ❌ ERROR in handleGetPurchaseOrderTypes: ' + error.toString());
     Logger.log('[Payment Request] ❌ Error stack: ' + error.stack);
+    return createResponse(false, 'Lỗi: ' + error.message);
+  }
+}
+
+// ==================== PURCHASE REQUEST (ĐỀ NGHỊ MUA HÀNG) ====================
+
+/**
+ * Sheet: Purchase_Request_History
+ * Columns: A=PR No, B=Company, C=Company Key, D=Department, E=Requester Name,
+ *          F=Required Date, G=Priority, H=Purpose, I=Suggested Vendor,
+ *          J=Budget Code, K=Budget Approver Email, L=Supplier Approver Email,
+ *          M=Items (JSON), N=Grand Total, O=Status, P=Submitted At, Q=Metadata (JSON)
+ */
+var PR_SHEET_NAME = 'Purchase_Request_History';
+
+function handlePurchaseRequest(data) {
+  try {
+    Logger.log('[P2P] handlePurchaseRequest called');
+
+    // Validate required fields
+    var prNo         = (data.prNo          || '').toString().trim();
+    var companyName  = (data.companyName   || '').toString().trim();
+    var requesterName = (data.requesterName || '').toString().trim();
+    var requiredDate = (data.requiredDate  || '').toString().trim();
+    var items        = (data.items         || '[]').toString();
+    var grandTotal   = parseFloat(data.grandTotal) || 0;
+
+    if (!companyName)   return createResponse(false, 'Thiếu tên công ty.');
+    if (!requesterName) return createResponse(false, 'Thiếu tên người đề nghị.');
+    if (!requiredDate)  return createResponse(false, 'Thiếu ngày cần hàng.');
+
+    // Parse items to validate JSON
+    var parsedItems;
+    try {
+      parsedItems = JSON.parse(items);
+    } catch (e) {
+      return createResponse(false, 'Dữ liệu hàng hóa không hợp lệ: ' + e.message);
+    }
+    if (!Array.isArray(parsedItems) || parsedItems.length === 0) {
+      return createResponse(false, 'Vui lòng nhập ít nhất 1 hàng hóa / dịch vụ.');
+    }
+
+    // Generate PR No if not provided (safety fallback — frontend usually provides it)
+    if (!prNo) {
+      var now = new Date();
+      var dateStr = Utilities.formatDate(now, 'Asia/Ho_Chi_Minh', 'yyyyMMdd');
+      prNo = 'PR-' + dateStr + '-' + Math.floor(Math.random() * 100000).toString().padStart(6, '0');
+    }
+
+    var submittedAt = data.submittedAt || new Date().toISOString();
+    var metadata = {
+      companyCode:      data.companyCode      || '',
+      companyKey:       data.companyKey       || '',
+      budgetApproverNote: data.budgetApproverNote || '',
+      submittedAt:      submittedAt
+    };
+
+    // Open sheet (auto-create if missing)
+    var ss    = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    var sheet = ss.getSheetByName(PR_SHEET_NAME);
+    if (!sheet) {
+      sheet = ss.insertSheet(PR_SHEET_NAME);
+      sheet.appendRow([
+        'PR No', 'Company', 'Company Key', 'Department', 'Requester Name',
+        'Required Date', 'Priority', 'Purpose', 'Suggested Vendor', 'Budget Code',
+        'Budget Approver Email', 'Supplier Approver Email',
+        'Items (JSON)', 'Grand Total', 'Status', 'Submitted At', 'Metadata (JSON)'
+      ]);
+      Logger.log('[P2P] Created sheet: ' + PR_SHEET_NAME);
+    }
+
+    sheet.appendRow([
+      prNo,
+      companyName,
+      data.companyKey        || '',
+      data.department        || '',
+      requesterName,
+      requiredDate,
+      data.priority          || 'medium',
+      data.purpose           || '',
+      data.suggestedVendor   || '',
+      data.budgetCode        || '',
+      data.budgetApprover    || '',
+      data.supplierApprover  || '',
+      items,
+      grandTotal,
+      'Pending',
+      submittedAt,
+      JSON.stringify(metadata)
+    ]);
+
+    Logger.log('[P2P] ✅ Purchase request saved: ' + prNo);
+    SpreadsheetApp.flush();
+
+    return createResponse(true, 'Đề nghị mua hàng đã được gửi thành công.', { prNo: prNo });
+
+  } catch (error) {
+    Logger.log('[P2P] ❌ ERROR in handlePurchaseRequest: ' + error.toString());
+    Logger.log('[P2P] Stack: ' + error.stack);
+    return createResponse(false, 'Lỗi khi lưu đề nghị mua hàng: ' + error.message);
+  }
+}
+
+function handleGetPurchaseRequestHistory(data) {
+  try {
+    Logger.log('[P2P] handleGetPurchaseRequestHistory called');
+
+    var ss    = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    var sheet = ss.getSheetByName(PR_SHEET_NAME);
+    if (!sheet || sheet.getLastRow() <= 1) {
+      return createResponse(true, 'Thành công', { requests: [] });
+    }
+
+    var values  = sheet.getDataRange().getValues();
+    var headers = values[0];
+    var rows    = values.slice(1);
+
+    // Optional filter: requester name
+    var filterRequester = (data.requesterName || '').toString().trim().toLowerCase();
+
+    var requests = rows
+      .filter(function(row) {
+        if (!row[0]) return false; // skip empty PR No
+        if (filterRequester && (row[4] || '').toString().toLowerCase() !== filterRequester) return false;
+        return true;
+      })
+      .map(function(row) {
+        return {
+          prNo:             row[0]  || '',
+          company:          row[1]  || '',
+          department:       row[3]  || '',
+          requesterName:    row[4]  || '',
+          requiredDate:     row[5]  || '',
+          priority:         row[6]  || '',
+          purpose:          row[7]  || '',
+          suggestedVendor:  row[8]  || '',
+          budgetApprover:   row[10] || '',
+          supplierApprover: row[11] || '',
+          grandTotal:       row[13] || 0,
+          status:           row[14] || '',
+          submittedAt:      row[15] || ''
+        };
+      })
+      .reverse(); // newest first
+
+    Logger.log('[P2P] ✅ Returning ' + requests.length + ' purchase requests');
+    return createResponse(true, 'Thành công', { requests: requests });
+
+  } catch (error) {
+    Logger.log('[P2P] ❌ ERROR in handleGetPurchaseRequestHistory: ' + error.toString());
     return createResponse(false, 'Lỗi: ' + error.message);
   }
 }

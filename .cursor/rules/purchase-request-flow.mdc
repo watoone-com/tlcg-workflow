@@ -1,0 +1,136 @@
+---
+description: Purchase request flow (Đề Nghị Mua Hàng) — validation, catalog, numbering, payloads, Apps Script coupling
+globs: "**/purchase_request.html,**/TLCG_INTRANET_BACKEND_COMPLETE.gs,**/tlcg_companies_embed.js"
+alwaysApply: false
+---
+
+# Purchase Request Flow (`purchase_request.html`)
+
+Single-page wizard (4 steps) posting to **`BACKEND_URL`** (Apps Script Web App `.exec`). **Not** routed through `/api/voucher`; keep configuration in sync with the deployed GAS project manually.
+
+---
+
+## Backend coupling
+
+| Frontend call | Routes to | Implemented in |
+|---------------|-----------|----------------|
+| `action=getMasterData` | `TLCG_CORE_BACKEND` (`TLCG_CORE_BACKEND.gs`) | `handleGetMasterData` → employees + Goods-KTT + customers + suppliers |
+| `action=purchaseRequest` | `TLCG_P2P_BACKEND` (`TLCG_P2P_BACKEND.gs`) | `handlePurchaseRequest` → writes to `Purchase_Request_History` sheet |
+| `action=getPurchaseRequestHistory` | `TLCG_P2P_BACKEND` | `handleGetPurchaseRequestHistory` |
+
+**`BACKEND_URL = '/api/voucher'`** (Vercel proxy) — do NOT hardcode a direct GAS exec URL.
+The proxy in `api/voucher.js` routes by action:
+- `getMasterData` → `TLCG_CORE_BACKEND_URL` (env var, fallback to `TLCGROUP_BACKEND_URL`)
+- `purchaseRequest` → `TLCG_P2P_BACKEND_URL` (env var, fallback to `PAYMENT_REQUEST_BACKEND_URL`)
+
+---
+
+## Step validation (`validateAndNext`)
+
+**Step 1 — Công ty**
+
+- Company: `company_code` required.
+- Requester: `requester_name` required.
+- Ngày cần hàng: `required_date` required (`min` = today).
+
+**Step 2 — Hàng hóa**
+
+- At least one row with non-empty `.item-desc` in **any** `SECTION`.
+- Purpose: `purpose` required (validated when leaving step 2).
+- **MOQ (`hang-hoa` only):** For rows where a catalog item was selected (`tr.dataset.moq`), `qty >= moq`; otherwise toast error and `#tbody-hang-hoa tr.moq-error`.
+- Sections: `SECTIONS = hang-hoa, thiet-bi, dich-vu, sua-chua`; each seeded with default row counts; expandable via chevron.
+
+**Step 3 — Phê duyệt**
+
+- `budget_approver` email **required**.
+- `supplier_approver` **optional** (no toast if empty).
+- `final_approver` exists but is **disabled** in UI — not part of submission payload.
+
+**Step 4 — Xác nhận**
+
+- Builds summary via `buildSummary()` then **`submitForm()`**.
+
+---
+
+## PR number (`generateRequestNumber`)
+
+- Triggered on company change (`onCompanyChange` → `generateRequestNumber`).
+- Pattern: `{COMPANY_CODE_CLEAN}-PR{YYYYMMDD}{counter}` where counter is **`localStorage` key** `vc_{RAW}_PR_{YYYYMMDD}` incremented per browser (not authoritative server-side numbering).
+- `company_code` option value mixes display (`Tên (Mã định danh)`); `opt.dataset.code` drives the alphanumeric prefix cleaned to uppercase.
+
+---
+
+## Goods catalog (“Hàng hóa” list)
+
+Loaded via **`getMasterData`** → `data.goods` from sheet **`Goods-KTT`** (`USERS_SHEET_ID` spreadsheet in **`handleGetMasterData`**).
+
+Frontend filter in **`seedGoods`**:
+
+- `Status` lowercase === **`active`**.
+- `Items` trimmed non-empty maps to **`name`**.
+- `Min. Order` parses numeric; **`moq > 0`** required or row excluded.
+- Fields used: **`Items`**, **`Category`**, **`Min. Order`**, **`Unit`**, **`Specification`**, **`CUKCUK/QBO Code`**, **`Status`**.
+
+Only section **`hang-hoa`** rows get autocomplete: `filterGoodsDropdown` shows **up to 10** matches; fuzzy by substring on `name`. Manual free text clears `dataset.moq` when description no longer exactly matches a catalog name.
+
+Other sections (`thiet-bi`, `dich-vu`, `sua-chua`) use plain description inputs (**no MOQ enforcement** unless bound — they have no catalog binding).
+
+---
+
+## Master employees
+
+- **`seedRequesters` / `seedApprovers`** use **`Master Employee`** via `getMasterData` **`employees`**.
+- Filter **`employee_status`** or **`Status`** === **`active`**.
+- Approver selects store **`employee_email`** in `option.value`, display **`full_name`**.
+- Sidebar session: **`tlc_current_user`** (`name`, `email`, …); requester pre-selected if **`name`** matches an option.
+
+---
+
+## Companies dropdown
+
+Loaded from **`tlcg_companies_embed.js`** (`TLCG_COMPANIES_DATA.companies_data`), not `getMasterData`. Missing embed → “Không có dữ liệu”.
+
+Hidden fields **`company_name`**, **`company_key_or_taxid`** set from option `dataset`; **`submit` payload** sends **`companyCode`** (= select displayed value path) and **`companyName`** — **not** a separate stable `companyKey`/`taxId` field unless you extend the payload intentionally.
+
+---
+
+## Submit payload (`purchaseRequest`)
+
+Encoded fields sent today:
+
+```text
+action, prNo, companyCode, companyName, department, requesterName,
+requiredDate, priority, items (JSON string of line objects),
+grandTotal, purpose, suggestedVendor, budgetCode,
+budgetApprover, supplierApprover, submittedAt
+```
+
+**Not sent** today: `budget_approver_note`, hidden `company_key_or_taxid`, `request_id` (redundant if `prNo` matches). Extend GAS + form together if sheets need those.
+
+**Submit UX:** Spinner; **network `catch`** shows error toast (`submitForm`), does **not** show success screen (comment near `catch` is outdated).
+
+---
+
+## Caching (`getMasterData`)
+
+- Keys: **`tlc_master_data`**, **`tlc_master_data_timestamp`**; TTL **30 minutes** stale-while-revalidate.
+- Cache renders immediately then background refresh.
+
+---
+
+## GAS file → domain mapping
+
+| GAS file | Domain | Vercel env var |
+|----------|--------|----------------|
+| `TLCG_CORE_BACKEND.gs` | Shared/Auth | `TLCG_CORE_BACKEND_URL` (fallback: `TLCGROUP_BACKEND_URL`) |
+| `TLCG_P2P_BACKEND.gs` | P2P — Mua hàng | `TLCG_P2P_BACKEND_URL` (fallback: `PAYMENT_REQUEST_BACKEND_URL`) |
+| `TLCG_CASH_BACKEND.gs` | Cash & Admin | `TLCG_CASH_BACKEND_URL` (fallback: `VOUCHER_BACKEND_URL`) |
+| `TLCG_O2C_BACKEND.gs` | O2C — Bán hàng (future) | `TLCG_O2C_BACKEND_URL` |
+
+## When editing this flow
+
+- `BACKEND_URL` in `purchase_request.html` must stay as **`/api/voucher`** — never hardcode a direct GAS exec URL.
+- To rotate the P2P deployment URL, update `TLCG_P2P_BACKEND_URL` in Vercel Dashboard → Settings → Environment Variables.
+- Align **`Goods-KTT`** sheet headers with `seedGoods` column names (`Items`, `Min. Order`, `Status`, `Category`, `Unit`, `Specification`, `CUKCUK/QBO Code`).
+- `Purchase_Request_History` sheet is auto-created on first submit if missing.
+- PR numbers are **client-generated** (localStorage counter per day). GAS does not enforce uniqueness — do not rely on them as globally unique IDs.

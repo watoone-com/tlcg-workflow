@@ -98,6 +98,48 @@ const progressNum = parseInt(progressRaw.split('/')[0], 10) || 0;
 
 The `approvalProgress` field set by `getVoucherSummary` (via `bestProgress + '/3'`) is the single source of truth for dashboard badge display. If the backend sets it correctly, the frontend will display correctly without any separate `getApprovalStatus` call.
 
+## Duplicate Approval Prevention (Backend Guards)
+
+`_approveVoucherCoreWithSheet_` has two hard guards that run on every approval attempt:
+
+```js
+// Guard 1 — same person trying to approve twice
+if (companyApprovers.approvers[approverRole].status === 'approved') {
+  return createResponse(false, 'Bạn đã phê duyệt phiếu này rồi.');
+}
+
+// Guard 2 — wrong person (out of sequence)
+if (approverRole !== currentApprover) {
+  return createResponse(false, 'Chưa đến lượt phê duyệt. Đang chờ: ' + currentApproverName);
+}
+```
+
+These guards fire **before** any row is written to the sheet. Both `handleApproveVoucher` (single) and `handleBulkApprove` (batch) route through the same core, so both are protected.
+
+**The guards only work correctly when reconstruction is correct.** If the email in `Master Company` mismatches the `approvedBy` field in history, reconstruction shows the role as "pending" → Guard 1 passes → duplicate row is written. Fix: keep emails consistent (see Approver Email Consistency above).
+
+## Cleaning Up Duplicate Rows (`cleanupDuplicateApprovalRows`)
+
+A one-time utility function in `VOUCHER_WORKFLOW_BACKEND.gs`. Run it directly from the Apps Script editor (no deployment needed):
+
+1. Open Apps Script editor → select `cleanupDuplicateApprovalRows` in the function dropdown
+2. Set `DRY_RUN = true` → **▶ Run** → check Execution Log to preview which rows will be deleted
+3. Set `DRY_RUN = false` → **▶ Run** → rows are deleted bottom-to-top (safe index handling)
+
+**Logic:** Groups rows by `(voucherNumber + approverEmail)`. For each group with >1 entry, keeps the row with the latest timestamp and deletes the rest. Vouchers with legitimate multi-approver rows (different emails per step) are not touched.
+
+## Protection Layers Summary
+
+| Layer | What it does |
+|---|---|
+| `Master Company` Col I email | Must match the login email used at approval time |
+| `else if` → `if` in reconstruction | Meta check always runs, even when email is present but mismatched |
+| Guard 1: "already approved" | Blocks re-approval by same person for same role |
+| Guard 2: "not your turn" | Blocks out-of-sequence approval |
+| `approvalEmailSetMap` Set fallback | Dashboard counts unique approver emails, not raw row count |
+| `statusProgress > 0 ? sp : ap` | Status column value always wins over action-row count |
+| `cleanupDuplicateApprovalRows` | One-time cleanup if duplicates were written before fixes deployed |
+
 ## Common Bugs to Avoid
 
 | Bug | Symptom | Fix |

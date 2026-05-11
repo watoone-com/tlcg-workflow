@@ -101,18 +101,28 @@ export default async function handler(req, res) {
     });
   }
 
-  // Smart routing: Route to appropriate backend based on action
-  // VOUCHER_BACKEND — voucher workflow (phiếu thu chi Apps Script URL)
-  const VOUCHER_BACKEND = process.env.VOUCHER_BACKEND_URL ||
+  // ── Backend URLs ─────────────────────────────────────────────────────────
+  // Canonical env var names: TLCG_CASH_BACKEND_URL, TLCG_P2P_BACKEND_URL,
+  // TLCG_CORE_BACKEND_URL, TLCG_O2C_BACKEND_URL.
+  // Old names kept as fallbacks so existing Vercel env vars continue working.
+
+  // TLCG_CASH_BACKEND — Cash & Admin: vouchers, cash book (TLCG_CASH_BACKEND.gs)
+  const VOUCHER_BACKEND = process.env.TLCG_CASH_BACKEND_URL ||
+    process.env.VOUCHER_BACKEND_URL ||
     'https://script.google.com/macros/s/AKfycby8ed1o2d7Cf6dU0zZwnDnHYpuoQEo4wVQ99UmgMY0btzTolsC_90QBvb056UZyXMG7/exec';
-  
-  // TLCGROUP_BACKEND - For intranet operations (login, getMasterData, etc.)
-  const TLCGROUP_BACKEND = process.env.TLCGROUP_BACKEND_URL ||
+
+  // TLCG_CORE_BACKEND — Shared/Auth: login, getMasterData, changePassword (TLCG_CORE_BACKEND.gs)
+  const TLCGROUP_BACKEND = process.env.TLCG_CORE_BACKEND_URL ||
+    process.env.TLCGROUP_BACKEND_URL ||
     'https://script.google.com/macros/s/AKfycbzPRHqtSW6JSef5A4tiDJbHnIhm2jhK9c8RH6lOBFPEMLR-EjF0iVJO2ndinMZRwbJ4Xw/exec';
-  
-  // PAYMENT_REQUEST_BACKEND - For payment request operations
-  const PAYMENT_REQUEST_BACKEND = process.env.PAYMENT_REQUEST_BACKEND_URL || 
+
+  // TLCG_P2P_BACKEND — P2P: purchaseRequest, paymentRequest (TLCG_P2P_BACKEND.gs)
+  const PAYMENT_REQUEST_BACKEND = process.env.TLCG_P2P_BACKEND_URL ||
+    process.env.PAYMENT_REQUEST_BACKEND_URL ||
     'https://script.google.com/macros/s/AKfycbxg_DlOgCCCq4393-OKdinqYt6Onni-YlkYiO6hbq9LuFiXC5oj1AiNgJbbJHih4g/exec';
+
+  // TLCG_O2C_BACKEND — O2C: quotation, contract, VAT invoice, acceptance (future)
+  // const O2C_BACKEND = process.env.TLCG_O2C_BACKEND_URL || null;
   
   // Determine which backend to use based on action
   let GAS_URL = VOUCHER_BACKEND; // Default to voucher Apps Script backend
@@ -157,8 +167,12 @@ export default async function handler(req, res) {
     console.log('[Proxy] Routing ' + action + ' to TLCGroup Backend');
   }
   
-  // Route payment request actions to Payment Request Backend
+  // Route P2P actions to TLCG_P2P_BACKEND (TLCG_P2P_BACKEND.gs)
   const paymentRequestActions = [
+    // ── Purchase Request (Đề nghị mua hàng) ──
+    'purchaseRequest',             // Submit purchase request form
+    'getPurchaseRequestHistory',   // List purchase requests
+    // ── Payment Request (Đề nghị thanh toán) ──
     'sendPaymentRequest',
     'submitPaymentRequest',        // Alias for sendPaymentRequest
     'approvePaymentRequest',
@@ -169,7 +183,7 @@ export default async function handler(req, res) {
     'getSuppliers',                // Load suppliers from "Master Vendor" sheet
     'getVendorBanks',              // Load vendor banks from "Master Vendor_Bank" sheet
     'addSupplier',                 // Add supplier to "Nhà cung cấp" sheet
-    'getPurchaseOrderTypes'        // Load purchase order types from "Purchase Order" sheet
+    'getPurchaseOrderTypes',       // Load purchase order types from "Purchase Order" sheet
     // NOTE: 'getEmployees' intentionally NOT here — it must go to VOUCHER_BACKEND
     // which returns companies_data[]. Payment Request backend returns employees[] (different shape).
   ];
