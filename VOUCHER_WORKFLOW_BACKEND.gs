@@ -3906,7 +3906,8 @@ function uploadFilesToDrive_(files, folderName) {
         fileUrl: f.getUrl(),
         fileSize: file.fileSize || blob.getBytes().length // Use provided size or calculate from blob
       };
-    } catch (e) { 
+    } catch (e) {
+      Logger.log('❌ uploadFilesToDrive_ error for ' + file.fileName + ': ' + e.message);
       return { 
         fileName: file.fileName, 
         error: true,
