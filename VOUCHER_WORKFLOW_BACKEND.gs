@@ -737,7 +737,7 @@ function handleSendEmail(requestBody) {
           const uploaded = uploadFilesToDrive_(uniqueFiles, voucherNo);
           fileLinks = uploaded.map(f => {
             if (f.error) {
-              return f.fileName + " (Lỗi upload)";
+              return f.fileName + " (Lỗi upload: " + (f.errorMessage || 'unknown') + ")";
             }
             // Format: "filename.pdf (2.45 MB)\nhttps://drive.google.com/file/..."
             const sizeMB = f.fileSize ? (f.fileSize / (1024 * 1024)).toFixed(2) + " MB" : '';
@@ -3890,29 +3890,36 @@ function handleGetVoucherHistory(requestBody) {
 
 /** HÀM PHỤ TRỢ */
 function uploadFilesToDrive_(files, folderName) {
-  // Sourced from script property DRIVE_VOUCHER_FOLDER_ID (fallback kept for continuity).
   const DRIVE_FOLDER_ID = getCfg_('DRIVE_VOUCHER_FOLDER_ID', '1RBBUUAQIrYTWeBONIgkMtELL0hxZhtqG');
-  const parent = DriveApp.getFolderById(DRIVE_FOLDER_ID);
-  let folder = parent.getFoldersByName(folderName).hasNext() ? parent.getFoldersByName(folderName).next() : parent.createFolder(folderName);
+  Logger.log('📁 uploadFilesToDrive_ — folder ID: ' + DRIVE_FOLDER_ID + ', subfolder: ' + folderName + ', files: ' + files.length);
+
+  let folder;
+  try {
+    const parent = DriveApp.getFolderById(DRIVE_FOLDER_ID);
+    folder = parent.getFoldersByName(folderName).hasNext()
+      ? parent.getFoldersByName(folderName).next()
+      : parent.createFolder(folderName);
+    Logger.log('📁 Subfolder ready: ' + folder.getId());
+  } catch (e) {
+    Logger.log('❌ uploadFilesToDrive_ cannot access parent folder ' + DRIVE_FOLDER_ID + ': ' + e.message);
+    return files.map(file => ({ fileName: file.fileName, error: true, errorMessage: e.message, fileSize: file.fileSize || 0 }));
+  }
+
   return files.map(file => {
     try {
       let data = file.fileData.includes(',') ? file.fileData.split(',')[1] : file.fileData;
       const blob = Utilities.newBlob(Utilities.base64Decode(data), file.mimeType, file.fileName);
       const f = folder.createFile(blob);
       f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
-      // Return file info including size if available
+      Logger.log('✅ Uploaded: ' + file.fileName + ' → ' + f.getId());
       return { 
         fileName: file.fileName, 
         fileUrl: f.getUrl(),
-        fileSize: file.fileSize || blob.getBytes().length // Use provided size or calculate from blob
+        fileSize: file.fileSize || blob.getBytes().length
       };
     } catch (e) {
       Logger.log('❌ uploadFilesToDrive_ error for ' + file.fileName + ': ' + e.message);
-      return { 
-        fileName: file.fileName, 
-        error: true,
-        fileSize: file.fileSize || 0
-      }; 
+      return { fileName: file.fileName, error: true, errorMessage: e.message, fileSize: file.fileSize || 0 }; 
     }
   });
 }

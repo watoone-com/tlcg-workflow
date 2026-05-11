@@ -9121,8 +9121,8 @@
             console.log('validCCRecipients:', validCCRecipients);
 
             // ==================== FILE UPLOAD TO GOOGLE DRIVE ====================
-            // Use /api/drive-upload (Vercel serverless + Service Account) when Drive is configured.
-            const useDriveAPI = isDriveConfigured();
+            // Service Accounts have no Drive storage quota on personal folders — must use GAS/DriveApp.
+            const useDriveAPI = false;
 
             // Limits for base64-in-payload upload via GAS doPost
             const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB per file

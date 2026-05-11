@@ -1,0 +1,36 @@
+---
+description: Signature upload rules for all signature inputs across the TLCG Workflow (voucher, payment request, approver, acknowledge modals)
+globs: "**/*.html,**/*.gs,**/*.js"
+alwaysApply: false
+---
+
+# Signature Upload Rules
+
+All signature inputs across the workflow (requester, approver, acknowledge) must follow these unified rules.
+
+## Accepted File Types
+- `accept="image/png,image/jpeg,image/jpg"` on every `<input type="file">` for signatures
+- JS validation: `['image/png', 'image/jpeg', 'image/jpg'].includes(file.type)`
+- Error message: `'Vui lòng chọn file hình ảnh PNG hoặc JPG'`
+
+## Compression (applied before size check)
+- Max dimensions: **800 × 400 px** (maintain aspect ratio)
+- JPEG quality: **0.7**
+- Always fill canvas with **white** before drawing to prevent transparent PNGs turning black when saved as JPEG:
+
+```js
+ctx.fillStyle = '#ffffff';
+ctx.fillRect(0, 0, width, height);
+ctx.drawImage(img, 0, 0, width, height);
+const base64 = canvas.toDataURL('image/jpeg', quality);
+```
+
+## Max Size After Compression
+- **500 KB** (base64 string length)
+- Check: `base64Data.length > 500 * 1024`
+- Error message: `'Chữ ký vẫn quá lớn sau khi nén (tối đa 500KB). Vui lòng chọn ảnh nhỏ hơn.'`
+
+## Files Affected
+- `voucher.html` — requester signature, approver modal signature, bulk approver signature, acknowledge signature
+- `payment_request.html` — any signature inputs
+- `approve_voucher.html`, `reject_voucher.html`, `approve_payment_request.html`, `reject_payment_request.html`
