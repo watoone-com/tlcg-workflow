@@ -4531,3 +4531,98 @@ function patchFullyApprove44Vouchers() {
   Logger.log('=== PATCH COMPLETE: patched=' + patched + ', skipped=' + skipped + ', errors=' + errors + ' ===');
   SpreadsheetApp.flush();
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// cleanupDuplicateApprovalRows
+// One-time utility: removes duplicate approval rows where the same approver
+// approved the same voucher more than once (caused by email-mismatch bug that
+// allowed repeated 1/3 approvals).
+//
+// HOW TO RUN:
+//   Apps Script editor → select "cleanupDuplicateApprovalRows" → ▶ Run
+//   Check Execution Log for a full report before rows are deleted.
+//   Set DRY_RUN = true (below) to preview without deleting anything.
+// ─────────────────────────────────────────────────────────────────────────────
+function cleanupDuplicateApprovalRows() {
+  const DRY_RUN = false; // set true to preview without deleting
+
+  const ss = SpreadsheetApp.openById(VOUCHER_HISTORY_SHEET_ID);
+  const sheet = ss.getSheetByName(VH_SHEET_NAME);
+  if (!sheet) { Logger.log('Sheet not found: ' + VH_SHEET_NAME); return; }
+
+  const lastRow = sheet.getLastRow();
+  if (lastRow <= 1) { Logger.log('No data rows.'); return; }
+
+  // Read all rows (A-R)
+  const data = sheet.getRange(1, 1, lastRow, 18).getValues();
+  const headers = data[0];
+
+  // Column indices (0-based)
+  // A=0 voucherNumber, H=7 timestamp, J=9 status, L=11 action, P=15 approverEmail, R=17 metaJson
+  const COL_VOUCHER  = 0;
+  const COL_TS       = 7;
+  const COL_ACTION   = 11;
+  const COL_APPROVER = 15;
+
+  // Helper: is this row an approval action?
+  function isApprovalRow(action) {
+    const a = (action || '').toString();
+    return a.includes('Duyệt bởi') || a === 'Approved' || a.startsWith('Approved by');
+  }
+
+  // Group rows by (voucherNumber + approverKey).
+  // approverKey = approverEmail if present, else name extracted from "Duyệt bởi X".
+  // Value: array of { rowIdx (1-based), ts }
+  const groups = new Map(); // key → [{ rowIdx, ts }]
+
+  for (let i = 1; i < data.length; i++) {
+    const row = data[i];
+    const vNum = (row[COL_VOUCHER] || '').toString().trim();
+    if (!vNum) continue;
+    if (!isApprovalRow(row[COL_ACTION])) continue;
+
+    const email = (row[COL_APPROVER] || '').toString().trim().toLowerCase();
+    const name  = row[COL_ACTION].toString().replace(/^Duyệt bởi\s*/i, '').trim();
+    const approverKey = email || name || '_unknown_';
+    const groupKey = vNum + '|' + approverKey;
+
+    const ts = row[COL_TS] instanceof Date ? row[COL_TS].getTime() : new Date(row[COL_TS]).getTime() || 0;
+
+    if (!groups.has(groupKey)) groups.set(groupKey, []);
+    groups.get(groupKey).push({ rowIdx: i + 1, ts }); // rowIdx is 1-based sheet row
+  }
+
+  // Collect rows to delete: for each group with >1 entry, keep the latest, delete the rest
+  const rowsToDelete = [];
+  groups.forEach((entries, groupKey) => {
+    if (entries.length <= 1) return;
+    // Sort by timestamp descending — keep the first (latest)
+    entries.sort((a, b) => b.ts - a.ts);
+    const keep = entries[0];
+    const dups  = entries.slice(1);
+    Logger.log('Group: ' + groupKey + ' — keeping row ' + keep.rowIdx + ', deleting rows: ' + dups.map(d => d.rowIdx).join(', '));
+    dups.forEach(d => rowsToDelete.push(d.rowIdx));
+  });
+
+  if (rowsToDelete.length === 0) {
+    Logger.log('✅ No duplicate approval rows found.');
+    return;
+  }
+
+  Logger.log('Rows to delete (' + rowsToDelete.length + '): ' + rowsToDelete.sort((a,b) => a-b).join(', '));
+
+  if (DRY_RUN) {
+    Logger.log('DRY_RUN=true — no rows deleted. Set DRY_RUN=false to apply.');
+    return;
+  }
+
+  // Delete rows from bottom to top so row indices stay valid
+  rowsToDelete.sort((a, b) => b - a);
+  rowsToDelete.forEach(rowIdx => {
+    sheet.deleteRow(rowIdx);
+    Logger.log('🗑 Deleted row ' + rowIdx);
+  });
+
+  SpreadsheetApp.flush();
+  Logger.log('✅ Done — deleted ' + rowsToDelete.length + ' duplicate approval row(s).');
+}
