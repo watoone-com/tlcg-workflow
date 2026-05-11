@@ -11,8 +11,8 @@ This repo has a three-tier architecture:
 Browser (index.html / phieu_thu_chi.html / de_nghi_thanh_toan.html)
     ↓ fetch('/api/voucher', …)
 Vercel proxy (api/voucher/[action].js — simple pass-through, no cache)
-    ↓ fetch(process.env.VOUCHER_BACKEND_URL or built-in fallback, …)
-Google Apps Script (VOUCHER_WORKFLOW_BACKEND.gs / PAYMENT_REQUEST_BACKEND.gs)
+    ↓ fetch(process.env.TLCG_CASH_BACKEND_URL / TLCG_P2P_BACKEND_URL or built-in fallback, …)
+Google Apps Script (TLCG_CASH_BACKEND.gs / TLCG_P2P_BACKEND.gs)
     ↓ SpreadsheetApp.openById(…).getDataRange().getValues()
 Google Sheets (Voucher_History, Master Employee, Master Company, …)
 ```
@@ -222,8 +222,8 @@ obvious.
 - Proxy:
   [api/voucher/[action].js](../../api/voucher/[action].js)
 - GAS backends:
-  [VOUCHER_WORKFLOW_BACKEND.gs](../../VOUCHER_WORKFLOW_BACKEND.gs),
-  [PAYMENT_REQUEST_BACKEND.gs](../../PAYMENT_REQUEST_BACKEND.gs)
+  [TLCG_CASH_BACKEND.gs](../../TLCG_CASH_BACKEND.gs),
+  [TLCG_P2P_BACKEND.gs](../../TLCG_P2P_BACKEND.gs)
 - Deployment hostname used for curl measurements: `https://tlcg-workflow.vercel.app`
   (project ID lives in `.vercel/project.json`).
 

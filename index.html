@@ -3633,8 +3633,8 @@
 
         const apiKey = "";
         // ⚠️ IMPORTANT: Use proxy URL for voucher operations, or direct URL for intranet operations
-        // For voucher operations: '/api/voucher' (uses VOUCHER_WORKFLOW_BACKEND)
-        // For intranet operations (login, getMasterData): Use TLCG_INTRANET_BACKEND directly if needed
+        // For voucher operations: '/api/voucher' (uses TLCG_CASH_BACKEND)
+        // For intranet operations (login, getMasterData): routed via /api/voucher → TLCG_CORE_BACKEND
         // TLCGROUP_BACKEND: https://script.google.com/macros/s/AKfycbzPRHqtSW6JSef5A4tiDJbHnIhm2jhK9c8RH6lOBFPEMLR-EjF0iVJO2ndinMZRwbJ4Xw/exec
         const GOOGLE_APPS_SCRIPT_WEB_APP_URL = '/api/voucher'; // Voucher operations proxy
         const INTRANET_BACKEND_URL = 'https://script.google.com/macros/s/AKfycbzPRHqtSW6JSef5A4tiDJbHnIhm2jhK9c8RH6lOBFPEMLR-EjF0iVJO2ndinMZRwbJ4Xw/exec'; // Login, changePassword, getMasterData

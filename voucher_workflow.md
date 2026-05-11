@@ -2,7 +2,7 @@
 
 ## Overview
 
-A financial voucher (Receipt/Payment) management system for TLCGroup. Built as a single-page app (`voucher.html`) backed by Google Apps Script (`VOUCHER_WORKFLOW_BACKEND.gs`). Employees create vouchers through a 5-step form; vouchers go through a sequential 3-tier approval chain via email.
+A financial voucher (Receipt/Payment) management system for TLCGroup. Built as a single-page app (`voucher.html`) backed by Google Apps Script (`TLCG_CASH_BACKEND.gs`). Employees create vouchers through a 5-step form; vouchers go through a sequential 3-tier approval chain via email.
 
 ---
 
@@ -11,7 +11,7 @@ A financial voucher (Receipt/Payment) management system for TLCGroup. Built as a
 ```
 voucher.html (SPA frontend)
         ↕  HTTPS POST/GET  (FormData, JSON body)
-VOUCHER_WORKFLOW_BACKEND.gs  (Google Apps Script Web App)
+TLCG_CASH_BACKEND.gs  (Google Apps Script Web App)
         ↕
 Google Sheets (ID: 1ujmPbtEdkGLgEshfhvV8gRB6R0GLI31jsZM5rDOJS0g)
   ├── Voucher_History   ← all voucher records + approval history (18 cols)
@@ -271,7 +271,7 @@ sendForApproval() triggered
 │                       amountInWords, expenseItems[], files[],
 │                       companyApprovers, requesterSignature }
 │
-└─ handleSendEmail() — VOUCHER_WORKFLOW_BACKEND.gs
+└─ handleSendEmail() — TLCG_CASH_BACKEND.gs
     │
     ├─ Duplicate check: scan Voucher_History col A + col L for existing Submit row
     │
@@ -438,9 +438,9 @@ Click voucher card → openVoucherDetail(voucherNumber)
 
 ## Deployment Checklist
 
-### 1. Google Apps Script (`VOUCHER_WORKFLOW_BACKEND.gs`)
+### 1. Google Apps Script (`TLCG_CASH_BACKEND.gs`)
 1. Open [script.google.com](https://script.google.com) → open project
-2. Paste updated `VOUCHER_WORKFLOW_BACKEND.gs` content
+2. Paste updated `TLCG_CASH_BACKEND.gs` content
 3. **Deploy → New deployment → Web app**
    - Execute as: **Me**
    - Who has access: **Anyone**

@@ -1,12 +1,12 @@
 ---
 description: Purchase request flow (Đề Nghị Mua Hàng) — validation, catalog, numbering, payloads, Apps Script coupling
-globs: "**/purchase_request.html,**/TLCG_INTRANET_BACKEND_COMPLETE.gs,**/tlcg_companies_embed.js"
+globs: "**/purchase_request.html,**/TLCG_P2P_BACKEND.gs,**/TLCG_CORE_BACKEND.gs,**/tlcg_companies_embed.js"
 alwaysApply: false
 ---
 
 # Purchase Request Flow (`purchase_request.html`)
 
-Single-page wizard (4 steps) posting to **`BACKEND_URL`** (Apps Script Web App `.exec`). **Not** routed through `/api/voucher`; keep configuration in sync with the deployed GAS project manually.
+Single-page wizard (4 steps) posting to **`/api/voucher`** (Vercel proxy → `TLCG_P2P_BACKEND.gs`). All actions route through the proxy — no direct GAS URL in the frontend.
 
 ---
 

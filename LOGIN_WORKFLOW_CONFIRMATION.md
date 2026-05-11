@@ -39,7 +39,7 @@
    - Routes `login` action to `TLCGROUP_BACKEND` URL
    - URL: `https://script.google.com/macros/s/AKfycbzPRHqtSW6JSef5A4tiDJbHnIhm2jhK9c8RH6lOBFPEMLR-EjF0iVJO2ndinMZRwbJ4Xw/exec`
 
-4. **Backend receives request** (`TLCG_INTRANET_BACKEND_COMPLETE.gs`)
+4. **Backend receives request** (`TLCG_CORE_BACKEND.gs`)
    - `doPost()` function receives the request
    - Parses request body
    - Routes to `handleLogin()` function
@@ -90,7 +90,7 @@
 
 - **Frontend login**: `index.html` (line ~1689)
 - **API proxy**: `api/voucher.js` (routes to TLCGROUP_BACKEND)
-- **Backend authentication**: `TLCG_INTRANET_BACKEND_COMPLETE.gs`
+- **Backend authentication**: `TLCG_CORE_BACKEND.gs`
   - `doPost()`: Receives requests
   - `handleLogin()`: Handles login action
   - `authenticateUser()`: Performs authentication

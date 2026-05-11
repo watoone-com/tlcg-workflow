@@ -120,7 +120,7 @@ These guards fire **before** any row is written to the sheet. Both `handleApprov
 
 ## Cleaning Up Duplicate Rows (`cleanupDuplicateApprovalRows`)
 
-A one-time utility function in `VOUCHER_WORKFLOW_BACKEND.gs`. Run it directly from the Apps Script editor (no deployment needed):
+A one-time utility function in `TLCG_CASH_BACKEND.gs`. Run it directly from the Apps Script editor (no deployment needed):
 
 1. Open Apps Script editor → select `cleanupDuplicateApprovalRows` in the function dropdown
 2. Set `DRY_RUN = true` → **▶ Run** → check Execution Log to preview which rows will be deleted

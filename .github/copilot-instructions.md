@@ -17,7 +17,7 @@
    - **Key patterns:** Form state in global arrays (`expenseItems[]`, `approvalHistory[]`), localStorage auto-save
    - **External libs:** html2pdf.js, SheetJS (XLSX), font-awesome
 
-2. **Google Apps Script Backend** ([VOUCHER_WORKFLOW_BACKEND.gs](../VOUCHER_WORKFLOW_BACKEND.gs), [TLCG_INTRANET_BACKEND_COMPLETE.gs](../TLCG_INTRANET_BACKEND_COMPLETE.gs))
+2. **Google Apps Script Backend** ([TLCG_CASH_BACKEND.gs](../TLCG_CASH_BACKEND.gs), [TLCG_P2P_BACKEND.gs](../TLCG_P2P_BACKEND.gs), [TLCG_CORE_BACKEND.gs](../TLCG_CORE_BACKEND.gs))
    - Node-like `doPost()` handler receives JSON/form data
    - Routes requests by `action` field: `login`, `submit`, `approve`, `reject`, `sync`
    - **CRITICAL:** Sheet IDs hardcoded in constants at top of file

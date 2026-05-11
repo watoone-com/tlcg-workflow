@@ -135,10 +135,10 @@ Shows the current backend URLs configured in `api/voucher.js` and the Vercel env
 - "what backend URLs is the proxy using?"
 
 **Output includes:**
-- `VOUCHER_BACKEND` fallback URL
-- `TLCGROUP_BACKEND` fallback URL
-- `PAYMENT_REQUEST_BACKEND` fallback URL
-- Env var names to set in Vercel Dashboard
+- `TLCG_CASH_BACKEND` URL (vouchers)
+- `TLCG_CORE_BACKEND` URL (login / getMasterData)
+- `TLCG_P2P_BACKEND` URL (purchase & payment requests)
+- Canonical + legacy env var names to set in Vercel Dashboard
 
 ---
 
@@ -178,7 +178,7 @@ Fetches recent Vercel function logs using `vercel logs`.
 
 ### 8. `read_gas_backend`
 
-Reads a function or line range from `VOUCHER_WORKFLOW_BACKEND.gs` without opening the file manually.
+Reads a function or line range from `TLCG_CASH_BACKEND.gs` without opening the file manually.
 
 **Parameters:**
 
@@ -260,9 +260,12 @@ Set these in **Vercel Dashboard → Project → Settings → Environment Variabl
 
 | Variable | Backend | Used for |
 |---|---|---|
-| `VOUCHER_BACKEND_URL` | `VOUCHER_WORKFLOW_BACKEND.gs` | All voucher operations (`getVoucherSummary`, `approveVoucher`, etc.) |
-| `TLCGROUP_BACKEND_URL` | `TLCG_INTRANET_BACKEND_COMPLETE.gs` | Login, `getMasterData` |
-| `PAYMENT_REQUEST_BACKEND_URL` | `PAYMENT_REQUEST_BACKEND.gs` | Payment request operations |
+| `TLCG_CASH_BACKEND_URL` | `TLCG_CASH_BACKEND.gs` | All voucher operations (`getVoucherSummary`, `approveVoucher`, etc.) |
+| `TLCG_CORE_BACKEND_URL` | `TLCG_CORE_BACKEND.gs` | Login, `getMasterData` |
+| `TLCG_P2P_BACKEND_URL` | `TLCG_P2P_BACKEND.gs` | Purchase & payment request operations |
+| *(legacy)* `VOUCHER_BACKEND_URL` | fallback for `TLCG_CASH_BACKEND_URL` | — |
+| *(legacy)* `TLCGROUP_BACKEND_URL` | fallback for `TLCG_CORE_BACKEND_URL` | — |
+| *(legacy)* `PAYMENT_REQUEST_BACKEND_URL` | fallback for `TLCG_P2P_BACKEND_URL` | — |
 
 `GET /api/config` (whitelist) exposes: `GOOGLE_CLIENT_ID`, `GOOGLE_API_KEY`, `DRIVE_VOUCHER_FOLDER_ID`, `MASTER_SPREADSHEET_ID`, `PURCHASE_REQUEST_FOLDER_ID`, `ACCEPTANCE_MINUTES_FOLDER_ID`, `PAYMENT_REQUEST_FOLDER_ID`, and **`PAY_DRAFT_PARENT_FOLDER_ID`** (same value as payment folder — used by `payment_request.html`).
 
@@ -283,8 +286,8 @@ TLCG Workflow/
 │   ├── voucher.js        # Main Vercel proxy (routes to correct backend)
 │   └── voucher/
 │       └── [action].js   # Legacy proxy route
-├── VOUCHER_WORKFLOW_BACKEND.gs     # Voucher GAS backend
-├── PAYMENT_REQUEST_BACKEND.gs      # Payment GAS backend
-├── TLCG_INTRANET_BACKEND_COMPLETE.gs  # Login/intranet GAS backend
+├── TLCG_CASH_BACKEND.gs            # Cash & voucher GAS backend
+├── TLCG_P2P_BACKEND.gs             # P2P (purchase & payment requests) GAS backend
+├── TLCG_CORE_BACKEND.gs            # Core/auth (login, getMasterData) GAS backend
 └── TLCG-MCP-GUIDE.md    # This file
 ```

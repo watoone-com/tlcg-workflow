@@ -188,7 +188,7 @@ const TOOLS = [
   },
   {
     name: 'read_gas_backend',
-    description: 'Read a section of VOUCHER_WORKFLOW_BACKEND.gs by function name or line range, useful for checking what a specific handler does.',
+    description: 'Read a section of TLCG_CASH_BACKEND.gs by function name or line range, useful for checking what a specific handler does.',
     inputSchema: {
       type: 'object',
       properties: {
@@ -376,7 +376,8 @@ function handleReadProxyConfig() {
   let capture = false;
 
   for (const line of lines) {
-    if (line.includes('VOUCHER_BACKEND') || line.includes('TLCGROUP_BACKEND') || line.includes('PAYMENT_REQUEST_BACKEND')) {
+    if (line.includes('TLCG_CASH_BACKEND') || line.includes('TLCG_CORE_BACKEND') || line.includes('TLCG_P2P_BACKEND') ||
+        line.includes('VOUCHER_BACKEND') || line.includes('TLCGROUP_BACKEND') || line.includes('PAYMENT_REQUEST_BACKEND')) {
       capture = true;
     }
     if (capture) {
@@ -391,10 +392,12 @@ function handleReadProxyConfig() {
     '',
     ...relevant.filter(l => l.trim()),
     '',
-    'Env var names to set in Vercel:',
-    '  VOUCHER_BACKEND_URL         → Voucher workflow backend',
-    '  TLCGROUP_BACKEND_URL        → Login / getMasterData backend',
-    '  PAYMENT_REQUEST_BACKEND_URL → Payment request backend',
+    'Env var names to set in Vercel (canonical):',
+    '  TLCG_CASH_BACKEND_URL → TLCG_CASH_BACKEND.gs  (vouchers, cash book)',
+    '  TLCG_CORE_BACKEND_URL → TLCG_CORE_BACKEND.gs  (login, getMasterData)',
+    '  TLCG_P2P_BACKEND_URL  → TLCG_P2P_BACKEND.gs   (purchase & payment requests)',
+    'Legacy fallbacks (still accepted):',
+    '  VOUCHER_BACKEND_URL, TLCGROUP_BACKEND_URL, PAYMENT_REQUEST_BACKEND_URL',
   ];
   return output.join('\n');
 }
@@ -428,14 +431,14 @@ async function handleGetVercelLogs({ lines = 50 }) {
 }
 
 function handleReadGasBackend({ functionName, startLine, endLine }) {
-  const content = readProjectFile('VOUCHER_WORKFLOW_BACKEND.gs');
-  if (!content) return '❌ VOUCHER_WORKFLOW_BACKEND.gs not found';
+  const content = readProjectFile('TLCG_CASH_BACKEND.gs');
+  if (!content) return '❌ TLCG_CASH_BACKEND.gs not found';
 
   const allLines = content.split('\n');
 
   if (functionName) {
     const fnIndex = allLines.findIndex(l => l.includes(`function ${functionName}`));
-    if (fnIndex === -1) return `❌ Function "${functionName}" not found in VOUCHER_WORKFLOW_BACKEND.gs`;
+    if (fnIndex === -1) return `❌ Function "${functionName}" not found in TLCG_CASH_BACKEND.gs`;
 
     // Capture from function start until matching closing brace
     let braceDepth = 0;

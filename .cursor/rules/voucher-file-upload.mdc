@@ -15,7 +15,7 @@ alwaysApply: false
 - Multiple files per row allowed (`multiple` attribute)
 - Upload path: `useDriveAPI = false` — always use GAS base64 path (Service Accounts have no Drive storage quota on personal folders)
 
-## GAS Drive Upload (`uploadFilesToDrive_` in VOUCHER_WORKFLOW_BACKEND.gs)
+## GAS Drive Upload (`uploadFilesToDrive_` in TLCG_CASH_BACKEND.gs)
 
 - Folder ID sourced from Script Property `DRIVE_VOUCHER_FOLDER_ID` (fallback: `1RBBUUAQIrYTWeBONIgkMtELL0hxZhtqG`)
 - GAS web app MUST be deployed with **"Execute as: Me (script owner)"** — not "User accessing the web app". Running as the submitting user is unreliable: Drive operations may succeed for some users and silently fail for others depending on how GAS resolves the execution context at deploy time. "Execute as: Me" makes uploads consistent for all users regardless of who submits.

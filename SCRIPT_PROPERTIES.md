@@ -17,9 +17,9 @@ rotate IDs / folders / approver lists without touching source code.
 
 ## Projects
 
-### `VOUCHER_WORKFLOW_BACKEND.gs` — voucher
+### `TLCG_CASH_BACKEND.gs` — voucher / cash
 
-Maps to [VOUCHER_WORKFLOW_BACKEND.gs](VOUCHER_WORKFLOW_BACKEND.gs).
+Maps to [TLCG_CASH_BACKEND.gs](TLCG_CASH_BACKEND.gs).
 
 | Key | Type | Example / Default fallback | Used by |
 | --- | --- | --- | --- |
@@ -41,16 +41,16 @@ required but allowed inside the string):
 If `IMPORT_APPROVERS` is missing or not valid JSON, the backend falls back to
 the hardcoded roster shown above.
 
-### `PAYMENT_REQUEST_BACKEND.gs` — payment_request
+### `TLCG_P2P_BACKEND.gs` — P2P (purchase & payment requests)
 
-Maps to [PAYMENT_REQUEST_BACKEND.gs](PAYMENT_REQUEST_BACKEND.gs).
+Maps to [TLCG_P2P_BACKEND.gs](TLCG_P2P_BACKEND.gs).
 
 | Key | Type | Example / Default fallback | Used by |
 | --- | --- | --- | --- |
 | `MASTER_SPREADSHEET_ID` | string | `1ujmPbtEdkGLgEshfhvV8gRB6R0GLI31jsZM5rDOJS0g` | Top-level constants `USERS_SHEET_ID` and `CONFIG.SPREADSHEET_ID` |
 
 Note: this backend reads the **same** `MASTER_SPREADSHEET_ID` property as
-`VOUCHER_WORKFLOW_BACKEND.gs`. If both scripts live in the same Apps Script
+`TLCG_CASH_BACKEND.gs`. If both scripts live in the same Apps Script
 project, setting the property once covers both flows. If they are separate
 projects, set it in each. The frontend for this flow (`payment_request.html`)
 reuses the Vercel-side `DRIVE_VOUCHER_FOLDER_ID`, `GOOGLE_CLIENT_ID` and
@@ -71,7 +71,8 @@ fetch them via `/api/config`. Keep the two sides in sync:
 - `IMPORT_APPROVERS` lives only in GAS (server-only).
 
 Server-only GAS web app URLs are set on Vercel (not exposed to the browser):
-`VOUCHER_BACKEND_URL`, `TLCGROUP_BACKEND_URL`, and `PAYMENT_REQUEST_BACKEND_URL`
+`TLCG_CASH_BACKEND_URL`, `TLCG_CORE_BACKEND_URL`, `TLCG_P2P_BACKEND_URL`
+(legacy fallbacks: `VOUCHER_BACKEND_URL`, `TLCGROUP_BACKEND_URL`, `PAYMENT_REQUEST_BACKEND_URL`)
 — see `api/voucher.js`.
 
 Use [`.env.example`](.env.example) as the template — copy it to `.env` locally (`.env` is git-ignored). Set the same keys in Vercel.

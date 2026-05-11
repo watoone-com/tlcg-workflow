@@ -19,21 +19,24 @@ function idPreview(id) {
 }
 
 export default async function handler(req, res) {
-  const voucherUrl = process.env.VOUCHER_BACKEND_URL;
-  const tlgroupUrl = process.env.TLCGROUP_BACKEND_URL;
-  const paymentBackendUrl = process.env.PAYMENT_REQUEST_BACKEND_URL;
+  const voucherUrl = process.env.TLCG_CASH_BACKEND_URL || process.env.VOUCHER_BACKEND_URL;
+  const tlgroupUrl = process.env.TLCG_CORE_BACKEND_URL || process.env.TLCGROUP_BACKEND_URL;
+  const paymentBackendUrl = process.env.TLCG_P2P_BACKEND_URL || process.env.PAYMENT_REQUEST_BACKEND_URL;
 
   const envStatus = {
-    voucher: {
-      VOUCHER_BACKEND_URL: voucherUrl ? '✅ Set' : '❌ Not set (using fallback)',
+    cashBackend: {
+      TLCG_CASH_BACKEND_URL: flagSet(process.env.TLCG_CASH_BACKEND_URL),
+      VOUCHER_BACKEND_URL: process.env.VOUCHER_BACKEND_URL ? '⚠️ Set (legacy fallback)' : '— not set',
       urlPreview: urlPreview(voucherUrl || '')
     },
-    tlcgroup: {
-      TLCGROUP_BACKEND_URL: flagSet(tlgroupUrl),
+    coreBackend: {
+      TLCG_CORE_BACKEND_URL: flagSet(process.env.TLCG_CORE_BACKEND_URL),
+      TLCGROUP_BACKEND_URL: process.env.TLCGROUP_BACKEND_URL ? '⚠️ Set (legacy fallback)' : '— not set',
       urlPreview: urlPreview(tlgroupUrl || '')
     },
-    paymentBackend: {
-      PAYMENT_REQUEST_BACKEND_URL: flagSet(paymentBackendUrl),
+    p2pBackend: {
+      TLCG_P2P_BACKEND_URL: flagSet(process.env.TLCG_P2P_BACKEND_URL),
+      PAYMENT_REQUEST_BACKEND_URL: process.env.PAYMENT_REQUEST_BACKEND_URL ? '⚠️ Set (legacy fallback)' : '— not set',
       urlPreview: urlPreview(paymentBackendUrl || '')
     },
     frontendConfigWhitelist: {
