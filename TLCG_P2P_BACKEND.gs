@@ -1275,16 +1275,32 @@ function handleGetP2PMasterData(data) {
     var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
 
     // ── Employees (Master Employee) ──────────────────────────
+    // Column layout: A=Họ và tên, B=Chức vụ, C=Phòng ban, D=Công ty,
+    //                E=Email, F=Điện thoại, G=Status, H=EmployeeId, I=Role, J=isAdmin
     var empSheet = ss.getSheetByName('Master Employee');
     var employees = [];
     if (empSheet) {
-      var empVals    = empSheet.getDataRange().getValues();
-      var empHeaders = empVals[0];
-      employees = empVals.slice(1).map(function(row) {
-        var obj = {};
-        empHeaders.forEach(function(h, i) { obj[h] = row[i]; });
-        return obj;
-      });
+      var empVals = empSheet.getDataRange().getValues();
+      for (var i = 1; i < empVals.length; i++) {
+        var row = empVals[i];
+        if (!row[0]) continue; // skip blank rows
+        employees.push({
+          // Normalized keys — matches what seedRequesters / seedApprovers expect
+          full_name:        (row[0] || '').toString().trim(),   // e.full_name || e['Họ và tên']
+          'Họ và tên':      (row[0] || '').toString().trim(),
+          employee_status:  (row[6] || 'Active').toString().trim(), // e.employee_status || e['Status']
+          'Status':         (row[6] || 'Active').toString().trim(),
+          department_name:  (row[2] || '').toString().trim(),   // e.department_name || e['Bộ phận']
+          'Bộ phận':        (row[2] || '').toString().trim(),
+          employee_email:   (row[4] || '').toString().trim(),   // e.employee_email || e['Email']
+          'Email':          (row[4] || '').toString().trim(),
+          company:          (row[3] || '').toString().trim(),
+          position:         (row[1] || '').toString().trim(),
+          phone:            (row[5] || '').toString().trim(),
+          employeeId:       (row[7] || '').toString().trim(),
+          role:             (row[8] || '').toString().trim(),
+        });
+      }
       Logger.log('[P2P] Master Employee records: ' + employees.length);
     } else {
       Logger.log('[P2P] ⚠️ Sheet "Master Employee" not found');
