@@ -1469,10 +1469,34 @@
     const _MASTER_TS_KEY = 'tlc_master_data_timestamp';
     const _MASTER_TTL    = 30 * 60 * 1000;
 
-    function _applyMasterData(data) {
+    async function _applyMasterData(data) {
         seedRequesters(data.employees || []);
         seedApprovers(data.employees  || []);
-        seedGoods(data.goods          || []);
+        const goods = data.goods || data.data?.goods || [];
+        seedGoods(goods);
+        // If CORE backend didn't include goods, fall back to P2P backend
+        if (_goodsCatalog.length === 0 && goods.length === 0) {
+            console.warn('[Catalog] goods missing from CORE master data — fetching from P2P backend');
+            try {
+                const r = await fetch(BACKEND_URL, {
+                    method: 'POST', mode: 'cors', redirect: 'follow',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'action=getP2PMasterData'
+                });
+                const j = JSON.parse(await r.text());
+                const p2pGoods = j.goods || j.data?.goods || [];
+                console.log('[Catalog] P2P fallback goods:', p2pGoods.length);
+                seedGoods(p2pGoods);
+                // Patch the shared cache so next open works immediately
+                try {
+                    const cached = JSON.parse(localStorage.getItem(_MASTER_KEY) || '{}');
+                    cached.goods = p2pGoods;
+                    localStorage.setItem(_MASTER_KEY, JSON.stringify(cached));
+                } catch(e) {}
+            } catch (err) {
+                console.error('[Catalog] P2P fallback failed', err);
+            }
+        }
     }
 
     async function _fetchAndCacheMaster() {
