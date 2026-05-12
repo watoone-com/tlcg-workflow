@@ -14,13 +14,13 @@ Single-page wizard (4 steps) posting to **`/api/voucher`** (Vercel proxy → `TL
 
 | Frontend call | Routes to | Implemented in |
 |---------------|-----------|----------------|
-| `action=getP2PMasterData` | `TLCG_P2P_BACKEND` (`TLCG_P2P_BACKEND.gs`) | `handleGetP2PMasterData` → employees + Goods-KTT + suppliers (P2P-only, isolated from shared `getMasterData`) |
+| `action=getMasterData` | `TLCG_CORE_BACKEND` (`TLCG_CORE_BACKEND.gs`) | `handleGetMasterData` → employees + Goods-KTT + customers + suppliers — **shared with all workflows** |
 | `action=purchaseRequest` | `TLCG_P2P_BACKEND` (`TLCG_P2P_BACKEND.gs`) | `handlePurchaseRequest` → writes to `Purchase_Request_History` sheet |
 | `action=getPurchaseRequestHistory` | `TLCG_P2P_BACKEND` | `handleGetPurchaseRequestHistory` |
 
 **`BACKEND_URL = '/api/voucher'`** (Vercel proxy) — do NOT hardcode a direct GAS exec URL.
 The proxy in `api/voucher.js` routes by action:
-- `getP2PMasterData` → `TLCG_P2P_BACKEND_URL` (env var, fallback to `PAYMENT_REQUEST_BACKEND_URL`)
+- `getMasterData` → `TLCG_CORE_BACKEND_URL` — centralized master data for ALL workflows
 - `purchaseRequest` → `TLCG_P2P_BACKEND_URL` (env var, fallback to `PAYMENT_REQUEST_BACKEND_URL`)
 
 ---
@@ -62,7 +62,7 @@ The proxy in `api/voucher.js` routes by action:
 
 ## Goods catalog (“Hàng hóa” list)
 
-Loaded via **`getP2PMasterData`** → `data.goods` from sheet **`Goods-KTT`** (`SPREADSHEET_ID` in **`handleGetP2PMasterData`** inside `TLCG_P2P_BACKEND.gs`).
+Loaded via **`getMasterData`** → `data.goods` from sheet **`Goods-KTT`** (`USERS_SHEET_ID` in **`handleGetMasterData`** inside `TLCG_CORE_BACKEND.gs`).
 
 Frontend filter in **`seedGoods`**:
 
@@ -79,8 +79,8 @@ Other sections (`thiet-bi`, `dich-vu`, `sua-chua`) use plain description inputs 
 
 ## Master employees
 
-- **`seedRequesters` / `seedApprovers`** use **`Master Employee`** via `getP2PMasterData` **`employees`**.
-- Filter **`employee_status`** or **`Status`** === **`active`** (both keys returned by `handleGetP2PMasterData` for compatibility).
+- **`seedRequesters` / `seedApprovers`** use **`Master Employee`** via `getMasterData` **`employees`** — same shared cache as `voucher.html`.
+- Filter **`employee_status`** or **`Status`** === **`active`**.
 - Approver selects store **`employee_email`** in `option.value`, display **`full_name`**.
 - Sidebar session: **`tlc_current_user`** (`name`, `email`, …); requester pre-selected if **`name`** matches an option.
 
@@ -111,11 +111,11 @@ budgetApprover, supplierApprover, submittedAt
 
 ---
 
-## Caching (`getP2PMasterData`)
+## Caching (`getMasterData`)
 
-- Keys: **`tlc_p2p_master_data`**, **`tlc_p2p_master_data_timestamp`**; TTL **30 minutes** stale-while-revalidate.
+- Keys: **`tlc_master_data`**, **`tlc_master_data_timestamp`**; TTL **30 minutes** stale-while-revalidate.
 - Cache renders immediately then background refresh.
-- Keys are **isolated** from the shared `tlc_master_data` cache used by `voucher.html` — clearing one does not affect the other.
+- **Shared** with `voucher.html` and all other workflows — one cache, one source of truth. If an employee is added/updated in the Master sheet, clearing `tlc_master_data` from localStorage on any page refreshes it for all.
 
 ---
 

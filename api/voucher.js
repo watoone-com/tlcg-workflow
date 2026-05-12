@@ -170,7 +170,6 @@ export default async function handler(req, res) {
   // Route P2P actions to TLCG_P2P_BACKEND (TLCG_P2P_BACKEND.gs)
   const paymentRequestActions = [
     // ── Purchase Request (Đề nghị mua hàng) ──
-    'getP2PMasterData',            // Reference data for purchase_request.html (employees, goods, suppliers)
     'purchaseRequest',             // Submit purchase request form
     'getPurchaseRequestHistory',   // List purchase requests
     // ── Payment Request (Đề nghị thanh toán) ──

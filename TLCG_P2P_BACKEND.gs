@@ -107,8 +107,6 @@ function doPost(e) {
     // Route to appropriate handler
     switch (action) {
       // ── Purchase Request ─────────────────────────────────────
-      case 'getP2PMasterData':
-        return handleGetP2PMasterData(data);
       case 'purchaseRequest':
         return handlePurchaseRequest(data);
       case 'getPurchaseRequestHistory':

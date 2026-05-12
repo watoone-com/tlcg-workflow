@@ -1375,8 +1375,9 @@
 
     /* ── Load master data ───────────────────────────────────────── */
     /* ── Master data: stale-while-revalidate, 30min TTL ────────── */
-    const _MASTER_KEY    = 'tlc_p2p_master_data';
-    const _MASTER_TS_KEY = 'tlc_p2p_master_data_timestamp';
+    // Shared cache key — same as voucher.html so all workflows read from one source
+    const _MASTER_KEY    = 'tlc_master_data';
+    const _MASTER_TS_KEY = 'tlc_master_data_timestamp';
     const _MASTER_TTL    = 30 * 60 * 1000;
 
     function _applyMasterData(data) {
@@ -1386,11 +1387,11 @@
     }
 
     async function _fetchAndCacheMaster() {
-        const params = new URLSearchParams({ action: 'getP2PMasterData' });
+        const params = new URLSearchParams({ action: 'getMasterData' });
         const res    = await fetch(BACKEND_URL, { method: 'POST', mode: 'cors', redirect: 'follow', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() });
         const result = JSON.parse(await res.text());
         if (!result.success) return null;
-        // P2P backend spreads data at top level (not nested under .data)
+        // CORE backend wraps data under result.data
         const data = result.data || result;
         localStorage.setItem(_MASTER_KEY,    JSON.stringify(data));
         localStorage.setItem(_MASTER_TS_KEY, new Date().toISOString());
