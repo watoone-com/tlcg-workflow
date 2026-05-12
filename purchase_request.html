@@ -196,6 +196,91 @@
         .section-body { border-top: 0.5px solid var(--border); }
         .section-title { display: flex; align-items: center; gap: 8px; }
         .section-meta  { display: flex; align-items: center; gap: 12px; }
+        /* ── Catalog browser ────────────────────────────────── */
+        .catalog-open-btn {
+            display: inline-flex; align-items: center; gap: 7px;
+            padding: 7px 14px; border-radius: 8px; border: 1.5px solid var(--primary);
+            background: rgba(0,122,255,0.06); color: var(--primary);
+            font-size: 13px; font-weight: 600; cursor: pointer; margin-bottom: 10px;
+            transition: background 0.15s, box-shadow 0.15s;
+        }
+        .catalog-open-btn:hover { background: rgba(0,122,255,0.12); box-shadow: 0 2px 8px rgba(0,122,255,0.15); }
+        .catalog-count-badge {
+            background: #FF3B30; color: #fff; border-radius: 10px;
+            font-size: 11px; font-weight: 700; padding: 1px 6px; min-width: 18px; text-align: center;
+        }
+        .catalog-overlay {
+            display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.35);
+            z-index: 500; backdrop-filter: blur(2px);
+        }
+        .catalog-overlay.open { display: block; }
+        .catalog-panel {
+            position: fixed; top: 0; right: 0; bottom: 0; width: 100%; max-width: 480px;
+            background: #f2f2f7; z-index: 501; display: flex; flex-direction: column;
+            transform: translateX(100%); transition: transform 0.28s cubic-bezier(0.4,0,0.2,1);
+            box-shadow: -4px 0 24px rgba(0,0,0,0.18);
+        }
+        .catalog-panel.open { transform: translateX(0); }
+        .catalog-panel-header {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 16px 16px 12px; background: white;
+            border-bottom: 1px solid rgba(0,0,0,0.08);
+        }
+        .catalog-panel-title { font-size: 16px; font-weight: 700; color: #1c1c1e; }
+        .catalog-close-btn {
+            background: #e5e5ea; border: none; border-radius: 50%; width: 30px; height: 30px;
+            cursor: pointer; font-size: 14px; color: #3a3a3c; display: flex; align-items: center; justify-content: center;
+        }
+        .catalog-search-wrap { padding: 10px 12px; background: white; border-bottom: 1px solid rgba(0,0,0,0.07); }
+        .catalog-search-input {
+            width: 100%; padding: 8px 12px; border: 1px solid rgba(0,0,0,0.15);
+            border-radius: 8px; font-size: 14px; box-sizing: border-box; outline: none;
+        }
+        .catalog-search-input:focus { border-color: var(--primary); }
+        .catalog-cats {
+            display: flex; gap: 6px; padding: 10px 12px; overflow-x: auto;
+            background: white; border-bottom: 1px solid rgba(0,0,0,0.07);
+            scrollbar-width: none;
+        }
+        .catalog-cats::-webkit-scrollbar { display: none; }
+        .catalog-cat-tab {
+            flex-shrink: 0; padding: 5px 12px; border-radius: 20px; border: 1.5px solid rgba(0,0,0,0.12);
+            background: white; font-size: 12px; font-weight: 600; cursor: pointer; color: #3a3a3c;
+            transition: all 0.15s; white-space: nowrap;
+        }
+        .catalog-cat-tab.active { background: var(--primary); border-color: var(--primary); color: white; }
+        .catalog-items-scroll { flex: 1; overflow-y: auto; padding: 10px 12px; }
+        .catalog-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .catalog-item-card {
+            background: white; border-radius: 10px; padding: 10px 12px;
+            border: 1.5px solid rgba(0,0,0,0.08); cursor: pointer;
+            transition: box-shadow 0.15s, border-color 0.15s; position: relative;
+        }
+        .catalog-item-card:hover { box-shadow: 0 3px 12px rgba(0,0,0,0.1); border-color: var(--primary); }
+        .catalog-item-card.catalog-added { border-color: #34C759; background: #f0fff4; }
+        .catalog-item-name { font-size: 13px; font-weight: 600; color: #1c1c1e; margin-bottom: 3px; line-height: 1.3; }
+        .catalog-item-meta { font-size: 11px; color: #8e8e93; line-height: 1.4; }
+        .catalog-item-moq {
+            display: inline-block; margin-top: 5px; padding: 2px 7px;
+            background: #f2f2f7; border-radius: 6px; font-size: 11px; font-weight: 600; color: #3a3a3c;
+        }
+        .catalog-item-card.catalog-added .catalog-item-moq { background: #d1fae5; color: #065f46; }
+        .catalog-added-badge {
+            position: absolute; top: 6px; right: 7px;
+            background: #34C759; color: white; border-radius: 8px;
+            font-size: 10px; font-weight: 700; padding: 1px 5px;
+        }
+        .catalog-empty { text-align: center; color: #8e8e93; padding: 32px 16px; font-size: 14px; }
+        .catalog-panel-footer {
+            padding: 12px 16px; background: white; border-top: 1px solid rgba(0,0,0,0.08);
+            display: flex; gap: 10px;
+        }
+        .catalog-done-btn {
+            flex: 1; padding: 11px; border-radius: 10px; border: none;
+            background: var(--primary); color: white; font-size: 15px; font-weight: 600; cursor: pointer;
+        }
+        .catalog-done-btn:hover { background: #005ecb; }
+
         /* ── Searchable select (Người đề nghị) ──────────────── */
         .searchable-select { position: relative; }
         .search-input {
@@ -513,6 +598,10 @@
                 </div>
                 <div class="section-body" id="body-hang-hoa">
                     <div class="form-card-body" style="padding:12px;">
+                        <button type="button" class="catalog-open-btn" onclick="openCatalog()">
+                            <i class="fas fa-grid-2" style="font-size:13px;"></i> Chọn từ danh mục
+                            <span id="catalog-added-count" class="catalog-count-badge" style="display:none;">0</span>
+                        </button>
                         <div class="items-wrap">
                             <table class="items-table">
                                 <thead><tr>
@@ -1428,7 +1517,7 @@
                 spec:     (g['Specification'] || '').trim(),
                 code:     (g['CUKCUK/QBO Code'] || '').trim(),
             }))
-            .filter(g => g.name && g.moq > 0);
+            .filter(g => g.name);
     }
 
     /* ── Searchable select (mirrors voucher.html makeSearchable) ── */
@@ -1582,6 +1671,136 @@
     }
 
     /* ── Init ───────────────────────────────────────────────────── */
+    /* ══════════════════════════════════════════════════════════════
+       CATALOG BROWSER
+       ══════════════════════════════════════════════════════════════ */
+    let _catalogActiveCat = 'all';
+
+    function openCatalog() {
+        document.getElementById('catalog-overlay').classList.add('open');
+        document.getElementById('catalog-panel').classList.add('open');
+        document.body.style.overflow = 'hidden';
+        _buildCatalogCats();
+        renderCatalogItems(_catalogActiveCat, document.getElementById('catalog-search').value);
+    }
+
+    function closeCatalog() {
+        document.getElementById('catalog-overlay').classList.remove('open');
+        document.getElementById('catalog-panel').classList.remove('open');
+        document.body.style.overflow = '';
+    }
+
+    function _buildCatalogCats() {
+        const cats = ['all', ...new Set(_goodsCatalog.map(g => g.category).filter(Boolean).sort())];
+        const wrap = document.getElementById('catalog-cats');
+        wrap.innerHTML = cats.map(c => {
+            const label = c === 'all' ? 'Tất cả' : c;
+            const active = c === _catalogActiveCat ? ' active' : '';
+            return `<button type="button" class="catalog-cat-tab${active}"
+                        onclick="_catalogActiveCat='${c}';_setActiveCatTab(this);renderCatalogItems('${c}',document.getElementById('catalog-search').value)">
+                        ${label}
+                    </button>`;
+        }).join('');
+    }
+
+    function _setActiveCatTab(el) {
+        document.querySelectorAll('.catalog-cat-tab').forEach(t => t.classList.remove('active'));
+        el.classList.add('active');
+    }
+
+    function renderCatalogItems(cat, query) {
+        const q = (query || '').trim().toLowerCase();
+        const items = _goodsCatalog.filter(g => {
+            if (cat !== 'all' && g.category !== cat) return false;
+            if (q) {
+                const hay = [g.name, g.spec, g.category].filter(Boolean).join(' ').toLowerCase();
+                return hay.includes(q);
+            }
+            return true;
+        });
+
+        // Build a map of current basket: itemName → qty
+        const basketMap = {};
+        document.querySelectorAll('#tbody-hang-hoa tr').forEach(tr => {
+            const desc = tr.querySelector('.item-desc')?.value.trim();
+            const qty  = parseFloat(tr.querySelector('.item-qty')?.value) || 0;
+            if (desc) basketMap[desc] = (basketMap[desc] || 0) + qty;
+        });
+
+        const grid = document.getElementById('catalog-grid');
+        if (!items.length) {
+            grid.innerHTML = '<div class="catalog-empty">Không tìm thấy mặt hàng nào</div>';
+            return;
+        }
+
+        grid.innerHTML = items.map(g => {
+            const inBasket = basketMap[g.name];
+            const addedClass = inBasket ? ' catalog-added' : '';
+            const badge = inBasket
+                ? `<span class="catalog-added-badge">${inBasket} ${g.unit}</span>`
+                : '';
+            const moqLabel = g.moq > 0 ? `MOQ: ${g.moq} ${g.unit}` : g.unit;
+            const safeKey = g.name.replace(/'/g, "\\'");
+            return `<div class="catalog-item-card${addedClass}" onclick="addFromCatalog('${safeKey}')">
+                        ${badge}
+                        <div class="catalog-item-name">${g.name}</div>
+                        ${g.spec ? `<div class="catalog-item-meta">${g.spec}</div>` : ''}
+                        <span class="catalog-item-moq">${moqLabel}</span>
+                    </div>`;
+        }).join('');
+    }
+
+    function addFromCatalog(itemName) {
+        const g = _goodsCatalog.find(x => x.name === itemName);
+        if (!g) return;
+
+        // Look for an existing row with this item name
+        const rows = document.querySelectorAll('#tbody-hang-hoa tr');
+        let existingRow = null;
+        rows.forEach(tr => {
+            if (tr.querySelector('.item-desc')?.value.trim() === g.name) existingRow = tr;
+        });
+
+        if (existingRow) {
+            // Increment qty by MOQ (minimum 1)
+            const qtyInput = existingRow.querySelector('.item-qty');
+            const step = g.moq > 0 ? g.moq : 1;
+            qtyInput.value = (parseFloat(qtyInput.value) || 0) + step;
+            const rowId = existingRow.id.replace('item-row-', '');
+            recalcRow(rowId, 'hang-hoa');
+        } else {
+            // Add new row and fill it
+            addSectionRow('hang-hoa');
+            const allRows = document.querySelectorAll('#tbody-hang-hoa tr');
+            const newRow  = allRows[allRows.length - 1];
+            const rowId   = newRow.id.replace('item-row-', '');
+            selectGoodsItem(rowId, g);
+            // Default qty = MOQ
+            const qtyInput = newRow.querySelector('.item-qty');
+            if (g.moq > 0) qtyInput.value = g.moq;
+            recalcRow(rowId, 'hang-hoa');
+        }
+
+        // Refresh card states and counters
+        renderCatalogItems(_catalogActiveCat, document.getElementById('catalog-search').value);
+        _updateCatalogCounter();
+    }
+
+    function _updateCatalogCounter() {
+        const count = document.querySelectorAll('#tbody-hang-hoa tr .item-desc')
+            .length;
+        const badge = document.getElementById('catalog-added-count');
+        const doneSpan = document.getElementById('catalog-done-count');
+        // Count distinct filled rows
+        let filled = 0;
+        document.querySelectorAll('#tbody-hang-hoa tr').forEach(tr => {
+            if (tr.querySelector('.item-desc')?.value.trim()) filled++;
+        });
+        badge.textContent = filled;
+        badge.style.display = filled > 0 ? 'inline-block' : 'none';
+        if (doneSpan) doneSpan.textContent = filled;
+    }
+
     window.addEventListener('DOMContentLoaded', () => {
         restoreSession();
         loadCompanies();
@@ -1601,5 +1820,30 @@
     });
 </script>
 <script src="tlcg_companies_embed.js"></script>
+
+<!-- ── Catalog Browser Panel ─────────────────────────────────── -->
+<div class="catalog-overlay" id="catalog-overlay" onclick="closeCatalog()"></div>
+<div class="catalog-panel" id="catalog-panel">
+    <div class="catalog-panel-header">
+        <span class="catalog-panel-title">Danh mục hàng hóa</span>
+        <button type="button" class="catalog-close-btn" onclick="closeCatalog()">
+            <i class="fas fa-xmark"></i>
+        </button>
+    </div>
+    <div class="catalog-search-wrap">
+        <input type="text" class="catalog-search-input" id="catalog-search"
+               placeholder="Tìm theo tên hoặc mô tả..." autocomplete="off"
+               oninput="renderCatalogItems(_catalogActiveCat, this.value)">
+    </div>
+    <div class="catalog-cats" id="catalog-cats"></div>
+    <div class="catalog-items-scroll">
+        <div class="catalog-grid" id="catalog-grid"></div>
+    </div>
+    <div class="catalog-panel-footer">
+        <button type="button" class="catalog-done-btn" onclick="closeCatalog()">
+            Xong — đã chọn <span id="catalog-done-count">0</span> mặt hàng
+        </button>
+    </div>
+</div>
 </body>
 </html>
