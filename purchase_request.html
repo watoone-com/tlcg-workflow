@@ -1474,27 +1474,27 @@
         seedApprovers(data.employees  || []);
         const goods = data.goods || data.data?.goods || [];
         seedGoods(goods);
-        // If CORE backend didn't include goods, fall back to P2P backend
+        // If CORE backend didn't include goods, fetch from P2P getGoodsCatalog action
         if (_goodsCatalog.length === 0 && goods.length === 0) {
-            console.warn('[Catalog] goods missing from CORE master data — fetching from P2P backend');
+            console.warn('[Catalog] goods missing from CORE master data — fetching via getGoodsCatalog');
             try {
                 const r = await fetch(BACKEND_URL, {
                     method: 'POST', mode: 'cors', redirect: 'follow',
                     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: 'action=getP2PMasterData'
+                    body: 'action=getGoodsCatalog'
                 });
                 const j = JSON.parse(await r.text());
-                const p2pGoods = j.goods || j.data?.goods || [];
-                console.log('[Catalog] P2P fallback goods:', p2pGoods.length);
-                seedGoods(p2pGoods);
-                // Patch the shared cache so next open works immediately
+                const fetchedGoods = (j.data || j).goods || [];
+                console.log('[Catalog] getGoodsCatalog returned:', fetchedGoods.length, 'items. Sample:', fetchedGoods[0]);
+                seedGoods(fetchedGoods);
+                // Patch the shared cache so next open is instant
                 try {
                     const cached = JSON.parse(localStorage.getItem(_MASTER_KEY) || '{}');
-                    cached.goods = p2pGoods;
+                    cached.goods = fetchedGoods;
                     localStorage.setItem(_MASTER_KEY, JSON.stringify(cached));
                 } catch(e) {}
             } catch (err) {
-                console.error('[Catalog] P2P fallback failed', err);
+                console.error('[Catalog] getGoodsCatalog failed', err);
             }
         }
     }
@@ -1712,18 +1712,7 @@
         document.getElementById('catalog-panel').classList.add('open');
         document.body.style.overflow = 'hidden';
         if (_goodsCatalog.length === 0) {
-            // Try to re-seed from cached master data before giving up
-            const cached = localStorage.getItem('tlc_master_data');
-            if (cached) {
-                try {
-                    const data = JSON.parse(cached);
-                    const goods = data.goods || data.data?.goods || [];
-                    console.warn('[Catalog] _goodsCatalog was empty; re-seeding from cache.', goods.length, 'goods rows. First row:', goods[0]);
-                    seedGoods(goods);
-                } catch(e) { console.error('[Catalog] failed to re-seed from cache', e); }
-            } else {
-                console.warn('[Catalog] No cached master data and _goodsCatalog is empty.');
-            }
+            console.warn('[Catalog] _goodsCatalog empty on open — goods will load on next page refresh once getGoodsCatalog runs.');
         }
         _buildCatalogCats();
         renderCatalogItems(_catalogActiveCat, document.getElementById('catalog-search').value);

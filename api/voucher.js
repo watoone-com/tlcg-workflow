@@ -184,6 +184,7 @@ export default async function handler(req, res) {
     'getVendorBanks',              // Load vendor banks from "Master Vendor_Bank" sheet
     'addSupplier',                 // Add supplier to "Nhà cung cấp" sheet
     'getPurchaseOrderTypes',       // Load purchase order types from "Purchase Order" sheet
+    'getGoodsCatalog',             // Load Goods-KTT catalog (items, categories, MOQ)
     // NOTE: 'getEmployees' intentionally NOT here — it must go to VOUCHER_BACKEND
     // which returns companies_data[]. Payment Request backend returns employees[] (different shape).
   ];

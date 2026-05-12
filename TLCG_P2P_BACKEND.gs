@@ -135,6 +135,8 @@ function doPost(e) {
         return handleGetEmployees(data);
       case 'getPurchaseOrderTypes':
         return handleGetPurchaseOrderTypes(data);
+      case 'getGoodsCatalog':
+        return handleGetGoodsCatalog(data);
       default:
         return createResponse(false, 'Invalid action: ' + action);
     }
@@ -1252,6 +1254,36 @@ function handleGetPurchaseOrderTypes(data) {
   } catch (error) {
     Logger.log('[Payment Request] ❌ ERROR in handleGetPurchaseOrderTypes: ' + error.toString());
     Logger.log('[Payment Request] ❌ Error stack: ' + error.stack);
+    return createResponse(false, 'Lỗi: ' + error.message);
+  }
+}
+
+// ==================== GOODS CATALOG ====================
+
+/**
+ * Returns goods rows from Goods-KTT sheet (raw headers as keys).
+ * Lightweight — does not read employees or suppliers.
+ */
+function handleGetGoodsCatalog(data) {
+  try {
+    Logger.log('[P2P] === handleGetGoodsCatalog called ===');
+    var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    var goodsSheet = ss.getSheetByName('Goods-KTT');
+    if (!goodsSheet) {
+      Logger.log('[P2P] ⚠️ Sheet "Goods-KTT" not found');
+      return createResponse(true, 'Goods-KTT sheet not found', { goods: [] });
+    }
+    var vals    = goodsSheet.getDataRange().getValues();
+    var headers = vals[0];
+    var goods   = vals.slice(1).map(function(row) {
+      var obj = {};
+      headers.forEach(function(h, i) { obj[h] = row[i]; });
+      return obj;
+    }).filter(function(r) { return r[headers[0]]; });
+    Logger.log('[P2P] ✅ Goods-KTT records: ' + goods.length);
+    return createResponse(true, 'Goods catalog fetched successfully', { goods: goods });
+  } catch (error) {
+    Logger.log('[P2P] ❌ ERROR in handleGetGoodsCatalog: ' + error.toString());
     return createResponse(false, 'Lỗi: ' + error.message);
   }
 }
