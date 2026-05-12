@@ -599,7 +599,7 @@
                 <div class="section-body" id="body-hang-hoa">
                     <div class="form-card-body" style="padding:12px;">
                         <button type="button" class="catalog-open-btn" onclick="openCatalog()">
-                            <i class="fas fa-grid-2" style="font-size:13px;"></i> Chọn từ danh mục
+                            <i class="fas fa-border-all" style="font-size:13px;"></i> Chọn từ danh mục
                             <span id="catalog-added-count" class="catalog-count-badge" style="display:none;">0</span>
                         </button>
                         <div class="items-wrap">
@@ -1694,13 +1694,17 @@
         const cats = ['all', ...new Set(_goodsCatalog.map(g => g.category).filter(Boolean).sort())];
         const wrap = document.getElementById('catalog-cats');
         wrap.innerHTML = cats.map(c => {
-            const label = c === 'all' ? 'Tất cả' : c;
+            const count = c === 'all' ? _goodsCatalog.length : _goodsCatalog.filter(g => g.category === c).length;
+            const label = c === 'all' ? `Tất cả (${count})` : `${c} (${count})`;
             const active = c === _catalogActiveCat ? ' active' : '';
             return `<button type="button" class="catalog-cat-tab${active}"
                         onclick="_catalogActiveCat='${c}';_setActiveCatTab(this);renderCatalogItems('${c}',document.getElementById('catalog-search').value)">
                         ${label}
                     </button>`;
         }).join('');
+        // Update header subtitle
+        const lbl = document.getElementById('catalog-total-label');
+        if (lbl) lbl.textContent = `${_goodsCatalog.length} mặt hàng · ${cats.length - 1} nhóm`;
     }
 
     function _setActiveCatTab(el) {
@@ -1729,11 +1733,11 @@
 
         const grid = document.getElementById('catalog-grid');
         if (!items.length) {
-            grid.innerHTML = '<div class="catalog-empty">Không tìm thấy mặt hàng nào</div>';
+            grid.innerHTML = '<div class="catalog-empty"><i class="fas fa-box-open" style="font-size:28px;display:block;margin-bottom:8px;"></i>Không tìm thấy mặt hàng nào</div>';
             return;
         }
 
-        grid.innerHTML = items.map(g => {
+        grid.innerHTML = `<div style="grid-column:1/-1;font-size:11px;color:#8e8e93;padding:2px 0 6px;">${items.length} mặt hàng</div>` + items.map(g => {
             const inBasket = basketMap[g.name];
             const addedClass = inBasket ? ' catalog-added' : '';
             const badge = inBasket
@@ -1825,16 +1829,24 @@
 <div class="catalog-overlay" id="catalog-overlay" onclick="closeCatalog()"></div>
 <div class="catalog-panel" id="catalog-panel">
     <div class="catalog-panel-header">
-        <span class="catalog-panel-title">Danh mục hàng hóa</span>
+        <div>
+            <div class="catalog-panel-title">Danh mục hàng hóa</div>
+            <div id="catalog-total-label" style="font-size:11px;color:#8e8e93;margin-top:2px;"></div>
+        </div>
         <button type="button" class="catalog-close-btn" onclick="closeCatalog()">
             <i class="fas fa-xmark"></i>
         </button>
     </div>
     <div class="catalog-search-wrap">
-        <input type="text" class="catalog-search-input" id="catalog-search"
-               placeholder="Tìm theo tên hoặc mô tả..." autocomplete="off"
-               oninput="renderCatalogItems(_catalogActiveCat, this.value)">
+        <div style="position:relative;">
+            <i class="fas fa-magnifying-glass" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:#8e8e93;font-size:13px;pointer-events:none;"></i>
+            <input type="text" class="catalog-search-input" id="catalog-search"
+                   placeholder="Tìm theo tên hoặc mô tả..." autocomplete="off"
+                   style="padding-left:32px;"
+                   oninput="renderCatalogItems(_catalogActiveCat, this.value)">
+        </div>
     </div>
+    <div style="padding:6px 12px 0;font-size:11px;font-weight:600;color:#8e8e93;text-transform:uppercase;letter-spacing:0.5px;background:white;">Nhóm hàng</div>
     <div class="catalog-cats" id="catalog-cats"></div>
     <div class="catalog-items-scroll">
         <div class="catalog-grid" id="catalog-grid"></div>
