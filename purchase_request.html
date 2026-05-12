@@ -1507,8 +1507,14 @@
     let _goodsCatalog = [];
 
     function seedGoods(goods) {
+        console.log('[Catalog] seedGoods received', goods.length, 'raw rows. Sample:', goods[0]);
         _goodsCatalog = goods
-            .filter(g => (g['Status'] || '').toString().toLowerCase() === 'active')
+            .filter(g => {
+                const status = (g['Status'] || '').toString().toLowerCase().trim();
+                // Include if no status is set, or if explicitly 'active'.
+                // Exclude only when explicitly inactive/disabled/draft.
+                return !status || status === 'active';
+            })
             .map(g => ({
                 name:     (g['Items'] || '').trim(),
                 category: (g['Category'] || '').trim(),
@@ -1518,6 +1524,7 @@
                 code:     (g['CUKCUK/QBO Code'] || '').trim(),
             }))
             .filter(g => g.name);
+        console.log('[Catalog] _goodsCatalog after filter:', _goodsCatalog.length, 'items');
     }
 
     /* ── Searchable select (mirrors voucher.html makeSearchable) ── */
@@ -1680,6 +1687,20 @@
         document.getElementById('catalog-overlay').classList.add('open');
         document.getElementById('catalog-panel').classList.add('open');
         document.body.style.overflow = 'hidden';
+        if (_goodsCatalog.length === 0) {
+            // Try to re-seed from cached master data before giving up
+            const cached = localStorage.getItem('tlc_master_data');
+            if (cached) {
+                try {
+                    const data = JSON.parse(cached);
+                    const goods = data.goods || data.data?.goods || [];
+                    console.warn('[Catalog] _goodsCatalog was empty; re-seeding from cache.', goods.length, 'goods rows. First row:', goods[0]);
+                    seedGoods(goods);
+                } catch(e) { console.error('[Catalog] failed to re-seed from cache', e); }
+            } else {
+                console.warn('[Catalog] No cached master data and _goodsCatalog is empty.');
+            }
+        }
         _buildCatalogCats();
         renderCatalogItems(_catalogActiveCat, document.getElementById('catalog-search').value);
     }
