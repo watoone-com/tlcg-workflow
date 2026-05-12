@@ -196,6 +196,28 @@
         .section-body { border-top: 0.5px solid var(--border); }
         .section-title { display: flex; align-items: center; gap: 8px; }
         .section-meta  { display: flex; align-items: center; gap: 12px; }
+        /* ── Searchable select (Người đề nghị) ──────────────── */
+        .searchable-select { position: relative; }
+        .search-input {
+            width: 100%; padding: 9px 12px;
+            border: 1px solid rgba(0,0,0,0.15); border-radius: 8px;
+            font-family: inherit; font-size: 15px;
+            background: white; color: #000;
+            transition: border-color 0.15s, box-shadow 0.15s;
+            box-sizing: border-box;
+        }
+        .search-input:focus { outline: none; border-color: #007AFF; box-shadow: 0 0 0 3px rgba(0,122,255,0.12); }
+        .dropdown-options {
+            display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+            max-height: 220px; overflow-y: auto;
+            background: white; border: 1px solid rgba(0,0,0,0.12); border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.13); z-index: 1000;
+        }
+        .dropdown-options.show { display: block; }
+        .dropdown-option { padding: 9px 12px; cursor: pointer; font-size: 14px; transition: background 0.12s; }
+        .dropdown-option:hover { background: rgba(0,122,255,0.08); }
+        .dropdown-empty { padding: 10px 12px; font-size: 13px; color: #8e8e93; text-align: center; }
+
         .goods-wrap    { position: relative; }
         .goods-dropdown { position:absolute; top:100%; left:0; right:0; background:white; border:1px solid rgba(0,0,0,0.15); border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,0.12); z-index:200; max-height:180px; overflow-y:auto; }
         .goods-dropdown-item { display:flex; justify-content:space-between; align-items:center; padding:7px 10px; font-size:13px; cursor:pointer; gap:8px; }
@@ -1406,6 +1428,72 @@
             .filter(g => g.name && g.moq > 0);
     }
 
+    /* ── Searchable select (mirrors voucher.html makeSearchable) ── */
+    function makeSearchable(selectElement) {
+        if (selectElement._searchable) return; // already initialised
+        selectElement._searchable = true;
+
+        const wrapper = document.createElement('div');
+        wrapper.className = 'searchable-select';
+        selectElement.parentNode.insertBefore(wrapper, selectElement);
+        wrapper.appendChild(selectElement);
+        selectElement.style.display = 'none';
+
+        const searchInput = document.createElement('input');
+        searchInput.type        = 'text';
+        searchInput.className   = 'search-input';
+        searchInput.placeholder = 'Gõ để tìm...';
+        searchInput.autocomplete = 'off';
+        wrapper.insertBefore(searchInput, selectElement);
+
+        const optionsContainer = document.createElement('div');
+        optionsContainer.className = 'dropdown-options';
+        wrapper.appendChild(optionsContainer);
+
+        function getFilteredOptions(q) {
+            return Array.from(selectElement.options).filter((o, i) => {
+                if (i === 0) return false;
+                if (!q) return true;
+                const haystack = [o.text, o.dataset.dept].filter(Boolean).join(' ').toLowerCase();
+                return haystack.includes(q);
+            });
+        }
+
+        function showOptions(q = '') {
+            const matches = getFilteredOptions(q);
+            optionsContainer.innerHTML = '';
+            if (matches.length === 0) {
+                optionsContainer.innerHTML = '<div class="dropdown-empty">Không tìm thấy</div>';
+            } else {
+                matches.forEach(option => {
+                    const div = document.createElement('div');
+                    div.className = 'dropdown-option';
+                    const dept = option.dataset.dept || '';
+                    div.innerHTML = `<div style="font-weight:500">${option.text}</div>${dept ? `<div style="font-size:12px;color:#8e8e93;margin-top:1px">${dept}</div>` : ''}`;
+                    div.onmousedown = (e) => {
+                        e.preventDefault();
+                        selectElement.value = option.value;
+                        selectElement.dispatchEvent(new Event('change'));
+                        searchInput.value = option.text;
+                        optionsContainer.classList.remove('show');
+                    };
+                    optionsContainer.appendChild(div);
+                });
+            }
+            optionsContainer.classList.add('show');
+        }
+
+        searchInput.addEventListener('input',  () => showOptions(searchInput.value.toLowerCase()));
+        searchInput.addEventListener('focus',  () => showOptions(searchInput.value.toLowerCase()));
+        searchInput.addEventListener('blur',   () => setTimeout(() => optionsContainer.classList.remove('show'), 150));
+
+        // Sync helper — call after programmatic value change
+        selectElement._syncSearchInput = () => {
+            const sel = selectElement.options[selectElement.selectedIndex];
+            searchInput.value = (sel && sel.value) ? sel.text : '';
+        };
+    }
+
     function seedRequesters(employees) {
         _allEmployees = employees;
         const sel    = document.getElementById('requester_name');
@@ -1421,6 +1509,8 @@
             opt.dataset.dept = dept;
             sel.appendChild(opt);
         });
+        // Apply searchable UI (idempotent — safe to call again on cache refresh)
+        makeSearchable(sel);
         // Pre-select logged-in user if found
         const stored = localStorage.getItem('tlc_current_user');
         if (stored) {
@@ -1428,7 +1518,11 @@
                 const u = JSON.parse(stored);
                 if (u?.name) {
                     const match = [...sel.options].find(o => o.value === u.name);
-                    if (match) { sel.value = u.name; onRequesterChange(); }
+                    if (match) {
+                        sel.value = u.name;
+                        onRequesterChange();
+                        if (sel._syncSearchInput) sel._syncSearchInput();
+                    }
                 }
             } catch (_) {}
         }
