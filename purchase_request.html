@@ -238,17 +238,17 @@
         }
         .catalog-search-input:focus { border-color: var(--primary); }
         .catalog-cats {
-            display: flex; gap: 6px; padding: 10px 12px; overflow-x: auto;
+            display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 12px 8px;
             background: white; border-bottom: 1px solid rgba(0,0,0,0.07);
-            scrollbar-width: none;
         }
-        .catalog-cats::-webkit-scrollbar { display: none; }
         .catalog-cat-tab {
-            flex-shrink: 0; padding: 5px 12px; border-radius: 20px; border: 1.5px solid rgba(0,0,0,0.12);
+            padding: 4px 11px; border-radius: 20px; border: 1.5px solid rgba(0,0,0,0.12);
             background: white; font-size: 12px; font-weight: 600; cursor: pointer; color: #3a3a3c;
             transition: all 0.15s; white-space: nowrap;
         }
         .catalog-cat-tab.active { background: var(--primary); border-color: var(--primary); color: white; }
+        .catalog-selected-tab { border-color: #34C759; color: #065f46; background: #f0fff4; }
+        .catalog-selected-tab.active { background: #34C759; border-color: #34C759; color: white; }
         .catalog-items-scroll { flex: 1; overflow-y: auto; padding: 10px 12px; }
         .catalog-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
         .catalog-item-card {
@@ -1726,8 +1726,19 @@
 
     function _buildCatalogCats() {
         const cats = ['all', ...new Set(_goodsCatalog.map(g => g.category).filter(Boolean).sort())];
+        const basketMap = _getBasketMap();
+        const selectedCount = Object.keys(basketMap).length;
         const wrap = document.getElementById('catalog-cats');
-        wrap.innerHTML = cats.map(c => {
+
+        // "Đã chọn" tab first (only visible when something is selected)
+        const selectedTab = selectedCount > 0
+            ? `<button type="button" class="catalog-cat-tab catalog-selected-tab${_catalogActiveCat === '__selected__' ? ' active' : ''}"
+                   onclick="_catalogActiveCat='__selected__';_setActiveCatTab(this);renderCatalogItems('__selected__','')">
+                   ✓ Đã chọn (${selectedCount})
+               </button>`
+            : '';
+
+        wrap.innerHTML = selectedTab + cats.map(c => {
             const count = c === 'all' ? _goodsCatalog.length : _goodsCatalog.filter(g => g.category === c).length;
             const label = c === 'all' ? `Tất cả (${count})` : `${c} (${count})`;
             const active = c === _catalogActiveCat ? ' active' : '';
@@ -1736,9 +1747,20 @@
                         ${label}
                     </button>`;
         }).join('');
+
         // Update header subtitle
         const lbl = document.getElementById('catalog-total-label');
         if (lbl) lbl.textContent = `${_goodsCatalog.length} mặt hàng · ${cats.length - 1} nhóm`;
+    }
+
+    function _getBasketMap() {
+        const map = {};
+        document.querySelectorAll('#tbody-hang-hoa tr').forEach(tr => {
+            const desc = tr.querySelector('.item-desc')?.value.trim();
+            const qty  = parseFloat(tr.querySelector('.item-qty')?.value) || 0;
+            if (desc) map[desc] = (map[desc] || 0) + qty;
+        });
+        return map;
     }
 
     function _setActiveCatTab(el) {
@@ -1748,44 +1770,78 @@
 
     function renderCatalogItems(cat, query) {
         const q = (query || '').trim().toLowerCase();
-        const items = _goodsCatalog.filter(g => {
-            if (cat !== 'all' && g.category !== cat) return false;
-            if (q) {
-                const hay = [g.name, g.spec, g.category].filter(Boolean).join(' ').toLowerCase();
-                return hay.includes(q);
-            }
-            return true;
-        });
+        const basketMap = _getBasketMap();
+        const isSelectedView = cat === '__selected__';
 
-        // Build a map of current basket: itemName → qty
-        const basketMap = {};
-        document.querySelectorAll('#tbody-hang-hoa tr').forEach(tr => {
-            const desc = tr.querySelector('.item-desc')?.value.trim();
-            const qty  = parseFloat(tr.querySelector('.item-qty')?.value) || 0;
-            if (desc) basketMap[desc] = (basketMap[desc] || 0) + qty;
-        });
+        let items;
+        if (isSelectedView) {
+            // Show only items currently in the basket
+            items = _goodsCatalog.filter(g => basketMap[g.name]);
+        } else {
+            items = _goodsCatalog.filter(g => {
+                if (cat !== 'all' && g.category !== cat) return false;
+                if (q) {
+                    const hay = [g.name, g.spec, g.category].filter(Boolean).join(' ').toLowerCase();
+                    return hay.includes(q);
+                }
+                return true;
+            });
+        }
 
         const grid = document.getElementById('catalog-grid');
         if (!items.length) {
-            grid.innerHTML = '<div class="catalog-empty"><i class="fas fa-box-open" style="font-size:28px;display:block;margin-bottom:8px;"></i>Không tìm thấy mặt hàng nào</div>';
+            const emptyMsg = isSelectedView
+                ? 'Chưa chọn mặt hàng nào'
+                : 'Không tìm thấy mặt hàng nào';
+            grid.innerHTML = `<div class="catalog-empty"><i class="fas fa-box-open" style="font-size:28px;display:block;margin-bottom:8px;"></i>${emptyMsg}</div>`;
             return;
         }
 
-        grid.innerHTML = `<div style="grid-column:1/-1;font-size:11px;color:#8e8e93;padding:2px 0 6px;">${items.length} mặt hàng</div>` + items.map(g => {
-            const inBasket = basketMap[g.name];
-            const addedClass = inBasket ? ' catalog-added' : '';
-            const badge = inBasket
-                ? `<span class="catalog-added-badge">${inBasket} ${g.unit}</span>`
-                : '';
-            const moqLabel = g.moq > 0 ? `MOQ: ${g.moq} ${g.unit}` : g.unit;
-            const safeKey = g.name.replace(/'/g, "\\'");
-            return `<div class="catalog-item-card${addedClass}" onclick="addFromCatalog('${safeKey}')">
-                        ${badge}
-                        <div class="catalog-item-name">${g.name}</div>
-                        ${g.spec ? `<div class="catalog-item-meta">${g.spec}</div>` : ''}
-                        <span class="catalog-item-moq">${moqLabel}</span>
-                    </div>`;
-        }).join('');
+        const countLabel = isSelectedView
+            ? `${items.length} mặt hàng đã chọn`
+            : `${items.length} mặt hàng`;
+
+        grid.innerHTML = `<div style="grid-column:1/-1;font-size:11px;color:#8e8e93;padding:2px 0 6px;">${countLabel}</div>`
+            + items.map(g => {
+                const inBasket = basketMap[g.name];
+                const addedClass = inBasket ? ' catalog-added' : '';
+                const safeKey = g.name.replace(/'/g, "\\'");
+                const moqLabel = g.moq > 0 ? `MOQ: ${g.moq} ${g.unit}` : g.unit;
+
+                if (isSelectedView) {
+                    // Selected view: show qty prominently + remove button
+                    const unit = g.unit || '';
+                    return `<div class="catalog-item-card catalog-added">
+                                <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:4px;">
+                                    <div class="catalog-item-name" style="flex:1;">${g.name}</div>
+                                    <button type="button" onclick="removeFromCatalog('${safeKey}');event.stopPropagation();"
+                                            style="background:none;border:none;cursor:pointer;color:#FF3B30;font-size:16px;line-height:1;padding:0;flex-shrink:0;" title="Xóa">
+                                        <i class="fas fa-circle-xmark"></i>
+                                    </button>
+                                </div>
+                                ${g.spec ? `<div class="catalog-item-meta">${g.spec}</div>` : ''}
+                                <div style="display:flex;align-items:center;justify-content:space-between;margin-top:6px;">
+                                    <span class="catalog-item-moq" style="background:#d1fae5;color:#065f46;">
+                                        SL: <strong>${inBasket}</strong> ${unit}
+                                    </span>
+                                    <button type="button" onclick="addFromCatalog('${safeKey}');event.stopPropagation();"
+                                            style="background:none;border:none;cursor:pointer;color:var(--primary);font-size:13px;font-weight:700;padding:0 4px;" title="Thêm ${g.moq > 0 ? g.moq : 1} ${unit}">
+                                        +${g.moq > 0 ? g.moq : 1}
+                                    </button>
+                                </div>
+                            </div>`;
+                } else {
+                    const badge = inBasket
+                        ? `<span class="catalog-added-badge">${inBasket} ${g.unit}</span>`
+                        : '';
+                    return `<div class="catalog-item-card${addedClass}" onclick="addFromCatalog('${safeKey}')">
+                                ${badge}
+                                <div class="catalog-item-name">${g.name}</div>
+                                ${g.spec ? `<div class="catalog-item-meta">${g.spec}</div>` : ''}
+                                <span class="catalog-item-moq">${moqLabel}</span>
+                            </div>`;
+                }
+            }).join('');
     }
 
     function addFromCatalog(itemName) {
@@ -1819,21 +1875,34 @@
             recalcRow(rowId, 'hang-hoa');
         }
 
-        // Refresh card states and counters
+        // Refresh card states, tabs, and counters
+        _buildCatalogCats();
         renderCatalogItems(_catalogActiveCat, document.getElementById('catalog-search').value);
         _updateCatalogCounter();
     }
 
+    function removeFromCatalog(itemName) {
+        // Remove the matching row from the Hàng Hóa table
+        const rows = document.querySelectorAll('#tbody-hang-hoa tr');
+        rows.forEach(tr => {
+            if (tr.querySelector('.item-desc')?.value.trim() === itemName) {
+                tr.remove();
+            }
+        });
+        renumberSection('hang-hoa');
+        recalcSection('hang-hoa');
+        renderCatalogItems(_catalogActiveCat, document.getElementById('catalog-search').value);
+        _buildCatalogCats(); // refresh "Đã chọn" count
+        _updateCatalogCounter();
+    }
+
     function _updateCatalogCounter() {
-        const count = document.querySelectorAll('#tbody-hang-hoa tr .item-desc')
-            .length;
-        const badge = document.getElementById('catalog-added-count');
-        const doneSpan = document.getElementById('catalog-done-count');
-        // Count distinct filled rows
         let filled = 0;
         document.querySelectorAll('#tbody-hang-hoa tr').forEach(tr => {
             if (tr.querySelector('.item-desc')?.value.trim()) filled++;
         });
+        const badge = document.getElementById('catalog-added-count');
+        const doneSpan = document.getElementById('catalog-done-count');
         badge.textContent = filled;
         badge.style.display = filled > 0 ? 'inline-block' : 'none';
         if (doneSpan) doneSpan.textContent = filled;
