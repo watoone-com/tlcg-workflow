@@ -1474,6 +1474,9 @@
         seedApprovers(data.employees  || []);
         const goods = data.goods || data.data?.goods || [];
         seedGoods(goods);
+        // Don't clear a working catalog with empty data (e.g. stale CORE response)
+        if (goods.length === 0 && _goodsCatalog.length > 0) return;
+
         // If CORE backend didn't include goods, fetch from P2P getGoodsCatalog action
         if (_goodsCatalog.length === 0 && goods.length === 0) {
             console.warn('[Catalog] goods missing from CORE master data — fetching via getGoodsCatalog');
@@ -1506,6 +1509,13 @@
         if (!result.success) return null;
         // CORE backend wraps data under result.data
         const data = result.data || result;
+        // CORE doesn't include goods — preserve any goods already in cache
+        if (!data.goods || data.goods.length === 0) {
+            try {
+                const prev = JSON.parse(localStorage.getItem(_MASTER_KEY) || '{}');
+                if (prev.goods && prev.goods.length > 0) data.goods = prev.goods;
+            } catch (_) {}
+        }
         localStorage.setItem(_MASTER_KEY,    JSON.stringify(data));
         localStorage.setItem(_MASTER_TS_KEY, new Date().toISOString());
         return data;
@@ -1707,12 +1717,50 @@
        ══════════════════════════════════════════════════════════════ */
     let _catalogActiveCat = 'all';
 
-    function openCatalog() {
+    async function openCatalog() {
         document.getElementById('catalog-overlay').classList.add('open');
         document.getElementById('catalog-panel').classList.add('open');
         document.body.style.overflow = 'hidden';
         if (_goodsCatalog.length === 0) {
-            console.warn('[Catalog] _goodsCatalog empty on open — goods will load on next page refresh once getGoodsCatalog runs.');
+            // Show loading state and try to fetch goods on demand
+            document.getElementById('catalog-grid').innerHTML =
+                `<div class="catalog-empty" style="grid-column:1/-1;">
+                    <i class="fas fa-spinner fa-spin" style="font-size:24px;display:block;margin-bottom:8px;"></i>
+                    Đang tải danh mục...
+                </div>`;
+            try {
+                const r = await fetch(BACKEND_URL, {
+                    method: 'POST', mode: 'cors', redirect: 'follow',
+                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                    body: 'action=getGoodsCatalog'
+                });
+                const j = JSON.parse(await r.text());
+                const fetchedGoods = (j.data || j).goods || [];
+                if (fetchedGoods.length > 0) {
+                    seedGoods(fetchedGoods);
+                    try {
+                        const cached = JSON.parse(localStorage.getItem(_MASTER_KEY) || '{}');
+                        cached.goods = fetchedGoods;
+                        localStorage.setItem(_MASTER_KEY, JSON.stringify(cached));
+                    } catch(_) {}
+                } else {
+                    document.getElementById('catalog-grid').innerHTML =
+                        `<div class="catalog-empty" style="grid-column:1/-1;">
+                            <i class="fas fa-triangle-exclamation" style="font-size:24px;display:block;margin-bottom:8px;color:#FF9500;"></i>
+                            Không thể tải danh mục.<br>
+                            <small style="color:#8e8e93;">Vui lòng deploy lại TLCG_P2P_BACKEND.gs rồi tải lại trang.</small>
+                        </div>`;
+                    return;
+                }
+            } catch(err) {
+                console.error('[Catalog] on-demand fetch failed', err);
+                document.getElementById('catalog-grid').innerHTML =
+                    `<div class="catalog-empty" style="grid-column:1/-1;">
+                        <i class="fas fa-triangle-exclamation" style="font-size:24px;display:block;margin-bottom:8px;color:#FF3B30;"></i>
+                        Lỗi kết nối. Vui lòng thử lại.
+                    </div>`;
+                return;
+            }
         }
         _buildCatalogCats();
         renderCatalogItems(_catalogActiveCat, document.getElementById('catalog-search').value);
