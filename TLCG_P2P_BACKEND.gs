@@ -107,6 +107,8 @@ function doPost(e) {
     // Route to appropriate handler
     switch (action) {
       // ── Purchase Request ─────────────────────────────────────
+      case 'getP2PMasterData':
+        return handleGetP2PMasterData(data);
       case 'purchaseRequest':
         return handlePurchaseRequest(data);
       case 'getPurchaseRequestHistory':
@@ -1252,6 +1254,84 @@ function handleGetPurchaseOrderTypes(data) {
   } catch (error) {
     Logger.log('[Payment Request] ❌ ERROR in handleGetPurchaseOrderTypes: ' + error.toString());
     Logger.log('[Payment Request] ❌ Error stack: ' + error.stack);
+    return createResponse(false, 'Lỗi: ' + error.message);
+  }
+}
+
+// ==================== P2P MASTER DATA ====================
+
+/**
+ * Returns the reference data needed exclusively by the Purchase Request flow:
+ *   - employees  (Master Employee sheet)
+ *   - goods      (Goods-KTT sheet — MOQ catalog)
+ *   - suppliers  (Nhà cung cấp sheet — suggested vendor list)
+ *
+ * Response shape mirrors handleGetMasterData in TLCG_CORE_BACKEND so the
+ * purchase_request.html frontend works without any data-mapping changes.
+ */
+function handleGetP2PMasterData(data) {
+  try {
+    Logger.log('[P2P] handleGetP2PMasterData called');
+    var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+
+    // ── Employees (Master Employee) ──────────────────────────
+    var empSheet = ss.getSheetByName('Master Employee');
+    var employees = [];
+    if (empSheet) {
+      var empVals    = empSheet.getDataRange().getValues();
+      var empHeaders = empVals[0];
+      employees = empVals.slice(1).map(function(row) {
+        var obj = {};
+        empHeaders.forEach(function(h, i) { obj[h] = row[i]; });
+        return obj;
+      });
+      Logger.log('[P2P] Master Employee records: ' + employees.length);
+    } else {
+      Logger.log('[P2P] ⚠️ Sheet "Master Employee" not found');
+    }
+
+    // ── Goods catalog (Goods-KTT) ────────────────────────────
+    var goodsSheet = ss.getSheetByName('Goods-KTT');
+    var goods = [];
+    if (goodsSheet) {
+      var gVals    = goodsSheet.getDataRange().getValues();
+      var gHeaders = gVals[0];
+      goods = gVals.slice(1).map(function(row) {
+        var obj = {};
+        gHeaders.forEach(function(h, i) { obj[h] = row[i]; });
+        return obj;
+      }).filter(function(r) { return r[gHeaders[0]]; });
+      Logger.log('[P2P] Goods-KTT records: ' + goods.length);
+    } else {
+      Logger.log('[P2P] ⚠️ Sheet "Goods-KTT" not found');
+    }
+
+    // ── Suppliers (Nhà cung cấp) ─────────────────────────────
+    var supSheet = ss.getSheetByName(CONFIG.SUPPLIERS_SHEET_NAME);
+    var suppliers = [];
+    if (supSheet) {
+      var sVals    = supSheet.getDataRange().getValues();
+      var sHeaders = sVals[0];
+      suppliers = sVals.slice(1).map(function(row) {
+        var obj = {};
+        sHeaders.forEach(function(h, i) { obj[h] = row[i]; });
+        return obj;
+      });
+      Logger.log('[P2P] Suppliers records: ' + suppliers.length);
+    } else {
+      Logger.log('[P2P] ⚠️ Sheet "' + CONFIG.SUPPLIERS_SHEET_NAME + '" not found');
+    }
+
+    Logger.log('[P2P] ✅ getP2PMasterData success');
+    return createResponse(true, 'P2P master data fetched successfully', {
+      employees: employees,
+      goods:     goods,
+      suppliers: suppliers,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    Logger.log('[P2P] ❌ ERROR in handleGetP2PMasterData: ' + error.toString());
     return createResponse(false, 'Lỗi: ' + error.message);
   }
 }
