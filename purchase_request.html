@@ -434,6 +434,61 @@
             .step-actions { width: 100%; margin-left: 0; }
         }
 
+        /* ── Vendor searchable combobox ───────────────────────────── */
+        .vendor-combobox { position: relative; }
+        .vendor-combobox input { width: 100%; }
+        .vendor-dropdown-list {
+            display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+            max-height: 220px; overflow-y: auto;
+            background: white; border: 1px solid rgba(0,0,0,0.15); border-radius: 8px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.13); z-index: 200;
+        }
+        .vendor-dropdown-list.show { display: block; }
+        .vendor-dropdown-item {
+            padding: 9px 12px; cursor: pointer; font-size: 14px; color: var(--text-primary);
+            transition: background 0.12s;
+        }
+        .vendor-dropdown-item:hover, .vendor-dropdown-item.focused { background: rgba(0,122,255,0.08); }
+        .vendor-dropdown-item .vdi-name { font-weight: 500; }
+        .vendor-dropdown-item .vdi-meta { font-size: 12px; color: var(--text-secondary); margin-top: 1px; }
+        .vendor-dropdown-empty { padding: 10px 12px; font-size: 13px; color: var(--text-secondary); text-align: center; }
+
+        /* ── Vendor / Bank summary cards ───────────────────────────── */
+        .vendor-summary-card {
+            display: none;
+            background: rgba(52,199,89,0.06); border: 1px solid rgba(52,199,89,0.25);
+            border-radius: 10px; padding: 12px 14px; margin-top: 8px;
+        }
+        .vendor-summary-card.show { display: flex; align-items: flex-start; gap: 10px; }
+        .vendor-summary-card .vsc-icon {
+            width: 32px; height: 32px; border-radius: 8px;
+            background: rgba(52,199,89,0.15); display: flex; align-items: center;
+            justify-content: center; flex-shrink: 0;
+        }
+        .vendor-summary-card .vsc-body { flex: 1; min-width: 0; }
+        .vendor-summary-card .vsc-name { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+        .vendor-summary-card .vsc-meta { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+        .vendor-summary-card .vsc-clear {
+            background: none; border: none; color: var(--text-secondary);
+            cursor: pointer; font-size: 16px; padding: 0; flex-shrink: 0;
+            line-height: 1; transition: color 0.15s;
+        }
+        .vendor-summary-card .vsc-clear:hover { color: var(--error); transform: none; }
+        .bank-summary-card {
+            display: none;
+            background: rgba(0,122,255,0.05); border: 1px solid rgba(0,122,255,0.18);
+            border-radius: 10px; padding: 12px 14px; margin-top: 8px;
+        }
+        .bank-summary-card.show { display: flex; align-items: center; gap: 10px; }
+        .bank-summary-card .bsc-icon {
+            width: 32px; height: 32px; border-radius: 8px;
+            background: rgba(0,122,255,0.12); display: flex; align-items: center;
+            justify-content: center; flex-shrink: 0;
+        }
+        .bank-summary-card .bsc-body { flex: 1; min-width: 0; }
+        .bank-summary-card .bsc-bank { font-size: 14px; font-weight: 600; color: var(--text-primary); }
+        .bank-summary-card .bsc-meta { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+
         /* ── Toast ───────────────────────────────────────────────── */
         .toast-container { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
         .toast { background: white; border-radius: 12px; box-shadow: 0 4px 24px rgba(0,0,0,0.15); padding: 12px 18px; font-size: 14px; min-width: 260px; max-width: 420px; pointer-events: auto; animation: toastIn 0.3s ease; border-left: 4px solid #ccc; }
@@ -818,12 +873,106 @@
                     </div>
                     <div class="form-row">
                         <div class="form-group">
-                            <label for="suggested_vendor">Nhà cung cấp đề xuất (nếu có)</label>
-                            <input type="text" id="suggested_vendor" placeholder="Tên NCC đề xuất...">
-                        </div>
-                        <div class="form-group">
                             <label for="budget_code">Mã ngân sách / Cost center</label>
                             <input type="text" id="budget_code" placeholder="VD: MKT-2025, IT-Q2...">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- NCC section -->
+            <div class="form-card">
+                <div class="form-card-header">
+                    <i class="fas fa-store" style="color:var(--warning);font-size:14px;"></i>
+                    <h2>Nhà cung cấp đề xuất <span style="font-weight:400;font-size:13px;color:var(--text-secondary)">(nếu có)</span></h2>
+                </div>
+                <div class="form-card-body">
+                    <div class="form-row">
+                        <div class="form-group w2">
+                            <label for="vendor_search">NCC từ danh sách</label>
+                            <div class="vendor-combobox" id="vendor-combobox">
+                                <input type="text" id="vendor_search" placeholder="Gõ để tìm nhà cung cấp..." autocomplete="off" oninput="onVendorSearch()" onfocus="onVendorSearchFocus()">
+                                <div class="vendor-dropdown-list" id="vendor-dropdown-list"></div>
+                            </div>
+                            <select id="vendor_old" onchange="onVendorOldChange()" style="display:none">
+                                <option value="">-- Chọn NCC trước --</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="vendor_new">Hoặc nhập NCC mới</label>
+                            <input type="text" id="vendor_new" placeholder="Tên NCC nếu không có trong DS" oninput="onVendorNewInput()">
+                        </div>
+                    </div>
+
+                    <!-- Hidden fields for submit payload -->
+                    <input type="hidden" id="vendor_final_name">
+                    <input type="hidden" id="vendor_type_final">
+                    <input type="hidden" id="vendor_taxid_final">
+                    <input type="hidden" id="vendor_address_final">
+
+                    <!-- Vendor summary card -->
+                    <div class="vendor-summary-card" id="vendor-summary-card">
+                        <div class="vsc-icon"><i class="fas fa-check" style="color:#34C759;font-size:14px;"></i></div>
+                        <div class="vsc-body">
+                            <div class="vsc-name" id="vsc-name"></div>
+                            <div class="vsc-meta" id="vsc-meta"></div>
+                        </div>
+                        <button class="vsc-clear" onclick="clearVendorFields()" title="Xóa NCC">×</button>
+                    </div>
+
+                    <!-- New NCC warning -->
+                    <div id="new-ncc-warning" style="display:none;margin-top:8px;padding:10px 14px;background:rgba(255,149,0,0.08);border:1px solid rgba(255,149,0,0.3);border-radius:8px;font-size:13px;color:#c07000;">
+                        <i class="fas fa-triangle-exclamation" style="margin-right:6px;"></i>
+                        NCC mới chưa có trong danh sách — sẽ được admin xem xét trước khi xử lý
+                    </div>
+
+                    <!-- Bank info -->
+                    <div style="border-top:0.5px solid rgba(0,0,0,0.08);margin:10px 0 14px;padding-top:14px;">
+                        <p style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:10px;">Thông tin tài khoản ngân hàng</p>
+                        <select id="vendor_bank_pick" onchange="onBankPick()" style="display:none">
+                            <option value="">-- Chọn NCC trước --</option>
+                        </select>
+                        <input type="hidden" id="vendor_account_name">
+                        <input type="hidden" id="vendor_account_no">
+                        <input type="hidden" id="vendor_bank_name">
+                        <!-- Bank summary card -->
+                        <div class="bank-summary-card" id="bank-summary-card">
+                            <div class="bsc-icon"><i class="fas fa-university" style="color:#007AFF;font-size:13px;"></i></div>
+                            <div class="bsc-body">
+                                <div class="bsc-bank" id="bsc-bank"></div>
+                                <div class="bsc-meta" id="bsc-meta"></div>
+                            </div>
+                        </div>
+                        <div class="form-row" style="margin-top:10px;">
+                            <div class="form-group full">
+                                <label for="vendor_bank_transfer_note">Nội dung chuyển khoản (tham khảo)</label>
+                                <input type="text" id="vendor_bank_transfer_note" placeholder="Nội dung chuyển khoản">
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Vendor detail (read-only, shown after selection) -->
+                    <div id="vendor-detail-section" style="display:none;border-top:0.5px solid rgba(0,0,0,0.08);padding-top:14px;margin-top:6px;">
+                        <p style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:10px;">Thông tin Nhà cung cấp</p>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>Tên NCC</label>
+                                <input type="text" id="vd-name" readonly>
+                            </div>
+                            <div class="form-group">
+                                <label>Loại NCC</label>
+                                <input type="text" id="vd-type" readonly>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label>MST / CCCD NCC</label>
+                                <input type="text" id="vd-taxid" readonly>
+                            </div>
+                            <div class="form-group w2">
+                                <label>Địa chỉ NCC</label>
+                                <input type="text" id="vd-address" readonly>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1005,6 +1154,12 @@
     let _grandTotal   = 0;
     let _currency     = 'VND';
 
+    /* ── Vendor state ───────────────────────────────────────────── */
+    let allVendors          = [];
+    let allVendorsMaster    = [];
+    let allBanks            = [];
+    let _vendorPreloadCache = []; // never cleared — survives clearVendorFields()
+
     /* ── Toast ──────────────────────────────────────────────────── */
     function showToast(msg, type = 'info', duration = 3500) {
         const c = document.getElementById('toast-container');
@@ -1158,7 +1313,9 @@
         const key  = opt?.dataset?.key  || '';
         document.getElementById('company_name').value          = name;
         document.getElementById('company_key_or_taxid').value  = key;
+        clearVendorFields();
         generateRequestNumber();
+        if (sel.value) loadVendors(key);
     }
 
     function generateRequestNumber() {
@@ -1405,6 +1562,246 @@
         document.getElementById('grand-total-display').textContent = formatMoney(sum);
     }
 
+    /* ═══════════════════════════════════════════════════════════════
+       VENDOR / NCC  (mirrors payment_request.html implementation)
+    ═══════════════════════════════════════════════════════════════ */
+    async function fetchSuppliers(companyGroupKey) {
+        const r  = await fetch(BACKEND_URL, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ action: 'getSuppliers', companyGroupKey: companyGroupKey || '' })
+        });
+        const js = await r.json();
+        return (js && (js.suppliers || (js.data && js.data.suppliers))) || [];
+    }
+
+    const VENDOR_CACHE_KEY = 'tlcg_vendors_cache';
+    const VENDOR_CACHE_TTL = 3600000; // 1 hour
+
+    async function preloadVendors() {
+        try {
+            const cached = JSON.parse(localStorage.getItem(VENDOR_CACHE_KEY) || 'null');
+            if (cached && Date.now() - cached.timestamp < VENDOR_CACHE_TTL && Array.isArray(cached.vendors)) {
+                _vendorPreloadCache = cached.vendors;
+                return;
+            }
+        } catch (_) {}
+        try {
+            const arr = await fetchSuppliers('');
+            _vendorPreloadCache = arr || [];
+            localStorage.setItem(VENDOR_CACHE_KEY, JSON.stringify({ timestamp: Date.now(), vendors: _vendorPreloadCache }));
+        } catch (_) {}
+    }
+
+    function loadVendors(companyGroupKey) {
+        let arr = _vendorPreloadCache;
+        if (companyGroupKey && arr.length) {
+            const filtered = arr.filter(v =>
+                !v.company_group_key ||
+                v.company_group_key.toString().trim().toLowerCase() === companyGroupKey.toLowerCase()
+            );
+            if (filtered.length > 1) arr = filtered;
+        }
+        allVendorsMaster = arr;
+        allVendors = arr;
+        renderVendorOptions(arr, false);
+    }
+
+    function renderVendorOptions(list = [], keepValue = false) {
+        const sel = document.getElementById('vendor_old');
+        const current = keepValue ? (sel.value || '') : '';
+        sel.innerHTML = '<option value="">-- Chọn NCC --</option>';
+        (list || []).forEach(v => {
+            const opt = document.createElement('option');
+            opt.value = v.vendor_name || '';
+            opt.textContent = v.vendor_name || '';
+            sel.appendChild(opt);
+        });
+        if (current) {
+            const found = Array.from(sel.options).find(o => o.value === current);
+            if (found) sel.value = current;
+        }
+        allVendors = list || [];
+    }
+
+    function onVendorSearch() {
+        const q = (document.getElementById('vendor_search').value || '').trim().toLowerCase();
+        renderVendorDropdown(q);
+    }
+
+    function onVendorSearchFocus() {
+        const q = (document.getElementById('vendor_search').value || '').trim().toLowerCase();
+        renderVendorDropdown(q, true);
+    }
+
+    function renderVendorDropdown(q = '', forceShow = false) {
+        const list = document.getElementById('vendor-dropdown-list');
+        if (!list) return;
+        const source = allVendorsMaster || [];
+        const filtered = q ? source.filter(v => (v.vendor_name || '').toLowerCase().includes(q)) : source;
+        list.innerHTML = '';
+        if (filtered.length === 0) {
+            list.innerHTML = '<div class="vendor-dropdown-empty">Không tìm thấy NCC</div>';
+            list.classList.add('show');
+            return;
+        }
+        if (!q && !forceShow) { list.classList.remove('show'); return; }
+        filtered.forEach(v => {
+            const item = document.createElement('div');
+            item.className = 'vendor-dropdown-item';
+            const meta = [v.vendor_type, v.tax_id].filter(Boolean).join(' · ');
+            item.innerHTML = `<div class="vdi-name">${v.vendor_name}</div>${meta ? `<div class="vdi-meta">${meta}</div>` : ''}`;
+            item.onmousedown = (e) => { e.preventDefault(); selectVendorFromDropdown(v.vendor_name); };
+            list.appendChild(item);
+        });
+        list.classList.add('show');
+    }
+
+    function selectVendorFromDropdown(vendorName) {
+        document.getElementById('vendor_search').value = vendorName;
+        document.getElementById('vendor_old').value = vendorName;
+        document.getElementById('vendor-dropdown-list').classList.remove('show');
+        document.getElementById('vendor_new').value = '';
+        applyVendorCombine();
+    }
+
+    function onVendorOldChange() {
+        const val = document.getElementById('vendor_old').value;
+        if (val) document.getElementById('vendor_search').value = val;
+        document.getElementById('vendor_new').value = '';
+        applyVendorCombine();
+    }
+
+    function onVendorNewInput() {
+        document.getElementById('vendor_old').value = '';
+        applyVendorCombine();
+    }
+
+    function applyVendorCombine() {
+        const newVal = document.getElementById('vendor_new').value.trim();
+        const oldVal = document.getElementById('vendor_old').value;
+        const warning = document.getElementById('new-ncc-warning');
+        if (newVal) {
+            document.getElementById('vendor_final_name').value    = newVal;
+            document.getElementById('vendor_type_final').value    = '';
+            document.getElementById('vendor_taxid_final').value   = '';
+            document.getElementById('vendor_address_final').value = '';
+            renderVendorCard(newVal, '', '', '');
+            loadVendorBanks(newVal);
+            if (warning) warning.style.display = '';
+        } else if (oldVal) {
+            const v = allVendors.find(x => x.vendor_name === oldVal);
+            document.getElementById('vendor_final_name').value    = v?.vendor_name  || oldVal;
+            document.getElementById('vendor_type_final').value    = v?.vendor_type  || '';
+            document.getElementById('vendor_taxid_final').value   = v?.tax_id       || '';
+            document.getElementById('vendor_address_final').value = v?.address      || '';
+            renderVendorCard(v?.vendor_name || oldVal, v?.vendor_type || '', v?.tax_id || '', v?.address || '');
+            loadVendorBanks(v?.vendor_name || oldVal);
+            if (warning) warning.style.display = 'none';
+        } else {
+            document.getElementById('vendor-summary-card').classList.remove('show');
+            updateVendorDetail('', '', '', '');
+            if (warning) warning.style.display = 'none';
+            clearBankFields();
+        }
+    }
+
+    function renderVendorCard(name, type, taxId, address) {
+        const card = document.getElementById('vendor-summary-card');
+        document.getElementById('vsc-name').textContent = name;
+        const meta = [type, taxId ? 'MST: ' + taxId : ''].filter(Boolean).join(' · ');
+        document.getElementById('vsc-meta').textContent = [meta, address].filter(Boolean).join(' — ');
+        card.classList.add('show');
+        updateVendorDetail(name, type, taxId, address);
+    }
+
+    function updateVendorDetail(name, type, taxId, address) {
+        document.getElementById('vd-name').value    = name    || '';
+        document.getElementById('vd-type').value    = type    || '';
+        document.getElementById('vd-taxid').value   = taxId   || '';
+        document.getElementById('vd-address').value = address || '';
+        document.getElementById('vendor-detail-section').style.display = name ? '' : 'none';
+    }
+
+    async function loadVendorBanks(vendorName) {
+        const sel = document.getElementById('vendor_bank_pick');
+        sel.style.display = '';
+        sel.innerHTML = '<option value="">-- Đang tải... --</option>';
+        allBanks = [];
+        if (!vendorName) { sel.innerHTML = '<option value="">-- Chọn NCC trước --</option>'; sel.style.display = 'none'; return; }
+        try {
+            const r  = await fetch(BACKEND_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'getVendorBanks', vendorName })
+            });
+            const js = await r.json();
+            const arr = (js && (js.banks || (js.data && js.data.banks))) || [];
+            allBanks = arr;
+            sel.innerHTML = '<option value="">-- Chọn tài khoản --</option>';
+            arr.forEach((b, i) => {
+                const opt = document.createElement('option');
+                opt.value = i;
+                opt.textContent = `${b.bank_name} — ${b.account_no}`;
+                sel.appendChild(opt);
+            });
+            if (arr.length > 0) { sel.value = '0'; onBankPick(); }
+            if (arr.length === 0) { sel.innerHTML = '<option value="">-- Không có tài khoản --</option>'; }
+        } catch (_) {
+            sel.innerHTML = '<option value="">-- Lỗi tải ngân hàng --</option>';
+        }
+    }
+
+    function onBankPick() {
+        const sel = document.getElementById('vendor_bank_pick');
+        const idx = parseInt(sel.value);
+        if (isNaN(idx) || !allBanks[idx]) { clearBankFields(false); return; }
+        const b = allBanks[idx];
+        document.getElementById('vendor_account_name').value       = b.account_name || '';
+        document.getElementById('vendor_account_no').value         = b.account_no   || '';
+        document.getElementById('vendor_bank_name').value          = b.bank_name    || '';
+        document.getElementById('vendor_bank_transfer_note').value = b.note         || '';
+        renderBankCard(b.bank_name || '', b.account_name || '', b.account_no || '');
+    }
+
+    function renderBankCard(bankName, accountName, accountNo) {
+        document.getElementById('bsc-bank').textContent = bankName;
+        document.getElementById('bsc-meta').textContent = [accountName, accountNo].filter(Boolean).join(' · ');
+        document.getElementById('bank-summary-card').classList.add('show');
+    }
+
+    function clearVendorFields() {
+        document.getElementById('vendor_old').innerHTML = '<option value="">-- Chọn NCC --</option>';
+        document.getElementById('vendor_new').value = '';
+        document.getElementById('vendor_search').value = '';
+        const list = document.getElementById('vendor-dropdown-list');
+        if (list) { list.innerHTML = ''; list.classList.remove('show'); }
+        allVendors = [];
+        allVendorsMaster = [];
+        document.getElementById('vendor_final_name').value    = '';
+        document.getElementById('vendor_type_final').value    = '';
+        document.getElementById('vendor_taxid_final').value   = '';
+        document.getElementById('vendor_address_final').value = '';
+        document.getElementById('vendor-summary-card').classList.remove('show');
+        updateVendorDetail('', '', '', '');
+        const w = document.getElementById('new-ncc-warning');
+        if (w) w.style.display = 'none';
+        clearBankFields();
+    }
+
+    function clearBankFields(clearSel = true) {
+        if (clearSel) {
+            const sel = document.getElementById('vendor_bank_pick');
+            sel.innerHTML = '<option value="">-- Chọn NCC trước --</option>';
+            sel.style.display = 'none';
+        }
+        document.getElementById('vendor_account_name').value       = '';
+        document.getElementById('vendor_account_no').value         = '';
+        document.getElementById('vendor_bank_name').value          = '';
+        document.getElementById('vendor_bank_transfer_note').value = '';
+        document.getElementById('bank-summary-card').classList.remove('show');
+    }
+
     function formatMoney(n) {
         const decimals = _currency === 'VND' ? 0 : 2;
         return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: _currency, maximumFractionDigits: decimals }).format(n);
@@ -1439,7 +1836,7 @@
         const priLabel = { high: 'Cao', medium: 'Trung bình', low: 'Thấp' };
         document.getElementById('sum-priority').textContent    = priLabel[_priority] || '—';
         document.getElementById('sum-purpose').textContent     = document.getElementById('purpose').value.trim() || '—';
-        document.getElementById('sum-vendor').textContent      = document.getElementById('suggested_vendor').value.trim() || '—';
+        document.getElementById('sum-vendor').textContent      = document.getElementById('vendor_final_name').value.trim() || document.getElementById('vendor_new').value.trim() || '—';
         document.getElementById('sum-budget-code').textContent = document.getElementById('budget_code').value.trim() || '—';
         document.getElementById('sum-total').textContent       = formatMoney(_grandTotal) + ' (' + _currency + ')';
 
@@ -1519,7 +1916,14 @@
             items:            JSON.stringify(items),
             grandTotal:       _grandTotal,
             purpose:          document.getElementById('purpose').value.trim(),
-            suggestedVendor:  document.getElementById('suggested_vendor').value.trim(),
+            vendorName:       document.getElementById('vendor_final_name').value || document.getElementById('vendor_new').value.trim(),
+            vendorType:       document.getElementById('vendor_type_final').value,
+            vendorTaxId:      document.getElementById('vendor_taxid_final').value,
+            vendorAddress:    document.getElementById('vendor_address_final').value,
+            vendorAccountName: document.getElementById('vendor_account_name').value,
+            vendorAccountNo:  document.getElementById('vendor_account_no').value,
+            vendorBankName:   document.getElementById('vendor_bank_name').value,
+            vendorTransferNote: document.getElementById('vendor_bank_transfer_note').value.trim(),
             budgetCode:       document.getElementById('budget_code').value.trim(),
             budgetApprover:   document.getElementById('budget_approver').value,
             supplierApprover: document.getElementById('supplier_approver').value,
@@ -1565,8 +1969,8 @@
         document.getElementById('requester_name').value         = '';
         document.getElementById('required_date').value   = '';
         document.getElementById('purpose').value         = '';
-        document.getElementById('suggested_vendor').value = '';
         document.getElementById('budget_code').value     = '';
+        clearVendorFields();
         document.getElementById('budget_approver').value  = '';
         document.getElementById('supplier_approver').value = '';
         document.getElementById('req-no-row').style.display = 'none';
@@ -2237,6 +2641,7 @@
         restoreSession();
         loadCompanies();
         loadMasterData();
+        preloadVendors();
         // Restore sidebar state
         const collapsed = localStorage.getItem('pr_sidebar_collapsed') === 'true';
         if (collapsed) {

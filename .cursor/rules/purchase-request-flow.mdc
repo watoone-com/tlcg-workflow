@@ -115,8 +115,10 @@ Encoded fields sent today:
 ```text
 action, prNo, companyCode, companyName, department, requesterName,
 requiredDate, priority, currency, items (JSON string of line objects),
-grandTotal, purpose, suggestedVendor, budgetCode,
-budgetApprover, supplierApprover, submittedAt
+grandTotal, purpose,
+vendorName, vendorType, vendorTaxId, vendorAddress,
+vendorAccountName, vendorAccountNo, vendorBankName, vendorTransferNote,
+budgetCode, budgetApprover, supplierApprover, submittedAt
 ```
 
 **Not sent** today: `budget_approver_note`, hidden `company_key_or_taxid`, `request_id` (redundant if `prNo` matches). Extend GAS + form together if sheets need those.
