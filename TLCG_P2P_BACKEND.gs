@@ -787,7 +787,7 @@ function sendApprovalEmails(data, requesterSignatureUrl) {
       <ul>
         <li><b>Số đề nghị:</b> ${data.requestId}</li>
         <li><b>Ngày lập:</b> ${data.requestDate}</li>
-        <li><b>Công ty:</b> ${data.company}</li>
+        <li><b>ty:</b> ${data.company}</li>
         <li><b>Người đề nghị:</b> ${data.requestor} (${data.requestorEmail})</li>
         <li><b>Bộ phận:</b> ${data.department}</li>
       </ul>
@@ -1018,7 +1018,9 @@ function handleGetSuppliers(data) {
 
 function handleGetVendorBanks(data) {
   try {
-    const vendorName = (data.vendorName || '').toString().trim().toLowerCase();
+    // Exact match: col B (Master Vendor_Bank) must equal col H (Master Vendor).
+    // Only rows where col J Status === 'Active' (case-insensitive) are returned.
+    const vendorName = (data.vendorName || '').toString().trim();
     Logger.log('[Payment Request] Getting vendor banks for: ' + vendorName);
 
     const ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
@@ -1040,10 +1042,10 @@ function handleGetVendorBanks(data) {
     const banks = [];
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i];
-      const rowVendor = (row[1] || '').toString().trim().toLowerCase(); // col B: Vendor_name
-      const status    = (row[9] || '').toString().trim().toLowerCase(); // col J: Status
+      const rowVendor = (row[1] || '').toString().trim(); // col B: Vendor_name — exact match to col H
+      const status    = (row[9] || '').toString().trim(); // col J: Status — must be "Active"
       if (vendorName && rowVendor !== vendorName) continue;
-      if (status && status !== 'active') continue;
+      if (status.toLowerCase() !== 'active') continue;
       banks.push({
         account_name: (row[2] || '').toString().trim(), // Vendor Bank Name
         account_no:   (row[5] || '').toString().trim(), // Bank Number
