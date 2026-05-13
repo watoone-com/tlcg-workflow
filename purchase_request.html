@@ -1283,6 +1283,17 @@
         tr.dataset.moq     = g.moq;
         tr.dataset.moqUnit = g.unit;
         tr.dataset.moqSpec = g.spec;
+        // Set unit dropdown — add the option dynamically if not already present
+        const unitSelect = tr.querySelector('.item-unit');
+        if (unitSelect && g.unit) {
+            const exists = [...unitSelect.options].some(o => o.value === g.unit);
+            if (!exists) {
+                const opt = document.createElement('option');
+                opt.value = opt.textContent = g.unit;
+                unitSelect.appendChild(opt);
+            }
+            unitSelect.value = g.unit;
+        }
         clearMoqError(tr);
         hideGoodsDropdown(n);
         recalcRow(n, 'hang-hoa');
@@ -2116,11 +2127,10 @@
                 const updated = document.querySelectorAll('#tbody-hang-hoa tr');
                 targetRow = updated[updated.length - 1];
             }
-            const rowId = targetRow.id.replace('item-row-', '');
-            selectGoodsItem(rowId, g);
+            const rowId    = targetRow.id.replace('item-row-', '');
             const qtyInput = targetRow.querySelector('.item-qty');
-            if (g.moq > 0) qtyInput.value = g.moq;
-            recalcRow(rowId, 'hang-hoa');
+            if (g.moq > 0) qtyInput.value = g.moq;   // set qty before selectGoodsItem triggers recalc
+            selectGoodsItem(rowId, g);                 // sets name, unit, recalcs with correct qty
         }
 
         // Refresh card states, tabs, and counters
