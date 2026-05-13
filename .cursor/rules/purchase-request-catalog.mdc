@@ -1,0 +1,56 @@
+---
+description: Catalog browser UX rules for the Hàng Hóa "Chọn từ danh mục" panel in purchase_request.html
+globs: purchase_request.html
+alwaysApply: false
+---
+
+# Catalog Browser — Design & Behaviour Rules
+
+## Data source
+- All catalog items come from the **Goods-KTT** Google Sheet via `action=getGoodsCatalog` (routed to `TLCG_P2P_BACKEND.gs`).
+- The shared `tlc_master_data` localStorage cache is patched with goods after first fetch so subsequent page loads are instant.
+- CORE backend (`getMasterData`) does NOT return goods — never overwrite cached goods with an empty array from a CORE refresh.
+
+## State variables (module-level)
+```js
+let _catalogActiveCat = 'all';          // active category tab key
+let _catalogViewMode  = localStorage.getItem('catalog_view') || 'grid'; // 'grid' | 'list'
+```
+
+## Three render modes in `renderCatalogItems(cat, query)`
+1. **Grid** (`_catalogViewMode === 'grid'`): 2-column cards. Un-added → `[+ Thêm]` button. Added → inline `[−] qty [+] unit` stepper.
+2. **List** (`_catalogViewMode === 'list'`): 1-column rows, name+spec left, stepper right.
+3. **Summary** (`cat === '__selected__'`): always a 1-column list regardless of view toggle — name, editable qty stepper, unit. Used for final review.
+
+## Card interaction model
+- First tap "Thêm" → `addFromCatalog(name)` → adds row with MOQ qty, card turns green, stepper appears.
+- `[−]` → `setCatalogQty(name, -1)` → decrements by 1 MOQ step; qty ≤ 0 → `removeFromCatalog(name)` → card resets.
+- `[+]` → `setCatalogQty(name, 1)` → increments by 1 MOQ step.
+- Direct qty input → `setCatalogQtyDirect(name, val)` → validates, syncs table row.
+
+## Key functions
+| Function | Purpose |
+|---|---|
+| `openCatalog()` | Opens panel; on-demand fetches goods if `_goodsCatalog` is empty |
+| `toggleCatalogView(mode)` | Switches grid/list, persists to `localStorage` |
+| `_buildCatalogCats()` | Rebuilds category tabs incl. "Đã chọn" (green, shows count) |
+| `_getBasketMap()` | Returns `{itemName → qty}` from `#tbody-hang-hoa` rows |
+| `setCatalogQty(name, delta)` | ±1 MOQ step, removes if ≤ 0 |
+| `setCatalogQtyDirect(name, val)` | Absolute qty from text input |
+| `_setRowQty(g, qty)` | Syncs qty to table row, calls `recalcRow`, refreshes panel |
+| `removeFromCatalog(name)` | Removes table row, renumbers, refreshes panel |
+| `_updateCatalogCounter()` | Keeps the red badge on "Chọn từ danh mục" button in sync |
+
+## "Đã chọn" tab
+- Appears automatically (green pill) as soon as ≥ 1 item is in the basket.
+- Shows count of distinct items: `✓ Đã chọn (N)`.
+- Clicking it renders the summary view (steppers + remove, no toggle effect).
+
+## MOQ rules
+- Default step size: `g.moq > 0 ? g.moq : 1`.
+- `[+]` and `[−]` always move by exactly 1 step.
+- Direct input accepts any positive number (no MOQ rounding enforced on edit).
+
+## Cache safety
+- `_fetchAndCacheMaster` preserves existing `goods` in cache when CORE returns no goods.
+- `_applyMasterData` skips `seedGoods([])` if `_goodsCatalog` already has items.
