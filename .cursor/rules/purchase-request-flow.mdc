@@ -104,6 +104,7 @@ Hidden fields **`company_name`**, **`company_key_or_taxid`** set from option `da
 - **`formatMoney(n)`** — uses `_currency` for both the currency code and decimal places (0 for VND, 2 for USD/EUR).
 - Do **not** add a per-row currency selector — the selector lives in the header only.
 - Summary screen total appends the currency code: `formatMoney(_grandTotal) + ' (' + _currency + ')'`.
+- The `<select>` is sized to exactly fit three-character codes: `width:3.4em; appearance:none; -webkit-appearance:none;` (no native arrow, no extra padding). Do not widen it.
 
 ---
 
