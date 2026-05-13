@@ -935,12 +935,30 @@
                         <input type="hidden" id="vendor_account_name">
                         <input type="hidden" id="vendor_account_no">
                         <input type="hidden" id="vendor_bank_name">
-                        <!-- Bank summary card -->
+                        <!-- Bank summary card (shown when bank loaded from system) -->
                         <div class="bank-summary-card" id="bank-summary-card">
                             <div class="bsc-icon"><i class="fas fa-university" style="color:#007AFF;font-size:13px;"></i></div>
                             <div class="bsc-body">
                                 <div class="bsc-bank" id="bsc-bank"></div>
                                 <div class="bsc-meta" id="bsc-meta"></div>
+                            </div>
+                        </div>
+                        <!-- Manual bank entry (shown when no bank data in system) -->
+                        <div id="bank-manual-section" style="display:none;">
+                            <p style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;"><i class="fas fa-circle-info" style="margin-right:4px;"></i>Chưa có tài khoản trong hệ thống — nhập thủ công</p>
+                            <div class="form-row">
+                                <div class="form-group">
+                                    <label for="bank-manual-name">Tên ngân hàng</label>
+                                    <input type="text" id="bank-manual-name" placeholder="VD: Vietcombank" oninput="syncManualBank()">
+                                </div>
+                                <div class="form-group">
+                                    <label for="bank-manual-account-name">Tên chủ tài khoản</label>
+                                    <input type="text" id="bank-manual-account-name" placeholder="Tên đúng như trên sổ" oninput="syncManualBank()">
+                                </div>
+                                <div class="form-group">
+                                    <label for="bank-manual-account-no">Số tài khoản</label>
+                                    <input type="text" id="bank-manual-account-no" placeholder="Số tài khoản" oninput="syncManualBank()">
+                                </div>
                             </div>
                         </div>
                         <div class="form-row" style="margin-top:10px;">
@@ -1484,6 +1502,15 @@
                 unitSelect.value = g.unit;
             }
         }
+        // Auto-fill unit price from catalog if available
+        if (g.price > 0) {
+            const priceInput = tr.querySelector('.item-price');
+            if (priceInput) {
+                priceInput.value = g.price;
+                priceInput.style.boxShadow = '';
+                priceInput.style.borderColor = '';
+            }
+        }
         clearMoqError(tr);
         hideGoodsDropdown(n);
         recalcRow(n, 'hang-hoa');
@@ -1724,11 +1751,17 @@
     }
 
     async function loadVendorBanks(vendorName) {
-        const sel = document.getElementById('vendor_bank_pick');
+        const sel     = document.getElementById('vendor_bank_pick');
+        const manual  = document.getElementById('bank-manual-section');
         sel.style.display = '';
         sel.innerHTML = '<option value="">-- Đang tải... --</option>';
+        if (manual) manual.style.display = 'none';
         allBanks = [];
-        if (!vendorName) { sel.innerHTML = '<option value="">-- Chọn NCC trước --</option>'; sel.style.display = 'none'; return; }
+        if (!vendorName) {
+            sel.innerHTML = '<option value="">-- Chọn NCC trước --</option>';
+            sel.style.display = 'none';
+            return;
+        }
         try {
             const r  = await fetch(BACKEND_URL, {
                 method: 'POST',
@@ -1737,18 +1770,27 @@
             });
             const js = await r.json();
             const arr = (js && (js.banks || (js.data && js.data.banks))) || [];
+            console.log('[NCC] getVendorBanks for "' + vendorName + '" →', arr.length, 'banks. Raw:', js);
             allBanks = arr;
-            sel.innerHTML = '<option value="">-- Chọn tài khoản --</option>';
-            arr.forEach((b, i) => {
-                const opt = document.createElement('option');
-                opt.value = i;
-                opt.textContent = `${b.bank_name} — ${b.account_no}`;
-                sel.appendChild(opt);
-            });
-            if (arr.length > 0) { sel.value = '0'; onBankPick(); }
-            if (arr.length === 0) { sel.innerHTML = '<option value="">-- Không có tài khoản --</option>'; }
-        } catch (_) {
+            if (arr.length > 0) {
+                sel.innerHTML = '<option value="">-- Chọn tài khoản --</option>';
+                arr.forEach((b, i) => {
+                    const opt = document.createElement('option');
+                    opt.value = i;
+                    opt.textContent = `${b.bank_name} — ${b.account_no}`;
+                    sel.appendChild(opt);
+                });
+                sel.value = '0';
+                onBankPick();
+            } else {
+                sel.style.display = 'none';
+                document.getElementById('bank-summary-card').classList.remove('show');
+                if (manual) manual.style.display = '';
+            }
+        } catch (err) {
+            console.error('[NCC] getVendorBanks error:', err);
             sel.innerHTML = '<option value="">-- Lỗi tải ngân hàng --</option>';
+            if (manual) manual.style.display = '';
         }
     }
 
@@ -1789,6 +1831,21 @@
         clearBankFields();
     }
 
+    function syncManualBank() {
+        const bankName   = (document.getElementById('bank-manual-name')?.value || '').trim();
+        const acctName   = (document.getElementById('bank-manual-account-name')?.value || '').trim();
+        const acctNo     = (document.getElementById('bank-manual-account-no')?.value || '').trim();
+        document.getElementById('vendor_bank_name').value    = bankName;
+        document.getElementById('vendor_account_name').value = acctName;
+        document.getElementById('vendor_account_no').value   = acctNo;
+        // Update the bank summary card live
+        if (bankName || acctName || acctNo) {
+            renderBankCard(bankName, acctName, acctNo);
+        } else {
+            document.getElementById('bank-summary-card').classList.remove('show');
+        }
+    }
+
     function clearBankFields(clearSel = true) {
         if (clearSel) {
             const sel = document.getElementById('vendor_bank_pick');
@@ -1800,6 +1857,14 @@
         document.getElementById('vendor_bank_name').value          = '';
         document.getElementById('vendor_bank_transfer_note').value = '';
         document.getElementById('bank-summary-card').classList.remove('show');
+        const manual = document.getElementById('bank-manual-section');
+        if (manual) {
+            manual.style.display = 'none';
+            ['bank-manual-name','bank-manual-account-no','bank-manual-account-name'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+        }
     }
 
     function formatMoney(n) {
@@ -2081,8 +2146,9 @@
                 category: (g['Category'] || '').trim(),
                 moq:      parseFloat(g['Min. Order'] || 0),
                 unit:     (g['Unit'] || '').trim(),
-                spec:     (g['Specification'] || '').trim(),
+                spec:     (g['Specificaton'] || g['Specification'] || '').trim(), // sheet has typo "Specificaton"
                 code:     (g['CUKCUK/QBO Code'] || '').trim(),
+                price: parseFloat(g['Unit Price'] || g['Price'] || g['Đơn giá'] || g['Giá bán'] || 0) || 0,
             }))
             .filter(g => g.name);
         console.log('[Catalog] _goodsCatalog after filter:', _goodsCatalog.length, 'items');

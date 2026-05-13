@@ -69,7 +69,8 @@ Frontend filter in **`seedGoods`**:
 - `Status` lowercase === **`active`**.
 - `Items` trimmed non-empty maps to **`name`**.
 - `Min. Order` parses numeric; **`moq > 0`** required or row excluded.
-- Fields used: **`Items`**, **`Category`**, **`Min. Order`**, **`Unit`**, **`Specification`**, **`CUKCUK/QBO Code`**, **`Status`**.
+- Fields used: **`Items`**, **`Category`**, **`Min. Order`**, **`Unit`**, **`Unit Price`**, **`Specificaton`** (sheet typo — missing 'i'), **`CUKCUK/QBO Code`**, **`Status`**.
+- `seedGoods` maps `Unit Price` → `price`; `selectGoodsItem` auto-fills `.item-price` when `g.price > 0`.
 
 Only section **`hang-hoa`** rows get autocomplete: `filterGoodsDropdown` shows **up to 10** matches; fuzzy by substring on `name`. Manual free text clears `dataset.moq` when description no longer exactly matches a catalog name.
 
