@@ -670,7 +670,7 @@
                                     <th class="col-unit">Đơn vị</th>
                                     <th class="col-price" style="white-space:nowrap;">Đơn giá
                                         <select id="currency-select" onchange="setCurrency(this.value)"
-                                                style="font-size:11px;border:none;background:transparent;color:var(--primary);font-weight:700;cursor:pointer;margin-left:2px;outline:none;padding:0;">
+                                                style="font-size:11px;border:none;background:transparent;color:var(--primary);font-weight:700;cursor:pointer;margin-left:2px;outline:none;padding:0;width:3.4em;-webkit-appearance:none;appearance:none;text-align:center;">
                                             <option value="VND">VND</option>
                                             <option value="USD">USD</option>
                                             <option value="EUR">EUR</option>
@@ -695,7 +695,7 @@
                 <div class="form-card-header section-toggle" onclick="toggleSection('thiet-bi')">
                     <div class="section-title">
                         <i class="fas fa-computer" style="color:#5856D6;font-size:14px;"></i>
-                        <h2>Thiết Bị (TSCD / CCDC)</h2>
+                        <h2>Thiết Bị (TSCĐ/CCDC)</h2>
                     </div>
                     <div class="section-meta">
                         <span class="section-subtotal" id="subtotal-thiet-bi">0 ₫</span>
@@ -762,12 +762,12 @@
                 </div>
             </div>
 
-            <!-- Section 4: Sữa Chữa -->
+            <!-- Section 4: Sửa Chữa -->
             <div class="form-card">
                 <div class="form-card-header section-toggle" onclick="toggleSection('sua-chua')">
                     <div class="section-title">
                         <i class="fas fa-screwdriver-wrench" style="color:#FF3B30;font-size:14px;"></i>
-                        <h2>Sữa Chữa (TSCD)</h2>
+                        <h2>Sửa Chữa (TSCĐ)</h2>
                     </div>
                     <div class="section-meta">
                         <span class="section-subtotal" id="subtotal-sua-chua">0 ₫</span>
@@ -780,7 +780,7 @@
                             <table class="items-table">
                                 <thead><tr>
                                     <th class="col-no">#</th>
-                                    <th>Tên TSCD / Nội dung sữa chữa <span class="req">*</span></th>
+                                    <th>Tên TSCĐ / Nội dung sửa chữa <span class="req">*</span></th>
                                     <th class="col-qty">Số lượng</th>
                                     <th class="col-unit">Đơn vị</th>
                                     <th class="col-price price-th">Đơn giá (VND)</th>
@@ -1186,9 +1186,9 @@
     /* ── Section items ───────────────────────────────────────────── */
     const SECTIONS = [
         { id: 'hang-hoa',  label: 'Hàng Hóa',            defaultRows: 10 },
-        { id: 'thiet-bi',  label: 'Thiết Bị (TSCD/CCDC)', defaultRows: 10 },
+        { id: 'thiet-bi',  label: 'Thiết Bị (TSCĐ/CCDC)', defaultRows: 10 },
         { id: 'dich-vu',   label: 'Dịch Vụ',              defaultRows: 5  },
-        { id: 'sua-chua',  label: 'Sữa Chữa (TSCD)',      defaultRows: 5  },
+        { id: 'sua-chua',  label: 'Sửa Chữa (TSCĐ)',      defaultRows: 5  },
     ];
 
     let _rowCount = 0;

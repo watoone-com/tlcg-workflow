@@ -38,7 +38,7 @@ The proxy in `api/voucher.js` routes by action:
 - At least one row with non-empty `.item-desc` in **any** `SECTION`.
 - Purpose: `purpose` required (validated when leaving step 2).
 - **MOQ (`hang-hoa` only):** For rows where a catalog item was selected (`tr.dataset.moq`), `qty >= moq`; otherwise toast error and `#tbody-hang-hoa tr.moq-error`.
-- Sections: `SECTIONS = hang-hoa, thiet-bi, dich-vu, sua-chua`; each seeded with default row counts; expandable via chevron.
+- Sections: `SECTIONS = hang-hoa, thiet-bi, dich-vu, sua-chua`; labels: **Hàng Hóa**, **Thiết Bị (TSCĐ/CCDC)**, **Dịch Vụ**, **Sửa Chữa (TSCĐ)**; each seeded with default row counts; expandable via chevron.
 
 **Step 3 — Phê duyệt**
 
@@ -94,13 +94,26 @@ Hidden fields **`company_name`**, **`company_key_or_taxid`** set from option `da
 
 ---
 
+## Currency selector (global, header-only)
+
+- Global state: `let _currency = 'VND';` (default).
+- The **Hàng Hóa** section `<th class="col-price">` contains an inline `<select id="currency-select">` with options VND / USD / EUR.
+- The other three section price headers use `class="col-price price-th"` — their text is synced by `setCurrency()`.
+- **`setCurrency(code)`** — updates `_currency`, sets text of all `.price-th` to `Đơn giá (code)`, updates `step` on all `.item-price` inputs (1000 for VND, 0.01 for others), then calls `recalcAllSections()`.
+- **`recalcAllSections()`** — loops `SECTIONS` calling `recalcSection`, then `recalcGrandTotal`.
+- **`formatMoney(n)`** — uses `_currency` for both the currency code and decimal places (0 for VND, 2 for USD/EUR).
+- Do **not** add a per-row currency selector — the selector lives in the header only.
+- Summary screen total appends the currency code: `formatMoney(_grandTotal) + ' (' + _currency + ')'`.
+
+---
+
 ## Submit payload (`purchaseRequest`)
 
 Encoded fields sent today:
 
 ```text
 action, prNo, companyCode, companyName, department, requesterName,
-requiredDate, priority, items (JSON string of line objects),
+requiredDate, priority, currency, items (JSON string of line objects),
 grandTotal, purpose, suggestedVendor, budgetCode,
 budgetApprover, supplierApprover, submittedAt
 ```
