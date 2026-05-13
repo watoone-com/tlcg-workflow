@@ -54,3 +54,23 @@ let _catalogViewMode  = localStorage.getItem('catalog_view') || 'grid'; // 'grid
 ## Cache safety
 - `_fetchAndCacheMaster` preserves existing `goods` in cache when CORE returns no goods.
 - `_applyMasterData` skips `seedGoods([])` if `_goodsCatalog` already has items.
+
+## Table row sync — `selectGoodsItem(n, g)` rules
+- Always sets **name**, **unit**, and **MOQ metadata** (`dataset.moq`, `moqUnit`, `moqSpec`) on the row.
+- Unit is set with **case-insensitive matching** against existing `<option>` values; if no match, the unit is appended as a new option dynamically.
+- `g.unit` from Goods-KTT is the source of truth — overrides the default "Cái".
+- qty is set **before** calling `selectGoodsItem` in `addFromCatalog` so `recalcRow` inside `selectGoodsItem` uses the correct MOQ qty.
+- `_setRowQty` also re-applies the unit fix so stepper adjustments on existing rows stay consistent.
+
+## Row reuse rule (`addFromCatalog`)
+- Before appending a new table row, scan `#tbody-hang-hoa tr` for the first row where `.item-desc` is empty.
+- Fill that empty row instead of creating a new one.
+- Only call `addSectionRow('hang-hoa')` when all existing rows are already filled.
+
+## Unit mapping examples from Goods-KTT
+| Sheet `Unit` | Dropdown result |
+|---|---|
+| `Hộp` | added as new option → "Hộp" |
+| `Cái` | existing option → "Cái" |
+| `kg` | case-insensitive match → existing "Kg" |
+| `Thùng` | existing option → "Thùng" |

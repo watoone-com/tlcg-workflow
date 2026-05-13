@@ -668,7 +668,14 @@
                                     <th>Tên hàng / Mô tả <span class="req">*</span></th>
                                     <th class="col-qty">Số lượng</th>
                                     <th class="col-unit">Đơn vị</th>
-                                    <th class="col-price">Đơn giá (VND)</th>
+                                    <th class="col-price" style="white-space:nowrap;">Đơn giá
+                                        <select id="currency-select" onchange="setCurrency(this.value)"
+                                                style="font-size:11px;border:none;background:transparent;color:var(--primary);font-weight:700;cursor:pointer;margin-left:2px;outline:none;padding:0;">
+                                            <option value="VND">VND</option>
+                                            <option value="USD">USD</option>
+                                            <option value="EUR">EUR</option>
+                                        </select>
+                                    </th>
                                     <th class="col-total">Thành tiền</th>
                                     <th class="col-note">Ghi chú</th>
                                     <th class="col-del"></th>
@@ -704,7 +711,7 @@
                                     <th>Tên thiết bị / Mô tả <span class="req">*</span></th>
                                     <th class="col-qty">Số lượng</th>
                                     <th class="col-unit">Đơn vị</th>
-                                    <th class="col-price">Đơn giá (VND)</th>
+                                    <th class="col-price price-th">Đơn giá (VND)</th>
                                     <th class="col-total">Thành tiền</th>
                                     <th class="col-note">Ghi chú</th>
                                     <th class="col-del"></th>
@@ -740,7 +747,7 @@
                                     <th>Tên dịch vụ / Mô tả <span class="req">*</span></th>
                                     <th class="col-qty">Số lượng</th>
                                     <th class="col-unit">Đơn vị</th>
-                                    <th class="col-price">Đơn giá (VND)</th>
+                                    <th class="col-price price-th">Đơn giá (VND)</th>
                                     <th class="col-total">Thành tiền</th>
                                     <th class="col-note">Ghi chú</th>
                                     <th class="col-del"></th>
@@ -776,7 +783,7 @@
                                     <th>Tên TSCD / Nội dung sữa chữa <span class="req">*</span></th>
                                     <th class="col-qty">Số lượng</th>
                                     <th class="col-unit">Đơn vị</th>
-                                    <th class="col-price">Đơn giá (VND)</th>
+                                    <th class="col-price price-th">Đơn giá (VND)</th>
                                     <th class="col-total">Thành tiền</th>
                                     <th class="col-note">Ghi chú</th>
                                     <th class="col-del"></th>
@@ -996,6 +1003,7 @@
     let _priority     = 'medium';
     let _prNo         = '';
     let _grandTotal   = 0;
+    let _currency     = 'VND';
 
     /* ── Toast ──────────────────────────────────────────────────── */
     function showToast(msg, type = 'info', duration = 3500) {
@@ -1077,6 +1085,27 @@
                 }
             });
             if (moqError) { showToast('Số lượng chưa đạt tối thiểu — ' + moqError, 'error', 5000); return; }
+            // Đơn giá required — every filled row must have price > 0
+            let missingPrice = null;
+            SECTIONS.forEach(s => {
+                if (missingPrice) return;
+                document.querySelectorAll('#tbody-' + s.id + ' tr').forEach(tr => {
+                    if (missingPrice) return;
+                    const desc  = tr.querySelector('.item-desc')?.value.trim();
+                    const price = parseFloat(tr.querySelector('.item-price')?.value) || 0;
+                    if (desc && price <= 0) {
+                        tr.querySelector('.item-price').style.boxShadow = '0 0 0 2px #FF3B30';
+                        tr.querySelector('.item-price').style.borderColor = '#FF3B30';
+                        missingPrice = `"${desc}"`;
+                    }
+                });
+            });
+            if (missingPrice) { showToast(`Vui lòng nhập Đơn giá cho ${missingPrice}.`, 'error', 4000); return; }
+            // Clear price error highlights when all good
+            document.querySelectorAll('.item-price').forEach(el => {
+                el.style.boxShadow = '';
+                el.style.borderColor = '';
+            });
             if (!document.getElementById('purpose').value.trim()) { showToast('Vui lòng nhập mục đích mua hàng.', 'error'); return; }
         }
         if (step === 3) {
@@ -1205,7 +1234,7 @@
                 <option>Lít</option><option>m²</option><option>Chiếc</option>
                 <option>Thùng</option><option>Gói</option><option>Dịch vụ</option>
             </select></td>
-            <td class="col-price"><input type="number" class="item-price" value="0" min="0" step="1000" oninput="recalcRow(${n}, '${sectionId}')"></td>
+            <td class="col-price"><input type="number" class="item-price" value="0" min="0" step="1000" oninput="recalcRow(${n}, '${sectionId}'); if(+this.value>0){this.style.boxShadow='';this.style.borderColor='';}"></td>
             <td class="col-total item-total" data-value="0">0 ₫</td>
             <td class="col-note"><input type="text" class="item-note" placeholder="Ghi chú..."></td>
             <td class="col-del"><button class="del-btn" onclick="removeSectionRow('item-row-${n}','${sectionId}')" title="Xóa dòng"><i class="fas fa-times"></i></button></td>
@@ -1377,7 +1406,26 @@
     }
 
     function formatMoney(n) {
-        return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND', maximumFractionDigits: 0 }).format(n);
+        const decimals = _currency === 'VND' ? 0 : 2;
+        return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: _currency, maximumFractionDigits: decimals }).format(n);
+    }
+
+    function setCurrency(code) {
+        _currency = code;
+        // Sync all non-primary price headers
+        document.querySelectorAll('.price-th').forEach(th => {
+            th.textContent = `Đơn giá (${code})`;
+        });
+        // Adjust step size on all price inputs
+        const step = code === 'VND' ? 1000 : 0.01;
+        document.querySelectorAll('.item-price').forEach(el => el.step = step);
+        // Re-render all row totals, section subtotals and grand total
+        recalcAllSections();
+    }
+
+    function recalcAllSections() {
+        SECTIONS.forEach(s => recalcSection(s.id));
+        recalcGrandTotal();
     }
 
     /* ── Summary builder ────────────────────────────────────────── */
@@ -1393,7 +1441,7 @@
         document.getElementById('sum-purpose').textContent     = document.getElementById('purpose').value.trim() || '—';
         document.getElementById('sum-vendor').textContent      = document.getElementById('suggested_vendor').value.trim() || '—';
         document.getElementById('sum-budget-code').textContent = document.getElementById('budget_code').value.trim() || '—';
-        document.getElementById('sum-total').textContent       = formatMoney(_grandTotal);
+        document.getElementById('sum-total').textContent       = formatMoney(_grandTotal) + ' (' + _currency + ')';
 
         const sel1 = document.getElementById('budget_approver');
         document.getElementById('sum-budget-approver').textContent = sel1.options[sel1.selectedIndex]?.text || '—';
@@ -1467,6 +1515,7 @@
             requesterName:    document.getElementById('requester_name').value.trim(),
             requiredDate:     document.getElementById('required_date').value,
             priority:         _priority,
+            currency:         _currency,
             items:            JSON.stringify(items),
             grandTotal:       _grandTotal,
             purpose:          document.getElementById('purpose').value.trim(),
