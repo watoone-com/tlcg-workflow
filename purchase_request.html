@@ -1283,16 +1283,20 @@
         tr.dataset.moq     = g.moq;
         tr.dataset.moqUnit = g.unit;
         tr.dataset.moqSpec = g.spec;
-        // Set unit dropdown — add the option dynamically if not already present
+        // Set unit dropdown — case-insensitive match, add dynamically if missing
         const unitSelect = tr.querySelector('.item-unit');
         if (unitSelect && g.unit) {
-            const exists = [...unitSelect.options].some(o => o.value === g.unit);
-            if (!exists) {
+            const unitLower = g.unit.toLowerCase();
+            // Find existing option with case-insensitive match
+            const match = [...unitSelect.options].find(o => o.value.toLowerCase() === unitLower);
+            if (match) {
+                unitSelect.value = match.value; // reuse existing option's casing
+            } else {
                 const opt = document.createElement('option');
                 opt.value = opt.textContent = g.unit;
                 unitSelect.appendChild(opt);
+                unitSelect.value = g.unit;
             }
-            unitSelect.value = g.unit;
         }
         clearMoqError(tr);
         hideGoodsDropdown(n);
@@ -2086,6 +2090,20 @@
         const qtyInput = targetRow.querySelector('.item-qty');
         if (qtyInput) {
             qtyInput.value = qty;
+            // Ensure unit is correct (in case row was added before unit fix)
+            const unitSelect = targetRow.querySelector('.item-unit');
+            if (unitSelect && g.unit) {
+                const unitLower = g.unit.toLowerCase();
+                const match = [...unitSelect.options].find(o => o.value.toLowerCase() === unitLower);
+                if (match) {
+                    unitSelect.value = match.value;
+                } else {
+                    const opt = document.createElement('option');
+                    opt.value = opt.textContent = g.unit;
+                    unitSelect.appendChild(opt);
+                    unitSelect.value = g.unit;
+                }
+            }
             const rowId = targetRow.id.replace('item-row-', '');
             recalcRow(rowId, 'hang-hoa');
         }
