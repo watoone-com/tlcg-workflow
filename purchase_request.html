@@ -1507,6 +1507,7 @@
             const priceInput = tr.querySelector('.item-price');
             if (priceInput) {
                 priceInput.value = g.price;
+                priceInput.step  = _currency === 'VND' ? 1000 : 0.01; // match current currency
                 priceInput.style.boxShadow = '';
                 priceInput.style.borderColor = '';
             }

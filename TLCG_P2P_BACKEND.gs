@@ -1034,20 +1034,23 @@ function handleGetVendorBanks(data) {
       return createResponse(true, 'No banks found', { banks: [] });
     }
 
-    // A=0: Vendor_Full_Name, B=1: Account_Name, C=2: Account_No,
-    // D=3: Bank_Name, E=4: Transfer_Note, F=5: Status
+    // A=0: Name, B=1: Vendor_name, C=2: Vendor Bank Name, D=3: Note,
+    // E=4: Bank Name, F=5: Bank Number, G=6: Bank Address,
+    // H=7: SWIFT code, I=8: Beneficiary Bank Address, J=9: Status
     const banks = [];
     for (let i = 1; i < rows.length; i++) {
       const row = rows[i];
-      const rowVendor = (row[0] || '').toString().trim().toLowerCase();
-      const status = (row[5] || '').toString().trim().toLowerCase();
+      const rowVendor = (row[1] || '').toString().trim().toLowerCase(); // col B: Vendor_name
+      const status    = (row[9] || '').toString().trim().toLowerCase(); // col J: Status
       if (vendorName && rowVendor !== vendorName) continue;
       if (status && status !== 'active') continue;
       banks.push({
-        account_name: (row[1] || '').toString().trim(),
-        account_no:   (row[2] || '').toString().trim(),
-        bank_name:    (row[3] || '').toString().trim(),
-        note:         (row[4] || '').toString().trim()
+        account_name: (row[2] || '').toString().trim(), // Vendor Bank Name
+        account_no:   (row[5] || '').toString().trim(), // Bank Number
+        bank_name:    (row[4] || '').toString().trim(), // Bank Name
+        note:         (row[3] || '').toString().trim(), // Note
+        bank_address: (row[6] || '').toString().trim(), // Bank Address
+        swift_code:   (row[7] || '').toString().trim()  // SWIFT code
       });
     }
 
