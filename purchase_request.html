@@ -8,6 +8,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdnjs.cloudflare.com">
     <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <style>
         :root {
@@ -35,8 +36,20 @@
         }
 
         /* ── Reset ──────────────────────────────────────────────── */
+        html { color-scheme: light; }
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: var(--font-body); background: var(--bg); color: var(--text-primary); min-height: 100vh; -webkit-font-smoothing: antialiased; }
+        body { font-family: var(--font-body); background: var(--bg); color: var(--text-primary); min-height: 100vh; -webkit-font-smoothing: antialiased; touch-action: manipulation; }
+
+        @media (prefers-reduced-motion: reduce) {
+          *, *::before, *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+            scroll-behavior: auto !important;
+          }
+          .ipad-sidebar:hover { transition: none; }
+          .catalog-panel { transition: none !important; }
+        }
 
         /* ── Sidebar (shared with payment_request) ──────────── */
         .ipad-sidebar {
@@ -74,7 +87,7 @@
         .sidebar-section { padding: 8px 0; position: relative; }
         .sidebar-section:not(:first-of-type)::before { content: ''; position: absolute; top: 0; left: 16px; right: 16px; height: 0.5px; background: rgba(60,60,67,0.18); }
         .sidebar-section-title { font-size: 12px; font-weight: 600; color: #6e6e73; text-transform: uppercase; padding: 12px 16px 6px; letter-spacing: 0.5px; }
-        .sidebar-item { display: flex; align-items: center; gap: 12px; padding: 10px 16px; margin: 2px 8px; border-radius: 10px; cursor: pointer; transition: all 0.2s; color: #000; font-size: 15px; font-weight: 400; border: none; background: transparent; width: calc(100% - 16px); text-align: left; }
+        .sidebar-item { display: flex; align-items: center; gap: 12px; padding: 10px 16px; margin: 2px 8px; border-radius: 10px; cursor: pointer; transition: background-color 0.2s, transform 0.2s, color 0.2s; color: #000; font-size: 15px; font-weight: 400; border: none; background: transparent; width: calc(100% - 16px); text-align: left; }
         .sidebar-item:hover { background: rgba(0,0,0,0.04); transform: translateX(2px); }
         .sidebar-item.active { background: var(--primary); color: white; }
         .sidebar-icon-box { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; color: white; flex-shrink: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
@@ -92,7 +105,16 @@
         .stepper-line { position: absolute; top: 20px; left: 0; right: 0; height: 2px; background: rgba(0,0,0,0.10); z-index: 1; }
         .stepper-line-progress { position: absolute; top: 0; left: 0; height: 100%; background: var(--primary); transition: width 0.3s cubic-bezier(0.4,0,0.2,1); }
         .stepper-step { display: flex; flex-direction: column; align-items: center; gap: 8px; position: relative; z-index: 2; cursor: pointer; }
-        .stepper-circle { width: 40px; height: 40px; border-radius: 50%; background: white; border: 2px solid rgba(0,0,0,0.15); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; transition: all 0.2s cubic-bezier(0.4,0,0.2,1); }
+        button.stepper-step {
+          appearance: none; border: none; background: transparent; padding: 0; margin: 0;
+          font: inherit; color: inherit; cursor: pointer; text-align: center;
+          width: auto; align-self: center;
+        }
+        button.stepper-step:focus-visible { outline: none; }
+        button.stepper-step:focus-visible .stepper-circle {
+          box-shadow: 0 0 0 3px rgba(0,122,255,0.35); border-color: var(--primary);
+        }
+        .stepper-circle { width: 40px; height: 40px; border-radius: 50%; background: white; border: 2px solid rgba(0,0,0,0.15); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; transition: background-color 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s cubic-bezier(0.4,0,0.2,1); }
         .stepper-step.active   .stepper-circle { background: var(--primary); border-color: var(--primary); color: white; box-shadow: 0 2px 8px rgba(0,122,255,0.24); }
         .stepper-step.completed .stepper-circle { background: var(--success); border-color: var(--success); color: white; }
         .stepper-label { font-size: 12px; font-weight: 500; color: var(--text-secondary); text-align: center; max-width: 80px; }
@@ -119,16 +141,21 @@
         .form-group.w2   { flex: 2 1 300px; }
         label { font-size: 12px; font-weight: 500; color: var(--text-secondary); margin-bottom: 4px; }
         .req  { color: var(--error); margin-left: 2px; }
-        input, select, textarea {
+        input:not([type="hidden"]):not([type="radio"]):not([type="checkbox"]), select, textarea {
             width: 100%; padding: 9px 12px;
             border: 1px solid rgba(0,0,0,0.15); border-radius: var(--radius-sm);
             font-size: 14px; font-family: var(--font-body); color: var(--text-primary);
-            background: white; outline: none;
+            background: white; outline-offset: 2px;
             transition: border-color 0.15s, box-shadow 0.15s;
         }
-        input:focus, select:focus, textarea:focus {
+        input:not([type="hidden"]):not([type="radio"]):not([type="checkbox"]):focus-visible,
+        select:focus-visible, textarea:focus-visible {
+            outline: 2px solid var(--primary);
             border-color: var(--primary);
             box-shadow: 0 0 0 3px rgba(0,122,255,0.12);
+        }
+        #currency-select:focus-visible {
+          outline: 2px solid var(--primary); outline-offset: 2px; border-radius: 4px;
         }
         input[readonly], input:disabled { background: var(--bg); color: #64748b; cursor: default; }
         textarea { resize: vertical; min-height: 80px; }
@@ -141,15 +168,16 @@
         .priority-btn {
             padding: 7px 16px; border-radius: 20px; border: 1.5px solid rgba(0,0,0,0.15);
             font-size: 13px; font-weight: 500; cursor: pointer; background: white;
-            font-family: var(--font-body); transition: all 0.15s; color: var(--text-secondary);
+            font-family: var(--font-body); transition: background-color 0.15s, border-color 0.15s, color 0.15s; color: var(--text-secondary);
         }
+        .priority-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
         .priority-btn.selected-high   { background: rgba(255,59,48,0.10);  border-color: #FF3B30; color: #FF3B30; }
         .priority-btn.selected-medium { background: rgba(255,149,0,0.10);  border-color: #FF9500; color: #c07000; }
         .priority-btn.selected-low    { background: rgba(52,199,89,0.10);  border-color: #34C759; color: #1a7a3c; }
 
         /* ── Items table ─────────────────────────────────────────── */
         .items-wrap { overflow-x: auto; margin: 0 -4px; }
-        .items-table { width: 100%; border-collapse: collapse; min-width: 640px; font-size: 13px; }
+        .items-table { width: 100%; border-collapse: collapse; min-width: 640px; font-size: 13px; font-variant-numeric: tabular-nums; }
         .items-table th {
             background: var(--bg); font-weight: 500; color: var(--text-secondary);
             padding: 8px 10px; border-bottom: 1px solid rgba(0,0,0,0.10);
@@ -159,10 +187,11 @@
         .items-table tr:last-child td { border-bottom: none; }
         .items-table td input, .items-table td select {
             border: none; background: transparent; padding: 6px 8px;
-            border-radius: 6px; font-size: 13px; width: 100%;
+            border-radius: 6px; font-size: 13px; width: 100%; outline-offset: 1px;
         }
-        .items-table td input:focus, .items-table td select:focus {
-            background: rgba(0,122,255,0.06); outline: none; box-shadow: none;
+        .items-table td input:focus-visible, .items-table td select:focus-visible {
+            background: rgba(0,122,255,0.06);
+            outline: 2px solid var(--primary); box-shadow: none;
         }
         .items-table .col-no    { width: 36px;  text-align: center; color: var(--text-secondary); font-size: 12px; }
         .items-table .col-del   { width: 40px;  text-align: center; }
@@ -175,16 +204,18 @@
         .del-btn {
             width: 26px; height: 26px; border-radius: 50%; border: none;
             background: rgba(255,59,48,0.08); color: #FF3B30;
-            cursor: pointer; font-size: 12px; transition: background 0.15s;
+            cursor: pointer; font-size: 12px; transition: background-color 0.15s;
             display: inline-flex; align-items: center; justify-content: center;
         }
+        .del-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
         .del-btn:hover { background: rgba(255,59,48,0.18); }
+        .del-btn i { pointer-events: none; }
         .add-row-btn {
             display: inline-flex; align-items: center; gap: 6px;
             padding: 7px 14px; border-radius: 8px; border: 1.5px dashed rgba(0,0,0,0.18);
             background: transparent; font-size: 13px; font-weight: 500;
             color: var(--primary); cursor: pointer; font-family: var(--font-body);
-            transition: all 0.15s; margin-top: 10px;
+            transition: border-color 0.15s, background-color 0.15s; margin-top: 10px;
         }
         .add-row-btn:hover { border-color: var(--primary); background: rgba(0,122,255,0.05); }
 
@@ -205,6 +236,7 @@
             transition: background 0.15s, box-shadow 0.15s;
         }
         .catalog-open-btn:hover { background: rgba(0,122,255,0.12); box-shadow: 0 2px 8px rgba(0,122,255,0.15); }
+        .catalog-open-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
         .catalog-count-badge {
             background: #FF3B30; color: #fff; border-radius: 10px;
             font-size: 11px; font-weight: 700; padding: 1px 6px; min-width: 18px; text-align: center;
@@ -212,6 +244,7 @@
         .catalog-overlay {
             display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.35);
             z-index: 500; backdrop-filter: blur(2px);
+            overscroll-behavior: contain;
         }
         .catalog-overlay.open { display: block; }
         .catalog-panel {
@@ -219,6 +252,7 @@
             background: #f2f2f7; z-index: 501; display: flex; flex-direction: column;
             transform: translateX(100%); transition: transform 0.28s cubic-bezier(0.4,0,0.2,1);
             box-shadow: -4px 0 24px rgba(0,0,0,0.18);
+            overscroll-behavior: contain;
         }
         .catalog-panel.open { transform: translateX(0); }
         .catalog-panel-header {
@@ -231,12 +265,13 @@
             background: #e5e5ea; border: none; border-radius: 50%; width: 30px; height: 30px;
             cursor: pointer; font-size: 14px; color: #3a3a3c; display: flex; align-items: center; justify-content: center;
         }
+        .catalog-close-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
         .catalog-search-wrap { padding: 10px 12px; background: white; border-bottom: 1px solid rgba(0,0,0,0.07); }
         .catalog-search-input {
             width: 100%; padding: 8px 12px; border: 1px solid rgba(0,0,0,0.15);
-            border-radius: 8px; font-size: 14px; box-sizing: border-box; outline: none;
+            border-radius: 8px; font-size: 14px; box-sizing: border-box;
         }
-        .catalog-search-input:focus { border-color: var(--primary); }
+        .catalog-search-input:focus-visible { outline: 2px solid var(--primary); border-color: var(--primary); }
         .catalog-cats {
             display: flex; flex-wrap: wrap; gap: 6px; padding: 10px 12px 8px;
             background: white; border-bottom: 1px solid rgba(0,0,0,0.07);
@@ -244,7 +279,7 @@
         .catalog-cat-tab {
             padding: 4px 11px; border-radius: 20px; border: 1.5px solid rgba(0,0,0,0.12);
             background: white; font-size: 12px; font-weight: 600; cursor: pointer; color: #3a3a3c;
-            transition: all 0.15s; white-space: nowrap;
+            transition: background-color 0.15s, border-color 0.15s, color 0.15s; white-space: nowrap;
         }
         .catalog-cat-tab.active { background: var(--primary); border-color: var(--primary); color: white; }
         .catalog-selected-tab { border-color: #34C759; color: #065f46; background: #f0fff4; }
@@ -280,6 +315,7 @@
             transition: background 0.12s;
         }
         .catalog-add-btn:hover { background: rgba(0,122,255,0.14); }
+        .catalog-add-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
         /* qty stepper on added card */
         .catalog-stepper {
             display: flex; align-items: center; gap: 4px; margin-top: 8px;
@@ -288,8 +324,9 @@
             width: 28px; height: 28px; border-radius: 8px; border: 1.5px solid rgba(0,0,0,0.12);
             background: white; font-size: 15px; font-weight: 700; cursor: pointer;
             display: flex; align-items: center; justify-content: center; flex-shrink: 0;
-            transition: background 0.12s, border-color 0.12s; color: #1c1c1e; line-height: 1;
+            transition: background-color 0.12s, border-color 0.12s; color: #1c1c1e; line-height: 1;
         }
+        .catalog-stepper-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 1px; }
         .catalog-stepper-btn.minus { border-color: #FF3B30; color: #FF3B30; }
         .catalog-stepper-btn.minus:hover { background: #fff0ee; }
         .catalog-stepper-btn.plus  { border-color: #34C759; color: #34C759; }
@@ -318,8 +355,9 @@
         .catalog-view-btn {
             width: 30px; height: 30px; border-radius: 7px; border: 1.5px solid rgba(0,0,0,0.12);
             background: white; cursor: pointer; display: flex; align-items: center; justify-content: center;
-            font-size: 13px; color: #8e8e93; transition: all 0.12s;
+            font-size: 13px; color: #8e8e93; transition: background-color 0.12s, border-color 0.12s, color 0.12s;
         }
+        .catalog-view-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
         .catalog-view-btn.active { background: var(--primary); border-color: var(--primary); color: white; }
         /* summary view (Đã chọn) */
         .catalog-summary-row {
@@ -338,6 +376,7 @@
             flex: 1; padding: 11px; border-radius: 10px; border: none;
             background: var(--primary); color: white; font-size: 15px; font-weight: 600; cursor: pointer;
         }
+        .catalog-done-btn:focus-visible { outline: 2px solid white; outline-offset: 3px; box-shadow: 0 0 0 2px var(--primary); }
         .catalog-done-btn:hover { background: #005ecb; }
 
         /* ── Searchable select (Người đề nghị) ──────────────── */
@@ -350,7 +389,7 @@
             transition: border-color 0.15s, box-shadow 0.15s;
             box-sizing: border-box;
         }
-        .search-input:focus { outline: none; border-color: #007AFF; box-shadow: 0 0 0 3px rgba(0,122,255,0.12); }
+        .search-input:focus-visible { outline: 2px solid #007AFF; border-color: #007AFF; box-shadow: 0 0 0 3px rgba(0,122,255,0.12); }
         .dropdown-options {
             display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0;
             max-height: 220px; overflow-y: auto;
@@ -416,9 +455,10 @@
         .step-navigation button {
             border: none; border-radius: var(--radius-sm); font-family: var(--font-body);
             font-size: 14px; font-weight: 500; cursor: pointer; padding: 9px 18px;
-            transition: all 0.15s cubic-bezier(0.4,0,0.2,1);
+            transition: background-color 0.15s, color 0.15s, border-color 0.15s, opacity 0.15s, transform 0.15s cubic-bezier(0.4,0,0.2,1);
             display: inline-flex; align-items: center; justify-content: center; gap: 6px;
         }
+        .step-navigation button:focus-visible { outline: 2px solid var(--primary); outline-offset: 2px; }
         .step-navigation button:hover:not(:disabled) { transform: translateY(-1px); }
         .step-navigation button:disabled { opacity: 0.55; cursor: not-allowed; transform: none; }
         .btn-secondary { background: white; border: 1px solid rgba(0,0,0,0.15) !important; color: var(--text-primary); }
@@ -474,6 +514,7 @@
             line-height: 1; transition: color 0.15s;
         }
         .vendor-summary-card .vsc-clear:hover { color: var(--error); transform: none; }
+        .vendor-summary-card .vsc-clear:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
         .bank-summary-card {
             display: none;
             background: rgba(0,122,255,0.05); border: 1px solid rgba(0,122,255,0.18);
@@ -488,6 +529,16 @@
         .bank-summary-card .bsc-body { flex: 1; min-width: 0; }
         .bank-summary-card .bsc-bank { font-size: 14px; font-weight: 600; color: var(--text-primary); }
         .bank-summary-card .bsc-meta { font-size: 13px; color: var(--text-secondary); margin-top: 2px; }
+
+        /* Skip link (accessibility) */
+        .skip-to-main {
+            position: absolute; left: -9999px; top: auto; width: 1px; height: 1px; overflow: hidden; z-index: 10001;
+        }
+        .skip-to-main:focus-visible {
+            position: fixed; left: 16px; top: 16px; width: auto; height: auto; padding: 10px 16px;
+            background: var(--primary); color: #fff; border-radius: 8px; text-decoration: none; font-weight: 600;
+            overflow: visible; outline: none; box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
 
         /* ── Toast ───────────────────────────────────────────────── */
         .toast-container { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; gap: 8px; pointer-events: none; }
@@ -504,46 +555,48 @@
         }
         .success-icon { width: 80px; height: 80px; border-radius: 50%; background: rgba(52,199,89,0.12); display: flex; align-items: center; justify-content: center; }
 
-        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; } }
-    </style>
 </head>
 <body>
+<a href="#main-content" class="skip-to-main">Bỏ qua đến nội dung</a>
 
 <!-- ── Sidebar ──────────────────────────────────────────────────── -->
 <aside class="ipad-sidebar" id="ipad-sidebar">
     <div class="sidebar-header">
-        <div style="display:flex; align-items:center; gap:10px; cursor:pointer;" onclick="window.location.href='index.html'">
+        <a href="index.html" class="sidebar-brand-link" style="display:flex; align-items:center; gap:10px; text-decoration:none; color:inherit;">
             <img src="brand_assets/tlc logo transparancy.png" alt="TLC Logo" style="height:60px; width:auto; object-fit:contain;">
             <span style="font-weight:600; font-size:17px; color:#000;">TLCGroup</span>
-        </div>
-        <button id="sidebar-toggle" onclick="event.stopPropagation(); toggleSidebar();"
+        </a>
+        <button id="sidebar-toggle" type="button"
+                onclick="event.stopPropagation(); toggleSidebar();"
+                aria-expanded="true" aria-controls="ipad-sidebar"
+                aria-label="Thu hoặc mở rộng thanh điều hướng"
                 style="width:28px; height:28px; border-radius:6px; background:rgba(0,0,0,0.05); border:none; cursor:pointer; display:flex; align-items:center; justify-content:center;"
                 onmouseover="this.style.background='rgba(0,0,0,0.1)'" onmouseout="this.style.background='rgba(0,0,0,0.05)'">
-            <i id="sidebar-toggle-icon" class="fas fa-chevron-left" style="font-size:11px; color:#8e8e93;"></i>
+            <i id="sidebar-toggle-icon" class="fas fa-chevron-left" style="font-size:11px; color:#8e8e93;" aria-hidden="true"></i>
         </button>
     </div>
     <div class="sidebar-section">
         <div class="sidebar-section-title">Menu</div>
-        <button onclick="window.location.href='index.html'" class="sidebar-item">
+        <button type="button" onclick="window.location.href='index.html'" class="sidebar-item">
             <div class="sidebar-icon-box" style="background:#007AFF;"><i class="fas fa-house"></i></div>
             <span>Dashboard</span>
         </button>
-        <button onclick="window.location.href='index.html'" class="sidebar-item">
+        <button type="button" onclick="window.location.href='index.html'" class="sidebar-item">
             <div class="sidebar-icon-box" style="background:#FF9500;"><i class="fas fa-user"></i></div>
             <span>My Profile</span>
         </button>
     </div>
     <div class="sidebar-section">
         <div class="sidebar-section-title">Workflows</div>
-        <button class="sidebar-item active">
+        <button type="button" class="sidebar-item active" aria-current="page">
             <div class="sidebar-icon-box" style="background:#007AFF;"><i class="fas fa-file-pen"></i></div>
             <span>Đề Nghị Mua Hàng</span>
         </button>
-        <button onclick="window.open('payment_request.html','_blank')" class="sidebar-item">
+        <button type="button" onclick="window.open('payment_request.html','_blank')" class="sidebar-item">
             <div class="sidebar-icon-box" style="background:#5856D6;"><i class="fas fa-file-invoice-dollar"></i></div>
             <span>Đề Nghị Thanh Toán</span>
         </button>
-        <button onclick="window.open('voucher.html','_blank')" class="sidebar-item">
+        <button type="button" onclick="window.open('voucher.html','_blank')" class="sidebar-item">
             <div class="sidebar-icon-box" style="background:#FF9500;"><i class="fas fa-file-invoice"></i></div>
             <span>Phiếu Thu Chi</span>
         </button>
@@ -557,8 +610,8 @@
                     <p id="sidebar-user-role" style="font-size:13px; color:#6e6e73; margin:0;"></p>
                 </div>
             </div>
-            <button onclick="handleLogout()" style="width:100%; margin-top:12px; padding:8px; background:rgba(255,59,48,0.1); color:#FF3B30; border:none; border-radius:8px; font-size:14px; font-weight:500; cursor:pointer; font-family:var(--font-body);">
-                <i class="fas fa-sign-out-alt" style="margin-right:6px;"></i>
+            <button type="button" onclick="handleLogout()" style="width:100%; margin-top:12px; padding:8px; background:rgba(255,59,48,0.1); color:#FF3B30; border:none; border-radius:8px; font-size:14px; font-weight:500; cursor:pointer; font-family:var(--font-body);">
+                <i class="fas fa-sign-out-alt" style="margin-right:6px;" aria-hidden="true"></i>
                 <span class="sidebar-signout-text">Sign Out</span>
             </button>
         </div>
@@ -571,12 +624,13 @@
     <!-- Mobile nav -->
     <nav class="mobile-nav sticky top-0 z-50 bg-white border-b border-gray-200 px-4 py-3 shadow-sm" style="display:flex;">
         <div class="flex items-center justify-between w-full">
-            <div class="flex items-center gap-3 cursor-pointer" onclick="window.location.href='index.html'">
-                <img src="brand_assets/tlc logo transparancy.png" alt="TLC Logo" style="height:36px; width:auto;">
+            <a href="index.html" class="flex items-center gap-3 text-gray-900" style="text-decoration:none;color:inherit;">
+                <img src="brand_assets/tlc logo transparancy.png" alt="TLC Logo" width="144" height="36" style="height:36px;width:auto;" decoding="async">
                 <span class="font-semibold text-gray-900">TLCGroup</span>
-            </div>
-            <button onclick="window.history.back()" style="background:transparent; border:none; color:#6e6e73; cursor:pointer; font-size:13px; display:flex; align-items:center; gap:6px;">
-                <i class="fas fa-chevron-left"></i> Quay lại
+            </a>
+            <button type="button" onclick="window.history.back()" aria-label="Quay lại trang trước"
+                    style="background:transparent;border:none;color:#6e6e73;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:6px;">
+                <i class="fas fa-chevron-left" aria-hidden="true"></i> Quay lại
             </button>
         </div>
     </nav>
@@ -584,10 +638,10 @@
     <!-- Desktop nav -->
     <nav class="hidden md:block sticky top-0 z-40" style="background:rgba(249,249,249,0.94); backdrop-filter:saturate(180%) blur(20px); -webkit-backdrop-filter:saturate(180%) blur(20px); border-bottom:0.5px solid rgba(60,60,67,0.29); padding:18px 16px;">
         <div style="display:flex; align-items:center; justify-content:space-between; max-width:1200px; margin:0 auto;">
-            <div style="display:flex; align-items:center; gap:12px; cursor:pointer;" onclick="window.location.href='index.html'">
-                <img src="brand_assets/tlc logo transparancy.png" alt="TLC Logo" style="height:60px; width:auto; object-fit:contain;">
+            <a href="index.html" style="display:flex; align-items:center; gap:12px; text-decoration:none; color:inherit;">
+                <img src="brand_assets/tlc logo transparancy.png" alt="TLC Logo" width="240" height="60" style="height:60px;width:auto;object-fit:contain;" decoding="async">
                 <span style="font-weight:600; font-size:17px; color:#000;">Business Process Management (BPM)</span>
-            </div>
+            </a>
             <div id="nav-user-section" class="flex items-center gap-2">
                 <div id="nav-user-avatar" class="hidden">
                     <img id="nav-avatar" src="" class="w-8 h-8 rounded-full cursor-pointer" alt="User">
@@ -597,33 +651,33 @@
     </nav>
 
     <!-- Toast -->
-    <div id="toast-container" class="toast-container"></div>
+    <div id="toast-container" class="toast-container" role="status" aria-live="polite" aria-relevant="additions"></div>
 
     <!-- ── Page content ────────────────────────────────────────── -->
-    <div class="page-content">
+    <main class="page-content" id="main-content" tabindex="-1">
 
-        <h1 style="font-family:var(--font-display); font-size:22px; font-weight:700; text-align:center; margin:4px 0 0;">ĐỀ NGHỊ MUA HÀNG</h1>
+        <h1 style="font-family:var(--font-display); font-size:22px; font-weight:700; text-align:center; margin:4px 0 0; text-wrap:balance;">Đề nghị mua hàng</h1>
 
         <!-- Progress stepper -->
-        <div class="progress-stepper">
+        <div class="progress-stepper" role="navigation" aria-label="Các bước phiếu">
             <div class="stepper-container">
                 <div class="stepper-line"><div class="stepper-line-progress" id="stepper-progress"></div></div>
-                <div class="stepper-step active" data-step="1" onclick="goToStep(1)">
-                    <div class="stepper-circle">1</div>
-                    <div class="stepper-label">Công ty</div>
-                </div>
-                <div class="stepper-step" data-step="2" onclick="goToStep(2)">
-                    <div class="stepper-circle">2</div>
-                    <div class="stepper-label">Hàng hóa</div>
-                </div>
-                <div class="stepper-step" data-step="3" onclick="goToStep(3)">
-                    <div class="stepper-circle">3</div>
-                    <div class="stepper-label">Phê duyệt</div>
-                </div>
-                <div class="stepper-step" data-step="4" onclick="goToStep(4)">
-                    <div class="stepper-circle">4</div>
-                    <div class="stepper-label">Xác nhận</div>
-                </div>
+                <button type="button" class="stepper-step active" data-step="1" onclick="goToStep(1)" aria-current="step" aria-label="Bước 1 — Công ty">
+                    <div class="stepper-circle" aria-hidden="true">1</div>
+                    <span class="stepper-label" aria-hidden="true">Công ty</span>
+                </button>
+                <button type="button" class="stepper-step" data-step="2" onclick="goToStep(2)" aria-label="Bước 2 — Hàng hóa">
+                    <div class="stepper-circle" aria-hidden="true">2</div>
+                    <span class="stepper-label" aria-hidden="true">Hàng hóa</span>
+                </button>
+                <button type="button" class="stepper-step" data-step="3" onclick="goToStep(3)" aria-label="Bước 3 — Phê duyệt">
+                    <div class="stepper-circle" aria-hidden="true">3</div>
+                    <span class="stepper-label" aria-hidden="true">Phê duyệt</span>
+                </button>
+                <button type="button" class="stepper-step" data-step="4" onclick="goToStep(4)" aria-label="Bước 4 — Xác nhận">
+                    <div class="stepper-circle" aria-hidden="true">4</div>
+                    <span class="stepper-label" aria-hidden="true">Xác nhận</span>
+                </button>
             </div>
         </div>
 
@@ -643,7 +697,7 @@
                     <div class="form-row">
                         <div class="form-group full">
                             <label for="company_code">Công ty <span class="req">*</span></label>
-                            <select id="company_code" onchange="onCompanyChange()">
+                            <select id="company_code" name="company_code" autocomplete="organization" onchange="onCompanyChange()">
                                 <option value="">-- Chọn công ty --</option>
                             </select>
                         </div>
@@ -661,25 +715,25 @@
                         </div>
                         <div class="form-group">
                             <label for="department">Bộ phận / Phòng ban</label>
-                            <input type="text" id="department" readonly>
+                            <input type="text" id="department" name="department" readonly autocomplete="off">
                         </div>
                     </div>
                     <div class="form-row">
                         <div class="form-group">
                             <label for="required_date">Ngày cần hàng <span class="req">*</span></label>
-                            <input type="date" id="required_date">
+                            <input type="date" id="required_date" name="required_date" autocomplete="off">
                         </div>
                         <div class="form-group">
                             <label>Mức độ ưu tiên</label>
-                            <div class="priority-group" style="margin-top:4px;">
-                                <button type="button" class="priority-btn" id="pri-high"   onclick="setPriority('high')">
-                                    <i class="fas fa-circle" style="font-size:8px; margin-right:4px;"></i>Cao
+                            <div class="priority-group" role="group" aria-label="Mức độ ưu tiên" style="margin-top:4px;">
+                                <button type="button" class="priority-btn" id="pri-high" aria-pressed="false" onclick="setPriority('high')">
+                                    <i class="fas fa-circle" style="font-size:8px; margin-right:4px;" aria-hidden="true"></i>Cao
                                 </button>
-                                <button type="button" class="priority-btn selected-medium" id="pri-medium" onclick="setPriority('medium')">
-                                    <i class="fas fa-circle" style="font-size:8px; margin-right:4px;"></i>Trung bình
+                                <button type="button" class="priority-btn selected-medium" id="pri-medium" aria-pressed="true" onclick="setPriority('medium')">
+                                    <i class="fas fa-circle" style="font-size:8px; margin-right:4px;" aria-hidden="true"></i>Trung bình
                                 </button>
-                                <button type="button" class="priority-btn" id="pri-low"    onclick="setPriority('low')">
-                                    <i class="fas fa-circle" style="font-size:8px; margin-right:4px;"></i>Thấp
+                                <button type="button" class="priority-btn" id="pri-low" aria-pressed="false" onclick="setPriority('low')">
+                                    <i class="fas fa-circle" style="font-size:8px; margin-right:4px;" aria-hidden="true"></i>Thấp
                                 </button>
                             </div>
                             <input type="hidden" id="priority_value" value="medium">
@@ -688,8 +742,8 @@
                 </div>
             </div>
             <div class="step-navigation" style="background:transparent; border:none; padding:16px 0 0;">
-                <button class="btn-secondary" disabled>← Quay lại</button>
-                <button class="btn-primary" onclick="validateAndNext(1)">Tiếp theo →</button>
+                <button type="button" class="btn-secondary" disabled>← Quay lại</button>
+                <button type="button" class="btn-primary" onclick="validateAndNext(1)">Tiếp theo →</button>
             </div>
         </div>
 
@@ -713,8 +767,8 @@
                 <div class="section-body" id="body-hang-hoa">
                     <div class="form-card-body" style="padding:12px;">
                         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px;">
-                            <button type="button" class="catalog-open-btn" onclick="openCatalog()">
-                                <i class="fas fa-border-all" style="font-size:13px;"></i> Chọn từ danh mục
+                            <button type="button" class="catalog-open-btn" onclick="openCatalog()" aria-label="Mở danh mục hàng hóa">
+                                <i class="fas fa-border-all" style="font-size:13px;" aria-hidden="true"></i> Chọn từ danh mục
                                 <span id="catalog-added-count" class="catalog-count-badge" style="display:none;">0</span>
                             </button>
                             <span style="font-size:12px;color:var(--text-secondary);font-style:italic;">Danh mục hàng hóa dành riêng cho đơn hàng KTT</span>
@@ -727,8 +781,8 @@
                                     <th class="col-qty">Số lượng</th>
                                     <th class="col-unit">Đơn vị</th>
                                     <th class="col-price" style="white-space:nowrap;">Đơn giá
-                                        <select id="currency-select" onchange="setCurrency(this.value)"
-                                                style="font-size:11px;border:none;background:transparent;color:var(--primary);font-weight:700;cursor:pointer;margin-left:2px;outline:none;padding:0;width:3.4em;-webkit-appearance:none;appearance:none;text-align:center;">
+                                        <select id="currency-select" name="currency" aria-label="Loại tiền tệ đơn giá" onchange="setCurrency(this.value)"
+                                                style="font-size:11px;border:none;background:transparent;color:var(--primary);font-weight:700;cursor:pointer;margin-left:2px;padding:0;width:3.4em;-webkit-appearance:none;appearance:none;text-align:center;">
                                             <option value="VND">VND</option>
                                             <option value="USD">USD</option>
                                             <option value="EUR">EUR</option>
@@ -871,7 +925,7 @@
                     <div class="form-row">
                         <div class="form-group full">
                             <label for="purpose">Mục đích mua hàng <span class="req">*</span></label>
-                            <textarea id="purpose" placeholder="Mô tả mục đích và lý do cần mua hàng hóa / dịch vụ này..." style="min-height:90px;"></textarea>
+                            <textarea id="purpose" name="purpose" autocomplete="off" placeholder="Mô tả mục đích và lý do cần mua hàng hóa/dịch vụ này…" style="min-height:90px;"></textarea>
                         </div>
                     </div>
                 </div>
@@ -888,7 +942,10 @@
                         <div class="form-group w2">
                             <label for="vendor_search">NCC từ danh sách</label>
                             <div class="vendor-combobox" id="vendor-combobox">
-                                <input type="text" id="vendor_search" placeholder="Gõ để tìm nhà cung cấp..." autocomplete="off" oninput="onVendorSearch()" onfocus="onVendorSearchFocus()">
+                                <input type="text" id="vendor_search" name="vendor_search" placeholder="Gõ để tìm nhà cung cấp…" autocomplete="off" spellcheck="false"
+                                       aria-expanded="false" aria-controls="vendor-dropdown-list" aria-autocomplete="list"
+                                       autocorrect="off" autocapitalize="off"
+                                       oninput="onVendorSearch()" onfocus="onVendorSearchFocus()">
                                 <div class="vendor-dropdown-list" id="vendor-dropdown-list"></div>
                             </div>
                             <select id="vendor_old" onchange="onVendorOldChange()" style="display:none">
@@ -897,7 +954,7 @@
                         </div>
                         <div class="form-group">
                             <label for="vendor_new">Hoặc nhập NCC mới</label>
-                            <input type="text" id="vendor_new" placeholder="Tên NCC nếu không có trong DS" oninput="onVendorNewInput()">
+                            <input type="text" id="vendor_new" name="vendor_new" autocomplete="off" spellcheck="false" placeholder="Tên NCC nếu không có trong DS…" oninput="onVendorNewInput()">
                         </div>
                     </div>
 
@@ -909,12 +966,12 @@
 
                     <!-- Vendor summary card -->
                     <div class="vendor-summary-card" id="vendor-summary-card">
-                        <div class="vsc-icon"><i class="fas fa-check" style="color:#34C759;font-size:14px;"></i></div>
+                        <div class="vsc-icon"><i class="fas fa-check" style="color:#34C759;font-size:14px;" aria-hidden="true"></i></div>
                         <div class="vsc-body">
                             <div class="vsc-name" id="vsc-name"></div>
                             <div class="vsc-meta" id="vsc-meta"></div>
                         </div>
-                        <button class="vsc-clear" onclick="clearVendorFields()" title="Xóa NCC">×</button>
+                        <button class="vsc-clear" type="button" onclick="clearVendorFields()" title="Xóa NCC" aria-label="Xóa nhà cung cấp đã chọn">×</button>
                     </div>
 
                     <!-- New NCC warning -->
@@ -974,8 +1031,8 @@
             </div>
 
             <div class="step-navigation" style="background:transparent; border:none; padding:16px 0 0;">
-                <button class="btn-secondary" onclick="goToStep(1)">← Quay lại</button>
-                <button class="btn-primary" onclick="validateAndNext(2)">Tiếp theo →</button>
+                <button type="button" class="btn-secondary" onclick="goToStep(1)">← Quay lại</button>
+                <button type="button" class="btn-primary" onclick="validateAndNext(2)">Tiếp theo →</button>
             </div>
         </div>
 
@@ -1059,8 +1116,8 @@
             </div>
 
             <div class="step-navigation" style="background:transparent; border:none; padding:16px 0 0;">
-                <button class="btn-secondary" onclick="goToStep(2)">← Quay lại</button>
-                <button class="btn-primary" onclick="validateAndNext(3)">Tiếp theo →</button>
+                <button type="button" class="btn-secondary" onclick="goToStep(2)">← Quay lại</button>
+                <button type="button" class="btn-primary" onclick="validateAndNext(3)">Tiếp theo →</button>
             </div>
         </div>
 
@@ -1100,10 +1157,10 @@
             </div>
 
             <div class="step-navigation" style="background:transparent; border:none; padding:16px 0 0;">
-                <button class="btn-secondary" onclick="goToStep(3)">← Quay lại</button>
+                <button type="button" class="btn-secondary" onclick="goToStep(3)">← Quay lại</button>
                 <div class="step-actions">
-                    <button class="btn-secondary" onclick="resetForm()"><i class="fas fa-rotate-left"></i> Làm lại</button>
-                    <button class="btn-success" id="submit-btn" onclick="submitForm()">
+                    <button type="button" class="btn-secondary" onclick="resetForm()"><i class="fas fa-rotate-left"></i> Làm lại</button>
+                    <button type="button" class="btn-success" id="submit-btn" onclick="submitForm()">
                         <i class="fas fa-paper-plane"></i> Gửi đề nghị
                     </button>
                 </div>
@@ -1123,16 +1180,16 @@
             </p>
             <p id="success-pr-no" style="font-size:15px; font-weight:600; color:var(--primary);"></p>
             <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-top:8px;">
-                <button onclick="resetForm()" class="btn-primary" style="padding:10px 20px; border:none; border-radius:8px; font-family:var(--font-body); font-size:14px; cursor:pointer;">
-                    <i class="fas fa-plus" style="margin-right:6px;"></i> Tạo đề nghị mới
+                <button type="button" onclick="resetForm()" class="btn-primary" style="padding:10px 20px; border:none; border-radius:8px; font-family:var(--font-body); font-size:14px; cursor:pointer;">
+                    <i class="fas fa-plus" style="margin-right:6px;" aria-hidden="true"></i> Tạo đề nghị mới
                 </button>
-                <button onclick="window.location.href='index.html'" style="padding:10px 20px; border:1px solid rgba(0,0,0,0.15); border-radius:8px; background:white; font-family:var(--font-body); font-size:14px; cursor:pointer;">
-                    <i class="fas fa-house" style="margin-right:6px;"></i> Về Dashboard
+                <button type="button" onclick="window.location.href='index.html'" style="padding:10px 20px; border:1px solid rgba(0,0,0,0.15); border-radius:8px; background:white; font-family:var(--font-body); font-size:14px; cursor:pointer;">
+                    <i class="fas fa-house" style="margin-right:6px;" aria-hidden="true"></i> Về Dashboard
                 </button>
             </div>
         </div>
 
-    </div><!-- /page-content -->
+    </main><!-- /main-content -->
 </div><!-- /ipad-main -->
 
 <script>
@@ -1169,9 +1226,11 @@
         const sb = document.getElementById('ipad-sidebar');
         const mn = document.getElementById('ipad-main');
         const ic = document.getElementById('sidebar-toggle-icon');
+        const btn = document.getElementById('sidebar-toggle');
         sb.classList.toggle('collapsed');
         mn.classList.toggle('sidebar-collapsed');
         const collapsed = sb.classList.contains('collapsed');
+        if (btn) btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
         ic.className = collapsed ? 'fas fa-chevron-right' : 'fas fa-chevron-left';
         ic.style.fontSize = '11px'; ic.style.color = '#8e8e93';
         localStorage.setItem('pr_sidebar_collapsed', collapsed);
@@ -1183,8 +1242,10 @@
             const n = i + 1;
             el.classList.toggle('active',    n === step);
             el.classList.toggle('completed', n < step);
+            if (n === step) el.setAttribute('aria-current', 'step');
+            else el.removeAttribute('aria-current');
             const circle = el.querySelector('.stepper-circle');
-            if (n < step)      circle.innerHTML = '<i class="fas fa-check" style="font-size:13px;"></i>';
+            if (n < step)      circle.innerHTML = '<i class="fas fa-check" style="font-size:13px;" aria-hidden="true"></i>';
             else if (n === step) circle.textContent = n;
             else                 circle.textContent = n;
         });
@@ -1198,7 +1259,8 @@
         document.getElementById('step-' + n).classList.add('active');
         currentStep = n;
         updateStepper(n);
-        window.scrollTo({ top: 0, behavior: 'smooth' });
+        const reduceMotion = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
+        window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
     }
 
     /* ── Validation ─────────────────────────────────────────────── */
@@ -1271,6 +1333,7 @@
         ['high','medium','low'].forEach(k => {
             const btn = document.getElementById('pri-' + k);
             btn.className = 'priority-btn' + (k === p ? ' selected-' + k : '');
+            btn.setAttribute('aria-pressed', k === p ? 'true' : 'false');
         });
     }
 
@@ -1388,7 +1451,7 @@
             <td class="col-price"><input type="number" class="item-price" value="0" min="0" step="1000" oninput="recalcRow(${n}, '${sectionId}'); if(+this.value>0){this.style.boxShadow='';this.style.borderColor='';}"></td>
             <td class="col-total item-total" data-value="0">0 ₫</td>
             <td class="col-note"><input type="text" class="item-note" placeholder="Ghi chú..."></td>
-            <td class="col-del"><button class="del-btn" onclick="removeSectionRow('item-row-${n}','${sectionId}')" title="Xóa dòng"><i class="fas fa-times"></i></button></td>
+            <td class="col-del"><button type="button" class="del-btn" onclick="removeSectionRow('item-row-${n}','${sectionId}')" title="Xóa dòng" aria-label="Xóa dòng"><i class="fas fa-times" aria-hidden="true"></i></button></td>
         `;
         tbody.appendChild(tr);
         renumberSection(sectionId);
@@ -1628,6 +1691,13 @@
         allVendors = list || [];
     }
 
+    let _vendorDropdownPosRaf = null;
+
+    function syncVendorDropdownExpanded(expanded) {
+        const vs = document.getElementById('vendor_search');
+        if (vs) vs.setAttribute('aria-expanded', expanded ? 'true' : 'false');
+    }
+
     function onVendorSearch() {
         const q = (document.getElementById('vendor_search').value || '').trim().toLowerCase();
         renderVendorDropdown(q);
@@ -1644,32 +1714,41 @@
         const source = allVendorsMaster || [];
         const filtered = q ? source.filter(v => (v.vendor_name || '').toLowerCase().includes(q)) : source;
         list.innerHTML = '';
-        if (!q && !forceShow) { list.classList.remove('show'); return; }
+        if (!q && !forceShow) { list.classList.remove('show'); syncVendorDropdownExpanded(false); return; }
         if (filtered.length === 0) {
             list.innerHTML = '<div class="vendor-dropdown-empty">Không tìm thấy NCC</div>';
         } else {
             filtered.forEach(v => {
                 const item = document.createElement('div');
                 item.className = 'vendor-dropdown-item';
+                item.setAttribute('role', 'option');
                 const meta = [v.vendor_type, v.tax_id].filter(Boolean).join(' · ');
                 item.innerHTML = `<div class="vdi-name">${v.vendor_name}</div>${meta ? `<div class="vdi-meta">${meta}</div>` : ''}`;
                 item.onmousedown = (e) => { e.preventDefault(); selectVendorFromDropdown(v.vendor_name); };
                 list.appendChild(item);
             });
         }
-        // Position using fixed coords so overflow:hidden on parents doesn't clip it
         const input = document.getElementById('vendor_search');
-        const rect = input.getBoundingClientRect();
-        list.style.left  = rect.left + 'px';
-        list.style.top   = (rect.bottom + 4) + 'px';
-        list.style.width = rect.width + 'px';
+        if (_vendorDropdownPosRaf != null) cancelAnimationFrame(_vendorDropdownPosRaf);
+        _vendorDropdownPosRaf = requestAnimationFrame(() => {
+            _vendorDropdownPosRaf = null;
+            if (!input) return;
+            const rect = input.getBoundingClientRect();
+            list.style.left  = rect.left + 'px';
+            list.style.top   = (rect.bottom + 4) + 'px';
+            list.style.width = rect.width + 'px';
+        });
+        list.setAttribute('role', 'listbox');
+        list.setAttribute('aria-label', 'Danh sách nhà cung cấp');
         list.classList.add('show');
+        syncVendorDropdownExpanded(true);
     }
 
     function selectVendorFromDropdown(vendorName) {
         document.getElementById('vendor_search').value = vendorName;
         document.getElementById('vendor_old').value = vendorName;
         document.getElementById('vendor-dropdown-list').classList.remove('show');
+        syncVendorDropdownExpanded(false);
         document.getElementById('vendor_new').value = '';
         applyVendorCombine();
     }
@@ -1800,6 +1879,7 @@
         document.getElementById('vendor_search').value = '';
         const list = document.getElementById('vendor-dropdown-list');
         if (list) { list.innerHTML = ''; list.classList.remove('show'); }
+        syncVendorDropdownExpanded(false);
         allVendors = [];
         allVendorsMaster = [];
         document.getElementById('vendor_final_name').value    = '';
@@ -1954,6 +2034,7 @@
             prNo:             _prNo,
             companyCode:      document.getElementById('company_code').value,
             companyName:      document.getElementById('company_name').value,
+            companyKey:       document.getElementById('company_key_or_taxid').value,
             department:       document.getElementById('department').value.trim(),
             requesterName:    document.getElementById('requester_name').value.trim(),
             requiredDate:     document.getElementById('required_date').value,
@@ -2458,13 +2539,13 @@
                         </div>
                         <div style="display:flex;align-items:center;gap:6px;flex-shrink:0;">
                             <div class="catalog-list-stepper">
-                                <button type="button" class="catalog-stepper-btn minus"
+                                <button type="button" class="catalog-stepper-btn minus" aria-label="Giảm số lượng"
                                         onclick="setCatalogQty('${sk}', -1)">−</button>
                                 <input type="number" class="catalog-stepper-qty" style="width:46px;"
                                        value="${qty}" min="0"
                                        onchange="setCatalogQtyDirect('${sk}', +this.value)"
                                        onclick="this.select()">
-                                <button type="button" class="catalog-stepper-btn plus"
+                                <button type="button" class="catalog-stepper-btn plus" aria-label="Tăng số lượng"
                                         onclick="setCatalogQty('${sk}', 1)">+</button>
                             </div>
                             <span class="catalog-stepper-unit">${unit}</span>
@@ -2486,16 +2567,16 @@
                     const moqLabel   = g.moq > 0 ? `MOQ: ${g.moq} ${unit}` : unit;
                     const bottom = inBasket
                         ? `<div class="catalog-stepper">
-                               <button type="button" class="catalog-stepper-btn minus"
+                               <button type="button" class="catalog-stepper-btn minus" aria-label="Giảm số lượng"
                                        onclick="setCatalogQty('${sk}',-1);event.stopPropagation()">−</button>
                                <input type="number" class="catalog-stepper-qty" value="${inBasket}" min="0"
                                       onchange="setCatalogQtyDirect('${sk}',+this.value)"
                                       onclick="this.select();event.stopPropagation()" style="width:40px;">
-                               <button type="button" class="catalog-stepper-btn plus"
+                               <button type="button" class="catalog-stepper-btn plus" aria-label="Tăng số lượng"
                                        onclick="setCatalogQty('${sk}',1);event.stopPropagation()">+</button>
                                <span class="catalog-stepper-unit">${unit}</span>
                            </div>`
-                        : `<button type="button" class="catalog-add-btn"
+                        : `<button type="button" class="catalog-add-btn" aria-label="Thêm mặt hàng vào phiếu"
                                onclick="addFromCatalog('${sk}');event.stopPropagation()">
                                + Thêm
                            </button>`;
@@ -2520,16 +2601,16 @@
                 const moqLabel   = g.moq > 0 ? `MOQ: ${g.moq} ${unit}` : unit;
                 const right = inBasket
                     ? `<div class="catalog-list-stepper">
-                           <button type="button" class="catalog-stepper-btn minus"
+                           <button type="button" class="catalog-stepper-btn minus" aria-label="Giảm số lượng"
                                    onclick="setCatalogQty('${sk}',-1)">−</button>
                            <input type="number" class="catalog-stepper-qty" value="${inBasket}" min="0"
                                   onchange="setCatalogQtyDirect('${sk}',+this.value)"
                                   onclick="this.select()" style="width:44px;">
-                           <button type="button" class="catalog-stepper-btn plus"
+                           <button type="button" class="catalog-stepper-btn plus" aria-label="Tăng số lượng"
                                    onclick="setCatalogQty('${sk}',1)">+</button>
                            <span class="catalog-stepper-unit">${unit}</span>
                        </div>`
-                    : `<button type="button" class="catalog-add-btn" style="width:auto;padding:5px 14px;margin:0;"
+                    : `<button type="button" class="catalog-add-btn" aria-label="Thêm mặt hàng vào phiếu" style="width:auto;padding:5px 14px;margin:0;"
                            onclick="addFromCatalog('${sk}')">+ Thêm</button>`;
                 return `<div class="catalog-list-row${addedClass}">
                     <div class="catalog-list-info">
@@ -2695,6 +2776,8 @@
             const ic = document.getElementById('sidebar-toggle-icon');
             ic.className = 'fas fa-chevron-right'; ic.style.fontSize = '11px'; ic.style.color = '#8e8e93';
         }
+        const sidebarToggleBtn = document.getElementById('sidebar-toggle');
+        if (sidebarToggleBtn) sidebarToggleBtn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
         // Set min date for required_date
         document.getElementById('required_date').min = new Date().toISOString().split('T')[0];
         initSections();
@@ -2714,16 +2797,16 @@
         <div style="display:flex;align-items:center;gap:8px;">
             <div class="catalog-view-toggle">
                 <button type="button" class="catalog-view-btn active" id="catalog-view-grid"
-                        onclick="toggleCatalogView('grid')" title="Grid view">
-                    <i class="fas fa-border-all"></i>
+                        onclick="toggleCatalogView('grid')" title="Lưới" aria-label="Xem danh mục dạng lưới">
+                    <i class="fas fa-border-all" aria-hidden="true"></i>
                 </button>
                 <button type="button" class="catalog-view-btn" id="catalog-view-list"
-                        onclick="toggleCatalogView('list')" title="List view">
-                    <i class="fas fa-list"></i>
+                        onclick="toggleCatalogView('list')" title="Danh sách" aria-label="Xem danh mục dạng danh sách">
+                    <i class="fas fa-list" aria-hidden="true"></i>
                 </button>
             </div>
-            <button type="button" class="catalog-close-btn" onclick="closeCatalog()">
-                <i class="fas fa-xmark"></i>
+            <button type="button" class="catalog-close-btn" onclick="closeCatalog()" aria-label="Đóng danh mục hàng hóa">
+                <i class="fas fa-xmark" aria-hidden="true"></i>
             </button>
         </div>
     </div>
@@ -2742,7 +2825,7 @@
         <div class="catalog-grid" id="catalog-grid" role="list"></div>
     </div>
     <div class="catalog-panel-footer">
-        <button type="button" class="catalog-done-btn" onclick="closeCatalog()">
+        <button type="button" class="catalog-done-btn" onclick="closeCatalog()" aria-label="Đóng danh mục và quay lại biểu mẫu">
             Xong — đã chọn <span id="catalog-done-count">0</span> mặt hàng
         </button>
     </div>

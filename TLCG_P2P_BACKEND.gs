@@ -942,14 +942,18 @@ function findRequestByIdInSheet(sheet, requestId) {
 function parseUrlEncodedData(contents) {
   const params = {};
   const pairs = contents.split('&');
-  
+
   for (let i = 0; i < pairs.length; i++) {
-    const pair = pairs[i].split('=');
-    const key = decodeURIComponent(pair[0]);
-    const value = decodeURIComponent(pair[1] || '');
+    const eqIdx = pairs[i].indexOf('=');
+    if (eqIdx === -1) continue;
+    const rawKey = pairs[i].substring(0, eqIdx);
+    const rawVal = pairs[i].substring(eqIdx + 1);
+    // URLSearchParams encodes spaces as '+'; decodeURIComponent only handles %20
+    const key   = decodeURIComponent(rawKey.replace(/\+/g, ' '));
+    const value = decodeURIComponent(rawVal.replace(/\+/g, ' '));
     params[key] = value;
   }
-  
+
   return params;
 }
 
@@ -1463,7 +1467,7 @@ function handlePurchaseRequest(data) {
       requiredDate,
       data.priority          || 'medium',
       data.purpose           || '',
-      data.suggestedVendor   || '',
+      data.vendorName        || data.suggestedVendor || '',
       data.budgetCode        || '',
       data.budgetApprover    || '',
       data.supplierApprover  || '',
