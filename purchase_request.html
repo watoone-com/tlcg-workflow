@@ -923,47 +923,27 @@
                         NCC mới chưa có trong danh sách — sẽ được admin xem xét trước khi xử lý
                     </div>
 
-                    <!-- Bank info -->
-                    <div style="border-top:0.5px solid rgba(0,0,0,0.08);margin:10px 0 14px;padding-top:14px;">
-                        <p style="font-size:13px;font-weight:600;color:var(--text-secondary);margin-bottom:10px;">Thông tin tài khoản ngân hàng</p>
-                        <select id="vendor_bank_pick" onchange="onBankPick()" style="display:none">
+                    <!-- Bank info (hidden — kept for payload, not shown in form) -->
+                    <div style="display:none;">
+                        <select id="vendor_bank_pick" onchange="onBankPick()">
                             <option value="">-- Chọn NCC trước --</option>
                         </select>
                         <input type="hidden" id="vendor_account_name">
                         <input type="hidden" id="vendor_account_no">
                         <input type="hidden" id="vendor_bank_name">
-                        <!-- Bank summary card (shown when bank loaded from system) -->
                         <div class="bank-summary-card" id="bank-summary-card">
-                            <div class="bsc-icon"><i class="fas fa-university" style="color:#007AFF;font-size:13px;"></i></div>
+                            <div class="bsc-icon"><i class="fas fa-university"></i></div>
                             <div class="bsc-body">
                                 <div class="bsc-bank" id="bsc-bank"></div>
                                 <div class="bsc-meta" id="bsc-meta"></div>
                             </div>
                         </div>
-                        <!-- Manual bank entry (shown when no bank data in system) -->
-                        <div id="bank-manual-section" style="display:none;">
-                            <p style="font-size:12px;color:var(--text-secondary);margin-bottom:8px;"><i class="fas fa-circle-info" style="margin-right:4px;"></i>Chưa có tài khoản trong hệ thống — nhập thủ công</p>
-                            <div class="form-row">
-                                <div class="form-group">
-                                    <label for="bank-manual-name">Tên ngân hàng</label>
-                                    <input type="text" id="bank-manual-name" placeholder="VD: Vietcombank" oninput="syncManualBank()">
-                                </div>
-                                <div class="form-group">
-                                    <label for="bank-manual-account-name">Tên chủ tài khoản</label>
-                                    <input type="text" id="bank-manual-account-name" placeholder="Tên đúng như trên sổ" oninput="syncManualBank()">
-                                </div>
-                                <div class="form-group">
-                                    <label for="bank-manual-account-no">Số tài khoản</label>
-                                    <input type="text" id="bank-manual-account-no" placeholder="Số tài khoản" oninput="syncManualBank()">
-                                </div>
-                            </div>
+                        <div id="bank-manual-section">
+                            <input type="text" id="bank-manual-name" oninput="syncManualBank()">
+                            <input type="text" id="bank-manual-account-name" oninput="syncManualBank()">
+                            <input type="text" id="bank-manual-account-no" oninput="syncManualBank()">
                         </div>
-                        <div class="form-row" style="margin-top:10px;">
-                            <div class="form-group full">
-                                <label for="vendor_bank_transfer_note">Nội dung chuyển khoản (tham khảo)</label>
-                                <input type="text" id="vendor_bank_transfer_note" placeholder="Nội dung chuyển khoản">
-                            </div>
-                        </div>
+                        <input type="text" id="vendor_bank_transfer_note">
                     </div>
 
                     <!-- Vendor detail (read-only, shown after selection) -->
