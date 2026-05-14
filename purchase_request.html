@@ -438,10 +438,10 @@
         .vendor-combobox { position: relative; }
         .vendor-combobox input { width: 100%; }
         .vendor-dropdown-list {
-            display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0;
+            display: none; position: fixed;
             max-height: 220px; overflow-y: auto;
             background: white; border: 1px solid rgba(0,0,0,0.15); border-radius: 8px;
-            box-shadow: 0 4px 16px rgba(0,0,0,0.13); z-index: 200;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.13); z-index: 9999;
         }
         .vendor-dropdown-list.show { display: block; }
         .vendor-dropdown-item {
@@ -1644,20 +1644,25 @@
         const source = allVendorsMaster || [];
         const filtered = q ? source.filter(v => (v.vendor_name || '').toLowerCase().includes(q)) : source;
         list.innerHTML = '';
+        if (!q && !forceShow) { list.classList.remove('show'); return; }
         if (filtered.length === 0) {
             list.innerHTML = '<div class="vendor-dropdown-empty">Không tìm thấy NCC</div>';
-            list.classList.add('show');
-            return;
+        } else {
+            filtered.forEach(v => {
+                const item = document.createElement('div');
+                item.className = 'vendor-dropdown-item';
+                const meta = [v.vendor_type, v.tax_id].filter(Boolean).join(' · ');
+                item.innerHTML = `<div class="vdi-name">${v.vendor_name}</div>${meta ? `<div class="vdi-meta">${meta}</div>` : ''}`;
+                item.onmousedown = (e) => { e.preventDefault(); selectVendorFromDropdown(v.vendor_name); };
+                list.appendChild(item);
+            });
         }
-        if (!q && !forceShow) { list.classList.remove('show'); return; }
-        filtered.forEach(v => {
-            const item = document.createElement('div');
-            item.className = 'vendor-dropdown-item';
-            const meta = [v.vendor_type, v.tax_id].filter(Boolean).join(' · ');
-            item.innerHTML = `<div class="vdi-name">${v.vendor_name}</div>${meta ? `<div class="vdi-meta">${meta}</div>` : ''}`;
-            item.onmousedown = (e) => { e.preventDefault(); selectVendorFromDropdown(v.vendor_name); };
-            list.appendChild(item);
-        });
+        // Position using fixed coords so overflow:hidden on parents doesn't clip it
+        const input = document.getElementById('vendor_search');
+        const rect = input.getBoundingClientRect();
+        list.style.left  = rect.left + 'px';
+        list.style.top   = (rect.bottom + 4) + 'px';
+        list.style.width = rect.width + 'px';
         list.classList.add('show');
     }
 
