@@ -712,10 +712,13 @@
                 </div>
                 <div class="section-body" id="body-hang-hoa">
                     <div class="form-card-body" style="padding:12px;">
-                        <button type="button" class="catalog-open-btn" onclick="openCatalog()">
-                            <i class="fas fa-border-all" style="font-size:13px;"></i> Chọn từ danh mục
-                            <span id="catalog-added-count" class="catalog-count-badge" style="display:none;">0</span>
-                        </button>
+                        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:4px;">
+                            <button type="button" class="catalog-open-btn" onclick="openCatalog()">
+                                <i class="fas fa-border-all" style="font-size:13px;"></i> Chọn từ danh mục
+                                <span id="catalog-added-count" class="catalog-count-badge" style="display:none;">0</span>
+                            </button>
+                            <span style="font-size:12px;color:var(--text-secondary);font-style:italic;">Danh mục hàng hóa dành riêng cho đơn hàng KTT</span>
+                        </div>
                         <div class="items-wrap">
                             <table class="items-table">
                                 <thead><tr>
@@ -869,12 +872,6 @@
                         <div class="form-group full">
                             <label for="purpose">Mục đích mua hàng <span class="req">*</span></label>
                             <textarea id="purpose" placeholder="Mô tả mục đích và lý do cần mua hàng hóa / dịch vụ này..." style="min-height:90px;"></textarea>
-                        </div>
-                    </div>
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label for="budget_code">Mã ngân sách / Cost center</label>
-                            <input type="text" id="budget_code" placeholder="VD: MKT-2025, IT-Q2...">
                         </div>
                     </div>
                 </div>
@@ -1114,7 +1111,6 @@
                 <div class="summary-header"><i class="fas fa-align-left"></i> Mục đích &amp; Lý do</div>
                 <div class="summary-row"><span class="summary-lbl">Mục đích</span><span class="summary-val" id="sum-purpose" style="white-space:pre-wrap;">—</span></div>
                 <div class="summary-row"><span class="summary-lbl">NCC đề xuất</span><span class="summary-val" id="sum-vendor">—</span></div>
-                <div class="summary-row"><span class="summary-lbl">Mã ngân sách</span><span class="summary-val" id="sum-budget-code">—</span></div>
             </div>
 
             <div class="summary-section">
@@ -1903,7 +1899,6 @@
         document.getElementById('sum-priority').textContent    = priLabel[_priority] || '—';
         document.getElementById('sum-purpose').textContent     = document.getElementById('purpose').value.trim() || '—';
         document.getElementById('sum-vendor').textContent      = document.getElementById('vendor_final_name').value.trim() || document.getElementById('vendor_new').value.trim() || '—';
-        document.getElementById('sum-budget-code').textContent = document.getElementById('budget_code').value.trim() || '—';
         document.getElementById('sum-total').textContent       = formatMoney(_grandTotal) + ' (' + _currency + ')';
 
         const sel1 = document.getElementById('budget_approver');
@@ -1990,7 +1985,6 @@
             vendorAccountNo:  document.getElementById('vendor_account_no').value,
             vendorBankName:   document.getElementById('vendor_bank_name').value,
             vendorTransferNote: document.getElementById('vendor_bank_transfer_note').value.trim(),
-            budgetCode:       document.getElementById('budget_code').value.trim(),
             budgetApprover:   document.getElementById('budget_approver').value,
             supplierApprover: document.getElementById('supplier_approver').value,
             submittedAt:      new Date().toISOString(),
@@ -2035,7 +2029,6 @@
         document.getElementById('requester_name').value         = '';
         document.getElementById('required_date').value   = '';
         document.getElementById('purpose').value         = '';
-        document.getElementById('budget_code').value     = '';
         clearVendorFields();
         document.getElementById('budget_approver').value  = '';
         document.getElementById('supplier_approver').value = '';
