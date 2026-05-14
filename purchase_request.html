@@ -548,6 +548,51 @@
         .toast.info    { border-left-color: var(--primary); }
         @keyframes toastIn { from { opacity: 0; transform: translateY(12px); } to { opacity: 1; transform: translateY(0); } }
 
+        /* ── Recent PR section ───────────────────────────────────── */
+        .recent-pr-section { padding: 0 16px 60px; max-width: 860px; margin: 0 auto; }
+        .recent-pr-card { background: white; border-radius: var(--radius-lg); border: 0.5px solid var(--border); box-shadow: var(--shadow); overflow: hidden; }
+        .recent-pr-header { display: flex; align-items: center; justify-content: space-between; padding: 16px 18px; border-bottom: 0.5px solid var(--border); gap: 12px; }
+        .recent-pr-header h3 { font-family: var(--font-display); font-size: 15px; font-weight: 700; margin: 0; }
+        .recent-pr-refresh-btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; background: var(--primary-light); color: var(--primary); border: none; border-radius: 8px; font-size: 13px; font-weight: 500; cursor: pointer; font-family: var(--font-body); }
+        .recent-pr-refresh-btn:hover { background: rgba(0,122,255,0.15); }
+        .pr-stats { display: flex; gap: 0; border-bottom: 0.5px solid var(--border); overflow-x: auto; }
+        .pr-stat-item { flex: 1; min-width: 80px; text-align: center; padding: 12px 8px; cursor: pointer; border-right: 0.5px solid var(--border); transition: background 0.15s; }
+        .pr-stat-item:last-child { border-right: none; }
+        .pr-stat-item:hover { background: var(--bg); }
+        .pr-stat-item.active { background: var(--primary-light); }
+        .pr-stat-count { font-size: 20px; font-weight: 700; line-height: 1; }
+        .pr-stat-label { font-size: 11px; color: var(--text-secondary); margin-top: 4px; }
+        .pr-stat-item.stat-all .pr-stat-count    { color: var(--text-primary); }
+        .pr-stat-item.stat-pending .pr-stat-count { color: var(--warning); }
+        .pr-stat-item.stat-approved .pr-stat-count { color: var(--success); }
+        .pr-stat-item.stat-rejected .pr-stat-count { color: var(--error); }
+        .pr-search-bar { padding: 10px 14px; border-bottom: 0.5px solid var(--border); }
+        .pr-search-bar input { width: 100%; padding: 8px 12px; border: 1px solid var(--border); border-radius: 8px; font-size: 13px; font-family: var(--font-body); outline: none; background: var(--bg); }
+        .pr-search-bar input:focus { border-color: var(--primary); background: white; }
+        .pr-list { min-height: 120px; max-height: 480px; overflow-y: auto; }
+        .pr-item { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-bottom: 0.5px solid var(--border); cursor: default; transition: background 0.12s; }
+        .pr-item:last-child { border-bottom: none; }
+        .pr-item:hover { background: var(--bg); }
+        .pr-item-icon { width: 36px; height: 36px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 14px; flex-shrink: 0; }
+        .pr-item-icon.icon-pending  { background: rgba(255,149,0,0.12); color: var(--warning); }
+        .pr-item-icon.icon-approved { background: rgba(52,199,89,0.12); color: var(--success); }
+        .pr-item-icon.icon-rejected { background: rgba(255,59,48,0.12);  color: var(--error); }
+        .pr-item-icon.icon-other    { background: rgba(0,0,0,0.06);       color: var(--text-secondary); }
+        .pr-item-body { flex: 1; min-width: 0; }
+        .pr-item-title { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .pr-item-meta  { font-size: 12px; color: var(--text-secondary); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .pr-item-right { text-align: right; flex-shrink: 0; }
+        .pr-item-total { font-size: 13px; font-weight: 600; color: var(--primary); }
+        .pr-status-badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; margin-top: 4px; white-space: nowrap; }
+        .badge-pending  { background: rgba(255,149,0,0.12);  color: #CC7A00; }
+        .badge-approved { background: rgba(52,199,89,0.12);  color: #1E8A3F; }
+        .badge-rejected { background: rgba(255,59,48,0.12);  color: #CC1A12; }
+        .badge-other    { background: rgba(0,0,0,0.07);       color: var(--text-secondary); }
+        .pr-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 16px; gap: 8px; color: var(--text-secondary); font-size: 13px; text-align: center; }
+        .pr-skeleton { padding: 12px 16px; border-bottom: 0.5px solid var(--border); display: flex; gap: 12px; align-items: center; }
+        .pr-skel-box  { border-radius: 8px; background: linear-gradient(90deg,#f0f0f0 25%,#e0e0e0 50%,#f0f0f0 75%); background-size: 200% 100%; animation: skelShimmer 1.2s infinite; }
+        @keyframes skelShimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
         /* ── Signature upload ────────────────────────────────────── */
         .signature-container { border: 2px dashed rgba(0,0,0,0.15); border-radius: 10px; padding: 14px; background: #fafbfc; }
         .signature-preview-area { display: flex; align-items: center; justify-content: center; min-height: 100px; background: white; border-radius: 8px; border: 1px solid var(--border); margin-bottom: 12px; }
@@ -1235,6 +1280,57 @@
         </div>
 
     </main><!-- /main-content -->
+
+    <!-- ── Recent Purchase Requests ─────────────────────────────── -->
+    <div class="recent-pr-section">
+        <div class="recent-pr-card">
+            <!-- Header -->
+            <div class="recent-pr-header">
+                <h3><i class="fas fa-list-check" style="color:var(--primary);margin-right:8px;" aria-hidden="true"></i>Đề nghị mua hàng gần đây</h3>
+                <div style="display:flex;gap:8px;align-items:center;">
+                    <span id="pr-last-refresh" style="font-size:12px;color:var(--text-secondary);"></span>
+                    <button type="button" class="recent-pr-refresh-btn" onclick="loadRecentPR(true)" aria-label="Làm mới danh sách">
+                        <i class="fas fa-rotate-right" style="font-size:12px;" aria-hidden="true"></i> Làm mới
+                    </button>
+                </div>
+            </div>
+
+            <!-- Status pipeline -->
+            <div class="pr-stats" id="pr-stats" role="group" aria-label="Lọc theo trạng thái">
+                <div class="pr-stat-item stat-all active" onclick="applyPRFilter('')" tabindex="0" role="button" aria-label="Tất cả">
+                    <div class="pr-stat-count" id="pr-stat-all">—</div>
+                    <div class="pr-stat-label">Tất cả</div>
+                </div>
+                <div class="pr-stat-item stat-pending" onclick="applyPRFilter('Pending')" tabindex="0" role="button" aria-label="Chờ duyệt">
+                    <div class="pr-stat-count" id="pr-stat-pending">—</div>
+                    <div class="pr-stat-label">Chờ duyệt</div>
+                </div>
+                <div class="pr-stat-item stat-approved" onclick="applyPRFilter('Approved')" tabindex="0" role="button" aria-label="Đã duyệt">
+                    <div class="pr-stat-count" id="pr-stat-approved">—</div>
+                    <div class="pr-stat-label">Đã duyệt</div>
+                </div>
+                <div class="pr-stat-item stat-rejected" onclick="applyPRFilter('Rejected')" tabindex="0" role="button" aria-label="Từ chối">
+                    <div class="pr-stat-count" id="pr-stat-rejected">—</div>
+                    <div class="pr-stat-label">Từ chối</div>
+                </div>
+            </div>
+
+            <!-- Search -->
+            <div class="pr-search-bar">
+                <input type="search" id="pr-search" placeholder="Tìm số phiếu, công ty, người đề nghị..."
+                       autocomplete="off" oninput="renderPRList()" aria-label="Tìm kiếm đề nghị">
+            </div>
+
+            <!-- List -->
+            <div class="pr-list" id="pr-list" role="list" aria-live="polite">
+                <div class="pr-empty">
+                    <i class="fas fa-spinner fa-spin" style="font-size:20px;color:var(--text-secondary);" aria-hidden="true"></i>
+                    <span>Đang tải...</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
 </div><!-- /ipad-main -->
 
 <script>
@@ -2211,6 +2307,10 @@
                 ss.style.display = 'flex';
                 document.getElementById('success-pr-no').textContent = 'Số phiếu: ' + _prNo;
                 showToast('Đề nghị mua hàng đã được gửi thành công!', 'success', 4000);
+                // Invalidate cache and reload list so new PR appears immediately
+                localStorage.removeItem(_PR_CACHE_KEY);
+                localStorage.removeItem(_PR_CACHE_TS_KEY);
+                setTimeout(() => loadRecentPR(true), 1200);
             } else {
                 showToast('Lỗi: ' + (result.message || 'Gửi thất bại.'), 'error');
                 btn.disabled = false;
@@ -2908,6 +3008,169 @@
         if (doneSpan) doneSpan.textContent = filled;
     }
 
+    /* ══════════════════════════════════════════════════════════════
+       RECENT PURCHASE REQUESTS
+       ══════════════════════════════════════════════════════════════ */
+    let _allPRs      = [];
+    let _prFilter    = '';   // '' | 'Pending' | 'Approved' | 'Rejected'
+    const _PR_CACHE_KEY    = 'tlcg_pr_list_cache';
+    const _PR_CACHE_TS_KEY = 'tlcg_pr_list_cache_ts';
+    const _PR_CACHE_TTL    = 5 * 60 * 1000; // 5 min
+
+    function _prStatusClass(status) {
+        const s = (status || '').toLowerCase();
+        if (s === 'pending')  return 'pending';
+        if (s === 'approved') return 'approved';
+        if (s === 'rejected') return 'rejected';
+        return 'other';
+    }
+
+    function _prStatusLabel(status) {
+        const map = { pending: 'Chờ duyệt', approved: 'Đã duyệt', rejected: 'Từ chối' };
+        return map[(status || '').toLowerCase()] || status || '—';
+    }
+
+    function _prStatusIcon(status) {
+        const s = (status || '').toLowerCase();
+        if (s === 'pending')  return 'fa-clock';
+        if (s === 'approved') return 'fa-circle-check';
+        if (s === 'rejected') return 'fa-circle-xmark';
+        return 'fa-file-lines';
+    }
+
+    function _formatPRDate(raw) {
+        if (!raw) return '—';
+        try { return new Date(raw).toLocaleDateString('vi-VN', { day:'2-digit', month:'2-digit', year:'numeric' }); }
+        catch { return raw; }
+    }
+
+    function _formatPRMoney(val) {
+        const n = parseFloat(val) || 0;
+        if (n === 0) return '—';
+        return n.toLocaleString('vi-VN') + ' ₫';
+    }
+
+    function applyPRFilter(status) {
+        _prFilter = status;
+        // Highlight active stat pill
+        document.querySelectorAll('.pr-stat-item').forEach(el => el.classList.remove('active'));
+        const map = { '': 'stat-all', 'Pending': 'stat-pending', 'Approved': 'stat-approved', 'Rejected': 'stat-rejected' };
+        const cls = map[status] || 'stat-all';
+        document.querySelector('.pr-stat-item.' + cls)?.classList.add('active');
+        renderPRList();
+    }
+
+    function renderPRList() {
+        const container = document.getElementById('pr-list');
+        if (!container) return;
+        const query = (document.getElementById('pr-search')?.value || '').trim().toLowerCase();
+
+        const filtered = _allPRs.filter(pr => {
+            if (_prFilter && (pr.status || '').toLowerCase() !== _prFilter.toLowerCase()) return false;
+            if (query) {
+                const haystack = [pr.prNo, pr.company, pr.requesterName, pr.purpose, pr.suggestedVendor].join(' ').toLowerCase();
+                if (!haystack.includes(query)) return false;
+            }
+            return true;
+        });
+
+        if (filtered.length === 0) {
+            container.innerHTML = `<div class="pr-empty">
+                <i class="fas fa-inbox" style="font-size:28px;opacity:0.3;" aria-hidden="true"></i>
+                <span>${_allPRs.length === 0 ? 'Chưa có đề nghị nào.' : 'Không tìm thấy kết quả.'}</span>
+            </div>`;
+            return;
+        }
+
+        container.innerHTML = filtered.map(pr => {
+            const sc  = _prStatusClass(pr.status);
+            const ico = _prStatusIcon(pr.status);
+            return `<div class="pr-item" role="listitem">
+                <div class="pr-item-icon icon-${sc}">
+                    <i class="fas ${ico}" aria-hidden="true"></i>
+                </div>
+                <div class="pr-item-body">
+                    <div class="pr-item-title">${pr.prNo || '—'} — ${pr.company || ''}</div>
+                    <div class="pr-item-meta">${pr.requesterName || ''} · ${_formatPRDate(pr.submittedAt || pr.requiredDate)}</div>
+                </div>
+                <div class="pr-item-right">
+                    <div class="pr-item-total">${_formatPRMoney(pr.grandTotal)}</div>
+                    <span class="pr-status-badge badge-${sc}">${_prStatusLabel(pr.status)}</span>
+                </div>
+            </div>`;
+        }).join('');
+    }
+
+    function _updatePRStats(list) {
+        const total    = list.length;
+        const pending  = list.filter(p => (p.status||'').toLowerCase() === 'pending').length;
+        const approved = list.filter(p => (p.status||'').toLowerCase() === 'approved').length;
+        const rejected = list.filter(p => (p.status||'').toLowerCase() === 'rejected').length;
+        const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+        setText('pr-stat-all',      total);
+        setText('pr-stat-pending',  pending);
+        setText('pr-stat-approved', approved);
+        setText('pr-stat-rejected', rejected);
+    }
+
+    function _showPRSkeletons(n = 5) {
+        const container = document.getElementById('pr-list');
+        if (!container) return;
+        container.innerHTML = Array.from({ length: n }, () => `
+            <div class="pr-skeleton">
+                <div class="pr-skel-box" style="width:36px;height:36px;border-radius:10px;flex-shrink:0;"></div>
+                <div style="flex:1;display:flex;flex-direction:column;gap:6px;">
+                    <div class="pr-skel-box" style="height:14px;width:60%;border-radius:4px;"></div>
+                    <div class="pr-skel-box" style="height:12px;width:40%;border-radius:4px;"></div>
+                </div>
+                <div class="pr-skel-box" style="width:70px;height:32px;border-radius:6px;"></div>
+            </div>`).join('');
+    }
+
+    async function loadRecentPR(forceRefresh = false) {
+        _showPRSkeletons(6);
+        try {
+            // Stale-while-revalidate from localStorage
+            if (!forceRefresh) {
+                const cached = localStorage.getItem(_PR_CACHE_KEY);
+                const ts     = localStorage.getItem(_PR_CACHE_TS_KEY);
+                if (cached && ts && (Date.now() - parseInt(ts) < _PR_CACHE_TTL)) {
+                    _allPRs = JSON.parse(cached);
+                    _updatePRStats(_allPRs);
+                    renderPRList();
+                    _stampPRRefreshTime();
+                    return; // fresh enough — skip network call
+                }
+            }
+            const res    = await fetch(BACKEND_URL, {
+                method: 'POST', mode: 'cors', redirect: 'follow',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'action=getPurchaseRequestHistory'
+            });
+            const result = JSON.parse(await res.text());
+            if (!result.success) throw new Error(result.message || 'Backend error');
+            _allPRs = result.data?.requests || result.requests || [];
+            localStorage.setItem(_PR_CACHE_KEY,    JSON.stringify(_allPRs));
+            localStorage.setItem(_PR_CACHE_TS_KEY, String(Date.now()));
+            _updatePRStats(_allPRs);
+            renderPRList();
+            _stampPRRefreshTime();
+        } catch (err) {
+            const container = document.getElementById('pr-list');
+            if (container) container.innerHTML = `<div class="pr-empty">
+                <i class="fas fa-triangle-exclamation" style="font-size:24px;color:var(--error);opacity:0.6;" aria-hidden="true"></i>
+                <span>Không thể tải danh sách. Vui lòng thử làm mới.</span>
+            </div>`;
+            console.error('[Recent PR]', err);
+        }
+    }
+
+    function _stampPRRefreshTime() {
+        const el = document.getElementById('pr-last-refresh');
+        if (el) el.textContent = 'Cập nhật: ' + new Date().toLocaleTimeString('vi-VN');
+    }
+    /* ── END RECENT PR ────────────────────────────────────────── */
+
     window.addEventListener('DOMContentLoaded', () => {
         restoreSession();
         loadCompanies();
@@ -2928,6 +3191,7 @@
         initSections();
         loadSavedSignature();
         goToStep(1);
+        loadRecentPR();
     });
 </script>
 <script src="tlcg_companies_embed.js"></script>
