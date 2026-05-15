@@ -1513,6 +1513,12 @@ function handlePurchaseRequest(data) {
     };
 
     // Open sheet (auto-create if missing)
+    // Build comma-separated Drive URLs from successfully uploaded attachments
+    var attachmentUrlsStr = attachmentRecords
+      .filter(function(r) { return r.fileUrl; })
+      .map(function(r) { return r.fileUrl; })
+      .join(', ');
+
     var ss    = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
     var sheet = ss.getSheetByName(PR_SHEET_NAME);
     if (!sheet) {
@@ -1521,7 +1527,8 @@ function handlePurchaseRequest(data) {
         'PR No', 'Company', 'Company Key', 'Department', 'Requester Name',
         'Required Date', 'Priority', 'Purpose', 'Suggested Vendor', 'Budget Code',
         'Budget Approver Email', 'Supplier Approver Email',
-        'Items (JSON)', 'Grand Total', 'Status', 'Submitted At', 'Metadata (JSON)'
+        'Items (JSON)', 'Grand Total', 'Status', 'Submitted At', 'Metadata (JSON)',
+        'Contract Approver Email', 'Purchasing Approver Email', 'Attachment URLs'
       ]);
       Logger.log('[P2P] Created sheet: ' + PR_SHEET_NAME);
     }
@@ -1533,7 +1540,7 @@ function handlePurchaseRequest(data) {
       data.department        || '',
       requesterName,
       requiredDate,
-      data.priority          || 'medium',
+      data.priority          || 'binh_thuong',
       data.purpose           || '',
       data.vendorName        || data.suggestedVendor || '',
       data.budgetCode        || '',
@@ -1541,9 +1548,12 @@ function handlePurchaseRequest(data) {
       data.supplierApprover  || '',
       items,
       grandTotal,
-      'Pending',
+      'Đang duyệt ngân sách (2/5)',
       submittedAt,
-      JSON.stringify(metadata)
+      JSON.stringify(metadata),
+      data.contractApprover  || '',   // index 17 / col R
+      data.purchasingApprover || '',  // index 18 / col S
+      attachmentUrlsStr              // index 19 / col T
     ]);
 
     Logger.log('[P2P] ✅ Purchase request saved: ' + prNo);
@@ -1551,7 +1561,7 @@ function handlePurchaseRequest(data) {
 
     // Send email notifications (non-blocking — failures must not break submission)
     try {
-      sendPurchaseRequestEmails_(data, prNo);
+      sendPurchaseRequestEmails_(data, prNo, attachmentRecords);
     } catch (emailErr) {
       Logger.log('[P2P] ⚠️ Email notification error (non-fatal): ' + emailErr.message);
     }
@@ -1565,7 +1575,8 @@ function handlePurchaseRequest(data) {
   }
 }
 
-function sendPurchaseRequestEmails_(data, prNo) {
+function sendPurchaseRequestEmails_(data, prNo, attachmentRecords) {
+  attachmentRecords = attachmentRecords || [];
   var subject = '[ĐỀ NGHỊ MUA HÀNG] Yêu cầu phê duyệt - ' + prNo;
   var grandTotalFmt = (parseFloat(data.grandTotal) || 0).toLocaleString('vi-VN') + ' ₫';
   var requiredDate  = data.requiredDate || '—';
@@ -1573,7 +1584,16 @@ function sendPurchaseRequestEmails_(data, prNo) {
   var requesterName = data.requesterName || '—';
   var purpose       = data.purpose      || '—';
 
-  // --- Approver email (budget + supplier) ---
+  // Build attachment links HTML
+  var attachHtml = '';
+  if (attachmentRecords && attachmentRecords.length > 0) {
+    var links = attachmentRecords.filter(function(r){ return r.fileUrl; }).map(function(r){
+      return '<li><a href="' + r.fileUrl + '">' + r.fileName + '</a></li>';
+    }).join('');
+    if (links) attachHtml = '<br><b>Tệp đính kèm:</b><ul>' + links + '</ul>';
+  }
+
+  // --- Approver email (budget + supplier + contract + purchasing) ---
   var approverBody = '<p>Kính gửi,</p>'
     + '<p>Có một <b>Đề nghị mua hàng</b> mới đang chờ phê duyệt của bạn.</p>'
     + '<table cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-size:13px;">'
@@ -1585,9 +1605,10 @@ function sendPurchaseRequestEmails_(data, prNo) {
     + '<tr><td style="font-weight:700;padding-right:16px;">Ngày cần hàng:</td><td>' + requiredDate + '</td></tr>'
     + '</table>'
     + '<p style="margin-top:16px;">Vui lòng đăng nhập vào hệ thống để xem chi tiết và phê duyệt.</p>'
+    + attachHtml
     + '<p>Trân trọng,<br>Hệ thống Workflow TLC Group</p>';
 
-  [data.budgetApprover, data.supplierApprover].forEach(function(email) {
+  [data.budgetApprover, data.supplierApprover, data.contractApprover, data.purchasingApprover].forEach(function(email) {
     if (!email) return;
     try {
       GmailApp.sendEmail(email, subject, '', { htmlBody: approverBody, name: 'TLC Group Workflow' });
@@ -1610,6 +1631,7 @@ function sendPurchaseRequestEmails_(data, prNo) {
       + '<tr><td style="font-weight:700;padding-right:16px;">Ngày cần hàng:</td><td>' + requiredDate + '</td></tr>'
       + '</table>'
       + '<p style="margin-top:16px;">Người phê duyệt đã được thông báo qua email. Bạn sẽ nhận được thông báo khi phiếu được xử lý.</p>'
+      + attachHtml
       + '<p>Trân trọng,<br>Hệ thống Workflow TLC Group</p>';
     try {
       GmailApp.sendEmail(requesterEmail, '[ĐỀ NGHỊ MUA HÀNG] Xác nhận gửi phiếu - ' + prNo, '', {
@@ -1647,22 +1669,25 @@ function handleGetPurchaseRequestHistory(data) {
       })
       .map(function(row) {
         return {
-          prNo:             row[0]  || '',
-          company:          row[1]  || '',
-          department:       row[3]  || '',
-          requesterName:    row[4]  || '',
-          requiredDate:     row[5]  || '',
-          priority:         row[6]  || '',
-          purpose:          row[7]  || '',
-          suggestedVendor:  row[8]  || '',
-          budgetCode:       row[9]  || '',
-          budgetApprover:   row[10] || '',
-          supplierApprover: row[11] || '',
-          items:            row[12] || '[]',
-          grandTotal:       row[13] || 0,
-          status:           row[14] || '',
-          submittedAt:      row[15] || '',
-          metadata:         row[16] || '{}'
+          prNo:               row[0]  || '',
+          company:            row[1]  || '',
+          department:         row[3]  || '',
+          requesterName:      row[4]  || '',
+          requiredDate:       row[5]  || '',
+          priority:           row[6]  || '',
+          purpose:            row[7]  || '',
+          suggestedVendor:    row[8]  || '',
+          budgetCode:         row[9]  || '',
+          budgetApprover:     row[10] || '',
+          supplierApprover:   row[11] || '',
+          items:              row[12] || '[]',
+          grandTotal:         row[13] || 0,
+          status:             row[14] || '',
+          submittedAt:        row[15] || '',
+          metadata:           row[16] || '{}',
+          contractApprover:   row[17] || '',
+          purchasingApprover: row[18] || '',
+          attachmentUrls:     row[19] || ''
         };
       })
       .reverse(); // newest first
@@ -1682,13 +1707,15 @@ function handleApprovePurchaseRequest(data) {
   try {
     var prNo          = (data.prNo          || '').toString().trim();
     var approverEmail = (data.approverEmail || '').toString().trim().toLowerCase();
-    var approverRole  = (data.approverRole  || '').toString().trim(); // 'budget' | 'supplier'
+    var approverRole  = (data.approverRole  || '').toString().trim(); // 'budget' | 'supplier' | 'contract' | 'purchasing'
     var note          = (data.note          || '').toString().trim();
 
     if (!prNo)          return createResponse(false, 'Thiếu số phiếu mua hàng.');
     if (!approverEmail) return createResponse(false, 'Thiếu email người duyệt.');
-    if (approverRole !== 'budget' && approverRole !== 'supplier') {
-      return createResponse(false, 'Vai trò không hợp lệ. Phải là "budget" hoặc "supplier".');
+
+    var validRoles = ['budget', 'supplier', 'contract', 'purchasing'];
+    if (validRoles.indexOf(approverRole) === -1) {
+      return createResponse(false, 'Vai trò không hợp lệ. Phải là "budget", "supplier", "contract" hoặc "purchasing".');
     }
 
     var ss    = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
@@ -1702,37 +1729,38 @@ function handleApprovePurchaseRequest(data) {
     }
     if (rowIndex === -1) return createResponse(false, 'Không tìm thấy đề nghị: ' + prNo);
 
-    var row                  = values[rowIndex];
-    var budgetApproverEmail  = (row[10] || '').toString().toLowerCase().trim();
-    var supplierApproverEmail = (row[11] || '').toString().toLowerCase().trim();
-    var currentStatus        = (row[14] || '').toString();
+    var row           = values[rowIndex];
+    var currentStatus = (row[14] || '').toString();
 
-    if (approverRole === 'budget'   && approverEmail !== budgetApproverEmail) {
-      return createResponse(false, 'Bạn không được phân công là người duyệt ngân sách cho đề nghị này.');
+    // Column index for each approver role (0-based)
+    var approverCol = { budget: 10, supplier: 11, contract: 17, purchasing: 18 };
+    var nextStatus  = {
+      budget:     'Đang duyệt nhà cung cấp (3/5)',
+      supplier:   'Thẩm định Hợp đồng (4/5)',
+      contract:   'Mua hàng (5/5)',
+      purchasing: 'Hoàn thành'
+    };
+
+    var assignedEmail = (row[approverCol[approverRole]] || '').toString().toLowerCase().trim();
+    if (approverEmail !== assignedEmail) {
+      return createResponse(false, 'Bạn không được phân công là người duyệt "' + approverRole + '" cho đề nghị này.');
     }
-    if (approverRole === 'supplier' && approverEmail !== supplierApproverEmail) {
-      return createResponse(false, 'Bạn không được phân công là người duyệt nhà cung cấp cho đề nghị này.');
+    if (currentStatus === 'Đã từ chối' || currentStatus === 'Rejected') {
+      return createResponse(false, 'Đề nghị này đã bị từ chối, không thể duyệt.');
     }
-    if (currentStatus === 'Rejected') return createResponse(false, 'Đề nghị này đã bị từ chối, không thể duyệt.');
-    if (currentStatus === 'Approved') return createResponse(false, 'Đề nghị này đã được duyệt rồi.');
+    if (currentStatus === 'Hoàn thành' || currentStatus === 'Approved') {
+      return createResponse(false, 'Đề nghị này đã được duyệt rồi.');
+    }
 
     var metadata;
     try { metadata = JSON.parse(row[16] || '{}'); } catch (e) { metadata = {}; }
 
     var now = new Date().toISOString();
-    if (approverRole === 'budget') {
-      metadata.budgetStatus     = 'Approved';
-      metadata.budgetApprovedAt = now;
-      metadata.budgetNote       = note;
-    } else {
-      metadata.supplierStatus     = 'Approved';
-      metadata.supplierApprovedAt = now;
-      metadata.supplierNote       = note;
-    }
+    metadata[approverRole + 'Status']     = 'Approved';
+    metadata[approverRole + 'ApprovedAt'] = now;
+    metadata[approverRole + 'Note']       = note;
 
-    var budgetDone   = metadata.budgetStatus   === 'Approved' || !budgetApproverEmail;
-    var supplierDone = metadata.supplierStatus === 'Approved' || !supplierApproverEmail;
-    var newStatus    = (budgetDone && supplierDone) ? 'Approved' : 'Pending';
+    var newStatus = nextStatus[approverRole];
 
     sheet.getRange(rowIndex + 1, 15).setValue(newStatus);
     sheet.getRange(rowIndex + 1, 17).setValue(JSON.stringify(metadata));
@@ -1769,16 +1797,22 @@ function handleRejectPurchaseRequest(data) {
     }
     if (rowIndex === -1) return createResponse(false, 'Không tìm thấy đề nghị: ' + prNo);
 
-    var row                  = values[rowIndex];
-    var budgetApproverEmail  = (row[10] || '').toString().toLowerCase().trim();
-    var supplierApproverEmail = (row[11] || '').toString().toLowerCase().trim();
-    var currentStatus        = (row[14] || '').toString();
+    var row           = values[rowIndex];
+    var currentStatus = (row[14] || '').toString();
 
-    if (approverEmail !== budgetApproverEmail && approverEmail !== supplierApproverEmail) {
+    // Allow any of the 4 approver columns to reject (cols 10, 11, 17, 18)
+    var approverEmails = [10, 11, 17, 18].map(function(c) {
+      return (row[c] || '').toString().toLowerCase().trim();
+    });
+    if (approverEmails.indexOf(approverEmail) === -1) {
       return createResponse(false, 'Bạn không có quyền từ chối đề nghị này.');
     }
-    if (currentStatus === 'Rejected') return createResponse(false, 'Đề nghị này đã bị từ chối rồi.');
-    if (currentStatus === 'Approved') return createResponse(false, 'Đề nghị đã được duyệt, không thể từ chối.');
+    if (currentStatus === 'Đã từ chối' || currentStatus === 'Rejected') {
+      return createResponse(false, 'Đề nghị này đã bị từ chối rồi.');
+    }
+    if (currentStatus === 'Hoàn thành' || currentStatus === 'Approved') {
+      return createResponse(false, 'Đề nghị đã được duyệt, không thể từ chối.');
+    }
 
     var metadata;
     try { metadata = JSON.parse(row[16] || '{}'); } catch (e) { metadata = {}; }
@@ -1787,12 +1821,12 @@ function handleRejectPurchaseRequest(data) {
     metadata.rejectedBy   = approverEmail;
     metadata.rejectionNote = note;
 
-    sheet.getRange(rowIndex + 1, 15).setValue('Rejected');
+    sheet.getRange(rowIndex + 1, 15).setValue('Đã từ chối');
     sheet.getRange(rowIndex + 1, 17).setValue(JSON.stringify(metadata));
     SpreadsheetApp.flush();
 
     Logger.log('[P2P] ✅ PR rejected: ' + prNo + ' by=' + approverEmail);
-    return createResponse(true, 'Đã từ chối thành công.', { prNo: prNo, status: 'Rejected' });
+    return createResponse(true, 'Đã từ chối thành công.', { prNo: prNo, status: 'Đã từ chối' });
 
   } catch (error) {
     Logger.log('[P2P] ❌ ERROR in handleRejectPurchaseRequest: ' + error.toString());

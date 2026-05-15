@@ -171,9 +171,12 @@
             font-family: var(--font-body); transition: background-color 0.15s, border-color 0.15s, color 0.15s; color: var(--text-secondary);
         }
         .priority-btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
-        .priority-btn.selected-high   { background: rgba(255,59,48,0.10);  border-color: #FF3B30; color: #FF3B30; }
-        .priority-btn.selected-medium { background: rgba(255,149,0,0.10);  border-color: #FF9500; color: #c07000; }
-        .priority-btn.selected-low    { background: rgba(52,199,89,0.10);  border-color: #34C759; color: #1a7a3c; }
+        .priority-btn.selected-high        { background: rgba(255,59,48,0.10);  border-color: #FF3B30; color: #FF3B30; }
+        .priority-btn.selected-medium      { background: rgba(255,149,0,0.10);  border-color: #FF9500; color: #c07000; }
+        .priority-btn.selected-low         { background: rgba(52,199,89,0.10);  border-color: #34C759; color: #1a7a3c; }
+        .priority-btn.selected-gap         { background: rgba(255,59,48,0.10);  border-color: #FF3B30; color: #FF3B30; }
+        .priority-btn.selected-binh_thuong { background: rgba(255,149,0,0.10);  border-color: #FF9500; color: #c07000; }
+        .priority-btn.selected-khong_gap   { background: rgba(52,199,89,0.10);  border-color: #34C759; color: #1a7a3c; }
 
         /* ── Items table ─────────────────────────────────────────── */
         .items-wrap { overflow-x: auto; margin: 0 -4px; }
@@ -584,9 +587,10 @@
         .pr-item-right { text-align: right; flex-shrink: 0; }
         .pr-item-total { font-size: 13px; font-weight: 600; color: var(--primary); }
         .pr-status-badge { display: inline-block; font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; margin-top: 4px; white-space: nowrap; }
-        .badge-pending  { background: rgba(255,149,0,0.12);  color: #CC7A00; }
-        .badge-approved { background: rgba(52,199,89,0.12);  color: #1E8A3F; }
-        .badge-rejected { background: rgba(255,59,48,0.12);  color: #CC1A12; }
+        .badge-pending     { background: rgba(255,149,0,0.12);  color: #CC7A00; }
+        .badge-approved    { background: rgba(52,199,89,0.12);  color: #1E8A3F; }
+        .badge-rejected    { background: rgba(255,59,48,0.12);  color: #CC1A12; }
+        .badge-in-progress { background: rgba(0,122,255,0.12);  color: #005BBB; }
         .badge-other    { background: rgba(0,0,0,0.07);       color: var(--text-secondary); }
         .pr-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 16px; gap: 8px; color: var(--text-secondary); font-size: 13px; text-align: center; }
         .pr-skeleton { padding: 12px 16px; border-bottom: 0.5px solid var(--border); display: flex; gap: 12px; align-items: center; }
@@ -926,17 +930,17 @@
                         <div class="form-group">
                             <label>Mức độ ưu tiên</label>
                             <div class="priority-group" role="group" aria-label="Mức độ ưu tiên" style="margin-top:4px;">
-                                <button type="button" class="priority-btn" id="pri-high" aria-pressed="false" onclick="setPriority('high')">
-                                    <i class="fas fa-circle" style="font-size:8px; margin-right:4px;" aria-hidden="true"></i>Cao
+                                <button type="button" class="priority-btn" id="pri-gap" aria-pressed="false" onclick="setPriority('gap')" title="≤ 2 ngày làm việc">
+                                    <i class="fas fa-circle" style="font-size:8px; margin-right:4px;" aria-hidden="true"></i>Gấp
                                 </button>
-                                <button type="button" class="priority-btn selected-medium" id="pri-medium" aria-pressed="true" onclick="setPriority('medium')">
-                                    <i class="fas fa-circle" style="font-size:8px; margin-right:4px;" aria-hidden="true"></i>Trung bình
+                                <button type="button" class="priority-btn selected-binh_thuong" id="pri-binh_thuong" aria-pressed="true" onclick="setPriority('binh_thuong')" title="3–5 ngày làm việc">
+                                    <i class="fas fa-circle" style="font-size:8px; margin-right:4px;" aria-hidden="true"></i>Bình Thường
                                 </button>
-                                <button type="button" class="priority-btn" id="pri-low" aria-pressed="false" onclick="setPriority('low')">
-                                    <i class="fas fa-circle" style="font-size:8px; margin-right:4px;" aria-hidden="true"></i>Thấp
+                                <button type="button" class="priority-btn" id="pri-khong_gap" aria-pressed="false" onclick="setPriority('khong_gap')" title="> 5 ngày làm việc">
+                                    <i class="fas fa-circle" style="font-size:8px; margin-right:4px;" aria-hidden="true"></i>Không Gấp
                                 </button>
                             </div>
-                            <input type="hidden" id="priority_value" value="medium">
+                            <input type="hidden" id="priority_value" value="binh_thuong">
                         </div>
                     </div>
                 </div>
@@ -1314,10 +1318,48 @@
                         </div>
                     </div>
 
-                    <!-- Approver 3: Final -->
+                    <!-- Approver 3: Contract (optional) -->
+                    <div class="approver-card">
+                        <div class="approver-header">
+                            <div class="approver-num">3</div>
+                            <div>
+                                <div class="approver-title">Người thẩm định hợp đồng <span style="font-size:11px;color:var(--text-secondary);font-weight:400;">(tùy chọn)</span></div>
+                                <div class="approver-sub">Thẩm định hợp đồng sau khi ngân sách &amp; NCC duyệt</div>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="contract_approver">Chọn người thẩm định</label>
+                                <select id="contract_approver">
+                                    <option value="">-- Không có --</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Approver 4: Purchasing (optional) -->
+                    <div class="approver-card">
+                        <div class="approver-header">
+                            <div class="approver-num">4</div>
+                            <div>
+                                <div class="approver-title">Người mua hàng <span style="font-size:11px;color:var(--text-secondary);font-weight:400;">(tùy chọn)</span></div>
+                                <div class="approver-sub">Xác nhận mua hàng cuối cùng</div>
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label for="purchasing_approver">Chọn người mua hàng</label>
+                                <select id="purchasing_approver">
+                                    <option value="">-- Không có --</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Approver 5: Final -->
                     <div class="approver-card" style="opacity:0.6; pointer-events:none;">
                         <div class="approver-header">
-                            <div class="approver-num" style="background:rgba(0,0,0,0.18);">3</div>
+                            <div class="approver-num" style="background:rgba(0,0,0,0.18);">5</div>
                             <div>
                                 <div class="approver-title">Phê duyệt cuối <span style="font-size:11px; color:var(--text-secondary); font-weight:400;">(tự động sau khi 1 &amp; 2 hoàn thành)</span></div>
                                 <div class="approver-sub">Chờ phê duyệt ngân sách &amp; NCC</div>
@@ -1547,7 +1589,7 @@
     let currentStep   = 1;
     const TOTAL_STEPS = 4;
     let isSubmitting  = false;
-    let _priority     = 'medium';
+    let _priority     = 'binh_thuong';
     let _prNo         = '';
     let _grandTotal   = 0;
     let _currency     = 'VND';
@@ -1768,8 +1810,9 @@
     function setPriority(p) {
         _priority = p;
         document.getElementById('priority_value').value = p;
-        ['high','medium','low'].forEach(k => {
+        ['gap','binh_thuong','khong_gap','high','medium','low'].forEach(k => {
             const btn = document.getElementById('pri-' + k);
+            if (!btn) return;
             btn.className = 'priority-btn' + (k === p ? ' selected-' + k : '');
             btn.setAttribute('aria-pressed', k === p ? 'true' : 'false');
         });
@@ -2398,8 +2441,15 @@
         document.getElementById('sum-requester').textContent   = document.getElementById('requester_name').value.trim() || '—';
         const rd = document.getElementById('required_date').value;
         document.getElementById('sum-date').textContent        = rd ? new Date(rd).toLocaleDateString('vi-VN') : '—';
-        const priLabel = { high: 'Cao', medium: 'Trung bình', low: 'Thấp' };
-        document.getElementById('sum-priority').textContent    = priLabel[_priority] || '—';
+        const priLabel = {
+            gap:         'Gấp (≤ 2 ngày)',
+            binh_thuong: 'Bình Thường (3–5 ngày)',
+            khong_gap:   'Không Gấp (> 5 ngày)',
+            high:        'Gấp',
+            medium:      'Bình Thường',
+            low:         'Không Gấp'
+        };
+        document.getElementById('sum-priority').textContent    = priLabel[_priority] || _priority || '—';
         document.getElementById('sum-purpose').textContent     = document.getElementById('purpose').value.trim() || '—';
         document.getElementById('sum-vendor').textContent      = document.getElementById('vendor_final_name').value.trim() || document.getElementById('vendor_new').value.trim() || '—';
         document.getElementById('sum-total').textContent       = formatMoney(_grandTotal) + ' (' + _currency + ')';
@@ -2574,6 +2624,8 @@
             vendorTransferNote: document.getElementById('vendor_bank_transfer_note').value.trim(),
             budgetApprover:     document.getElementById('budget_approver').value,
             supplierApprover:   document.getElementById('supplier_approver').value,
+            contractApprover:   document.getElementById('contract_approver')?.value || '',
+            purchasingApprover: document.getElementById('purchasing_approver')?.value || '',
             requesterEmail:     (() => { try { return JSON.parse(localStorage.getItem('tlc_current_user') || '{}').email || ''; } catch(e) { return ''; } })(),
             requesterSignature: _signatureData || '',
             submittedAt:        new Date().toISOString(),
@@ -2647,6 +2699,8 @@
         clearVendorFields();
         document.getElementById('budget_approver').value  = '';
         document.getElementById('supplier_approver').value = '';
+        document.getElementById('contract_approver').value = '';
+        document.getElementById('purchasing_approver').value = '';
         document.getElementById('req-no-row').style.display = 'none';
         SECTIONS.forEach(s => {
             document.getElementById('tbody-' + s.id).innerHTML = '';
@@ -2664,7 +2718,7 @@
         const sigInp = document.getElementById('sig-upload');
         if (sigInp) sigInp.value = '';
         initSections();
-        setPriority('medium');
+        setPriority('binh_thuong');
         document.getElementById('success-screen').style.display = 'none';
         document.querySelectorAll('.form-step, .progress-stepper, h1').forEach(el => el.style.display = '');
         goToStep(1);
@@ -2878,7 +2932,7 @@
 
     function seedApprovers(employees) {
         const active = employees.filter(e => (e.employee_status || e['Status'] || '').toLowerCase() === 'active');
-        ['budget_approver','supplier_approver','final_approver'].forEach(id => {
+        ['budget_approver','supplier_approver','contract_approver','purchasing_approver','final_approver'].forEach(id => {
             const sel = document.getElementById(id);
             if (!sel) return;
             active.forEach(e => {
@@ -3333,14 +3387,25 @@
 
     function _prStatusClass(status) {
         const s = (status || '').toLowerCase();
-        if (s === 'pending')  return 'pending';
-        if (s === 'approved') return 'approved';
-        if (s === 'rejected') return 'rejected';
+        if (s === 'pending' || s === 'đang duyệt ngân sách (2/5)') return 'pending';
+        if (s === 'đang duyệt nhà cung cấp (3/5)' || s === 'thẩm định hợp đồng (4/5)' || s === 'mua hàng (5/5)') return 'in-progress';
+        if (s === 'approved' || s === 'hoàn thành') return 'approved';
+        if (s === 'rejected' || s === 'đã từ chối') return 'rejected';
         return 'other';
     }
 
     function _prStatusLabel(status) {
-        const map = { pending: 'Chờ duyệt', approved: 'Đã duyệt', rejected: 'Từ chối' };
+        const map = {
+            'pending':                       'Chờ duyệt (1/5)',
+            'đang duyệt ngân sách (2/5)':    'Đang duyệt ngân sách (2/5)',
+            'đang duyệt nhà cung cấp (3/5)': 'Đang duyệt nhà cung cấp (3/5)',
+            'thẩm định hợp đồng (4/5)':      'Thẩm định Hợp đồng (4/5)',
+            'mua hàng (5/5)':                'Mua hàng (5/5)',
+            'hoàn thành':                    'Hoàn thành',
+            'approved':                      'Đã duyệt',
+            'rejected':                      'Đã từ chối',
+            'đã từ chối':                    'Đã từ chối',
+        };
         return map[(status || '').toLowerCase()] || status || '—';
     }
 
@@ -3514,15 +3579,18 @@
         let email = '';
         try { email = (JSON.parse(localStorage.getItem('tlc_current_user') || '{}').email || '').toLowerCase().trim(); } catch(e) {}
         if (!email) return false;
-        const status   = (pr.status || '').toLowerCase();
-        if (status === 'rejected' || status === 'approved') return false;
-        // Parse metadata to check if the step assigned to this user is still pending
+        const status = (pr.status || '').toLowerCase();
+        if (status === 'rejected' || status === 'approved' || status === 'đã từ chối' || status === 'hoàn thành') return false;
         let meta = {};
         try { meta = JSON.parse(pr.metadata || '{}'); } catch(e) {}
-        const budgetEmail   = (pr.budgetApprover   || '').toLowerCase().trim();
-        const supplierEmail = (pr.supplierApprover || '').toLowerCase().trim();
-        if (email === budgetEmail   && meta.budgetStatus   !== 'Approved') return true;
-        if (email === supplierEmail && meta.supplierStatus !== 'Approved') return true;
+        const budgetEmail    = (pr.budgetApprover    || '').toLowerCase().trim();
+        const supplierEmail  = (pr.supplierApprover  || '').toLowerCase().trim();
+        const contractEmail  = (pr.contractApprover  || '').toLowerCase().trim();
+        const purchasingEmail= (pr.purchasingApprover|| '').toLowerCase().trim();
+        if (email === budgetEmail    && meta.budgetStatus    !== 'Approved') return true;
+        if (email === supplierEmail  && meta.supplierStatus  !== 'Approved') return true;
+        if (email === contractEmail  && meta.contractStatus  !== 'Approved') return true;
+        if (email === purchasingEmail&& meta.purchasingStatus!== 'Approved') return true;
         return false;
     }
 
@@ -3579,7 +3647,14 @@
         const sc         = _prStatusClass(pr.status);
         const statusHtml = `<span class="pr-status-badge badge-${sc}" style="font-size:12px;padding:3px 10px;">${_escHtmlPR(_prStatusLabel(pr.status))}</span>`;
 
-        const priorityMap = { high: '🔴 Cao', medium: '🟡 Trung bình', low: '🟢 Thấp' };
+        const priorityMap = {
+            gap:         '🔴 Gấp (≤ 2 ngày)',
+            binh_thuong: '🟡 Bình Thường (3–5 ngày)',
+            khong_gap:   '🟢 Không Gấp (> 5 ngày)',
+            high:        '🔴 Gấp',
+            medium:      '🟡 Bình Thường',
+            low:         '🟢 Không Gấp'
+        };
         const priorityLabel = priorityMap[(pr.priority || '').toLowerCase()] || _escHtmlPR(pr.priority) || '—';
 
         // Items table
@@ -3597,9 +3672,11 @@
         }).join('');
 
         // Approver rail
-        const budgetEmail   = (pr.budgetApprover   || '').trim();
-        const supplierEmail = (pr.supplierApprover || '').trim();
-        const isRejected    = (pr.status || '').toLowerCase() === 'rejected';
+        const budgetEmail    = (pr.budgetApprover    || '').trim();
+        const supplierEmail  = (pr.supplierApprover  || '').trim();
+        const contractEmail  = (pr.contractApprover  || '').trim();
+        const purchasingEmail= (pr.purchasingApprover|| '').trim();
+        const isRejected     = (pr.status || '').toLowerCase() === 'đã từ chối' || (pr.status || '').toLowerCase() === 'rejected';
 
         function _approverStatus(email, metaKey) {
             if (isRejected && (meta.rejectedBy || '').toLowerCase() === email.toLowerCase()) return 'Rejected';
@@ -3716,9 +3793,11 @@
             <div class="pr-drawer-section">
                 <div class="pr-drawer-section-title">Trạng thái phê duyệt</div>
                 <div class="pr-approver-rail">
-                    ${budgetEmail   ? approverStepHtml(budgetEmail,   'Duyệt ngân sách',      _approverStatus(budgetEmail,   'budgetStatus'))   : ''}
-                    ${supplierEmail ? approverStepHtml(supplierEmail, 'Duyệt nhà cung cấp',   _approverStatus(supplierEmail, 'supplierStatus')) : ''}
-                    ${(!budgetEmail && !supplierEmail) ? '<div style="font-size:12px;color:#94a3b8;padding:4px 0;">Chưa có thông tin người duyệt.</div>' : ''}
+                    ${budgetEmail    ? approverStepHtml(budgetEmail,    'Duyệt ngân sách',      _approverStatus(budgetEmail,    'budgetStatus'))    : ''}
+                    ${supplierEmail  ? approverStepHtml(supplierEmail,  'Duyệt nhà cung cấp',   _approverStatus(supplierEmail,  'supplierStatus'))  : ''}
+                    ${contractEmail  ? approverStepHtml(contractEmail,  'Thẩm định HĐ',         meta.contractStatus  || (contractEmail  ? 'Pending' : 'N/A'))  : ''}
+                    ${purchasingEmail? approverStepHtml(purchasingEmail,'Mua hàng',              meta.purchasingStatus|| (purchasingEmail? 'Pending' : 'N/A')) : ''}
+                    ${(!budgetEmail && !supplierEmail && !contractEmail && !purchasingEmail) ? '<div style="font-size:12px;color:#94a3b8;padding:4px 0;">Chưa có thông tin người duyệt.</div>' : ''}
                     ${meta.rejectionNote ? `<div style="margin-top:6px;padding:10px 12px;background:#fff5f5;border:1px solid #fecaca;border-radius:8px;font-size:12px;color:#b91c1c;">
                         <strong>Lý do từ chối:</strong> ${_escHtmlPR(meta.rejectionNote)}
                     </div>` : ''}
@@ -3736,10 +3815,14 @@
             </div>
         `;
 
-        // Action buttons
-        const isBudgetApprover   = !!(myEmail && myEmail === budgetEmail.toLowerCase()   && (pr.status || '').toLowerCase() === 'pending' && meta.budgetStatus   !== 'Approved');
-        const isSupplierApprover = !!(myEmail && myEmail === supplierEmail.toLowerCase() && (pr.status || '').toLowerCase() === 'pending' && meta.supplierStatus !== 'Approved');
-        const approveRole = isBudgetApprover ? 'budget' : (isSupplierApprover ? 'supplier' : null);
+        // Action buttons — determine if the current user can approve/reject
+        const activeStatus = (pr.status || '').toLowerCase();
+        const isTerminal   = activeStatus === 'hoàn thành' || activeStatus === 'approved' || activeStatus === 'đã từ chối' || activeStatus === 'rejected';
+        const isBudgetApprover    = !isTerminal && !!(myEmail && myEmail === budgetEmail.toLowerCase()    && meta.budgetStatus    !== 'Approved');
+        const isSupplierApprover  = !isTerminal && !!(myEmail && myEmail === supplierEmail.toLowerCase()  && meta.supplierStatus  !== 'Approved');
+        const isContractApprover  = !isTerminal && !!(myEmail && contractEmail  && myEmail === contractEmail.toLowerCase()  && meta.contractStatus  !== 'Approved');
+        const isPurchasingApprover= !isTerminal && !!(myEmail && purchasingEmail&& myEmail === purchasingEmail.toLowerCase()&& meta.purchasingStatus !== 'Approved');
+        const approveRole = isBudgetApprover ? 'budget' : isSupplierApprover ? 'supplier' : isContractApprover ? 'contract' : isPurchasingApprover ? 'purchasing' : null;
         const safePrNo    = _escAttrPR(pr.prNo || '');
 
         let actionsHtml = `<button class="pr-action-btn pr-btn-print" onclick="printPR('${safePrNo}')">
@@ -3782,7 +3865,8 @@
             const result = JSON.parse(await res.text());
             if (result.success) {
                 showToast('✅ Đã duyệt thành công!', 'success');
-                _patchLocalPR(prNo, result.data?.status, { [role === 'budget' ? 'budgetStatus' : 'supplierStatus']: 'Approved' });
+                const metaKey = role + 'Status';
+                _patchLocalPR(prNo, result.data?.status, { [metaKey]: 'Approved' });
                 renderPRList();
                 _updatePRStats(_allPRs);
                 const updatedPr = _allPRs.find(p => p.prNo === prNo);
@@ -3928,7 +4012,7 @@
   <div class="info-item"><div class="info-label">Người đề nghị</div><div class="info-value">${esc(pr.requesterName || '—')}</div></div>
   <div class="info-item"><div class="info-label">Ngày gửi</div><div class="info-value">${_formatPRDate(pr.submittedAt)}</div></div>
   <div class="info-item"><div class="info-label">Ngày cần hàng</div><div class="info-value">${_formatPRDate(pr.requiredDate)}</div></div>
-  <div class="info-item"><div class="info-label">Ưu tiên</div><div class="info-value">${esc(pr.priority || '—')}</div></div>
+  <div class="info-item"><div class="info-label">Ưu tiên</div><div class="info-value">${esc(({'gap':'Gấp (≤ 2 ngày)','binh_thuong':'Bình Thường (3–5 ngày)','khong_gap':'Không Gấp (> 5 ngày)','high':'Gấp','medium':'Bình Thường','low':'Không Gấp'})[pr.priority?.toLowerCase()] || pr.priority || '—')}</div></div>
   <div class="info-item"><div class="info-label">Bộ phận</div><div class="info-value">${esc(pr.department || '—')}</div></div>
 </div>
 
