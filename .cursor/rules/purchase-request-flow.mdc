@@ -12,16 +12,18 @@ Single-page wizard (4 steps) posting to **`/api/voucher`** (Vercel proxy → `TL
 
 ## Backend coupling
 
-| Frontend call | Routes to | Implemented in |
-|---------------|-----------|----------------|
-| `action=getMasterData` | `TLCG_CORE_BACKEND` (`TLCG_CORE_BACKEND.gs`) | `handleGetMasterData` → employees + Goods-KTT + customers + suppliers — **shared with all workflows** |
-| `action=purchaseRequest` | `TLCG_P2P_BACKEND` (`TLCG_P2P_BACKEND.gs`) | `handlePurchaseRequest` → writes to `Purchase_Request_History` sheet |
-| `action=getPurchaseRequestHistory` | `TLCG_P2P_BACKEND` | `handleGetPurchaseRequestHistory` |
+- `getMasterData` → `TLCG_CORE_BACKEND` — employees, Goods-KTT, suppliers (shared with all workflows)
+- `purchaseRequest` → `TLCG_P2P_BACKEND` — writes to `Purchase_Request_History` sheet; sends emails to requester + approvers
+- `getPurchaseRequestHistory` → `TLCG_P2P_BACKEND` — returns `requests[]` with `items` (JSON) and `metadata` (JSON)
+- `approvePurchaseRequest` → `TLCG_P2P_BACKEND` — updates `metadata.budgetStatus` / `metadata.supplierStatus`
+- `rejectPurchaseRequest` → `TLCG_P2P_BACKEND` — sets status=`Rejected`, writes `metadata.rejectionNote`
 
 **`BACKEND_URL = '/api/voucher'`** (Vercel proxy) — do NOT hardcode a direct GAS exec URL.
-The proxy in `api/voucher.js` routes by action:
-- `getMasterData` → `TLCG_CORE_BACKEND_URL` — centralized master data for ALL workflows
-- `purchaseRequest` → `TLCG_P2P_BACKEND_URL` (env var, fallback to `PAYMENT_REQUEST_BACKEND_URL`)
+
+## Drive folder (`PURCHASE_REQUEST_FOLDER_ID`)
+
+GAS reads folder ID via `getCfg_('PURCHASE_REQUEST_FOLDER_ID', '1SJ-pUa6jg2rmJTzle-TvvSNrKMUduvx3')` — same pattern as `DRIVE_VOUCHER_FOLDER_ID` in `TLCG_CASH_BACKEND.gs`.
+Set Script Property after deploy: key=`PURCHASE_REQUEST_FOLDER_ID`, value=`1SJ-pUa6jg2rmJTzle-TvvSNrKMUduvx3`.
 
 ---
 
@@ -111,20 +113,52 @@ Hidden fields **`company_name`**, **`company_key_or_taxid`** set from option `da
 
 ## Submit payload (`purchaseRequest`)
 
-Encoded fields sent today:
+**Encoding:** Always send as `data=<JSON>` field (NOT flat URL-encoded params):
+```js
+const sendParams = new URLSearchParams();
+sendParams.append('data', JSON.stringify(payload));
+```
+This matches the voucher.html pattern and reliably flows through the Vercel proxy → GAS `params.data → JSON.parse(params.data)`.
 
+Fields in the JSON payload:
 ```text
-action, prNo, companyCode, companyName, department, requesterName,
+action, prNo, companyCode, companyName, department, requesterName, requesterEmail,
 requiredDate, priority, currency, items (JSON string of line objects),
 grandTotal, purpose,
 vendorName, vendorType, vendorTaxId, vendorAddress,
 vendorAccountName, vendorAccountNo, vendorBankName, vendorTransferNote,
-budgetCode, budgetApprover, supplierApprover, submittedAt
+budgetCode, budgetApprover, supplierApprover, submittedAt,
+requesterSignature (base64), attachments (JSON string of [{fileName, fileData, mimeType}])
 ```
 
-**Not sent** today: `budget_approver_note`, hidden `company_key_or_taxid`, `request_id` (redundant if `prNo` matches). Extend GAS + form together if sheets need those.
+## Items line object structure
 
-**Submit UX:** Spinner; **network `catch`** shows error toast (`submitForm`), does **not** show success screen (comment near `catch` is outdated).
+Each row in `items` JSON array uses:
+```js
+{ section, loai, desc, qty, unit, price, total, note }
+```
+**Key field is `desc`** (from `.item-desc` input) — NOT `name` or `itemName`.
+
+When rendering items in the drawer or print view, always check `item.desc` first:
+```js
+item.desc || item.name || item.itemName || '—'
+```
+
+## Attachments (supporting documents)
+
+- Collected as `File` objects in `_attachmentFiles[]`
+- At submit time, converted to base64 via `_fileToBase64()` and sent as `attachments` JSON string inside the `data` field
+- GAS backend (`handlePurchaseRequest`) uploads to Drive via `DriveApp` using folder ID from `getCfg_('PURCHASE_REQUEST_FOLDER_ID', '1SJ-pUa6jg2rmJTzle-TvvSNrKMUduvx3')`
+- Drive URLs stored in `metadata.attachments[]` as `{fileName, fileUrl}`
+- **Never use `/api/drive-upload`** (no Service Account quota on personal Drive)
+
+## Email notifications after submit
+
+`handlePurchaseRequest` calls `sendPurchaseRequestEmails_(data, prNo)` after saving:
+- Requester (`data.requesterEmail`) gets confirmation email
+- Budget approver (`data.budgetApprover`) and supplier approver (`data.supplierApprover`) get approval-request emails
+
+**Submit UX:** Spinner; **network `catch`** shows error toast (`submitForm`).
 
 ---
 
