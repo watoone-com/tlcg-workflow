@@ -111,6 +111,10 @@ function doPost(e) {
         return handlePurchaseRequest(data);
       case 'getPurchaseRequestHistory':
         return handleGetPurchaseRequestHistory(data);
+      case 'approvePurchaseRequest':
+        return handleApprovePurchaseRequest(data);
+      case 'rejectPurchaseRequest':
+        return handleRejectPurchaseRequest(data);
       // ── Payment Request ──────────────────────────────────────
       case 'submitPaymentRequest':
       case 'sendPaymentRequest':
@@ -1437,11 +1441,70 @@ function handlePurchaseRequest(data) {
     }
 
     var submittedAt = data.submittedAt || new Date().toISOString();
+
+    // Upload base64 attachments to Drive via DriveApp (never /api/drive-upload — no SA quota)
+    // Folder ID sourced from Script Property 'PURCHASE_REQUEST_FOLDER_ID' — same pattern as
+    // uploadFilesToDrive_ in TLCG_CASH_BACKEND.gs uses 'DRIVE_VOUCHER_FOLDER_ID'.
+    var attachmentRecords = [];
+    try {
+      var rawAttachments = JSON.parse(data.attachments || '[]') || [];
+      if (rawAttachments.length > 0) {
+        var PR_DRIVE_FOLDER_ID = getCfg_('PURCHASE_REQUEST_FOLDER_ID', '1SJ-pUa6jg2rmJTzle-TvvSNrKMUduvx3');
+        var parentFolder;
+        try {
+          parentFolder = DriveApp.getFolderById(PR_DRIVE_FOLDER_ID);
+        } catch (folderErr) {
+          Logger.log('[P2P] ❌ Cannot access PR Drive folder ' + PR_DRIVE_FOLDER_ID + ': ' + folderErr.message);
+          attachmentRecords = rawAttachments.map(function(f) {
+            return { fileName: f.fileName, fileUrl: '', error: folderErr.message };
+          });
+          throw folderErr; // skip per-file loop; caught by outer try/catch
+        }
+        var subFolder = parentFolder.getFoldersByName(CONFIG.DRIVE_FOLDER_NAME).hasNext()
+          ? parentFolder.getFoldersByName(CONFIG.DRIVE_FOLDER_NAME).next()
+          : parentFolder.createFolder(CONFIG.DRIVE_FOLDER_NAME);
+        var prFolder = subFolder.getFoldersByName(prNo).hasNext()
+          ? subFolder.getFoldersByName(prNo).next()
+          : subFolder.createFolder(prNo);
+        Logger.log('[P2P] 📁 PR Drive folder ready: ' + prFolder.getId());
+        rawAttachments.forEach(function(f) {
+          try {
+            if (!f.fileData) return;
+            var b64 = f.fileData.includes(',') ? f.fileData.split(',')[1] : f.fileData;
+            var mime = f.mimeType || 'application/octet-stream';
+            var blob = Utilities.newBlob(Utilities.base64Decode(b64), mime, f.fileName || 'attachment');
+            var driveFile = prFolder.createFile(blob);
+            try { driveFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch(shareErr) {
+              Logger.log('[P2P] ⚠️ setSharing failed for ' + (f.fileName || '?') + ': ' + shareErr.message);
+            }
+            attachmentRecords.push({ fileName: f.fileName, fileUrl: driveFile.getUrl() });
+            Logger.log('[P2P] ✅ Uploaded attachment: ' + f.fileName);
+          } catch (fe) {
+            Logger.log('[P2P] ⚠️ Could not upload ' + (f.fileName || '?') + ': ' + fe.message);
+            attachmentRecords.push({ fileName: f.fileName, fileUrl: '', error: fe.message });
+          }
+        });
+      }
+    } catch (ae) {
+      Logger.log('[P2P] ⚠️ Attachment parse/upload error: ' + ae.message);
+    }
+
     var metadata = {
-      companyCode:      data.companyCode      || '',
-      companyKey:       data.companyKey       || '',
-      budgetApproverNote: data.budgetApproverNote || '',
-      submittedAt:      submittedAt
+      companyCode:         data.companyCode         || '',
+      companyKey:          data.companyKey           || '',
+      budgetApproverNote:  data.budgetApproverNote   || '',
+      submittedAt:         submittedAt,
+      requesterSignature:  data.requesterSignature   || '',
+      attachments:         attachmentRecords,
+      vendorDetails: {
+        vendorType:         data.vendorType          || '',
+        vendorTaxId:        data.vendorTaxId         || '',
+        vendorAddress:      data.vendorAddress       || '',
+        vendorAccountName:  data.vendorAccountName   || '',
+        vendorAccountNo:    data.vendorAccountNo     || '',
+        vendorBankName:     data.vendorBankName      || '',
+        vendorTransferNote: data.vendorTransferNote  || ''
+      }
     };
 
     // Open sheet (auto-create if missing)
@@ -1523,11 +1586,14 @@ function handleGetPurchaseRequestHistory(data) {
           priority:         row[6]  || '',
           purpose:          row[7]  || '',
           suggestedVendor:  row[8]  || '',
+          budgetCode:       row[9]  || '',
           budgetApprover:   row[10] || '',
           supplierApprover: row[11] || '',
+          items:            row[12] || '[]',
           grandTotal:       row[13] || 0,
           status:           row[14] || '',
-          submittedAt:      row[15] || ''
+          submittedAt:      row[15] || '',
+          metadata:         row[16] || '{}'
         };
       })
       .reverse(); // newest first
@@ -1537,6 +1603,130 @@ function handleGetPurchaseRequestHistory(data) {
 
   } catch (error) {
     Logger.log('[P2P] ❌ ERROR in handleGetPurchaseRequestHistory: ' + error.toString());
+    return createResponse(false, 'Lỗi: ' + error.message);
+  }
+}
+
+// ==================== APPROVE PURCHASE REQUEST ====================
+
+function handleApprovePurchaseRequest(data) {
+  try {
+    var prNo          = (data.prNo          || '').toString().trim();
+    var approverEmail = (data.approverEmail || '').toString().trim().toLowerCase();
+    var approverRole  = (data.approverRole  || '').toString().trim(); // 'budget' | 'supplier'
+    var note          = (data.note          || '').toString().trim();
+
+    if (!prNo)          return createResponse(false, 'Thiếu số phiếu mua hàng.');
+    if (!approverEmail) return createResponse(false, 'Thiếu email người duyệt.');
+    if (approverRole !== 'budget' && approverRole !== 'supplier') {
+      return createResponse(false, 'Vai trò không hợp lệ. Phải là "budget" hoặc "supplier".');
+    }
+
+    var ss    = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    var sheet = ss.getSheetByName(PR_SHEET_NAME);
+    if (!sheet) return createResponse(false, 'Không tìm thấy sheet Purchase_Request_History.');
+
+    var values   = sheet.getDataRange().getValues();
+    var rowIndex = -1;
+    for (var i = 1; i < values.length; i++) {
+      if ((values[i][0] || '').toString().trim() === prNo) { rowIndex = i; break; }
+    }
+    if (rowIndex === -1) return createResponse(false, 'Không tìm thấy đề nghị: ' + prNo);
+
+    var row                  = values[rowIndex];
+    var budgetApproverEmail  = (row[10] || '').toString().toLowerCase().trim();
+    var supplierApproverEmail = (row[11] || '').toString().toLowerCase().trim();
+    var currentStatus        = (row[14] || '').toString();
+
+    if (approverRole === 'budget'   && approverEmail !== budgetApproverEmail) {
+      return createResponse(false, 'Bạn không được phân công là người duyệt ngân sách cho đề nghị này.');
+    }
+    if (approverRole === 'supplier' && approverEmail !== supplierApproverEmail) {
+      return createResponse(false, 'Bạn không được phân công là người duyệt nhà cung cấp cho đề nghị này.');
+    }
+    if (currentStatus === 'Rejected') return createResponse(false, 'Đề nghị này đã bị từ chối, không thể duyệt.');
+    if (currentStatus === 'Approved') return createResponse(false, 'Đề nghị này đã được duyệt rồi.');
+
+    var metadata;
+    try { metadata = JSON.parse(row[16] || '{}'); } catch (e) { metadata = {}; }
+
+    var now = new Date().toISOString();
+    if (approverRole === 'budget') {
+      metadata.budgetStatus     = 'Approved';
+      metadata.budgetApprovedAt = now;
+      metadata.budgetNote       = note;
+    } else {
+      metadata.supplierStatus     = 'Approved';
+      metadata.supplierApprovedAt = now;
+      metadata.supplierNote       = note;
+    }
+
+    var budgetDone   = metadata.budgetStatus   === 'Approved' || !budgetApproverEmail;
+    var supplierDone = metadata.supplierStatus === 'Approved' || !supplierApproverEmail;
+    var newStatus    = (budgetDone && supplierDone) ? 'Approved' : 'Pending';
+
+    sheet.getRange(rowIndex + 1, 15).setValue(newStatus);
+    sheet.getRange(rowIndex + 1, 17).setValue(JSON.stringify(metadata));
+    SpreadsheetApp.flush();
+
+    Logger.log('[P2P] ✅ PR approved: ' + prNo + ' role=' + approverRole + ' newStatus=' + newStatus);
+    return createResponse(true, 'Đã duyệt thành công.', { prNo: prNo, status: newStatus });
+
+  } catch (error) {
+    Logger.log('[P2P] ❌ ERROR in handleApprovePurchaseRequest: ' + error.toString());
+    return createResponse(false, 'Lỗi: ' + error.message);
+  }
+}
+
+// ==================== REJECT PURCHASE REQUEST ====================
+
+function handleRejectPurchaseRequest(data) {
+  try {
+    var prNo          = (data.prNo          || '').toString().trim();
+    var approverEmail = (data.approverEmail || '').toString().trim().toLowerCase();
+    var note          = (data.note          || '').toString().trim();
+
+    if (!prNo)          return createResponse(false, 'Thiếu số phiếu mua hàng.');
+    if (!approverEmail) return createResponse(false, 'Thiếu email người từ chối.');
+
+    var ss    = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    var sheet = ss.getSheetByName(PR_SHEET_NAME);
+    if (!sheet) return createResponse(false, 'Không tìm thấy sheet Purchase_Request_History.');
+
+    var values   = sheet.getDataRange().getValues();
+    var rowIndex = -1;
+    for (var i = 1; i < values.length; i++) {
+      if ((values[i][0] || '').toString().trim() === prNo) { rowIndex = i; break; }
+    }
+    if (rowIndex === -1) return createResponse(false, 'Không tìm thấy đề nghị: ' + prNo);
+
+    var row                  = values[rowIndex];
+    var budgetApproverEmail  = (row[10] || '').toString().toLowerCase().trim();
+    var supplierApproverEmail = (row[11] || '').toString().toLowerCase().trim();
+    var currentStatus        = (row[14] || '').toString();
+
+    if (approverEmail !== budgetApproverEmail && approverEmail !== supplierApproverEmail) {
+      return createResponse(false, 'Bạn không có quyền từ chối đề nghị này.');
+    }
+    if (currentStatus === 'Rejected') return createResponse(false, 'Đề nghị này đã bị từ chối rồi.');
+    if (currentStatus === 'Approved') return createResponse(false, 'Đề nghị đã được duyệt, không thể từ chối.');
+
+    var metadata;
+    try { metadata = JSON.parse(row[16] || '{}'); } catch (e) { metadata = {}; }
+
+    metadata.rejectedAt   = new Date().toISOString();
+    metadata.rejectedBy   = approverEmail;
+    metadata.rejectionNote = note;
+
+    sheet.getRange(rowIndex + 1, 15).setValue('Rejected');
+    sheet.getRange(rowIndex + 1, 17).setValue(JSON.stringify(metadata));
+    SpreadsheetApp.flush();
+
+    Logger.log('[P2P] ✅ PR rejected: ' + prNo + ' by=' + approverEmail);
+    return createResponse(true, 'Đã từ chối thành công.', { prNo: prNo, status: 'Rejected' });
+
+  } catch (error) {
+    Logger.log('[P2P] ❌ ERROR in handleRejectPurchaseRequest: ' + error.toString());
     return createResponse(false, 'Lỗi: ' + error.message);
   }
 }

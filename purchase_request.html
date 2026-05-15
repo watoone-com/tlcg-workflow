@@ -600,12 +600,159 @@
         .signature-actions { display: flex; gap: 8px; margin-bottom: 8px; }
         .signature-upload-btn { cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
 
+        /* ── Supporting document attachments ────────────────────── */
+        .attach-zone { border: 2px dashed rgba(0,0,0,0.12); border-radius: var(--radius-md, 10px); padding: 16px; background: #fafbfc; }
+        .attach-input-label { display: inline-flex; align-items: center; gap: 7px; padding: 8px 16px; background: rgba(0,122,255,0.07); border: 1.5px solid rgba(0,122,255,0.25); border-radius: 8px; color: var(--primary); font-size: 13px; font-weight: 600; cursor: pointer; transition: background 0.15s; }
+        .attach-input-label:hover { background: rgba(0,122,255,0.13); }
+        .attach-hint { font-size: 12px; color: var(--text-secondary); margin-top: 6px; margin-bottom: 0; }
+        .attach-file-list { list-style: none; margin: 10px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+        .attach-file-item { display: flex; align-items: center; gap: 10px; padding: 8px 10px; background: white; border: 0.5px solid var(--border); border-radius: 8px; font-size: 13px; }
+        .attach-file-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: inherit; text-decoration: none; }
+        .attach-file-name:hover { text-decoration: underline; }
+        .attach-file-status { font-size: 11px; font-weight: 600; padding: 2px 7px; border-radius: 20px; white-space: nowrap; flex-shrink: 0; }
+        .attach-file-status.uploading { background: rgba(255,149,0,0.12); color: #c07000; }
+        .attach-file-status.done      { background: rgba(52,199,89,0.12);  color: #1e8a3f; }
+        .attach-file-status.error     { background: rgba(255,59,48,0.12);  color: #cc1a12; }
+        .attach-remove-btn { background: none; border: none; padding: 0 4px; color: var(--text-secondary); font-size: 17px; cursor: pointer; line-height: 1; border-radius: 4px; flex-shrink: 0; }
+        .attach-remove-btn:hover { color: var(--error, #ff3b30); }
+
         /* ── Success screen ──────────────────────────────────────── */
         #success-screen {
             display: none; flex-direction: column; align-items: center;
             text-align: center; padding: 48px 24px; gap: 16px;
         }
         .success-icon { width: 80px; height: 80px; border-radius: 50%; background: rgba(52,199,89,0.12); display: flex; align-items: center; justify-content: center; }
+
+        /* ── PR Drawer ───────────────────────────────────────────── */
+        .pr-item { cursor: pointer !important; }
+        .pr-item.pr-item-active { background: rgba(0,122,255,0.07) !important; }
+
+        .pr-drawer-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15,23,42,0.45); z-index: 1100;
+            opacity: 0; visibility: hidden;
+            transition: opacity 0.25s, visibility 0.25s;
+        }
+        .pr-drawer-overlay.open { opacity: 1; visibility: visible; }
+
+        .pr-drawer {
+            position: fixed; top: 0; right: 0; bottom: 0;
+            width: min(500px, 95vw);
+            background: white;
+            box-shadow: -4px 0 32px rgba(0,0,0,0.18);
+            z-index: 1101;
+            display: flex; flex-direction: column;
+            transform: translateX(100%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            overflow: hidden;
+        }
+        .pr-drawer.open { transform: translateX(0); }
+
+        .pr-drawer-head {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 14px 18px; border-bottom: 1px solid var(--border);
+            background: #f8fafc; flex-shrink: 0;
+        }
+        .pr-drawer-head h4 { margin: 0; font-size: 15px; font-weight: 700; color: #1e293b; }
+        .pr-drawer-close {
+            width: 32px; height: 32px; border-radius: 8px;
+            background: #e2e8f0; border: none; cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            color: #64748b; transition: background 0.15s;
+        }
+        .pr-drawer-close:hover { background: #cbd5e1; color: #1e293b; }
+
+        .pr-drawer-body { flex: 1; overflow-y: auto; padding: 16px 18px; color: #374151; }
+
+        .pr-drawer-section { margin-bottom: 18px; }
+        .pr-drawer-section-title {
+            font-size: 11px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.06em; color: #64748b; margin-bottom: 10px;
+            padding-bottom: 6px; border-bottom: 1px solid #e2e8f0;
+        }
+
+        .pr-info-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; }
+        .pr-info-item { background: #f8fafc; border-radius: 8px; padding: 10px 12px; }
+        .pr-info-label { font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; margin-bottom: 3px; }
+        .pr-info-value { font-size: 14px; font-weight: 500; color: #1e293b; }
+
+        .pr-items-table { width: 100%; border-collapse: collapse; font-size: 12px; }
+        .pr-items-table th { background: #f1f5f9; padding: 7px 10px; text-align: left; font-weight: 600; color: #64748b; border-bottom: 1px solid #e2e8f0; }
+        .pr-items-table td { padding: 7px 10px; border-bottom: 1px solid #f1f5f9; color: #374151; vertical-align: top; }
+        .pr-items-table tr:last-child td { border-bottom: none; }
+        .pr-items-table .col-right { text-align: right; }
+
+        .pr-approver-rail { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+        .pr-approver-step {
+            display: grid; grid-template-columns: 28px 1fr auto; gap: 8px;
+            align-items: center; padding: 10px 12px;
+            background: #f8fafc; border-radius: 10px; border: 1px solid #e2e8f0;
+        }
+        .pr-approver-dot {
+            width: 24px; height: 24px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 11px; font-weight: 700;
+            background: #e2e8f0; color: #94a3b8; flex-shrink: 0;
+        }
+        .pr-approver-dot.dot-done     { background: #34d399; color: white; }
+        .pr-approver-dot.dot-pending  { background: #fbbf24; color: white; }
+        .pr-approver-dot.dot-rejected { background: #f87171; color: white; }
+        .pr-approver-name { font-size: 13px; font-weight: 600; color: #1e293b; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .pr-approver-role { font-size: 11px; color: #64748b; margin-top: 1px; }
+        .pr-approver-badge { font-size: 10px; font-weight: 700; padding: 2px 8px; border-radius: 20px; white-space: nowrap; flex-shrink: 0; }
+        .pr-approver-badge.badge-approved { background: rgba(52,199,89,0.12); color: #1E8A3F; }
+        .pr-approver-badge.badge-pending  { background: rgba(255,149,0,0.12);  color: #CC7A00; }
+        .pr-approver-badge.badge-rejected { background: rgba(255,59,48,0.12);  color: #CC1A12; }
+
+        .pr-drawer-actions {
+            padding: 14px 18px; border-top: 1px solid var(--border);
+            background: #f8fafc; display: flex; gap: 8px; flex-wrap: wrap;
+            flex-shrink: 0;
+        }
+        .pr-action-btn {
+            flex: 1; min-width: 72px;
+            padding: 9px 14px; border-radius: 8px;
+            font-size: 13px; font-weight: 600; cursor: pointer; border: none;
+            transition: opacity 0.15s, transform 0.15s;
+            display: flex; align-items: center; justify-content: center; gap: 5px;
+            font-family: var(--font-body);
+        }
+        .pr-action-btn:active { transform: scale(0.97); }
+        .pr-btn-approve { background: #10b981; color: white; }
+        .pr-btn-approve:hover { background: #059669; }
+        .pr-btn-reject  { background: #ef4444; color: white; }
+        .pr-btn-reject:hover  { background: #dc2626; }
+        .pr-btn-print   { background: #f1f5f9; color: #374151; border: 1px solid #e2e8f0; }
+        .pr-btn-print:hover   { background: #e2e8f0; }
+
+        /* ── Reject note modal ───────────────────────────────────── */
+        .pr-reject-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15,23,42,0.6); z-index: 1200;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; visibility: hidden; transition: opacity 0.2s, visibility 0.2s;
+        }
+        .pr-reject-overlay.open { opacity: 1; visibility: visible; }
+        .pr-reject-modal {
+            background: white; border-radius: 16px; width: min(420px, 92vw); padding: 24px;
+            transform: scale(0.95) translateY(16px); transition: transform 0.2s;
+        }
+        .pr-reject-overlay.open .pr-reject-modal { transform: scale(1) translateY(0); }
+        .pr-reject-modal h4 { margin: 0 0 14px; font-size: 16px; font-weight: 700; color: #1e293b; }
+        .pr-reject-modal textarea {
+            width: 100%; box-sizing: border-box; border: 1px solid #e2e8f0; border-radius: 8px;
+            padding: 10px 12px; font-size: 13px; font-family: var(--font-body);
+            resize: vertical; min-height: 100px; outline: none;
+        }
+        .pr-reject-modal textarea:focus { border-color: var(--primary); }
+        .pr-reject-modal-actions { display: flex; gap: 8px; margin-top: 14px; justify-content: flex-end; }
+        .pr-reject-cancel  { padding: 8px 16px; border-radius: 8px; background: #e2e8f0; color: #475569; border: none; cursor: pointer; font-weight: 600; font-size: 13px; font-family: var(--font-body); }
+        .pr-reject-confirm { padding: 8px 16px; border-radius: 8px; background: #ef4444; color: white; border: none; cursor: pointer; font-weight: 600; font-size: 13px; font-family: var(--font-body); }
+
+        @media (max-width: 640px) {
+            .pr-info-grid { grid-template-columns: 1fr; }
+            .pr-drawer { width: 100%; }
+        }
 
     </style>
 </head>
@@ -1083,6 +1230,27 @@
                 </div>
             </div>
 
+            <!-- Supporting document attachments -->
+            <div class="form-card">
+                <div class="form-card-header">
+                    <i class="fas fa-paperclip" style="color:var(--primary); font-size:14px;"></i>
+                    <h2>Tài liệu đính kèm <span style="font-weight:400;font-size:13px;color:var(--text-secondary)">(tuỳ chọn)</span></h2>
+                </div>
+                <div class="form-card-body">
+                    <div class="attach-zone" id="attach-zone">
+                        <label class="attach-input-label" for="attach-input">
+                            <i class="fas fa-cloud-upload-alt" aria-hidden="true"></i> Chọn tài liệu
+                        </label>
+                        <input type="file" id="attach-input" multiple
+                               accept=".pdf,.png,.jpg,.jpeg,.xlsx"
+                               style="display:none;"
+                               onchange="onAttachInputChange(event)">
+                        <p class="attach-hint">PDF, PNG, JPG, XLSX — tối đa 5 file, mỗi file ≤ 10 MB</p>
+                        <ul class="attach-file-list" id="attach-file-list"></ul>
+                    </div>
+                </div>
+            </div>
+
             <div class="step-navigation" style="background:transparent; border:none; padding:16px 0 0;">
                 <button type="button" class="btn-secondary" onclick="goToStep(1)">← Quay lại</button>
                 <button type="button" class="btn-primary" onclick="validateAndNext(2)">Tiếp theo →</button>
@@ -1231,6 +1399,10 @@
                 <div class="summary-header"><i class="fas fa-align-left"></i> Mục đích &amp; Lý do</div>
                 <div class="summary-row"><span class="summary-lbl">Mục đích</span><span class="summary-val" id="sum-purpose" style="white-space:pre-wrap;">—</span></div>
                 <div class="summary-row"><span class="summary-lbl">NCC đề xuất</span><span class="summary-val" id="sum-vendor">—</span></div>
+                <div class="summary-row" id="sum-attachments-row" style="display:none;">
+                    <span class="summary-lbl">Tài liệu đính kèm</span>
+                    <span class="summary-val" id="sum-attachments">—</span>
+                </div>
             </div>
 
             <div class="summary-section">
@@ -1287,8 +1459,13 @@
             <!-- Header -->
             <div class="recent-pr-header">
                 <h3><i class="fas fa-list-check" style="color:var(--primary);margin-right:8px;" aria-hidden="true"></i>Đề nghị mua hàng gần đây</h3>
-                <div style="display:flex;gap:8px;align-items:center;">
+                <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
                     <span id="pr-last-refresh" style="font-size:12px;color:var(--text-secondary);"></span>
+                    <button type="button" id="my-pr-task-btn" onclick="toggleMyPRTaskFilter()"
+                        title="Chỉ hiện việc cần làm của tôi"
+                        style="display:flex;align-items:center;gap:0.35rem;padding:6px 12px;border:1.5px solid #f97316;border-radius:6px;font-size:13px;font-weight:600;background:white;color:#f97316;cursor:pointer;white-space:nowrap;transition:background 0.15s,color 0.15s;font-family:var(--font-body);">
+                        ⚡ Việc của tôi
+                    </button>
                     <button type="button" class="recent-pr-refresh-btn" onclick="loadRecentPR(true)" aria-label="Làm mới danh sách">
                         <i class="fas fa-rotate-right" style="font-size:12px;" aria-hidden="true"></i> Làm mới
                     </button>
@@ -1331,6 +1508,35 @@
         </div>
     </div>
 
+    <!-- PR Detail Drawer -->
+    <div class="pr-drawer-overlay" id="pr-drawer-overlay" onclick="closePRDrawer()"></div>
+    <aside class="pr-drawer" id="pr-drawer" role="dialog" aria-modal="true" aria-label="Chi tiết đề nghị mua hàng">
+        <div class="pr-drawer-head">
+            <h4 id="pr-drawer-title">Chi tiết đề nghị</h4>
+            <button class="pr-drawer-close" onclick="closePRDrawer()" aria-label="Đóng">
+                <i class="fas fa-xmark" aria-hidden="true"></i>
+            </button>
+        </div>
+        <div class="pr-drawer-body" id="pr-drawer-body">
+            <div style="color:#64748b;font-size:13px;text-align:center;padding:40px 16px;">
+                Chọn một đề nghị trong danh sách để xem chi tiết.
+            </div>
+        </div>
+        <div class="pr-drawer-actions" id="pr-drawer-actions" style="display:none;"></div>
+    </aside>
+
+    <!-- Reject reason modal -->
+    <div class="pr-reject-overlay" id="pr-reject-overlay">
+        <div class="pr-reject-modal">
+            <h4>✕ Lý do từ chối</h4>
+            <textarea id="pr-reject-note" placeholder="Nhập lý do từ chối (không bắt buộc)..."></textarea>
+            <div class="pr-reject-modal-actions">
+                <button class="pr-reject-cancel" onclick="closePRRejectModal()">Hủy</button>
+                <button class="pr-reject-confirm" id="pr-reject-confirm-btn" onclick="confirmRejectPR()">Từ chối</button>
+            </div>
+        </div>
+    </div>
+
 </div><!-- /ipad-main -->
 
 <script>
@@ -1351,6 +1557,14 @@
     let allVendorsMaster    = [];
     let allBanks            = [];
     let _vendorPreloadCache = []; // never cleared — survives clearVendorFields()
+
+    /* ── Attachment state ───────────────────────────────────────── */
+    // Files are held in memory and sent as base64 at submit time via GAS/DriveApp.
+    // DO NOT pre-upload via /api/drive-upload — Service Accounts have no quota on personal Drive.
+    const MAX_ATTACH_FILES  = 5;
+    const MAX_ATTACH_BYTES  = 5 * 1024 * 1024;  // 5 MB per file (GAS payload limit)
+    const MAX_ATTACH_TOTAL  = 30 * 1024 * 1024; // 30 MB total payload
+    let _attachmentFiles    = []; // [{file: File, name: string}]
 
     /* ── Signature state ────────────────────────────────────────── */
     let _signatureData = null;
@@ -2190,6 +2404,19 @@
         document.getElementById('sum-vendor').textContent      = document.getElementById('vendor_final_name').value.trim() || document.getElementById('vendor_new').value.trim() || '—';
         document.getElementById('sum-total').textContent       = formatMoney(_grandTotal) + ' (' + _currency + ')';
 
+        // Attachment filenames (Drive upload happens at submit time)
+        const attRow = document.getElementById('sum-attachments-row');
+        const attVal = document.getElementById('sum-attachments');
+        if (_attachmentFiles.length > 0) {
+            attVal.innerHTML = _attachmentFiles.map(a =>
+                `<span style="display:block;font-size:13px;"><i class="fas fa-file" style="margin-right:4px;color:var(--primary);font-size:11px;"></i>${escapeHtml(a.name)}</span>`
+            ).join('');
+            attRow.style.display = '';
+        } else {
+            attVal.textContent = '—';
+            attRow.style.display = 'none';
+        }
+
         const sel1 = document.getElementById('budget_approver');
         document.getElementById('sum-budget-approver').textContent = sel1.options[sel1.selectedIndex]?.text || '—';
         const sel2 = document.getElementById('supplier_approver');
@@ -2237,6 +2464,65 @@
     }
 
     /* ── Submit ─────────────────────────────────────────────────── */
+    /* ── HTML escaping helper ────────────────────────────────────── */
+    function escapeHtml(str) {
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#39;');
+    }
+
+    /* ── Supporting document attachment functions ────────────────── */
+    function onAttachInputChange(event) {
+        const files = Array.from(event.target.files || []);
+        event.target.value = '';
+        for (const file of files) {
+            if (_attachmentFiles.length >= MAX_ATTACH_FILES) {
+                showToast(`Tối đa ${MAX_ATTACH_FILES} file đính kèm`, 'error'); break;
+            }
+            if (file.size > MAX_ATTACH_BYTES) {
+                showToast(`"${file.name}" quá lớn (tối đa 5 MB)`, 'error'); continue;
+            }
+            _attachmentFiles.push({ file, name: file.name });
+            renderAttachList();
+        }
+    }
+
+    function removeAttachFile(idx) {
+        _attachmentFiles.splice(idx, 1);
+        renderAttachList();
+    }
+
+    function renderAttachList() {
+        const ul = document.getElementById('attach-file-list');
+        if (!ul) return;
+        ul.innerHTML = '';
+        _attachmentFiles.forEach((entry, idx) => {
+            const li = document.createElement('li');
+            li.className = 'attach-file-item';
+            const sizeMB = (entry.file.size / 1024 / 1024).toFixed(1);
+            li.innerHTML = `
+                <i class="fas fa-file" style="color:var(--primary);font-size:13px;flex-shrink:0;" aria-hidden="true"></i>
+                <span class="attach-file-name">${escapeHtml(entry.name)}</span>
+                <span class="attach-file-status done">${sizeMB} MB</span>
+                <button type="button" class="attach-remove-btn" onclick="removeAttachFile(${idx})" title="Xóa file" aria-label="Xóa ${escapeHtml(entry.name)}">×</button>
+            `;
+            ul.appendChild(li);
+        });
+    }
+
+    // Convert File to base64 data-URL string
+    function _fileToBase64(file) {
+        return new Promise((resolve, reject) => {
+            const r = new FileReader();
+            r.onload  = e => resolve(e.target.result);
+            r.onerror = reject;
+            r.readAsDataURL(file);
+        });
+    }
+
     async function submitForm() {
         if (isSubmitting) return;
         isSubmitting = true;
@@ -2292,6 +2578,24 @@
             submittedAt:        new Date().toISOString(),
         };
 
+        // Convert attachments to base64 for GAS/DriveApp upload (never use /api/drive-upload)
+        if (_attachmentFiles.length > 0) {
+            const skipped = [];
+            const attachPayload = [];
+            let totalSize = 0;
+            for (const entry of _attachmentFiles) {
+                if (entry.file.size > MAX_ATTACH_BYTES) { skipped.push(entry.name); continue; }
+                totalSize += entry.file.size;
+                if (totalSize > MAX_ATTACH_TOTAL) { skipped.push(entry.name + ' (tổng quá lớn)'); break; }
+                try {
+                    const b64 = await _fileToBase64(entry.file);
+                    attachPayload.push({ fileName: entry.name, fileData: b64, mimeType: entry.file.type || 'application/octet-stream' });
+                } catch (e) { skipped.push(entry.name + ' (lỗi đọc)'); }
+            }
+            if (skipped.length) showToast(`Bỏ qua ${skipped.length} file: ${skipped.join(', ')}`, 'error', 5000);
+            payload.attachments = JSON.stringify(attachPayload);
+        }
+
         try {
             const params = new URLSearchParams(payload);
             const res    = await fetch(BACKEND_URL, {
@@ -2346,6 +2650,8 @@
             document.getElementById('chevron-' + s.id).style.transform = '';
         });
         _rowCount = 0; _grandTotal = 0; _prNo = '';
+        _attachmentFiles = [];
+        renderAttachList();
         document.getElementById('grand-total-display').textContent = '0 ₫';
         // Reload saved signature (keep it persisted — just re-display; user can clear manually)
         _signatureData = localStorage.getItem(_SIG_KEY) || null;
@@ -3011,8 +3317,11 @@
     /* ══════════════════════════════════════════════════════════════
        RECENT PURCHASE REQUESTS
        ══════════════════════════════════════════════════════════════ */
-    let _allPRs      = [];
-    let _prFilter    = '';   // '' | 'Pending' | 'Approved' | 'Rejected'
+    let _allPRs           = [];
+    let _prFilter         = '';   // '' | 'Pending' | 'Approved' | 'Rejected'
+    let _myPRTaskFilter   = false;
+    let _currentPRDrawer  = null; // prNo of currently open drawer
+    let _pendingRejectPrNo = null;
     const _PR_CACHE_KEY    = 'tlcg_pr_list_cache';
     const _PR_CACHE_TS_KEY = 'tlcg_pr_list_cache_ts';
     const _PR_CACHE_TTL    = 5 * 60 * 1000; // 5 min
@@ -3065,7 +3374,7 @@
         if (!container) return;
         const query = (document.getElementById('pr-search')?.value || '').trim().toLowerCase();
 
-        const filtered = _allPRs.filter(pr => {
+        let filtered = _allPRs.filter(pr => {
             if (_prFilter && (pr.status || '').toLowerCase() !== _prFilter.toLowerCase()) return false;
             if (query) {
                 const haystack = [pr.prNo, pr.company, pr.requesterName, pr.purpose, pr.suggestedVendor].join(' ').toLowerCase();
@@ -3073,6 +3382,10 @@
             }
             return true;
         });
+
+        if (_myPRTaskFilter) {
+            filtered = filtered.filter(_isMyPRTask);
+        }
 
         if (filtered.length === 0) {
             container.innerHTML = `<div class="pr-empty">
@@ -3083,9 +3396,11 @@
         }
 
         container.innerHTML = filtered.map(pr => {
-            const sc  = _prStatusClass(pr.status);
-            const ico = _prStatusIcon(pr.status);
-            return `<div class="pr-item" role="listitem">
+            const sc      = _prStatusClass(pr.status);
+            const ico     = _prStatusIcon(pr.status);
+            const safeNo  = _escAttrPR(pr.prNo || '');
+            const isActive = _currentPRDrawer === pr.prNo ? ' pr-item-active' : '';
+            return `<div class="pr-item${isActive}" role="listitem" data-prno="${safeNo}" onclick="openPRDrawer('${safeNo.replace(/'/g, "\\'")}')">
                 <div class="pr-item-icon icon-${sc}">
                     <i class="fas ${ico}" aria-hidden="true"></i>
                 </div>
@@ -3169,6 +3484,488 @@
         const el = document.getElementById('pr-last-refresh');
         if (el) el.textContent = 'Cập nhật: ' + new Date().toLocaleTimeString('vi-VN');
     }
+
+    /* ── PR Drawer helpers ──────────────────────────────────────── */
+    function _escHtmlPR(s) {
+        return String(s == null ? '' : s)
+            .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+            .replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+    function _escAttrPR(s) {
+        return String(s == null ? '' : s).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+    }
+
+    /* ── My Task filter ─────────────────────────────────────────── */
+    function _isMyPRTask(pr) {
+        let email = '';
+        try { email = (JSON.parse(localStorage.getItem('tlc_current_user') || '{}').email || '').toLowerCase().trim(); } catch(e) {}
+        if (!email) return false;
+        const status   = (pr.status || '').toLowerCase();
+        if (status === 'rejected' || status === 'approved') return false;
+        // Parse metadata to check if the step assigned to this user is still pending
+        let meta = {};
+        try { meta = JSON.parse(pr.metadata || '{}'); } catch(e) {}
+        const budgetEmail   = (pr.budgetApprover   || '').toLowerCase().trim();
+        const supplierEmail = (pr.supplierApprover || '').toLowerCase().trim();
+        if (email === budgetEmail   && meta.budgetStatus   !== 'Approved') return true;
+        if (email === supplierEmail && meta.supplierStatus !== 'Approved') return true;
+        return false;
+    }
+
+    function toggleMyPRTaskFilter() {
+        _myPRTaskFilter = !_myPRTaskFilter;
+        const btn = document.getElementById('my-pr-task-btn');
+        if (btn) {
+            btn.style.background = _myPRTaskFilter ? '#f97316' : 'white';
+            btn.style.color      = _myPRTaskFilter ? 'white'   : '#f97316';
+            btn.title = _myPRTaskFilter
+                ? 'Đang lọc việc của tôi — nhấn để xem tất cả'
+                : 'Chỉ hiện việc cần làm của tôi';
+        }
+        renderPRList();
+    }
+
+    /* ── Open / Close Drawer ────────────────────────────────────── */
+    function openPRDrawer(prNo) {
+        const pr = _allPRs.find(p => p.prNo === prNo);
+        if (!pr) return;
+        _currentPRDrawer = prNo;
+        document.querySelectorAll('.pr-item').forEach(el => el.classList.remove('pr-item-active'));
+        const row = document.querySelector(`.pr-item[data-prno="${_escAttrPR(prNo)}"]`);
+        if (row) row.classList.add('pr-item-active');
+        document.getElementById('pr-drawer-title').textContent = prNo;
+        document.getElementById('pr-drawer-overlay').classList.add('open');
+        document.getElementById('pr-drawer').classList.add('open');
+        renderPRDrawer(pr);
+    }
+
+    function closePRDrawer() {
+        document.getElementById('pr-drawer-overlay').classList.remove('open');
+        document.getElementById('pr-drawer').classList.remove('open');
+        document.querySelectorAll('.pr-item').forEach(el => el.classList.remove('pr-item-active'));
+        _currentPRDrawer = null;
+    }
+
+    /* ── Render Drawer Content ──────────────────────────────────── */
+    function renderPRDrawer(pr) {
+        const body      = document.getElementById('pr-drawer-body');
+        const actionsEl = document.getElementById('pr-drawer-actions');
+        if (!body) return;
+
+        let currentUser = {};
+        try { currentUser = JSON.parse(localStorage.getItem('tlc_current_user') || '{}'); } catch(e) {}
+        const myEmail = (currentUser.email || '').toLowerCase().trim();
+
+        let meta = {};
+        try { meta = JSON.parse(pr.metadata || '{}'); } catch(e) {}
+
+        let items = [];
+        try { items = JSON.parse(pr.items || '[]'); } catch(e) {}
+
+        const sc         = _prStatusClass(pr.status);
+        const statusHtml = `<span class="pr-status-badge badge-${sc}" style="font-size:12px;padding:3px 10px;">${_escHtmlPR(_prStatusLabel(pr.status))}</span>`;
+
+        const priorityMap = { high: '🔴 Cao', medium: '🟡 Trung bình', low: '🟢 Thấp' };
+        const priorityLabel = priorityMap[(pr.priority || '').toLowerCase()] || _escHtmlPR(pr.priority) || '—';
+
+        // Items table
+        const itemsRows = items.map(item => {
+            const qty      = parseFloat(item.qty || item.quantity || 0);
+            const price    = parseFloat(item.unitPrice || item.price || 0);
+            const subtotal = qty * price;
+            return `<tr>
+                <td>${_escHtmlPR(item.name || item.itemName || '—')}</td>
+                <td>${_escHtmlPR(item.unit || '—')}</td>
+                <td class="col-right">${qty ? qty.toLocaleString('vi-VN') : '—'}</td>
+                <td class="col-right">${price ? price.toLocaleString('vi-VN') + ' ₫' : '—'}</td>
+                <td class="col-right">${subtotal ? subtotal.toLocaleString('vi-VN') + ' ₫' : '—'}</td>
+            </tr>`;
+        }).join('');
+
+        // Approver rail
+        const budgetEmail   = (pr.budgetApprover   || '').trim();
+        const supplierEmail = (pr.supplierApprover || '').trim();
+        const isRejected    = (pr.status || '').toLowerCase() === 'rejected';
+
+        function _approverStatus(email, metaKey) {
+            if (isRejected && (meta.rejectedBy || '').toLowerCase() === email.toLowerCase()) return 'Rejected';
+            return meta[metaKey] || 'Pending';
+        }
+
+        function approverStepHtml(email, roleLabel, statusStr) {
+            const dotCls   = statusStr === 'Approved' ? 'dot-done' : statusStr === 'Rejected' ? 'dot-rejected' : 'dot-pending';
+            const badgeCls = statusStr === 'Approved' ? 'badge-approved' : statusStr === 'Rejected' ? 'badge-rejected' : 'badge-pending';
+            const icon     = statusStr === 'Approved' ? '✓' : statusStr === 'Rejected' ? '✕' : '?';
+            const label    = statusStr === 'Approved' ? 'Đã duyệt' : statusStr === 'Rejected' ? 'Từ chối' : 'Chờ duyệt';
+            return `<div class="pr-approver-step">
+                <div class="pr-approver-dot ${dotCls}">${icon}</div>
+                <div>
+                    <div class="pr-approver-name">${_escHtmlPR(email || '—')}</div>
+                    <div class="pr-approver-role">${_escHtmlPR(roleLabel)}</div>
+                </div>
+                <span class="pr-approver-badge ${badgeCls}">${label}</span>
+            </div>`;
+        }
+
+        // Attachments from metadata
+        const attachUrls = meta.attachments || [];
+        const attachHtml = attachUrls.length > 0
+            ? attachUrls.map(a => `<a href="${_escHtmlPR(a.fileUrl || '#')}" target="_blank" rel="noopener"
+                    style="display:flex;align-items:center;gap:7px;padding:7px 10px;background:#f8fafc;border:0.5px solid var(--border);border-radius:6px;margin-bottom:6px;font-size:12px;color:var(--primary);text-decoration:none;">
+                    <i class="fas fa-paperclip" aria-hidden="true"></i>${_escHtmlPR(a.fileName || 'File đính kèm')}
+                </a>`).join('')
+            : '<div style="font-size:12px;color:#94a3b8;padding:4px 0;">Không có tệp đính kèm.</div>';
+
+        const sigSrc = meta.requesterSignature || '';
+        const sigHtml = sigSrc
+            ? `<img src="${_escHtmlPR(sigSrc)}" style="max-height:80px;max-width:220px;object-fit:contain;border:1px solid #e2e8f0;border-radius:6px;padding:4px;background:white;">`
+            : '<div style="font-size:12px;color:#94a3b8;padding:4px 0;">Chưa có chữ ký.</div>';
+
+        const vendorHtml = meta.vendorDetails
+            ? (() => {
+                const v = meta.vendorDetails;
+                const lines = [
+                    v.vendorType        ? `<div class="pr-info-label">Loại</div><div class="pr-info-value">${_escHtmlPR(v.vendorType)}</div>` : '',
+                    v.vendorAccountNo   ? `<div class="pr-info-label" style="margin-top:6px;">Số tài khoản</div><div class="pr-info-value">${_escHtmlPR(v.vendorAccountNo)}</div>` : '',
+                    v.vendorBankName    ? `<div class="pr-info-label" style="margin-top:6px;">Ngân hàng</div><div class="pr-info-value">${_escHtmlPR(v.vendorBankName)}</div>` : '',
+                ].filter(Boolean).join('');
+                return lines ? `<div class="pr-info-item" style="background:#f8fafc;border-radius:8px;padding:10px 12px;margin-top:8px;">${lines}</div>` : '';
+            })()
+            : '';
+
+        body.innerHTML = `
+            <div class="pr-drawer-section">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px;">
+                    <div>
+                        <div style="font-size:16px;font-weight:700;color:#1e293b;">${_escHtmlPR(pr.prNo)}</div>
+                        <div style="font-size:12px;color:#64748b;margin-top:2px;">${_escHtmlPR(pr.company || '')}${pr.submittedAt ? ' · ' + _formatPRDate(pr.submittedAt) : ''}</div>
+                    </div>
+                    ${statusHtml}
+                </div>
+            </div>
+
+            <div class="pr-drawer-section">
+                <div class="pr-drawer-section-title">Thông tin đề nghị</div>
+                <div class="pr-info-grid">
+                    <div class="pr-info-item">
+                        <div class="pr-info-label">Người đề nghị</div>
+                        <div class="pr-info-value">${_escHtmlPR(pr.requesterName || '—')}</div>
+                    </div>
+                    <div class="pr-info-item">
+                        <div class="pr-info-label">Ngày cần hàng</div>
+                        <div class="pr-info-value">${_formatPRDate(pr.requiredDate)}</div>
+                    </div>
+                    <div class="pr-info-item">
+                        <div class="pr-info-label">Ưu tiên</div>
+                        <div class="pr-info-value">${priorityLabel}</div>
+                    </div>
+                    <div class="pr-info-item">
+                        <div class="pr-info-label">Bộ phận</div>
+                        <div class="pr-info-value">${_escHtmlPR(pr.department || '—')}</div>
+                    </div>
+                </div>
+                ${pr.purpose ? `<div class="pr-info-item" style="margin-top:10px;">
+                    <div class="pr-info-label">Mục đích</div>
+                    <div class="pr-info-value" style="font-size:13px;white-space:pre-wrap;">${_escHtmlPR(pr.purpose)}</div>
+                </div>` : ''}
+            </div>
+
+            <div class="pr-drawer-section">
+                <div class="pr-drawer-section-title">Hàng hóa / Dịch vụ</div>
+                ${items.length > 0
+                    ? `<div style="overflow-x:auto;"><table class="pr-items-table">
+                        <thead><tr>
+                            <th>Tên hàng</th><th>ĐVT</th>
+                            <th class="col-right">SL</th>
+                            <th class="col-right">Đơn giá</th>
+                            <th class="col-right">Thành tiền</th>
+                        </tr></thead>
+                        <tbody>${itemsRows}</tbody>
+                        <tfoot><tr>
+                            <td colspan="4" style="text-align:right;font-weight:700;padding:8px 10px;border-top:2px solid #e2e8f0;color:#1e293b;">Tổng cộng</td>
+                            <td class="col-right" style="font-weight:700;color:var(--primary);padding:8px 10px;border-top:2px solid #e2e8f0;">${_formatPRMoney(pr.grandTotal)}</td>
+                        </tr></tfoot>
+                    </table></div>`
+                    : `<div style="font-size:12px;color:#94a3b8;padding:4px 0;">Không có dữ liệu hàng hóa.
+                        ${pr.grandTotal ? '<br>Tổng: <strong>' + _formatPRMoney(pr.grandTotal) + '</strong>' : ''}</div>`
+                }
+            </div>
+
+            ${pr.suggestedVendor ? `<div class="pr-drawer-section">
+                <div class="pr-drawer-section-title">Nhà cung cấp đề xuất</div>
+                <div class="pr-info-item">
+                    <div class="pr-info-value">${_escHtmlPR(pr.suggestedVendor)}</div>
+                </div>
+                ${vendorHtml}
+            </div>` : ''}
+
+            <div class="pr-drawer-section">
+                <div class="pr-drawer-section-title">Trạng thái phê duyệt</div>
+                <div class="pr-approver-rail">
+                    ${budgetEmail   ? approverStepHtml(budgetEmail,   'Duyệt ngân sách',      _approverStatus(budgetEmail,   'budgetStatus'))   : ''}
+                    ${supplierEmail ? approverStepHtml(supplierEmail, 'Duyệt nhà cung cấp',   _approverStatus(supplierEmail, 'supplierStatus')) : ''}
+                    ${(!budgetEmail && !supplierEmail) ? '<div style="font-size:12px;color:#94a3b8;padding:4px 0;">Chưa có thông tin người duyệt.</div>' : ''}
+                    ${meta.rejectionNote ? `<div style="margin-top:6px;padding:10px 12px;background:#fff5f5;border:1px solid #fecaca;border-radius:8px;font-size:12px;color:#b91c1c;">
+                        <strong>Lý do từ chối:</strong> ${_escHtmlPR(meta.rejectionNote)}
+                    </div>` : ''}
+                </div>
+            </div>
+
+            <div class="pr-drawer-section">
+                <div class="pr-drawer-section-title">Tệp đính kèm</div>
+                ${attachHtml}
+            </div>
+
+            <div class="pr-drawer-section">
+                <div class="pr-drawer-section-title">Chữ ký người đề nghị</div>
+                ${sigHtml}
+            </div>
+        `;
+
+        // Action buttons
+        const isBudgetApprover   = !!(myEmail && myEmail === budgetEmail.toLowerCase()   && (pr.status || '').toLowerCase() === 'pending' && meta.budgetStatus   !== 'Approved');
+        const isSupplierApprover = !!(myEmail && myEmail === supplierEmail.toLowerCase() && (pr.status || '').toLowerCase() === 'pending' && meta.supplierStatus !== 'Approved');
+        const approveRole = isBudgetApprover ? 'budget' : (isSupplierApprover ? 'supplier' : null);
+        const safePrNo    = _escAttrPR(pr.prNo || '');
+
+        let actionsHtml = `<button class="pr-action-btn pr-btn-print" onclick="printPR('${safePrNo}')">
+            <i class="fas fa-print" aria-hidden="true"></i> In phiếu
+        </button>`;
+        if (approveRole) {
+            actionsHtml += `
+            <button class="pr-action-btn pr-btn-approve" onclick="approvePR('${safePrNo}', '${approveRole}')">
+                <i class="fas fa-check" aria-hidden="true"></i> Duyệt
+            </button>
+            <button class="pr-action-btn pr-btn-reject" onclick="openPRRejectModal('${safePrNo}')">
+                <i class="fas fa-xmark" aria-hidden="true"></i> Từ chối
+            </button>`;
+        }
+
+        actionsEl.innerHTML = actionsHtml;
+        actionsEl.style.display = 'flex';
+    }
+
+    /* ── Approve PR ─────────────────────────────────────────────── */
+    async function approvePR(prNo, role) {
+        const pr = _allPRs.find(p => p.prNo === prNo);
+        if (!pr) return;
+        let currentUser = {};
+        try { currentUser = JSON.parse(localStorage.getItem('tlc_current_user') || '{}'); } catch(e) {}
+        const myEmail = (currentUser.email || '').toLowerCase().trim();
+        if (!myEmail) { showToast('Vui lòng đăng nhập trước.', 'error'); return; }
+        if (!confirm(`Xác nhận duyệt đề nghị ${prNo}?`)) return;
+
+        try {
+            const params = new URLSearchParams({
+                action: 'approvePurchaseRequest',
+                prNo, approverEmail: myEmail, approverRole: role, note: ''
+            });
+            const res    = await fetch(BACKEND_URL, {
+                method: 'POST', mode: 'cors', redirect: 'follow',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: params.toString()
+            });
+            const result = JSON.parse(await res.text());
+            if (result.success) {
+                showToast('✅ Đã duyệt thành công!', 'success');
+                _patchLocalPR(prNo, result.data?.status, { [role === 'budget' ? 'budgetStatus' : 'supplierStatus']: 'Approved' });
+                renderPRList();
+                _updatePRStats(_allPRs);
+                const updatedPr = _allPRs.find(p => p.prNo === prNo);
+                if (updatedPr) renderPRDrawer(updatedPr);
+            } else {
+                showToast(result.message || 'Lỗi khi duyệt.', 'error');
+            }
+        } catch (err) {
+            showToast('Lỗi kết nối: ' + err.message, 'error');
+        }
+    }
+
+    /* ── Reject PR ──────────────────────────────────────────────── */
+    function openPRRejectModal(prNo) {
+        _pendingRejectPrNo = prNo;
+        document.getElementById('pr-reject-note').value = '';
+        document.getElementById('pr-reject-overlay').classList.add('open');
+        setTimeout(() => document.getElementById('pr-reject-note').focus(), 50);
+    }
+
+    function closePRRejectModal() {
+        _pendingRejectPrNo = null;
+        document.getElementById('pr-reject-overlay').classList.remove('open');
+    }
+
+    async function confirmRejectPR() {
+        const prNo = _pendingRejectPrNo;
+        if (!prNo) return;
+        const note = (document.getElementById('pr-reject-note')?.value || '').trim();
+        let currentUser = {};
+        try { currentUser = JSON.parse(localStorage.getItem('tlc_current_user') || '{}'); } catch(e) {}
+        const myEmail = (currentUser.email || '').toLowerCase().trim();
+        if (!myEmail) { showToast('Vui lòng đăng nhập trước.', 'error'); return; }
+
+        const btn = document.getElementById('pr-reject-confirm-btn');
+        btn.disabled = true; btn.textContent = 'Đang xử lý...';
+
+        try {
+            const params = new URLSearchParams({ action: 'rejectPurchaseRequest', prNo, approverEmail: myEmail, note });
+            const res    = await fetch(BACKEND_URL, {
+                method: 'POST', mode: 'cors', redirect: 'follow',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: params.toString()
+            });
+            const result = JSON.parse(await res.text());
+            closePRRejectModal();
+            if (result.success) {
+                showToast('Đã từ chối đề nghị.', 'info');
+                _patchLocalPR(prNo, 'Rejected', { rejectedBy: myEmail, rejectionNote: note });
+                renderPRList();
+                _updatePRStats(_allPRs);
+                const updatedPr = _allPRs.find(p => p.prNo === prNo);
+                if (updatedPr) renderPRDrawer(updatedPr);
+            } else {
+                showToast(result.message || 'Lỗi khi từ chối.', 'error');
+            }
+        } catch (err) {
+            showToast('Lỗi kết nối: ' + err.message, 'error');
+        } finally {
+            btn.disabled = false; btn.textContent = 'Từ chối';
+        }
+    }
+
+    function _patchLocalPR(prNo, newStatus, metaPatch) {
+        const idx = _allPRs.findIndex(p => p.prNo === prNo);
+        if (idx < 0) return;
+        if (newStatus) _allPRs[idx].status = newStatus;
+        if (metaPatch) {
+            let meta = {};
+            try { meta = JSON.parse(_allPRs[idx].metadata || '{}'); } catch(e) {}
+            Object.assign(meta, metaPatch);
+            _allPRs[idx].metadata = JSON.stringify(meta);
+        }
+        localStorage.setItem(_PR_CACHE_KEY, JSON.stringify(_allPRs));
+    }
+
+    /* ── Print PR ───────────────────────────────────────────────── */
+    function printPR(prNo) {
+        const pr = _allPRs.find(p => p.prNo === prNo);
+        if (!pr) { showToast('Không tìm thấy phiếu.', 'error'); return; }
+
+        let meta = {};
+        try { meta = JSON.parse(pr.metadata || '{}'); } catch(e) {}
+        let items = [];
+        try { items = JSON.parse(pr.items || '[]'); } catch(e) {}
+
+        const esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+        const itemsRows = items.map(item => {
+            const qty      = parseFloat(item.qty || item.quantity || 0);
+            const price    = parseFloat(item.unitPrice || item.price || 0);
+            const subtotal = qty * price;
+            return `<tr>
+                <td>${esc(item.name || item.itemName || '—')}</td>
+                <td>${esc(item.unit || '—')}</td>
+                <td style="text-align:right;">${qty ? qty.toLocaleString('vi-VN') : '—'}</td>
+                <td style="text-align:right;">${price ? price.toLocaleString('vi-VN') + ' ₫' : '—'}</td>
+                <td style="text-align:right;">${subtotal ? subtotal.toLocaleString('vi-VN') + ' ₫' : '—'}</td>
+            </tr>`;
+        }).join('');
+
+        const budgetStatusText   = meta.budgetStatus   === 'Approved' ? 'Đã duyệt' : 'Chờ duyệt';
+        const supplierStatusText = meta.supplierStatus === 'Approved' ? 'Đã duyệt' : 'Chờ duyệt';
+        const budgetBadge   = `badge-${(meta.budgetStatus   || 'pending').toLowerCase()}`;
+        const supplierBadge = `badge-${(meta.supplierStatus || 'pending').toLowerCase()}`;
+
+        const html = `<!DOCTYPE html>
+<html lang="vi"><head>
+<meta charset="UTF-8">
+<title>Đề Nghị Mua Hàng — ${esc(pr.prNo)}</title>
+<style>
+  body { font-family: Arial, sans-serif; font-size: 13px; color: #1e293b; padding: 24px 32px; max-width: 800px; margin: 0 auto; }
+  h2 { text-align: center; font-size: 18px; margin: 0 0 4px; }
+  .subtitle { text-align: center; font-size: 12px; color: #64748b; margin-bottom: 24px; }
+  .info-grid { display: flex; flex-wrap: wrap; gap: 14px; margin-bottom: 18px; }
+  .info-item { min-width: 130px; }
+  .info-label { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: 0.05em; }
+  .info-value { font-size: 13px; font-weight: 600; margin-top: 2px; }
+  table { width: 100%; border-collapse: collapse; margin-top: 4px; margin-bottom: 20px; }
+  th { background: #f1f5f9; padding: 7px 10px; text-align: left; font-weight: 700; font-size: 11px; border: 1px solid #e2e8f0; }
+  td { padding: 7px 10px; border: 1px solid #e2e8f0; }
+  .total-row td { font-weight: 700; border-top: 2px solid #94a3b8; }
+  .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #64748b; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #e2e8f0; letter-spacing: 0.05em; }
+  .approvers { display: flex; gap: 20px; margin-bottom: 20px; flex-wrap: wrap; }
+  .approver-box { flex: 1; min-width: 160px; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; }
+  .badge-approved { background: #dcfce7; color: #166534; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+  .badge-pending  { background: #fef9c3; color: #854d0e; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+  .badge-rejected { background: #fee2e2; color: #991b1b; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 700; }
+  @media print { body { padding: 12px 20px; } }
+</style>
+</head><body>
+<h2>ĐỀ NGHỊ MUA HÀNG</h2>
+<div class="subtitle">TLC Group &nbsp;·&nbsp; ${esc(pr.prNo)}</div>
+
+<div class="info-grid">
+  <div class="info-item"><div class="info-label">Công ty</div><div class="info-value">${esc(pr.company || '—')}</div></div>
+  <div class="info-item"><div class="info-label">Người đề nghị</div><div class="info-value">${esc(pr.requesterName || '—')}</div></div>
+  <div class="info-item"><div class="info-label">Ngày gửi</div><div class="info-value">${_formatPRDate(pr.submittedAt)}</div></div>
+  <div class="info-item"><div class="info-label">Ngày cần hàng</div><div class="info-value">${_formatPRDate(pr.requiredDate)}</div></div>
+  <div class="info-item"><div class="info-label">Ưu tiên</div><div class="info-value">${esc(pr.priority || '—')}</div></div>
+  <div class="info-item"><div class="info-label">Bộ phận</div><div class="info-value">${esc(pr.department || '—')}</div></div>
+</div>
+
+${pr.purpose ? `<div style="margin-bottom:14px;"><strong>Mục đích:</strong> ${esc(pr.purpose)}</div>` : ''}
+${pr.suggestedVendor ? `<div style="margin-bottom:14px;"><strong>Nhà cung cấp đề xuất:</strong> ${esc(pr.suggestedVendor)}</div>` : ''}
+
+<div class="section-title">Danh mục hàng hóa / Dịch vụ</div>
+<table>
+  <thead><tr>
+    <th>Tên hàng hóa / Dịch vụ</th><th>ĐVT</th>
+    <th style="text-align:right;">Số lượng</th>
+    <th style="text-align:right;">Đơn giá</th>
+    <th style="text-align:right;">Thành tiền</th>
+  </tr></thead>
+  <tbody>${itemsRows || '<tr><td colspan="5" style="text-align:center;color:#94a3b8;">Không có dữ liệu</td></tr>'}</tbody>
+  <tfoot><tr class="total-row">
+    <td colspan="4" style="text-align:right;">Tổng cộng</td>
+    <td style="text-align:right;">${_formatPRMoney(pr.grandTotal)}</td>
+  </tr></tfoot>
+</table>
+
+<div class="section-title">Phê duyệt</div>
+<div class="approvers">
+  ${pr.budgetApprover ? `<div class="approver-box">
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:6px;">Duyệt ngân sách</div>
+    <div style="font-weight:600;margin-bottom:6px;">${esc(pr.budgetApprover)}</div>
+    <span class="${budgetBadge}">${budgetStatusText}</span>
+    ${meta.budgetApprovedAt ? `<div style="font-size:11px;color:#64748b;margin-top:4px;">${_formatPRDate(meta.budgetApprovedAt)}</div>` : ''}
+  </div>` : ''}
+  ${pr.supplierApprover ? `<div class="approver-box">
+    <div style="font-size:10px;font-weight:700;text-transform:uppercase;color:#64748b;margin-bottom:6px;">Duyệt nhà cung cấp</div>
+    <div style="font-weight:600;margin-bottom:6px;">${esc(pr.supplierApprover)}</div>
+    <span class="${supplierBadge}">${supplierStatusText}</span>
+    ${meta.supplierApprovedAt ? `<div style="font-size:11px;color:#64748b;margin-top:4px;">${_formatPRDate(meta.supplierApprovedAt)}</div>` : ''}
+  </div>` : ''}
+</div>
+
+${meta.rejectionNote ? `<div style="padding:10px 14px;background:#fff5f5;border:1px solid #fecaca;border-radius:8px;margin-bottom:18px;font-size:12px;color:#b91c1c;">
+  <strong>Lý do từ chối:</strong> ${esc(meta.rejectionNote)}
+</div>` : ''}
+
+${meta.requesterSignature ? `<div class="section-title">Chữ ký người đề nghị</div>
+<img src="${meta.requesterSignature}" style="max-height:80px;max-width:200px;object-fit:contain;border:1px solid #e2e8f0;border-radius:6px;padding:4px;background:white;">` : ''}
+
+</body></html>`;
+
+        const w = window.open('', '_blank', 'width=820,height=700');
+        if (w) {
+            w.document.write(html);
+            w.document.close();
+            w.focus();
+            setTimeout(() => w.print(), 450);
+        } else {
+            showToast('Vui lòng cho phép popup để in phiếu.', 'error');
+        }
+    }
+
     /* ── END RECENT PR ────────────────────────────────────────── */
 
     window.addEventListener('DOMContentLoaded', () => {
