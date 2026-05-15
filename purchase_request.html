@@ -3588,7 +3588,7 @@
             const price    = parseFloat(item.unitPrice || item.price || 0);
             const subtotal = qty * price;
             return `<tr>
-                <td>${_escHtmlPR(item.name || item.itemName || '—')}</td>
+                <td>${_escHtmlPR(item.desc || item.name || item.itemName || '—')}</td>
                 <td>${_escHtmlPR(item.unit || '—')}</td>
                 <td class="col-right">${qty ? qty.toLocaleString('vi-VN') : '—'}</td>
                 <td class="col-right">${price ? price.toLocaleString('vi-VN') + ' ₫' : '—'}</td>
