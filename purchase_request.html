@@ -2593,15 +2593,20 @@
                 } catch (e) { skipped.push(entry.name + ' (lỗi đọc)'); }
             }
             if (skipped.length) showToast(`Bỏ qua ${skipped.length} file: ${skipped.join(', ')}`, 'error', 5000);
-            payload.attachments = JSON.stringify(attachPayload);
+            payload.attachments = attachPayload; // array — JSON.stringify happens below inside data wrapper
         }
 
         try {
-            const params = new URLSearchParams(payload);
+            // Send as a single "data" JSON field — same pattern as voucher.html.
+            // The Vercel proxy forwards this as data=<JSON> to GAS, which parses
+            // params.data → JSON.parse(params.data). This is the most reliable path
+            // through the proxy (avoids flat-param re-serialisation edge cases).
+            const sendParams = new URLSearchParams();
+            sendParams.append('data', JSON.stringify(payload));
             const res    = await fetch(BACKEND_URL, {
                 method: 'POST', mode: 'cors', redirect: 'follow',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                body: params.toString(),
+                body: sendParams.toString(),
             });
             const result = JSON.parse(await res.text());
             if (result.success) {
@@ -2621,7 +2626,6 @@
                 btn.innerHTML = orig;
             }
         } catch (err) {
-            // Offline / network error — still show success since form data is captured
             showToast('Kết nối không ổn định. Vui lòng thử lại.', 'error');
             btn.disabled = false;
             btn.innerHTML = orig;
@@ -3400,13 +3404,22 @@
             const ico     = _prStatusIcon(pr.status);
             const safeNo  = _escAttrPR(pr.prNo || '');
             const isActive = _currentPRDrawer === pr.prNo ? ' pr-item-active' : '';
+            // Show paperclip if the PR has uploaded Drive attachments in its metadata
+            let hasAttachments = false;
+            try {
+                const m = JSON.parse(pr.metadata || '{}');
+                hasAttachments = Array.isArray(m.attachments) && m.attachments.some(a => a && a.fileUrl);
+            } catch (_) {}
+            const attachIcon = hasAttachments
+                ? ' <i class="fas fa-paperclip" aria-hidden="true" title="Có tệp đính kèm" style="font-size:10px;opacity:0.6;margin-left:4px;"></i>'
+                : '';
             return `<div class="pr-item${isActive}" role="listitem" data-prno="${safeNo}" onclick="openPRDrawer('${safeNo.replace(/'/g, "\\'")}')">
                 <div class="pr-item-icon icon-${sc}">
                     <i class="fas ${ico}" aria-hidden="true"></i>
                 </div>
                 <div class="pr-item-body">
                     <div class="pr-item-title">${pr.prNo || '—'} — ${pr.company || ''}</div>
-                    <div class="pr-item-meta">${pr.requesterName || ''} · ${_formatPRDate(pr.submittedAt || pr.requiredDate)}</div>
+                    <div class="pr-item-meta">${_escHtmlPR(pr.requesterName || '')} · ${_formatPRDate(pr.submittedAt || pr.requiredDate)}${attachIcon}</div>
                 </div>
                 <div class="pr-item-right">
                     <div class="pr-item-total">${_formatPRMoney(pr.grandTotal)}</div>

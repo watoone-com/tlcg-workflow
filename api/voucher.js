@@ -352,6 +352,11 @@ export default async function handler(req, res) {
           GAS_URL = TLCGROUP_BACKEND;
           console.log('[Proxy POST] Re-routing to TLCGroup Backend based on parsedBody action');
         }
+        // Ensure P2P actions always route to PAYMENT_REQUEST_BACKEND (re-affirm after body parse)
+        if (paymentRequestActions.includes(action) && GAS_URL !== PAYMENT_REQUEST_BACKEND) {
+          GAS_URL = PAYMENT_REQUEST_BACKEND;
+          console.log('[Proxy POST] Re-routing ' + action + ' to Payment Request Backend');
+        }
         // getCompanyApprovers defaults to VOUCHER_BACKEND (already set)
         if (action === 'getCompanyApprovers') {
           console.log('[Proxy POST] ✅ getCompanyApprovers detected - will use VOUCHER_BACKEND (default)');
@@ -406,6 +411,11 @@ export default async function handler(req, res) {
           GAS_URL = TLCGROUP_BACKEND;
           console.log('[Proxy POST] Re-routing getMasterData to TLCGroup Backend (action found: ' + action + ')');
         }
+        // Re-route P2P actions (e.g. purchaseRequest inside data JSON field)
+        if (paymentRequestActions.includes(action) && GAS_URL !== PAYMENT_REQUEST_BACKEND) {
+          GAS_URL = PAYMENT_REQUEST_BACKEND;
+          console.log('[Proxy POST] Re-routing ' + action + ' to Payment Request Backend (from data JSON)');
+        }
       }
       
       // Forward the request appropriately
@@ -457,10 +467,6 @@ export default async function handler(req, res) {
       console.log(`[Proxy POST] ${GAS_URL.substring(0, 60)}... action: ${finalAction}`);
       console.log(`[Proxy POST] Sending as: ${contentType}`);
       
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/voucher.js:367',message:'PRE_FETCH_TO_BACKEND',data:{hypothesisA_backendUrl:GAS_URL,hypothesisB_bodyToSend:typeof bodyToSend==='string'?bodyToSend.substring(0,500):String(bodyToSend),hypothesisC_finalAction:finalAction,hypothesisD_contentType:contentType,hypothesisE_parsedBodyKeys:parsedBody?Object.keys(parsedBody):null,hypothesisE_companyName:parsedBody?.companyName||'NOT_FOUND'},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,B,C,D,E'})}).catch(()=>{});
-      // #endregion
-      
       // Build headers - don't set Content-Type for FormData (browser/Node will set boundary)
       const headers = {
         'User-Agent': 'TLCG-Workflow-Proxy/1.0'
@@ -470,10 +476,6 @@ export default async function handler(req, res) {
       if (contentType && contentType !== 'multipart/form-data') {
         headers['Content-Type'] = contentType;
       }
-      
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/voucher.js:383',message:'BEFORE_FETCH_TO_BACKEND',data:{gasUrl:GAS_URL,bodyType:typeof bodyToSend,bodyLength:typeof bodyToSend==='string'?bodyToSend.length:'N/A',contentType:contentType,finalAction:finalAction},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
       
       console.log('[Proxy POST] Sending request to backend...');
       const fetchStartTime = Date.now();
@@ -487,16 +489,8 @@ export default async function handler(req, res) {
       const fetchDuration = Date.now() - fetchStartTime;
       console.log(`[Proxy POST] Backend responded in ${fetchDuration}ms`);
       
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/voucher.js:390',message:'AFTER_FETCH_TO_BACKEND',data:{responseStatus:response.status,responseOk:response.ok,fetchDuration:fetchDuration},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
-      
       // Read response text first (can only be read once)
       const responseText = await response.text();
-      
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/cd238998-d527-4813-9e30-22fe3efc32e0',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'api/voucher.js:390',message:'POST_FETCH_RESPONSE',data:{responseStatus:response.status,responseOk:response.ok,responseTextPreview:responseText.substring(0,500),finalUrl:GAS_URL},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A,B'})}).catch(()=>{});
-      // #endregion
       
       if (!response.ok) {
         console.error(`[Proxy POST Error] ${response.status}: ${responseText.substring(0, 200)}`);

@@ -1447,7 +1447,12 @@ function handlePurchaseRequest(data) {
     // uploadFilesToDrive_ in TLCG_CASH_BACKEND.gs uses 'DRIVE_VOUCHER_FOLDER_ID'.
     var attachmentRecords = [];
     try {
-      var rawAttachments = JSON.parse(data.attachments || '[]') || [];
+      // data.attachments may be an array (when sent inside the data JSON wrapper) or a
+      // JSON string (legacy flat-param path). Handle both.
+      var rawAttachments = Array.isArray(data.attachments)
+        ? data.attachments
+        : (typeof data.attachments === 'string' ? JSON.parse(data.attachments || '[]') : []);
+      rawAttachments = rawAttachments || [];
       if (rawAttachments.length > 0) {
         var PR_DRIVE_FOLDER_ID = getCfg_('PURCHASE_REQUEST_FOLDER_ID', '1SJ-pUa6jg2rmJTzle-TvvSNrKMUduvx3');
         var parentFolder;
