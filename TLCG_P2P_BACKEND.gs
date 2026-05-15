@@ -1549,12 +1549,76 @@ function handlePurchaseRequest(data) {
     Logger.log('[P2P] ✅ Purchase request saved: ' + prNo);
     SpreadsheetApp.flush();
 
+    // Send email notifications (non-blocking — failures must not break submission)
+    try {
+      sendPurchaseRequestEmails_(data, prNo);
+    } catch (emailErr) {
+      Logger.log('[P2P] ⚠️ Email notification error (non-fatal): ' + emailErr.message);
+    }
+
     return createResponse(true, 'Đề nghị mua hàng đã được gửi thành công.', { prNo: prNo });
 
   } catch (error) {
     Logger.log('[P2P] ❌ ERROR in handlePurchaseRequest: ' + error.toString());
     Logger.log('[P2P] Stack: ' + error.stack);
     return createResponse(false, 'Lỗi khi lưu đề nghị mua hàng: ' + error.message);
+  }
+}
+
+function sendPurchaseRequestEmails_(data, prNo) {
+  var subject = '[ĐỀ NGHỊ MUA HÀNG] Yêu cầu phê duyệt - ' + prNo;
+  var grandTotalFmt = (parseFloat(data.grandTotal) || 0).toLocaleString('vi-VN') + ' ₫';
+  var requiredDate  = data.requiredDate || '—';
+  var companyName   = data.companyName  || '—';
+  var requesterName = data.requesterName || '—';
+  var purpose       = data.purpose      || '—';
+
+  // --- Approver email (budget + supplier) ---
+  var approverBody = '<p>Kính gửi,</p>'
+    + '<p>Có một <b>Đề nghị mua hàng</b> mới đang chờ phê duyệt của bạn.</p>'
+    + '<table cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-size:13px;">'
+    + '<tr><td style="font-weight:700;padding-right:16px;">Số phiếu:</td><td>' + prNo + '</td></tr>'
+    + '<tr><td style="font-weight:700;padding-right:16px;">Công ty:</td><td>' + companyName + '</td></tr>'
+    + '<tr><td style="font-weight:700;padding-right:16px;">Người đề nghị:</td><td>' + requesterName + '</td></tr>'
+    + '<tr><td style="font-weight:700;padding-right:16px;">Mục đích:</td><td>' + purpose + '</td></tr>'
+    + '<tr><td style="font-weight:700;padding-right:16px;">Tổng cộng:</td><td>' + grandTotalFmt + '</td></tr>'
+    + '<tr><td style="font-weight:700;padding-right:16px;">Ngày cần hàng:</td><td>' + requiredDate + '</td></tr>'
+    + '</table>'
+    + '<p style="margin-top:16px;">Vui lòng đăng nhập vào hệ thống để xem chi tiết và phê duyệt.</p>'
+    + '<p>Trân trọng,<br>Hệ thống Workflow TLC Group</p>';
+
+  [data.budgetApprover, data.supplierApprover].forEach(function(email) {
+    if (!email) return;
+    try {
+      GmailApp.sendEmail(email, subject, '', { htmlBody: approverBody, name: 'TLC Group Workflow' });
+      Logger.log('[P2P] ✅ Approver email sent to: ' + email);
+    } catch (e) {
+      Logger.log('[P2P] ⚠️ Failed to send approver email to ' + email + ': ' + e.message);
+    }
+  });
+
+  // --- Requester confirmation email ---
+  var requesterEmail = data.requesterEmail || '';
+  if (requesterEmail) {
+    var requesterBody = '<p>Kính gửi ' + requesterName + ',</p>'
+      + '<p>Đề nghị mua hàng của bạn đã được gửi thành công và đang chờ phê duyệt.</p>'
+      + '<table cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-size:13px;">'
+      + '<tr><td style="font-weight:700;padding-right:16px;">Số phiếu:</td><td>' + prNo + '</td></tr>'
+      + '<tr><td style="font-weight:700;padding-right:16px;">Công ty:</td><td>' + companyName + '</td></tr>'
+      + '<tr><td style="font-weight:700;padding-right:16px;">Mục đích:</td><td>' + purpose + '</td></tr>'
+      + '<tr><td style="font-weight:700;padding-right:16px;">Tổng cộng:</td><td>' + grandTotalFmt + '</td></tr>'
+      + '<tr><td style="font-weight:700;padding-right:16px;">Ngày cần hàng:</td><td>' + requiredDate + '</td></tr>'
+      + '</table>'
+      + '<p style="margin-top:16px;">Người phê duyệt đã được thông báo qua email. Bạn sẽ nhận được thông báo khi phiếu được xử lý.</p>'
+      + '<p>Trân trọng,<br>Hệ thống Workflow TLC Group</p>';
+    try {
+      GmailApp.sendEmail(requesterEmail, '[ĐỀ NGHỊ MUA HÀNG] Xác nhận gửi phiếu - ' + prNo, '', {
+        htmlBody: requesterBody, name: 'TLC Group Workflow'
+      });
+      Logger.log('[P2P] ✅ Requester confirmation email sent to: ' + requesterEmail);
+    } catch (e) {
+      Logger.log('[P2P] ⚠️ Failed to send requester email to ' + requesterEmail + ': ' + e.message);
+    }
   }
 }
 
