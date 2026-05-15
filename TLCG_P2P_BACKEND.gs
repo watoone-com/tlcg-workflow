@@ -1512,7 +1512,6 @@ function handlePurchaseRequest(data) {
       }
     };
 
-    // Open sheet (auto-create if missing)
     // Build comma-separated Drive URLs from successfully uploaded attachments
     var attachmentUrlsStr = attachmentRecords
       .filter(function(r) { return r.fileUrl; })
@@ -1531,6 +1530,20 @@ function handlePurchaseRequest(data) {
         'Contract Approver Email', 'Purchasing Approver Email', 'Attachment URLs'
       ]);
       Logger.log('[P2P] Created sheet: ' + PR_SHEET_NAME);
+    } else {
+      // Ensure new columns exist on an existing sheet (migration-safe)
+      var headerRow = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+      var expectedHeaders = [
+        /*0*/'PR No', /*1*/'Company', /*2*/'Company Key', /*3*/'Department', /*4*/'Requester Name',
+        /*5*/'Required Date', /*6*/'Priority', /*7*/'Purpose', /*8*/'Suggested Vendor', /*9*/'Budget Code',
+        /*10*/'Budget Approver Email', /*11*/'Supplier Approver Email',
+        /*12*/'Items (JSON)', /*13*/'Grand Total', /*14*/'Status', /*15*/'Submitted At', /*16*/'Metadata (JSON)',
+        /*17*/'Contract Approver Email', /*18*/'Purchasing Approver Email', /*19*/'Attachment URLs'
+      ];
+      for (var hi = headerRow.length; hi < expectedHeaders.length; hi++) {
+        sheet.getRange(1, hi + 1).setValue(expectedHeaders[hi]);
+        Logger.log('[P2P] Added missing column: ' + expectedHeaders[hi]);
+      }
     }
 
     sheet.appendRow([
@@ -1540,7 +1553,11 @@ function handlePurchaseRequest(data) {
       data.department        || '',
       requesterName,
       requiredDate,
-      data.priority          || 'binh_thuong',
+      (function(p) {
+        var m = { gap: 'Gấp', binh_thuong: 'Bình Thường', khong_gap: 'Không Gấp',
+                  high: 'Gấp', medium: 'Bình Thường', low: 'Không Gấp' };
+        return m[p] || p || 'Bình Thường';
+      })(data.priority),
       data.purpose           || '',
       data.vendorName        || data.suggestedVendor || '',
       data.budgetCode        || '',
