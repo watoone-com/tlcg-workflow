@@ -187,6 +187,8 @@ export default async function handler(req, res) {
     'getGoodsCatalog',             // Load Goods-KTT catalog (items, categories, MOQ)
     'approvePurchaseRequest',      // Approve a purchase request
     'rejectPurchaseRequest',       // Reject a purchase request
+    'sendBackPurchaseRequest',     // Send back a purchase request to an earlier step
+    'resubmitPurchaseRequest',     // Requester re-submits after send-back
     // NOTE: 'getEmployees' intentionally NOT here — it must go to VOUCHER_BACKEND
     // which returns companies_data[]. Payment Request backend returns employees[] (different shape).
   ];
