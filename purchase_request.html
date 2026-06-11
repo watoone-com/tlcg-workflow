@@ -591,6 +591,7 @@
         .badge-approved    { background: rgba(52,199,89,0.12);  color: #1E8A3F; }
         .badge-rejected    { background: rgba(255,59,48,0.12);  color: #CC1A12; }
         .badge-in-progress { background: rgba(0,122,255,0.12);  color: #005BBB; }
+        .badge-returned    { background: rgba(245,158,11,0.14); color: #92400e; }
         .badge-other    { background: rgba(0,0,0,0.07);       color: var(--text-secondary); }
         .pr-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 40px 16px; gap: 8px; color: var(--text-secondary); font-size: 13px; text-align: center; }
         .pr-skeleton { padding: 12px 16px; border-bottom: 0.5px solid var(--border); display: flex; gap: 12px; align-items: center; }
@@ -752,6 +753,58 @@
         .pr-reject-modal-actions { display: flex; gap: 8px; margin-top: 14px; justify-content: flex-end; }
         .pr-reject-cancel  { padding: 8px 16px; border-radius: 8px; background: #e2e8f0; color: #475569; border: none; cursor: pointer; font-weight: 600; font-size: 13px; font-family: var(--font-body); }
         .pr-reject-confirm { padding: 8px 16px; border-radius: 8px; background: #ef4444; color: white; border: none; cursor: pointer; font-weight: 600; font-size: 13px; font-family: var(--font-body); }
+
+        /* ── Send-back modal (mirrors pr-reject-overlay) ───────── */
+        .pr-sendback-overlay {
+            position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(15,23,42,0.6); z-index: 1200;
+            display: flex; align-items: center; justify-content: center;
+            opacity: 0; visibility: hidden; transition: opacity 0.2s, visibility 0.2s;
+        }
+        .pr-sendback-overlay.open { opacity: 1; visibility: visible; }
+        .pr-sendback-modal {
+            background: white; border-radius: 16px; width: min(440px, 92vw); padding: 24px;
+            transform: scale(0.95) translateY(16px); transition: transform 0.2s;
+        }
+        .pr-sendback-overlay.open .pr-sendback-modal { transform: scale(1) translateY(0); }
+        .pr-sendback-modal h4 { margin: 0 0 14px; font-size: 16px; font-weight: 700; color: #1e293b; }
+        .pr-sendback-modal label { display: block; font-size: 12px; font-weight: 600; color: #475569; margin-bottom: 5px; margin-top: 12px; }
+        .pr-sendback-modal select, .pr-sendback-modal textarea {
+            width: 100%; box-sizing: border-box; border: 1px solid #e2e8f0; border-radius: 8px;
+            padding: 10px 12px; font-size: 13px; font-family: var(--font-body); outline: none;
+        }
+        .pr-sendback-modal select { appearance: auto; background: white; }
+        .pr-sendback-modal textarea { resize: vertical; min-height: 90px; }
+        .pr-sendback-modal select:focus, .pr-sendback-modal textarea:focus { border-color: #f59e0b; }
+        .pr-sendback-modal-actions { display: flex; gap: 8px; margin-top: 14px; justify-content: flex-end; }
+        .pr-sendback-cancel  { padding: 8px 16px; border-radius: 8px; background: #e2e8f0; color: #475569; border: none; cursor: pointer; font-weight: 600; font-size: 13px; font-family: var(--font-body); }
+        .pr-sendback-confirm { padding: 8px 16px; border-radius: 8px; background: #f59e0b; color: white; border: none; cursor: pointer; font-weight: 600; font-size: 13px; font-family: var(--font-body); }
+        /* ── Returned-PR banner ─────────────────────────────────── */
+        .pr-returned-banner {
+            background: #fffbeb; border-left: 4px solid #f59e0b;
+            padding: 12px 14px; border-radius: 0 8px 8px 0; margin-bottom: 14px;
+            font-size: 12.5px; color: #78350f; line-height: 1.55;
+        }
+        .pr-returned-banner strong { display: block; margin-bottom: 3px; font-size: 13px; }
+        .pr-returned-banner .pr-returned-reason { margin-top: 6px; font-style: italic; }
+        .pr-returned-banner .pr-btn-resubmit {
+            display: inline-flex; align-items: center; gap: 6px; margin-top: 10px;
+            padding: 7px 14px; border-radius: 8px; background: #f59e0b; color: white;
+            font-size: 12px; font-weight: 700; border: none; cursor: pointer; font-family: var(--font-body);
+        }
+        /* ── Approval rail send-back note ───────────────────────── */
+        .rail-sendback-note {
+            display: block; font-size: 11px; color: #92400e;
+            background: #fef3c7; border-radius: 4px; padding: 3px 8px; margin-top: 5px;
+        }
+        /* ── Send-back action button ────────────────────────────── */
+        .pr-btn-sendback {
+            flex: 1; padding: 10px 14px; border-radius: 10px; font-size: 13px; font-weight: 600;
+            border: 1.5px solid #f59e0b; background: white; color: #92400e; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; gap: 6px;
+            font-family: var(--font-body); transition: background 0.15s;
+        }
+        .pr-btn-sendback:hover { background: #fffbeb; }
 
         @media (max-width: 640px) {
             .pr-info-grid { grid-template-columns: 1fr; }
@@ -1564,6 +1617,21 @@
             <div class="pr-reject-modal-actions">
                 <button class="pr-reject-cancel" onclick="closePRRejectModal()">Hủy</button>
                 <button class="pr-reject-confirm" id="pr-reject-confirm-btn" onclick="confirmRejectPR()">Từ chối</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Send-back modal -->
+    <div class="pr-sendback-overlay" id="pr-sendback-overlay">
+        <div class="pr-sendback-modal">
+            <h4>↩ Trả lại để chỉnh sửa</h4>
+            <label for="pr-sendback-target">Trả về bước nào?</label>
+            <select id="pr-sendback-target"></select>
+            <label for="pr-sendback-note">Lý do / Yêu cầu bổ sung <span style="color:#ef4444;">*</span></label>
+            <textarea id="pr-sendback-note" placeholder="Mô tả thông tin còn thiếu, tài liệu cần bổ sung..."></textarea>
+            <div class="pr-sendback-modal-actions">
+                <button class="pr-sendback-cancel" onclick="closePRSendBackModal()">Hủy</button>
+                <button class="pr-sendback-confirm" id="pr-sendback-confirm-btn" onclick="confirmSendBackPR()">Trả lại</button>
             </div>
         </div>
     </div>
@@ -2659,6 +2727,9 @@
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang gửi...';
 
+        // Resubmit mode: set by openResubmitForm when requester re-edits a returned PR
+        const resubmitPrNo = (document.getElementById('resubmit-pr-no')?.value || '').trim();
+
         // Collect items — skip empty rows
         const items = [];
         SECTIONS.forEach(s => {
@@ -2679,8 +2750,8 @@
         });
 
         const payload = {
-            action:           'purchaseRequest',
-            prNo:             _prNo,
+            action:           resubmitPrNo ? 'resubmitPurchaseRequest' : 'purchaseRequest',
+            prNo:             resubmitPrNo || _prNo,
             companyCode:      document.getElementById('company_code').value,
             companyName:      document.getElementById('company_name').value,
             companyKey:       document.getElementById('company_key_or_taxid').value,
@@ -2743,12 +2814,19 @@
             });
             const result = JSON.parse(await res.text());
             if (result.success) {
+                // Clean up resubmit state if applicable
+                const resubmitHidden = document.getElementById('resubmit-pr-no');
+                if (resubmitHidden) resubmitHidden.value = '';
+                document.querySelector('.resubmit-info-banner')?.remove();
+                btn.innerHTML = orig;
+
                 // Show success screen
                 document.querySelector('.page-content').querySelectorAll('.form-step, .progress-stepper, h1').forEach(el => el.style.display = 'none');
                 const ss = document.getElementById('success-screen');
                 ss.style.display = 'flex';
-                document.getElementById('success-pr-no').textContent = 'Số phiếu: ' + _prNo;
-                showToast('ĐỀ NGHỊ MUA HÀNG đã được gửi thành công!', 'success', 4000);
+                const displayPrNo = resubmitPrNo || _prNo;
+                document.getElementById('success-pr-no').textContent = 'Số phiếu: ' + displayPrNo;
+                showToast(resubmitPrNo ? '✅ Đã gửi lại đề nghị thành công!' : 'ĐỀ NGHỊ MUA HÀNG đã được gửi thành công!', 'success', 4000);
                 // Invalidate cache and reload list so new PR appears immediately
                 localStorage.removeItem(_PR_CACHE_KEY);
                 localStorage.removeItem(_PR_CACHE_TS_KEY);
@@ -3472,6 +3550,7 @@
         if (s.startsWith('đang duyệt') || s === 'thẩm định hợp đồng (4/5)' || s === 'mua hàng (5/5)') return 'in-progress';
         if (s === 'approved' || s === 'hoàn thành') return 'approved';
         if (s === 'rejected' || s === 'đã từ chối') return 'rejected';
+        if (s === 'trả lại bổ sung') return 'returned';
         return 'other';
     }
 
@@ -3488,13 +3567,14 @@
             'approved':                            'Đã duyệt',
             'rejected':                            'Đã từ chối',
             'đã từ chối':                          'Đã từ chối',
+            'trả lại bổ sung':                     'Trả lại bổ sung',
         };
         return map[(status || '').toLowerCase()] || status || '—';
     }
 
     /**
      * Buckets a stored status into the three filter categories used by stat pills:
-     *   'dang-xu-ly'  — any in-flight status
+     *   'dang-xu-ly'  — any in-flight status (including Trả lại bổ sung)
      *   'hoan-thanh'  — Hoàn thành / Approved
      *   'tu-choi'     — Đã từ chối / Rejected
      *   ''            — All
@@ -3683,6 +3763,11 @@
         const contractEmail  = (pr.contractApprover  || '').toLowerCase().trim();
         const purchasingEmail= (pr.purchasingApprover|| '').toLowerCase().trim();
 
+        // While waiting for submitter to re-edit, no approver stage is active
+        if ((pr.status || '').toLowerCase() === 'trả lại bổ sung') {
+            return { stage: 'returned', budgetEmail, supplierEmail, contractEmail, purchasingEmail };
+        }
+
         const budgetDone    = !budgetEmail    || meta.budgetStatus    === 'Approved';
         const supplierDone  = !supplierEmail  || meta.supplierStatus  === 'Approved';
         const contractDone  = !contractEmail  || meta.contractStatus  === 'Approved';
@@ -3704,8 +3789,15 @@
         if (!email) return false;
         const status = (pr.status || '').toLowerCase();
         if (status === 'rejected' || status === 'approved' || status === 'đã từ chối' || status === 'hoàn thành') return false;
+
         let meta = {};
         try { meta = JSON.parse(pr.metadata || '{}'); } catch(e) {}
+
+        // Returned to submitter — the submitter is the task owner
+        if (status === 'trả lại bổ sung') {
+            const requesterEmail = (meta.requesterEmail || '').toLowerCase().trim();
+            return requesterEmail && email === requesterEmail;
+        }
 
         const { stage, budgetEmail, supplierEmail, contractEmail, purchasingEmail } = _computePRStage(pr, meta);
 
@@ -3810,22 +3902,44 @@
         /**
          * isActive: whether this approver's stage is the currently open one
          * isFuture: their stage has not opened yet (dim it)
+         * sbNote:   optional send-back note for this role (shown beneath the step)
          */
-        function approverStepHtml(email, roleLabel, statusStr, isActive, isFuture) {
-            const dotCls   = statusStr === 'Approved' ? 'dot-done' : statusStr === 'Rejected' ? 'dot-rejected' : isFuture ? 'dot-future' : 'dot-pending';
+        function approverStepHtml(email, roleLabel, statusStr, isActive, isFuture, sbNote) {
+            const isSentBack = statusStr === 'Pending' && isReturnedStatus;
+            const dotCls   = statusStr === 'Approved' ? 'dot-done' : statusStr === 'Rejected' ? 'dot-rejected' : isFuture ? 'dot-future' : isSentBack ? 'dot-future' : 'dot-pending';
             const badgeCls = statusStr === 'Approved' ? 'badge-approved' : statusStr === 'Rejected' ? 'badge-rejected' : isFuture ? 'badge-future' : 'badge-pending';
-            const icon     = statusStr === 'Approved' ? '✓' : statusStr === 'Rejected' ? '✕' : isFuture ? '–' : '?';
-            const label    = statusStr === 'Approved' ? 'Đã duyệt' : statusStr === 'Rejected' ? 'Từ chối' : isFuture ? 'Chờ giai đoạn trước' : 'Chờ duyệt';
+            const icon     = statusStr === 'Approved' ? '✓' : statusStr === 'Rejected' ? '✕' : isFuture ? '–' : isSentBack ? '↩' : '?';
+            const label    = statusStr === 'Approved' ? 'Đã duyệt' : statusStr === 'Rejected' ? 'Từ chối' : isFuture ? 'Chờ giai đoạn trước' : isSentBack ? 'Chờ bổ sung' : 'Chờ duyệt';
             const opacity  = isFuture ? 'opacity:0.45;' : '';
+            const noteHtml = sbNote ? `<span class="rail-sendback-note">↩ Trả lại: "${_escHtmlPR(sbNote)}"</span>` : '';
             return `<div class="pr-approver-step" style="${opacity}">
                 <div class="pr-approver-dot ${dotCls}">${icon}</div>
                 <div>
                     <div class="pr-approver-name">${_escHtmlPR(email || '—')}</div>
                     <div class="pr-approver-role">${_escHtmlPR(roleLabel)}</div>
+                    ${noteHtml}
                 </div>
                 <span class="pr-approver-badge ${badgeCls}">${label}</span>
             </div>`;
         }
+
+        // Send-back history banner (most recent entry shown)
+        const sbHistory  = Array.isArray(meta.sentBackHistory) ? meta.sentBackHistory : [];
+        const sbLatest   = sbHistory.length > 0 ? sbHistory[sbHistory.length - 1] : null;
+        const _roleLabels = { budget:'Người duyệt Ngân sách', supplier:'Người duyệt NCC', contract:'Người thẩm định Hợp đồng', purchasing:'Người mua hàng' };
+
+        const isReturnedStatus = (pr.status || '').toLowerCase() === 'trả lại bổ sung';
+        const isRequester      = myEmail && (meta.requesterEmail || '').toLowerCase().trim() === myEmail;
+
+        const returnedBannerHtml = (isReturnedStatus && sbLatest)
+            ? `<div class="pr-returned-banner">
+                <strong>↩ Phiếu được trả lại để bổ sung thông tin</strong>
+                <span>${_escHtmlPR(_roleLabels[sbLatest.byRole] || sbLatest.byRole || '')} đã trả lại${sbLatest.at ? ' vào ' + _formatPRDate(sbLatest.at) : ''}</span>
+                <div class="pr-returned-reason">"${_escHtmlPR(sbLatest.note || '')}"</div>
+                ${isRequester ? `<button class="pr-btn-resubmit" onclick="openResubmitForm('${_escAttrPR(pr.prNo)}')">
+                    <i class="fas fa-pen" aria-hidden="true"></i> Chỉnh sửa &amp; Gửi lại
+                </button>` : ''}
+            </div>` : '';
 
         // Attachments from metadata
         const attachUrls = meta.attachments || [];
@@ -3854,6 +3968,7 @@
             : '';
 
         body.innerHTML = `
+            ${returnedBannerHtml}
             <div class="pr-drawer-section">
                 <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:8px;">
                     <div>
@@ -3922,10 +4037,10 @@
             <div class="pr-drawer-section">
                 <div class="pr-drawer-section-title">Trạng thái phê duyệt</div>
                 <div class="pr-approver-rail">
-                    ${budgetEmail    ? approverStepHtml(budgetEmail,    'Duyệt ngân sách',    _approverStatus(budgetEmail,    'budgetStatus'),    activeStage === 'parallel', false) : ''}
-                    ${supplierEmail  ? approverStepHtml(supplierEmail,  'Duyệt nhà cung cấp', _approverStatus(supplierEmail,  'supplierStatus'),  activeStage === 'parallel', false) : ''}
-                    ${contractEmail  ? approverStepHtml(contractEmail,  'Thẩm định HĐ',       _approverStatus(contractEmail,  'contractStatus'),  activeStage === 'contract',  activeStage === 'parallel') : ''}
-                    ${purchasingEmail? approverStepHtml(purchasingEmail,'Mua hàng',            _approverStatus(purchasingEmail,'purchasingStatus'),activeStage === 'purchasing',activeStage === 'parallel' || activeStage === 'contract') : ''}
+                    ${budgetEmail    ? approverStepHtml(budgetEmail,    'Duyệt ngân sách',    _approverStatus(budgetEmail,    'budgetStatus'),    activeStage === 'parallel' || activeStage === 'returned', false, sbLatest && sbLatest.targetStep == 2 ? sbLatest.note : null) : ''}
+                    ${supplierEmail  ? approverStepHtml(supplierEmail,  'Duyệt nhà cung cấp', _approverStatus(supplierEmail,  'supplierStatus'),  activeStage === 'parallel' || activeStage === 'returned', false, sbLatest && sbLatest.targetStep == 2 ? sbLatest.note : null) : ''}
+                    ${contractEmail  ? approverStepHtml(contractEmail,  'Thẩm định HĐ',       _approverStatus(contractEmail,  'contractStatus'),  activeStage === 'contract',  activeStage === 'parallel', sbLatest && sbLatest.targetStep == 3 ? sbLatest.note : null) : ''}
+                    ${purchasingEmail? approverStepHtml(purchasingEmail,'Mua hàng',            _approverStatus(purchasingEmail,'purchasingStatus'),activeStage === 'purchasing',activeStage === 'parallel' || activeStage === 'contract', null) : ''}
                     ${(!budgetEmail && !supplierEmail && !contractEmail && !purchasingEmail) ? '<div style="font-size:12px;color:#94a3b8;padding:4px 0;">Chưa có thông tin người duyệt.</div>' : ''}
                     ${meta.rejectionNote ? `<div style="margin-top:6px;padding:10px 12px;background:#fff5f5;border:1px solid #fecaca;border-radius:8px;font-size:12px;color:#b91c1c;">
                         <strong>Lý do từ chối:</strong> ${_escHtmlPR(meta.rejectionNote)}
@@ -3945,11 +4060,12 @@
         `;
 
         // Action buttons — gated by active stage (mirrors backend gate checks)
-        const activeStatus = (pr.status || '').toLowerCase();
-        const isTerminal   = activeStatus === 'hoàn thành' || activeStatus === 'approved' || activeStatus === 'đã từ chối' || activeStatus === 'rejected';
+        const activeStatus  = (pr.status || '').toLowerCase();
+        const isTerminal    = activeStatus === 'hoàn thành' || activeStatus === 'approved' || activeStatus === 'đã từ chối' || activeStatus === 'rejected';
+        const isReturned    = activeStatus === 'trả lại bổ sung';
 
         let approveRole = null;
-        if (!isTerminal && myEmail) {
+        if (!isTerminal && !isReturned && myEmail) {
             if (activeStage === 'parallel') {
                 if (myEmail === budgetEmail    && meta.budgetStatus    !== 'Approved') approveRole = 'budget';
                 else if (myEmail === supplierEmail && meta.supplierStatus !== 'Approved') approveRole = 'supplier';
@@ -3971,6 +4087,9 @@
             </button>
             <button class="pr-action-btn pr-btn-reject" onclick="openPRRejectModal('${safePrNo}')">
                 <i class="fas fa-xmark" aria-hidden="true"></i> Từ chối
+            </button>
+            <button class="pr-btn-sendback" onclick="openPRSendBackModal('${safePrNo}', '${approveRole}')">
+                <i class="fas fa-rotate-left" aria-hidden="true"></i> Trả lại
             </button>`;
         }
 
@@ -4064,6 +4183,235 @@
         } finally {
             btn.disabled = false; btn.textContent = 'Từ chối';
         }
+    }
+
+    /* ── Send Back PR ───────────────────────────────────────────── */
+    let _pendingSendBackPrNo   = null;
+    let _pendingSendBackRole   = null;
+
+    function openPRSendBackModal(prNo, role) {
+        _pendingSendBackPrNo  = prNo;
+        _pendingSendBackRole  = role;
+
+        // Build target options based on role
+        const roleMaxTarget = { budget: 1, supplier: 1, contract: 2, purchasing: 3 };
+        const maxTarget = roleMaxTarget[role] || 1;
+        const targetLabels = {
+            1: 'Bước 1 — Trả về Người đề nghị (yêu cầu chỉnh sửa & gửi lại)',
+            2: 'Bước 2 — Trả về Duyệt ngân sách & NCC (đặt lại trạng thái)',
+            3: 'Bước 3 — Trả về Thẩm định Hợp đồng (đặt lại trạng thái)',
+        };
+        const sel = document.getElementById('pr-sendback-target');
+        sel.innerHTML = '';
+        for (let i = 1; i <= maxTarget; i++) {
+            const opt = document.createElement('option');
+            opt.value = i;
+            opt.textContent = targetLabels[i] || ('Bước ' + i);
+            sel.appendChild(opt);
+        }
+
+        document.getElementById('pr-sendback-note').value = '';
+        document.getElementById('pr-sendback-overlay').classList.add('open');
+        setTimeout(() => document.getElementById('pr-sendback-note').focus(), 50);
+    }
+
+    function closePRSendBackModal() {
+        _pendingSendBackPrNo = null;
+        _pendingSendBackRole = null;
+        document.getElementById('pr-sendback-overlay').classList.remove('open');
+    }
+
+    async function confirmSendBackPR() {
+        const prNo        = _pendingSendBackPrNo;
+        const role        = _pendingSendBackRole;
+        if (!prNo || !role) return;
+
+        const targetStep  = parseInt(document.getElementById('pr-sendback-target').value, 10);
+        const note        = (document.getElementById('pr-sendback-note')?.value || '').trim();
+        if (!note) { showToast('Vui lòng nhập lý do trả lại.', 'error'); return; }
+
+        let currentUser = {};
+        try { currentUser = JSON.parse(localStorage.getItem('tlc_current_user') || '{}'); } catch(e) {}
+        const myEmail = (currentUser.email || '').toLowerCase().trim();
+        if (!myEmail) { showToast('Vui lòng đăng nhập trước.', 'error'); return; }
+
+        const btn = document.getElementById('pr-sendback-confirm-btn');
+        btn.disabled = true; btn.textContent = 'Đang xử lý...';
+
+        try {
+            const params = new URLSearchParams({
+                action: 'sendBackPurchaseRequest',
+                prNo, approverEmail: myEmail, approverRole: role,
+                targetStep, sentBackNote: note
+            });
+            const res    = await fetch(BACKEND_URL, {
+                method: 'POST', mode: 'cors', redirect: 'follow',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: params.toString()
+            });
+            const result = JSON.parse(await res.text());
+            closePRSendBackModal();
+            if (result.success) {
+                showToast('Đã trả lại phiếu thành công.', 'success');
+                // Optimistic local patch
+                const metaPatch = {};
+                if (targetStep <= 2) { metaPatch.budgetStatus = 'Pending'; metaPatch.supplierStatus = 'Pending'; }
+                if (targetStep <= 3) { metaPatch.contractStatus = 'Pending'; }
+                metaPatch.purchasingStatus = 'Pending';
+                // Append history entry locally
+                const idx = _allPRs.findIndex(p => p.prNo === prNo);
+                if (idx >= 0) {
+                    let meta = {};
+                    try { meta = JSON.parse(_allPRs[idx].metadata || '{}'); } catch(e) {}
+                    if (!Array.isArray(meta.sentBackHistory)) meta.sentBackHistory = [];
+                    meta.sentBackHistory.push({ targetStep, by: myEmail, byRole: role, at: new Date().toISOString(), note });
+                    Object.assign(meta, metaPatch);
+                    _allPRs[idx].metadata = JSON.stringify(meta);
+                    _allPRs[idx].status   = result.data?.status || (targetStep === 1 ? 'Trả lại bổ sung' : _allPRs[idx].status);
+                    localStorage.setItem(_PR_CACHE_KEY, JSON.stringify(_allPRs));
+                }
+                renderPRList();
+                _updatePRStats(_allPRs);
+                const updatedPr = _allPRs.find(p => p.prNo === prNo);
+                if (updatedPr) renderPRDrawer(updatedPr);
+            } else {
+                showToast(result.message || 'Lỗi khi trả lại.', 'error');
+            }
+        } catch (err) {
+            showToast('Lỗi kết nối: ' + err.message, 'error');
+        } finally {
+            btn.disabled = false; btn.textContent = 'Trả lại';
+        }
+    }
+
+    /* ── Resubmit PR (requester) ────────────────────────────────── */
+
+    /**
+     * Opens the new-PR form, switches to form tab, and pre-populates
+     * all fields from the returned PR so the requester can amend and re-send.
+     * submitForm() detects the resubmit-pr-no hidden field and changes action+prNo.
+     */
+    function openResubmitForm(prNo) {
+        const pr = _allPRs.find(p => p.prNo === prNo);
+        if (!pr) { showToast('Không tìm thấy phiếu.', 'error'); return; }
+
+        let meta = {};
+        try { meta = JSON.parse(pr.metadata || '{}'); } catch(e) {}
+        let items = [];
+        try { items = JSON.parse(pr.items || '[]'); } catch(e) {}
+
+        // Switch to new-PR tab (tab id may be 'new-pr' or similar)
+        const allTabBtns  = document.querySelectorAll('.tab-btn');
+        const allTabConts = document.querySelectorAll('.tab-content');
+        allTabBtns.forEach(b  => b.classList.remove('active'));
+        allTabConts.forEach(c => c.classList.remove('active'));
+        // Try common tab id patterns
+        const newBtn  = document.querySelector('.tab-btn[data-tab="new-pr"]') || document.querySelector('.tab-btn[data-tab="new"]') || allTabBtns[0];
+        const newCont = document.getElementById('tab-new-pr') || document.getElementById('tab-new') || allTabConts[0];
+        if (newBtn)  newBtn.classList.add('active');
+        if (newCont) newCont.classList.add('active');
+
+        closePRDrawer();
+        setTimeout(() => _populateResubmitForm(pr, meta, items), 150);
+    }
+
+    function _populateResubmitForm(pr, meta, items) {
+        // Store prNo in hidden field — submitForm() reads this to set resubmit mode
+        let hiddenPrNo = document.getElementById('resubmit-pr-no');
+        if (!hiddenPrNo) {
+            hiddenPrNo = document.createElement('input');
+            hiddenPrNo.type = 'hidden';
+            hiddenPrNo.id   = 'resubmit-pr-no';
+            document.body.appendChild(hiddenPrNo);
+        }
+        hiddenPrNo.value = pr.prNo || '';
+
+        // Update submit button label
+        const submitBtn = document.getElementById('submit-btn');
+        if (submitBtn) submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> Gửi lại đề nghị';
+
+        // -- Basic fields (underscore IDs from the actual form) --
+        const _sv = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+
+        _sv('requester_name',      pr.requesterName   || '');
+        _sv('required_date',       pr.requiredDate    || '');
+        _sv('purpose',             pr.purpose         || '');
+        _sv('department',          pr.department      || '');
+        _sv('budget_approver',     pr.budgetApprover  || '');
+        _sv('supplier_approver',   pr.supplierApprover  || '');
+        _sv('contract_approver',   pr.contractApprover  || '');
+        _sv('purchasing_approver', pr.purchasingApprover || '');
+
+        // Priority
+        const priorityRaw = (pr.priority || 'binh_thuong').toLowerCase().replace(/ /g, '_');
+        const priorityNorm = { 'gấp': 'gap', 'bình_thường': 'binh_thuong', 'không_gấp': 'khong_gap' }[priorityRaw] || priorityRaw;
+        _priority = priorityNorm;
+        document.querySelectorAll('.priority-btn').forEach(b => {
+            b.classList.toggle('active', (b.dataset.value || b.dataset.priority) === priorityNorm);
+        });
+
+        // Vendor (pre-fill free-text vendor field if available)
+        const vendorNewEl = document.getElementById('vendor_new');
+        if (vendorNewEl && pr.suggestedVendor) vendorNewEl.value = pr.suggestedVendor;
+
+        // -- Items: re-populate into sections --
+        if (Array.isArray(items) && items.length > 0) {
+            // Clear all section bodies first (keep one blank row per section after)
+            SECTIONS.forEach(s => {
+                const tbody = document.getElementById('tbody-' + s.id);
+                if (tbody) tbody.innerHTML = '';
+            });
+            _rowCount = 0;
+            _grandTotal = 0;
+            items.forEach(item => {
+                // Match section by stored `section` id or `loai` label
+                const sec = SECTIONS.find(s =>
+                    s.id === (item.section || '') || s.label === (item.loai || '')
+                ) || SECTIONS[0];
+                // Expand the section header
+                const body = document.getElementById('body-' + sec.id);
+                if (body) body.style.display = '';
+                // Add a blank row, then fill it in
+                addSectionRow(sec.id);
+                const tbody = document.getElementById('tbody-' + sec.id);
+                const newRow = tbody?.lastElementChild;
+                if (newRow) {
+                    const descInput  = newRow.querySelector('.item-desc');
+                    const qtyInput   = newRow.querySelector('.item-qty');
+                    const unitSelect = newRow.querySelector('.item-unit');
+                    const priceInput = newRow.querySelector('.item-price');
+                    const noteInput  = newRow.querySelector('.item-note');
+                    if (descInput)  descInput.value  = item.desc || item.name || item.itemName || '';
+                    if (qtyInput)   qtyInput.value   = item.qty  || item.quantity || 1;
+                    if (priceInput) priceInput.value  = item.unitPrice || item.price || 0;
+                    if (noteInput)  noteInput.value   = item.note || '';
+                    if (unitSelect && item.unit) {
+                        // try to select existing option, else add it
+                        const match = Array.from(unitSelect.options).find(o => o.value === item.unit || o.text === item.unit);
+                        if (match) unitSelect.value = match.value;
+                    }
+                    // Trigger recalc for this row
+                    const rowId = parseInt(newRow.id.replace('item-row-', ''), 10);
+                    if (!isNaN(rowId)) recalcRow(rowId, sec.id);
+                }
+            });
+        }
+
+        // Banner reminder
+        const pageContent = document.querySelector('.page-content') || document.getElementById('step-1') || document.body;
+        if (!document.querySelector('.resubmit-info-banner')) {
+            const banner = document.createElement('div');
+            banner.className = 'resubmit-info-banner pr-returned-banner';
+            banner.style.cssText = 'margin:16px 0;';
+            banner.innerHTML = '<strong>Đang chỉnh sửa để gửi lại — ' + pr.prNo + '</strong>'
+                + '<span>Cập nhật thông tin còn thiếu rồi nhấn <b>Gửi lại đề nghị</b>.</span>';
+            pageContent.insertBefore(banner, pageContent.firstChild);
+        }
+
+        // Reset to step 1
+        currentStep = 1;
+        if (typeof showStep === 'function') showStep(1);
+        window.scrollTo({ top: 0, behavior: 'smooth' });
     }
 
     function _patchLocalPR(prNo, newStatus, metaPatch) {

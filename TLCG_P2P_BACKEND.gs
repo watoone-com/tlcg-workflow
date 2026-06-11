@@ -115,6 +115,10 @@ function doPost(e) {
         return handleApprovePurchaseRequest(data);
       case 'rejectPurchaseRequest':
         return handleRejectPurchaseRequest(data);
+      case 'sendBackPurchaseRequest':
+        return handleSendBackPurchaseRequest(data);
+      case 'resubmitPurchaseRequest':
+        return handleResubmitPurchaseRequest(data);
       // ── Payment Request ──────────────────────────────────────
       case 'submitPaymentRequest':
       case 'sendPaymentRequest':
@@ -1880,6 +1884,9 @@ function handleApprovePurchaseRequest(data) {
     if (currentStatus === 'Hoàn thành' || currentStatus === 'Approved') {
       return createResponse(false, 'Đề nghị này đã được duyệt rồi.');
     }
+    if (currentStatus === 'Trả lại bổ sung') {
+      return createResponse(false, 'Phiếu đang chờ người đề nghị bổ sung thông tin, không thể duyệt.');
+    }
 
     // Verify email matches the assigned column for this role
     var approverColMap = { budget: 10, supplier: 11, contract: 17, purchasing: 18 };
@@ -2015,6 +2022,9 @@ function handleRejectPurchaseRequest(data) {
     if (currentStatus === 'Hoàn thành' || currentStatus === 'Approved') {
       return createResponse(false, 'Đề nghị đã được duyệt, không thể từ chối.');
     }
+    if (currentStatus === 'Trả lại bổ sung') {
+      return createResponse(false, 'Phiếu đang chờ người đề nghị bổ sung thông tin, không thể từ chối.');
+    }
 
     metadata0.rejectedAt    = new Date().toISOString();
     metadata0.rejectedBy    = approverEmail;
@@ -2031,4 +2041,434 @@ function handleRejectPurchaseRequest(data) {
     Logger.log('[P2P] ❌ ERROR in handleRejectPurchaseRequest: ' + error.toString());
     return createResponse(false, 'Lỗi: ' + error.message);
   }
+}
+
+// ==================== SEND BACK PURCHASE REQUEST ====================
+
+/**
+ * Sends a PR back to an earlier step.
+ * targetStep=1 → back to submitter (status: Trả lại bổ sung)
+ * targetStep=2 → back to Budget+Supplier stage (cascade reset)
+ * targetStep=3 → back to Contract stage (cascade reset)
+ */
+function handleSendBackPurchaseRequest(data) {
+  try {
+    var prNo          = (data.prNo          || '').toString().trim();
+    var approverEmail = (data.approverEmail || '').toString().trim().toLowerCase();
+    var approverRole  = (data.approverRole  || '').toString().trim();
+    var targetStep    = parseInt(data.targetStep, 10);
+    var note          = (data.sentBackNote  || '').toString().trim();
+
+    if (!prNo)          return createResponse(false, 'Thiếu số phiếu mua hàng.');
+    if (!approverEmail) return createResponse(false, 'Thiếu email người thực hiện.');
+    if (!note)          return createResponse(false, 'Vui lòng nhập lý do trả lại.');
+    if (isNaN(targetStep) || targetStep < 1 || targetStep > 3) {
+      return createResponse(false, 'Bước trả lại không hợp lệ.');
+    }
+
+    var validRoles = ['budget', 'supplier', 'contract', 'purchasing'];
+    if (validRoles.indexOf(approverRole) === -1) {
+      return createResponse(false, 'Vai trò không hợp lệ.');
+    }
+
+    var ss    = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    var sheet = ss.getSheetByName(PR_SHEET_NAME);
+    if (!sheet) return createResponse(false, 'Không tìm thấy sheet Purchase_Request_History.');
+
+    var values   = sheet.getDataRange().getValues();
+    var rowIndex = -1;
+    for (var i = 1; i < values.length; i++) {
+      if ((values[i][0] || '').toString().trim() === prNo) { rowIndex = i; break; }
+    }
+    if (rowIndex === -1) return createResponse(false, 'Không tìm thấy đề nghị: ' + prNo);
+
+    var row           = values[rowIndex];
+    var currentStatus = (row[14] || '').toString();
+
+    // Block on terminal/already-returned statuses
+    if (currentStatus === 'Đã từ chối' || currentStatus === 'Rejected') {
+      return createResponse(false, 'Đề nghị này đã bị từ chối.');
+    }
+    if (currentStatus === 'Hoàn thành' || currentStatus === 'Approved') {
+      return createResponse(false, 'Đề nghị này đã hoàn thành.');
+    }
+    if (currentStatus === 'Trả lại bổ sung') {
+      return createResponse(false, 'Đề nghị này đã được trả lại rồi, đang chờ người đề nghị cập nhật.');
+    }
+
+    var metadata;
+    try { metadata = JSON.parse(row[16] || '{}'); } catch (e) { metadata = {}; }
+
+    // Active-stage gate: same check as approve/reject
+    var stateNow    = computePRApprovalState_(row, metadata);
+    var activeStage = stateNow.stage;
+    var roleStage   = (approverRole === 'budget' || approverRole === 'supplier') ? 'parallel' : approverRole;
+    if (roleStage !== activeStage) {
+      return createResponse(false, 'Chưa đến lượt của bạn trong quy trình phê duyệt.');
+    }
+
+    // Validate sender email matches the assigned column for their role
+    var approverColMap = { budget: 10, supplier: 11, contract: 17, purchasing: 18 };
+    var assignedEmail  = (row[approverColMap[approverRole]] || '').toString().toLowerCase().trim();
+    if (!assignedEmail || approverEmail !== assignedEmail) {
+      return createResponse(false, 'Bạn không được phân công vai trò "' + approverRole + '" cho đề nghị này.');
+    }
+
+    // Validate targetStep is reachable from this role
+    // budget/supplier → only step 1; contract → 1 or 2; purchasing → 1, 2, or 3
+    var maxTarget = { budget: 1, supplier: 1, contract: 2, purchasing: 3 };
+    if (targetStep > maxTarget[approverRole]) {
+      return createResponse(false, 'Bước trả lại không hợp lệ với vai trò của bạn.');
+    }
+
+    var newStatus;
+    var rolesToReset = [];
+
+    if (targetStep === 1) {
+      newStatus = 'Trả lại bổ sung';
+      // Role statuses NOT reset here — preserved for display; reset happens on resubmit
+    } else if (targetStep === 2) {
+      newStatus    = 'Đang duyệt ngân sách & NCC (2/5)';
+      rolesToReset = ['budget', 'supplier', 'contract', 'purchasing'];
+    } else if (targetStep === 3) {
+      newStatus    = 'Thẩm định Hợp đồng (4/5)';
+      rolesToReset = ['contract', 'purchasing'];
+    }
+
+    rolesToReset.forEach(function(role) {
+      if (metadata[role + 'Status'] && metadata[role + 'Status'] !== 'N/A') {
+        metadata[role + 'Status'] = 'Pending';
+        delete metadata[role + 'ApprovedAt'];
+        delete metadata[role + 'Note'];
+      }
+    });
+
+    // Append to sentBackHistory (audit log)
+    if (!Array.isArray(metadata.sentBackHistory)) metadata.sentBackHistory = [];
+    metadata.sentBackHistory.push({
+      targetStep: targetStep,
+      by:         approverEmail,
+      byRole:     approverRole,
+      at:         new Date().toISOString(),
+      note:       note
+    });
+
+    sheet.getRange(rowIndex + 1, 15).setValue(newStatus);
+    sheet.getRange(rowIndex + 1, 17).setValue(JSON.stringify(metadata));
+    SpreadsheetApp.flush();
+
+    Logger.log('[P2P] ✅ PR sent back: ' + prNo + ' targetStep=' + targetStep + ' by=' + approverEmail);
+
+    try {
+      sendPurchaseRequestSendBackEmail_(row, prNo, targetStep, note, approverRole, metadata);
+    } catch (emailErr) {
+      Logger.log('[P2P] ⚠️ Send-back email failed (non-fatal): ' + emailErr.message);
+    }
+
+    return createResponse(true, 'Đã trả lại thành công.', { prNo: prNo, status: newStatus });
+
+  } catch (error) {
+    Logger.log('[P2P] ❌ ERROR in handleSendBackPurchaseRequest: ' + error.toString());
+    return createResponse(false, 'Lỗi: ' + error.message);
+  }
+}
+
+// ==================== RESUBMIT PURCHASE REQUEST ====================
+
+/**
+ * Called when the submitter re-edits and resubmits a PR that was sent back (targetStep=1).
+ * Overwrites the existing row in place and resets the full approval chain.
+ */
+function handleResubmitPurchaseRequest(data) {
+  try {
+    var prNo          = (data.prNo          || '').toString().trim();
+    var requesterEmail = (data.requesterEmail || '').toString().trim().toLowerCase();
+
+    if (!prNo)           return createResponse(false, 'Thiếu số phiếu mua hàng.');
+    if (!requesterEmail) return createResponse(false, 'Thiếu email người đề nghị.');
+
+    var companyName   = (data.companyName   || '').toString().trim();
+    var requesterName = (data.requesterName || '').toString().trim();
+    var requiredDate  = (data.requiredDate  || '').toString().trim();
+    var items         = (data.items         || '[]').toString();
+    var grandTotal    = parseFloat(data.grandTotal) || 0;
+
+    if (!companyName)   return createResponse(false, 'Thiếu tên công ty.');
+    if (!requesterName) return createResponse(false, 'Thiếu tên người đề nghị.');
+    if (!requiredDate)  return createResponse(false, 'Thiếu ngày cần hàng.');
+    if (!(data.budgetApprover || '').toString().trim())
+      return createResponse(false, 'Vui lòng chọn người phê duyệt ngân sách.');
+    if (!(data.supplierApprover || '').toString().trim())
+      return createResponse(false, 'Vui lòng chọn người phê duyệt NCC.');
+
+    var parsedItems;
+    try { parsedItems = JSON.parse(items); } catch (e) {
+      return createResponse(false, 'Dữ liệu hàng hóa không hợp lệ: ' + e.message);
+    }
+    if (!Array.isArray(parsedItems) || parsedItems.length === 0) {
+      return createResponse(false, 'Vui lòng nhập ít nhất 1 hàng hóa / dịch vụ.');
+    }
+
+    var ss    = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    var sheet = ss.getSheetByName(PR_SHEET_NAME);
+    if (!sheet) return createResponse(false, 'Không tìm thấy sheet Purchase_Request_History.');
+
+    var values   = sheet.getDataRange().getValues();
+    var rowIndex = -1;
+    for (var i = 1; i < values.length; i++) {
+      if ((values[i][0] || '').toString().trim() === prNo) { rowIndex = i; break; }
+    }
+    if (rowIndex === -1) return createResponse(false, 'Không tìm thấy đề nghị: ' + prNo);
+
+    var row           = values[rowIndex];
+    var currentStatus = (row[14] || '').toString();
+
+    if (currentStatus !== 'Trả lại bổ sung') {
+      return createResponse(false, 'Chỉ có thể gửi lại khi phiếu ở trạng thái "Trả lại bổ sung".');
+    }
+
+    var existingMetadata;
+    try { existingMetadata = JSON.parse(row[16] || '{}'); } catch (e) { existingMetadata = {}; }
+
+    // Caller must be the original requester
+    var storedRequesterEmail = (existingMetadata.requesterEmail || '').toString().toLowerCase().trim();
+    if (storedRequesterEmail && requesterEmail !== storedRequesterEmail) {
+      return createResponse(false, 'Bạn không phải người đề nghị ban đầu của phiếu này.');
+    }
+
+    // Upload any new attachments to Drive
+    var newAttachmentRecords = [];
+    try {
+      var rawAttachments = Array.isArray(data.attachments)
+        ? data.attachments
+        : (typeof data.attachments === 'string' ? JSON.parse(data.attachments || '[]') : []);
+      rawAttachments = rawAttachments || [];
+      var newFiles = rawAttachments.filter(function(f) { return f.fileData; });
+      if (newFiles.length > 0) {
+        var PR_DRIVE_FOLDER_ID = getCfg_('PURCHASE_REQUEST_FOLDER_ID', '1SJ-pUa6jg2rmJTzle-TvvSNrKMUduvx3');
+        var parentFolder = DriveApp.getFolderById(PR_DRIVE_FOLDER_ID);
+        var subFolder = parentFolder.getFoldersByName(CONFIG.DRIVE_FOLDER_NAME).hasNext()
+          ? parentFolder.getFoldersByName(CONFIG.DRIVE_FOLDER_NAME).next()
+          : parentFolder.createFolder(CONFIG.DRIVE_FOLDER_NAME);
+        var prFolder = subFolder.getFoldersByName(prNo).hasNext()
+          ? subFolder.getFoldersByName(prNo).next()
+          : subFolder.createFolder(prNo);
+        newFiles.forEach(function(f) {
+          try {
+            var b64 = f.fileData.includes(',') ? f.fileData.split(',')[1] : f.fileData;
+            var mime = f.mimeType || 'application/octet-stream';
+            var blob = Utilities.newBlob(Utilities.base64Decode(b64), mime, f.fileName || 'attachment');
+            var driveFile = prFolder.createFile(blob);
+            try { driveFile.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch(e) {}
+            newAttachmentRecords.push({ fileName: f.fileName, fileUrl: driveFile.getUrl() });
+          } catch (fe) {
+            Logger.log('[P2P] ⚠️ Resubmit attachment upload failed: ' + fe.message);
+            newAttachmentRecords.push({ fileName: f.fileName, fileUrl: '', error: fe.message });
+          }
+        });
+      }
+      // Preserve existing attachments passed back from frontend (no fileData = already uploaded)
+      rawAttachments.filter(function(f) { return !f.fileData && f.fileUrl; }).forEach(function(f) {
+        newAttachmentRecords.push({ fileName: f.fileName, fileUrl: f.fileUrl });
+      });
+    } catch (ae) {
+      Logger.log('[P2P] ⚠️ Resubmit attachment error: ' + ae.message);
+    }
+
+    var priorityMap = { gap: 'Gấp', binh_thuong: 'Bình Thường', khong_gap: 'Không Gấp',
+                        high: 'Gấp', medium: 'Bình Thường', low: 'Không Gấp' };
+
+    var attachmentUrlsStr = newAttachmentRecords
+      .filter(function(r) { return r.fileUrl; })
+      .map(function(r) { return r.fileUrl; })
+      .join(', ');
+
+    // Build new metadata — reset all approval state but preserve history + identity fields
+    var newMetadata = {
+      companyCode:          data.companyCode          || existingMetadata.companyCode          || '',
+      companyKey:           data.companyKey           || existingMetadata.companyKey           || '',
+      requesterEmail:       requesterEmail,
+      budgetApproverNote:   data.budgetApproverNote   || '',
+      supplierApproverNote: data.supplierApproverNote || '',
+      submittedAt:          existingMetadata.submittedAt || new Date().toISOString(),
+      resubmittedAt:        new Date().toISOString(),
+      resubmitCount:        (parseInt(existingMetadata.resubmitCount, 10) || 0) + 1,
+      requesterSignature:   data.requesterSignature   || '',
+      attachments:          newAttachmentRecords,
+      budgetStatus:    (data.budgetApprover    || '').trim() ? 'Pending' : 'N/A',
+      supplierStatus:  (data.supplierApprover  || '').trim() ? 'Pending' : 'N/A',
+      contractStatus:  (data.contractApprover  || '').trim() ? 'Pending' : 'N/A',
+      purchasingStatus:(data.purchasingApprover|| '').trim() ? 'Pending' : 'N/A',
+      vendorDetails: {
+        vendorType:         data.vendorType         || '',
+        vendorTaxId:        data.vendorTaxId        || '',
+        vendorAddress:      data.vendorAddress      || '',
+        vendorAccountName:  data.vendorAccountName  || '',
+        vendorAccountNo:    data.vendorAccountNo    || '',
+        vendorBankName:     data.vendorBankName     || '',
+        vendorTransferNote: data.vendorTransferNote || ''
+      },
+      sentBackHistory: existingMetadata.sentBackHistory || []
+    };
+
+    // Overwrite the full row in place (all 20 columns)
+    sheet.getRange(rowIndex + 1, 1, 1, 20).setValues([[
+      prNo,
+      companyName,
+      data.companyKey         || '',
+      data.department         || '',
+      requesterName,
+      requiredDate,
+      priorityMap[data.priority] || data.priority || 'Bình Thường',
+      data.purpose            || '',
+      data.vendorName         || data.suggestedVendor || '',
+      data.budgetCode         || '',
+      data.budgetApprover     || '',
+      data.supplierApprover   || '',
+      items,
+      grandTotal,
+      'Đang duyệt ngân sách & NCC (2/5)',
+      existingMetadata.submittedAt || new Date().toISOString(),
+      JSON.stringify(newMetadata),
+      data.contractApprover   || '',
+      data.purchasingApprover || '',
+      attachmentUrlsStr
+    ]]);
+    SpreadsheetApp.flush();
+
+    Logger.log('[P2P] ✅ PR resubmitted: ' + prNo + ' resubmitCount=' + newMetadata.resubmitCount);
+
+    try {
+      sendPurchaseRequestResubmitEmails_(prNo, data, newAttachmentRecords);
+    } catch (emailErr) {
+      Logger.log('[P2P] ⚠️ Resubmit email failed (non-fatal): ' + emailErr.message);
+    }
+
+    return createResponse(true, 'Đã gửi lại đề nghị thành công.', { prNo: prNo });
+
+  } catch (error) {
+    Logger.log('[P2P] ❌ ERROR in handleResubmitPurchaseRequest: ' + error.toString());
+    return createResponse(false, 'Lỗi: ' + error.message);
+  }
+}
+
+// ==================== SEND-BACK EMAIL HELPERS ====================
+
+/**
+ * Sends notification emails when a PR is sent back to an earlier step.
+ * targetStep=1 → email to requester
+ * targetStep=2 → email to budget + supplier approvers
+ * targetStep=3 → email to contract approver
+ */
+function sendPurchaseRequestSendBackEmail_(row, prNo, targetStep, note, senderRole, metadata) {
+  var companyName   = (row[1]  || '').toString();
+  var requesterName = (row[4]  || '').toString();
+  var purpose       = (row[7]  || '').toString();
+  var grandTotal    = (parseFloat(row[13]) || 0).toLocaleString('vi-VN') + ' ₫';
+
+  var senderRoleLabel = {
+    budget: 'Người duyệt Ngân sách', supplier: 'Người duyệt NCC',
+    contract: 'Người thẩm định Hợp đồng', purchasing: 'Người mua hàng'
+  }[senderRole] || senderRole;
+
+  var infoTable = '<table cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-size:13px;">'
+    + '<tr><td style="font-weight:700;padding-right:16px;">Số phiếu:</td><td>' + prNo + '</td></tr>'
+    + '<tr><td style="font-weight:700;padding-right:16px;">Công ty:</td><td>' + companyName + '</td></tr>'
+    + '<tr><td style="font-weight:700;padding-right:16px;">Người đề nghị:</td><td>' + requesterName + '</td></tr>'
+    + '<tr><td style="font-weight:700;padding-right:16px;">Mục đích:</td><td>' + purpose + '</td></tr>'
+    + '<tr><td style="font-weight:700;padding-right:16px;">Tổng cộng:</td><td>' + grandTotal + '</td></tr>'
+    + '</table>';
+
+  var noteBox = '<div style="background:#fffbeb;border-left:4px solid #f59e0b;padding:10px 14px;margin:14px 0;border-radius:4px;">'
+    + '<b>Lý do trả lại:</b><br>' + note
+    + '</div>';
+
+  if (targetStep === 1) {
+    // Notify requester
+    var recipientEmail = (metadata.requesterEmail || '').toString().trim();
+    if (!recipientEmail) return;
+    var subject = '[ĐỀ NGHỊ MUA HÀNG] Phiếu được trả lại để bổ sung - ' + prNo;
+    var body = '<p>Kính gửi ' + requesterName + ',</p>'
+      + '<p>Phiếu đề nghị mua hàng <b>' + prNo + '</b> đã được <b>' + senderRoleLabel + '</b> trả lại để bổ sung thông tin / tài liệu.</p>'
+      + infoTable + noteBox
+      + '<p>Vui lòng đăng nhập vào hệ thống, mở phiếu và chọn <b>"Chỉnh sửa & Gửi lại"</b> để cập nhật và gửi lại.</p>'
+      + '<p>Trân trọng,<br>Hệ thống Workflow TLC Group</p>';
+    GmailApp.sendEmail(recipientEmail, subject, '', { htmlBody: body, name: 'TLC Group Workflow' });
+    Logger.log('[P2P] ✅ Send-back email (step 1) sent to: ' + recipientEmail);
+
+  } else if (targetStep === 2) {
+    // Notify budget + supplier approvers
+    var recipients = [(row[10] || '').toString().trim(), (row[11] || '').toString().trim()].filter(Boolean);
+    var subject2 = '[ĐỀ NGHỊ MUA HÀNG] Yêu cầu xem lại - Bước Ngân sách & NCC - ' + prNo;
+    var body2 = '<p>Kính gửi,</p>'
+      + '<p><b>' + senderRoleLabel + '</b> đã yêu cầu xem lại bước <b>Ngân sách & NCC</b> của phiếu đề nghị mua hàng <b>' + prNo + '</b>.</p>'
+      + infoTable + noteBox
+      + '<p>Vui lòng đăng nhập vào hệ thống để xem lại và phê duyệt.</p>'
+      + '<p>Trân trọng,<br>Hệ thống Workflow TLC Group</p>';
+    recipients.forEach(function(email) {
+      try {
+        GmailApp.sendEmail(email, subject2, '', { htmlBody: body2, name: 'TLC Group Workflow' });
+        Logger.log('[P2P] ✅ Send-back email (step 2) sent to: ' + email);
+      } catch (e) {
+        Logger.log('[P2P] ⚠️ Send-back email to ' + email + ' failed: ' + e.message);
+      }
+    });
+
+  } else if (targetStep === 3) {
+    // Notify contract approver
+    var contractEmail = (row[17] || '').toString().trim();
+    if (!contractEmail) return;
+    var subject3 = '[ĐỀ NGHỊ MUA HÀNG] Yêu cầu xem lại - Bước Thẩm định Hợp đồng - ' + prNo;
+    var body3 = '<p>Kính gửi,</p>'
+      + '<p><b>' + senderRoleLabel + '</b> đã yêu cầu xem lại bước <b>Thẩm định Hợp đồng</b> của phiếu đề nghị mua hàng <b>' + prNo + '</b>.</p>'
+      + infoTable + noteBox
+      + '<p>Vui lòng đăng nhập vào hệ thống để xem lại và phê duyệt.</p>'
+      + '<p>Trân trọng,<br>Hệ thống Workflow TLC Group</p>';
+    GmailApp.sendEmail(contractEmail, subject3, '', { htmlBody: body3, name: 'TLC Group Workflow' });
+    Logger.log('[P2P] ✅ Send-back email (step 3) sent to: ' + contractEmail);
+  }
+}
+
+/**
+ * Notifies budget + supplier approvers when a PR is resubmitted after being sent back.
+ */
+function sendPurchaseRequestResubmitEmails_(prNo, data, attachmentRecords) {
+  var companyName   = (data.companyName   || '').toString();
+  var requesterName = (data.requesterName || '').toString();
+  var purpose       = (data.purpose       || '').toString();
+  var grandTotal    = (parseFloat(data.grandTotal) || 0).toLocaleString('vi-VN') + ' ₫';
+  var requiredDate  = (data.requiredDate  || '').toString();
+
+  var attachHtml = '';
+  if (attachmentRecords && attachmentRecords.length > 0) {
+    var links = attachmentRecords.filter(function(r){ return r.fileUrl; }).map(function(r){
+      return '<li><a href="' + r.fileUrl + '">' + r.fileName + '</a></li>';
+    }).join('');
+    if (links) attachHtml = '<br><b>Tệp đính kèm:</b><ul>' + links + '</ul>';
+  }
+
+  var subject = '[ĐỀ NGHỊ MUA HÀNG] Phiếu đã được cập nhật và gửi lại - ' + prNo;
+  var body = '<p>Kính gửi,</p>'
+    + '<p>Phiếu đề nghị mua hàng <b>' + prNo + '</b> đã được người đề nghị cập nhật và gửi lại, đang chờ phê duyệt của bạn.</p>'
+    + '<table cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-size:13px;">'
+    + '<tr><td style="font-weight:700;padding-right:16px;">Số phiếu:</td><td>' + prNo + '</td></tr>'
+    + '<tr><td style="font-weight:700;padding-right:16px;">Công ty:</td><td>' + companyName + '</td></tr>'
+    + '<tr><td style="font-weight:700;padding-right:16px;">Người đề nghị:</td><td>' + requesterName + '</td></tr>'
+    + '<tr><td style="font-weight:700;padding-right:16px;">Mục đích:</td><td>' + purpose + '</td></tr>'
+    + '<tr><td style="font-weight:700;padding-right:16px;">Tổng cộng:</td><td>' + grandTotal + '</td></tr>'
+    + '<tr><td style="font-weight:700;padding-right:16px;">Ngày cần hàng:</td><td>' + requiredDate + '</td></tr>'
+    + '</table>'
+    + attachHtml
+    + '<p style="margin-top:16px;">Vui lòng đăng nhập vào hệ thống để xem chi tiết và phê duyệt.</p>'
+    + '<p>Trân trọng,<br>Hệ thống Workflow TLC Group</p>';
+
+  [data.budgetApprover, data.supplierApprover].forEach(function(email) {
+    if (!email) return;
+    try {
+      GmailApp.sendEmail(email, subject, '', { htmlBody: body, name: 'TLC Group Workflow' });
+      Logger.log('[P2P] ✅ Resubmit email sent to: ' + email);
+    } catch (e) {
+      Logger.log('[P2P] ⚠️ Resubmit email to ' + email + ' failed: ' + e.message);
+    }
+  });
 }
