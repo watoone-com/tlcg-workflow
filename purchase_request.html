@@ -1300,7 +1300,7 @@
                         <div class="approver-header">
                             <div class="approver-num">2</div>
                             <div>
-                                <div class="approver-title">Người phê duyệt NCC</div>
+                                <div class="approver-title">Người phê duyệt NCC <span class="req">*</span></div>
                                 <div class="approver-sub">Chạy song song với Người phê duyệt ngân sách</div>
                             </div>
                         </div>
@@ -1356,23 +1356,10 @@
                         </div>
                     </div>
 
-                    <!-- Approver 5: Final -->
-                    <div class="approver-card" style="opacity:0.6; pointer-events:none;">
-                        <div class="approver-header">
-                            <div class="approver-num" style="background:rgba(0,0,0,0.18);">5</div>
-                            <div>
-                                <div class="approver-title">Phê duyệt cuối <span style="font-size:11px; color:var(--text-secondary); font-weight:400;">(tự động sau khi 1 &amp; 2 hoàn thành)</span></div>
-                                <div class="approver-sub">Chờ phê duyệt ngân sách &amp; NCC</div>
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div class="form-group">
-                                <label>Người phê duyệt cuối</label>
-                                <select id="final_approver" disabled>
-                                    <option value="">-- Chọn --</option>
-                                </select>
-                            </div>
-                        </div>
+                    <!-- Completion info -->
+                    <div style="display:flex;align-items:flex-start;gap:10px;padding:12px 14px;background:var(--success-bg,#f0fdf4);border:1px solid var(--success-border,#bbf7d0);border-radius:10px;font-size:12px;color:#166534;">
+                        <i class="fas fa-circle-check" style="margin-top:2px;flex-shrink:0;"></i>
+                        <span><strong>Hoàn thành</strong> — Phiếu sẽ được đánh dấu hoàn tất sau khi tất cả các bước bắt buộc được duyệt (Mua hàng nếu có, hoặc ngay sau khi Ngân sách &amp; NCC đều duyệt).</span>
                     </div>
 
                 </div>
@@ -1451,6 +1438,8 @@
                 <div class="summary-header"><i class="fas fa-user-check"></i> Người phê duyệt &amp; Chữ ký</div>
                 <div class="summary-row"><span class="summary-lbl">Ngân sách</span><span class="summary-val" id="sum-budget-approver">—</span></div>
                 <div class="summary-row"><span class="summary-lbl">NCC</span><span class="summary-val" id="sum-supplier-approver">—</span></div>
+                <div class="summary-row" id="sum-contract-approver-row" style="display:none;"><span class="summary-lbl">Hợp đồng</span><span class="summary-val" id="sum-contract-approver">—</span></div>
+                <div class="summary-row" id="sum-purchasing-approver-row" style="display:none;"><span class="summary-lbl">Mua hàng</span><span class="summary-val" id="sum-purchasing-approver">—</span></div>
                 <div class="summary-row">
                     <span class="summary-lbl">Chữ ký</span>
                     <span class="summary-val" id="sum-signature">
@@ -1520,15 +1509,15 @@
                     <div class="pr-stat-count" id="pr-stat-all">—</div>
                     <div class="pr-stat-label">Tất cả</div>
                 </div>
-                <div class="pr-stat-item stat-pending" onclick="applyPRFilter('Pending')" tabindex="0" role="button" aria-label="Chờ duyệt">
+                <div class="pr-stat-item stat-pending" onclick="applyPRFilter('dang-xu-ly')" tabindex="0" role="button" aria-label="Đang xử lý">
                     <div class="pr-stat-count" id="pr-stat-pending">—</div>
-                    <div class="pr-stat-label">Chờ duyệt</div>
+                    <div class="pr-stat-label">Đang xử lý</div>
                 </div>
-                <div class="pr-stat-item stat-approved" onclick="applyPRFilter('Approved')" tabindex="0" role="button" aria-label="Đã duyệt">
+                <div class="pr-stat-item stat-approved" onclick="applyPRFilter('hoan-thanh')" tabindex="0" role="button" aria-label="Hoàn thành">
                     <div class="pr-stat-count" id="pr-stat-approved">—</div>
-                    <div class="pr-stat-label">Đã duyệt</div>
+                    <div class="pr-stat-label">Hoàn thành</div>
                 </div>
-                <div class="pr-stat-item stat-rejected" onclick="applyPRFilter('Rejected')" tabindex="0" role="button" aria-label="Từ chối">
+                <div class="pr-stat-item stat-rejected" onclick="applyPRFilter('tu-choi')" tabindex="0" role="button" aria-label="Đã từ chối">
                     <div class="pr-stat-count" id="pr-stat-rejected">—</div>
                     <div class="pr-stat-label">Từ chối</div>
                 </div>
@@ -1800,7 +1789,8 @@
             if (!document.getElementById('purpose').value.trim()) { showToast('Vui lòng nhập mục đích mua hàng.', 'error'); return; }
         }
         if (step === 3) {
-            if (!document.getElementById('budget_approver').value) { showToast('Vui lòng chọn người phê duyệt ngân sách.', 'error'); return; }
+            if (!document.getElementById('budget_approver').value)  { showToast('Vui lòng chọn người phê duyệt ngân sách.', 'error'); return; }
+            if (!document.getElementById('supplier_approver').value) { showToast('Vui lòng chọn người phê duyệt NCC.', 'error'); return; }
             buildSummary();
         }
         goToStep(step + 1);
@@ -2472,6 +2462,30 @@
         const sel2 = document.getElementById('supplier_approver');
         document.getElementById('sum-supplier-approver').textContent = sel2.value ? sel2.options[sel2.selectedIndex]?.text : '—';
 
+        const sel3 = document.getElementById('contract_approver');
+        const sumContract = document.getElementById('sum-contract-approver');
+        const sumContractRow = document.getElementById('sum-contract-approver-row');
+        if (sumContract && sumContractRow) {
+            if (sel3?.value) {
+                sumContract.textContent = sel3.options[sel3.selectedIndex]?.text || '—';
+                sumContractRow.style.display = '';
+            } else {
+                sumContractRow.style.display = 'none';
+            }
+        }
+
+        const sel4 = document.getElementById('purchasing_approver');
+        const sumPurchasing = document.getElementById('sum-purchasing-approver');
+        const sumPurchasingRow = document.getElementById('sum-purchasing-approver-row');
+        if (sumPurchasing && sumPurchasingRow) {
+            if (sel4?.value) {
+                sumPurchasing.textContent = sel4.options[sel4.selectedIndex]?.text || '—';
+                sumPurchasingRow.style.display = '';
+            } else {
+                sumPurchasingRow.style.display = 'none';
+            }
+        }
+
         // Signature preview in summary
         const sigImg = document.getElementById('sum-sig-img');
         const sigPh  = document.getElementById('sum-sig-placeholder');
@@ -2622,10 +2636,12 @@
             vendorAccountNo:  document.getElementById('vendor_account_no').value,
             vendorBankName:   document.getElementById('vendor_bank_name').value,
             vendorTransferNote: document.getElementById('vendor_bank_transfer_note').value.trim(),
-            budgetApprover:     document.getElementById('budget_approver').value,
-            supplierApprover:   document.getElementById('supplier_approver').value,
-            contractApprover:   document.getElementById('contract_approver')?.value || '',
-            purchasingApprover: document.getElementById('purchasing_approver')?.value || '',
+            budgetApprover:      document.getElementById('budget_approver').value,
+            budgetApproverNote:  document.getElementById('budget_approver_note')?.value?.trim() || '',
+            supplierApprover:    document.getElementById('supplier_approver').value,
+            supplierApproverNote: document.getElementById('supplier_approver_note')?.value?.trim() || '',
+            contractApprover:    document.getElementById('contract_approver')?.value || '',
+            purchasingApprover:  document.getElementById('purchasing_approver')?.value || '',
             requesterEmail:     (() => { try { return JSON.parse(localStorage.getItem('tlc_current_user') || '{}').email || ''; } catch(e) { return ''; } })(),
             requesterSignature: _signatureData || '',
             submittedAt:        new Date().toISOString(),
@@ -3385,28 +3401,46 @@
     const _PR_CACHE_TS_KEY = 'tlcg_pr_list_cache_ts';
     const _PR_CACHE_TTL    = 5 * 60 * 1000; // 5 min
 
+    /** Returns one of: 'pending' | 'in-progress' | 'approved' | 'rejected' | 'other' */
     function _prStatusClass(status) {
         const s = (status || '').toLowerCase();
-        if (s === 'pending' || s === 'đang duyệt ngân sách (2/5)') return 'pending';
-        if (s === 'đang duyệt nhà cung cấp (3/5)' || s === 'thẩm định hợp đồng (4/5)' || s === 'mua hàng (5/5)') return 'in-progress';
+        if (s === 'pending' || s === 'đang duyệt ngân sách (2/5)' || s === 'đang duyệt ngân sách & ncc (2/5)') return 'pending';
+        if (s.startsWith('đang duyệt') || s === 'thẩm định hợp đồng (4/5)' || s === 'mua hàng (5/5)') return 'in-progress';
         if (s === 'approved' || s === 'hoàn thành') return 'approved';
         if (s === 'rejected' || s === 'đã từ chối') return 'rejected';
         return 'other';
     }
 
+    /** Maps a stored status string to a human-readable Vietnamese label */
     function _prStatusLabel(status) {
         const map = {
-            'pending':                       'Chờ duyệt (1/5)',
-            'đang duyệt ngân sách (2/5)':    'Đang duyệt ngân sách (2/5)',
-            'đang duyệt nhà cung cấp (3/5)': 'Đang duyệt nhà cung cấp (3/5)',
-            'thẩm định hợp đồng (4/5)':      'Thẩm định Hợp đồng (4/5)',
-            'mua hàng (5/5)':                'Mua hàng (5/5)',
-            'hoàn thành':                    'Hoàn thành',
-            'approved':                      'Đã duyệt',
-            'rejected':                      'Đã từ chối',
-            'đã từ chối':                    'Đã từ chối',
+            'pending':                             'Chờ duyệt (1/5)',
+            'đang duyệt ngân sách (2/5)':          'Đang duyệt ngân sách & NCC (2/5)',
+            'đang duyệt ngân sách & ncc (2/5)':    'Đang duyệt ngân sách & NCC (2/5)',
+            'đang duyệt nhà cung cấp (3/5)':       'Đang duyệt nhà cung cấp (3/5)',
+            'thẩm định hợp đồng (4/5)':            'Thẩm định Hợp đồng (4/5)',
+            'mua hàng (5/5)':                      'Mua hàng (5/5)',
+            'hoàn thành':                          'Hoàn thành',
+            'approved':                            'Đã duyệt',
+            'rejected':                            'Đã từ chối',
+            'đã từ chối':                          'Đã từ chối',
         };
         return map[(status || '').toLowerCase()] || status || '—';
+    }
+
+    /**
+     * Buckets a stored status into the three filter categories used by stat pills:
+     *   'dang-xu-ly'  — any in-flight status
+     *   'hoan-thanh'  — Hoàn thành / Approved
+     *   'tu-choi'     — Đã từ chối / Rejected
+     *   ''            — All
+     */
+    function _prStatusBucket(status) {
+        const s = (status || '').toLowerCase();
+        if (s === 'hoàn thành' || s === 'approved') return 'hoan-thanh';
+        if (s === 'đã từ chối' || s === 'rejected') return 'tu-choi';
+        if (s) return 'dang-xu-ly';
+        return '';
     }
 
     function _prStatusIcon(status) {
@@ -3430,10 +3464,9 @@
     }
 
     function applyPRFilter(status) {
-        _prFilter = status;
-        // Highlight active stat pill
+        _prFilter = status; // now a bucket: '' | 'dang-xu-ly' | 'hoan-thanh' | 'tu-choi'
         document.querySelectorAll('.pr-stat-item').forEach(el => el.classList.remove('active'));
-        const map = { '': 'stat-all', 'Pending': 'stat-pending', 'Approved': 'stat-approved', 'Rejected': 'stat-rejected' };
+        const map = { '': 'stat-all', 'dang-xu-ly': 'stat-pending', 'hoan-thanh': 'stat-approved', 'tu-choi': 'stat-rejected' };
         const cls = map[status] || 'stat-all';
         document.querySelector('.pr-stat-item.' + cls)?.classList.add('active');
         renderPRList();
@@ -3445,7 +3478,7 @@
         const query = (document.getElementById('pr-search')?.value || '').trim().toLowerCase();
 
         let filtered = _allPRs.filter(pr => {
-            if (_prFilter && (pr.status || '').toLowerCase() !== _prFilter.toLowerCase()) return false;
+            if (_prFilter && _prStatusBucket(pr.status) !== _prFilter) return false;
             if (query) {
                 const haystack = [pr.prNo, pr.company, pr.requesterName, pr.purpose, pr.suggestedVendor].join(' ').toLowerCase();
                 if (!haystack.includes(query)) return false;
@@ -3496,14 +3529,14 @@
     }
 
     function _updatePRStats(list) {
-        const total    = list.length;
-        const pending  = list.filter(p => (p.status||'').toLowerCase() === 'pending').length;
-        const approved = list.filter(p => (p.status||'').toLowerCase() === 'approved').length;
-        const rejected = list.filter(p => (p.status||'').toLowerCase() === 'rejected').length;
+        const total      = list.length;
+        const inProgress = list.filter(p => _prStatusBucket(p.status) === 'dang-xu-ly').length;
+        const completed  = list.filter(p => _prStatusBucket(p.status) === 'hoan-thanh').length;
+        const rejected   = list.filter(p => _prStatusBucket(p.status) === 'tu-choi').length;
         const setText = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
         setText('pr-stat-all',      total);
-        setText('pr-stat-pending',  pending);
-        setText('pr-stat-approved', approved);
+        setText('pr-stat-pending',  inProgress);
+        setText('pr-stat-approved', completed);
         setText('pr-stat-rejected', rejected);
     }
 
@@ -3575,6 +3608,32 @@
     }
 
     /* ── My Task filter ─────────────────────────────────────────── */
+    /**
+     * Client-side mirror of computePRApprovalState_ in the backend.
+     * Returns { stage, budgetEmail, supplierEmail, contractEmail, purchasingEmail }
+     * stage: 'parallel' | 'contract' | 'purchasing' | 'complete'
+     */
+    function _computePRStage(pr, meta) {
+        const budgetEmail    = (pr.budgetApprover    || '').toLowerCase().trim();
+        const supplierEmail  = (pr.supplierApprover  || '').toLowerCase().trim();
+        const contractEmail  = (pr.contractApprover  || '').toLowerCase().trim();
+        const purchasingEmail= (pr.purchasingApprover|| '').toLowerCase().trim();
+
+        const budgetDone    = !budgetEmail    || meta.budgetStatus    === 'Approved';
+        const supplierDone  = !supplierEmail  || meta.supplierStatus  === 'Approved';
+        const contractDone  = !contractEmail  || meta.contractStatus  === 'Approved';
+        const purchasingDone= !purchasingEmail|| meta.purchasingStatus=== 'Approved';
+        const parallelDone  = budgetDone && supplierDone;
+
+        let stage;
+        if (!parallelDone) stage = 'parallel';
+        else if (contractEmail && !contractDone) stage = 'contract';
+        else if (purchasingEmail && !purchasingDone) stage = 'purchasing';
+        else stage = 'complete';
+
+        return { stage, budgetEmail, supplierEmail, contractEmail, purchasingEmail };
+    }
+
     function _isMyPRTask(pr) {
         let email = '';
         try { email = (JSON.parse(localStorage.getItem('tlc_current_user') || '{}').email || '').toLowerCase().trim(); } catch(e) {}
@@ -3583,14 +3642,17 @@
         if (status === 'rejected' || status === 'approved' || status === 'đã từ chối' || status === 'hoàn thành') return false;
         let meta = {};
         try { meta = JSON.parse(pr.metadata || '{}'); } catch(e) {}
-        const budgetEmail    = (pr.budgetApprover    || '').toLowerCase().trim();
-        const supplierEmail  = (pr.supplierApprover  || '').toLowerCase().trim();
-        const contractEmail  = (pr.contractApprover  || '').toLowerCase().trim();
-        const purchasingEmail= (pr.purchasingApprover|| '').toLowerCase().trim();
-        if (email === budgetEmail    && meta.budgetStatus    !== 'Approved') return true;
-        if (email === supplierEmail  && meta.supplierStatus  !== 'Approved') return true;
-        if (email === contractEmail  && meta.contractStatus  !== 'Approved') return true;
-        if (email === purchasingEmail&& meta.purchasingStatus!== 'Approved') return true;
+
+        const { stage, budgetEmail, supplierEmail, contractEmail, purchasingEmail } = _computePRStage(pr, meta);
+
+        if (stage === 'parallel') {
+            if (email === budgetEmail   && meta.budgetStatus   !== 'Approved') return true;
+            if (email === supplierEmail && meta.supplierStatus !== 'Approved') return true;
+        } else if (stage === 'contract') {
+            if (email === contractEmail) return true;
+        } else if (stage === 'purchasing') {
+            if (email === purchasingEmail) return true;
+        }
         return false;
     }
 
@@ -3671,24 +3733,27 @@
             </tr>`;
         }).join('');
 
-        // Approver rail
-        const budgetEmail    = (pr.budgetApprover    || '').trim();
-        const supplierEmail  = (pr.supplierApprover  || '').trim();
-        const contractEmail  = (pr.contractApprover  || '').trim();
-        const purchasingEmail= (pr.purchasingApprover|| '').trim();
-        const isRejected     = (pr.status || '').toLowerCase() === 'đã từ chối' || (pr.status || '').toLowerCase() === 'rejected';
+        // Approver rail — derive active stage first
+        const isRejected = (pr.status || '').toLowerCase() === 'đã từ chối' || (pr.status || '').toLowerCase() === 'rejected';
+        const prStage    = _computePRStage(pr, meta);
+        const { stage: activeStage, budgetEmail, supplierEmail, contractEmail, purchasingEmail } = prStage;
 
         function _approverStatus(email, metaKey) {
             if (isRejected && (meta.rejectedBy || '').toLowerCase() === email.toLowerCase()) return 'Rejected';
             return meta[metaKey] || 'Pending';
         }
 
-        function approverStepHtml(email, roleLabel, statusStr) {
-            const dotCls   = statusStr === 'Approved' ? 'dot-done' : statusStr === 'Rejected' ? 'dot-rejected' : 'dot-pending';
-            const badgeCls = statusStr === 'Approved' ? 'badge-approved' : statusStr === 'Rejected' ? 'badge-rejected' : 'badge-pending';
-            const icon     = statusStr === 'Approved' ? '✓' : statusStr === 'Rejected' ? '✕' : '?';
-            const label    = statusStr === 'Approved' ? 'Đã duyệt' : statusStr === 'Rejected' ? 'Từ chối' : 'Chờ duyệt';
-            return `<div class="pr-approver-step">
+        /**
+         * isActive: whether this approver's stage is the currently open one
+         * isFuture: their stage has not opened yet (dim it)
+         */
+        function approverStepHtml(email, roleLabel, statusStr, isActive, isFuture) {
+            const dotCls   = statusStr === 'Approved' ? 'dot-done' : statusStr === 'Rejected' ? 'dot-rejected' : isFuture ? 'dot-future' : 'dot-pending';
+            const badgeCls = statusStr === 'Approved' ? 'badge-approved' : statusStr === 'Rejected' ? 'badge-rejected' : isFuture ? 'badge-future' : 'badge-pending';
+            const icon     = statusStr === 'Approved' ? '✓' : statusStr === 'Rejected' ? '✕' : isFuture ? '–' : '?';
+            const label    = statusStr === 'Approved' ? 'Đã duyệt' : statusStr === 'Rejected' ? 'Từ chối' : isFuture ? 'Chờ giai đoạn trước' : 'Chờ duyệt';
+            const opacity  = isFuture ? 'opacity:0.45;' : '';
+            return `<div class="pr-approver-step" style="${opacity}">
                 <div class="pr-approver-dot ${dotCls}">${icon}</div>
                 <div>
                     <div class="pr-approver-name">${_escHtmlPR(email || '—')}</div>
@@ -3793,10 +3858,10 @@
             <div class="pr-drawer-section">
                 <div class="pr-drawer-section-title">Trạng thái phê duyệt</div>
                 <div class="pr-approver-rail">
-                    ${budgetEmail    ? approverStepHtml(budgetEmail,    'Duyệt ngân sách',      _approverStatus(budgetEmail,    'budgetStatus'))    : ''}
-                    ${supplierEmail  ? approverStepHtml(supplierEmail,  'Duyệt nhà cung cấp',   _approverStatus(supplierEmail,  'supplierStatus'))  : ''}
-                    ${contractEmail  ? approverStepHtml(contractEmail,  'Thẩm định HĐ',         meta.contractStatus  || (contractEmail  ? 'Pending' : 'N/A'))  : ''}
-                    ${purchasingEmail? approverStepHtml(purchasingEmail,'Mua hàng',              meta.purchasingStatus|| (purchasingEmail? 'Pending' : 'N/A')) : ''}
+                    ${budgetEmail    ? approverStepHtml(budgetEmail,    'Duyệt ngân sách',    _approverStatus(budgetEmail,    'budgetStatus'),    activeStage === 'parallel', false) : ''}
+                    ${supplierEmail  ? approverStepHtml(supplierEmail,  'Duyệt nhà cung cấp', _approverStatus(supplierEmail,  'supplierStatus'),  activeStage === 'parallel', false) : ''}
+                    ${contractEmail  ? approverStepHtml(contractEmail,  'Thẩm định HĐ',       _approverStatus(contractEmail,  'contractStatus'),  activeStage === 'contract',  activeStage === 'parallel') : ''}
+                    ${purchasingEmail? approverStepHtml(purchasingEmail,'Mua hàng',            _approverStatus(purchasingEmail,'purchasingStatus'),activeStage === 'purchasing',activeStage === 'parallel' || activeStage === 'contract') : ''}
                     ${(!budgetEmail && !supplierEmail && !contractEmail && !purchasingEmail) ? '<div style="font-size:12px;color:#94a3b8;padding:4px 0;">Chưa có thông tin người duyệt.</div>' : ''}
                     ${meta.rejectionNote ? `<div style="margin-top:6px;padding:10px 12px;background:#fff5f5;border:1px solid #fecaca;border-radius:8px;font-size:12px;color:#b91c1c;">
                         <strong>Lý do từ chối:</strong> ${_escHtmlPR(meta.rejectionNote)}
@@ -3815,14 +3880,21 @@
             </div>
         `;
 
-        // Action buttons — determine if the current user can approve/reject
+        // Action buttons — gated by active stage (mirrors backend gate checks)
         const activeStatus = (pr.status || '').toLowerCase();
         const isTerminal   = activeStatus === 'hoàn thành' || activeStatus === 'approved' || activeStatus === 'đã từ chối' || activeStatus === 'rejected';
-        const isBudgetApprover    = !isTerminal && !!(myEmail && myEmail === budgetEmail.toLowerCase()    && meta.budgetStatus    !== 'Approved');
-        const isSupplierApprover  = !isTerminal && !!(myEmail && myEmail === supplierEmail.toLowerCase()  && meta.supplierStatus  !== 'Approved');
-        const isContractApprover  = !isTerminal && !!(myEmail && contractEmail  && myEmail === contractEmail.toLowerCase()  && meta.contractStatus  !== 'Approved');
-        const isPurchasingApprover= !isTerminal && !!(myEmail && purchasingEmail&& myEmail === purchasingEmail.toLowerCase()&& meta.purchasingStatus !== 'Approved');
-        const approveRole = isBudgetApprover ? 'budget' : isSupplierApprover ? 'supplier' : isContractApprover ? 'contract' : isPurchasingApprover ? 'purchasing' : null;
+
+        let approveRole = null;
+        if (!isTerminal && myEmail) {
+            if (activeStage === 'parallel') {
+                if (myEmail === budgetEmail    && meta.budgetStatus    !== 'Approved') approveRole = 'budget';
+                else if (myEmail === supplierEmail && meta.supplierStatus !== 'Approved') approveRole = 'supplier';
+            } else if (activeStage === 'contract' && myEmail === contractEmail) {
+                approveRole = 'contract';
+            } else if (activeStage === 'purchasing' && myEmail === purchasingEmail) {
+                approveRole = 'purchasing';
+            }
+        }
         const safePrNo    = _escAttrPR(pr.prNo || '');
 
         let actionsHtml = `<button class="pr-action-btn pr-btn-print" onclick="printPR('${safePrNo}')">

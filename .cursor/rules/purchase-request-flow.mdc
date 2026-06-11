@@ -13,10 +13,10 @@ Single-page wizard (4 steps) posting to **`/api/voucher`** (Vercel proxy → `TL
 ## Backend coupling
 
 - `getMasterData` → `TLCG_CORE_BACKEND` — employees, Goods-KTT, suppliers (shared with all workflows)
-- `purchaseRequest` → `TLCG_P2P_BACKEND` — writes to `Purchase_Request_History` sheet; sends emails to requester + approvers
+- `purchaseRequest` → `TLCG_P2P_BACKEND` — writes to `Purchase_Request_History` sheet; sends emails to requester + budget + supplier approvers only
 - `getPurchaseRequestHistory` → `TLCG_P2P_BACKEND` — returns `requests[]` with `items` (JSON) and `metadata` (JSON)
-- `approvePurchaseRequest` → `TLCG_P2P_BACKEND` — updates `metadata.budgetStatus` / `metadata.supplierStatus`
-- `rejectPurchaseRequest` → `TLCG_P2P_BACKEND` — sets status=`Rejected`, writes `metadata.rejectionNote`
+- `approvePurchaseRequest` → `TLCG_P2P_BACKEND` — updates `metadata.{role}Status`, computes next status via `computePRApprovalState_`, sends stage emails when contract/purchasing stage opens
+- `rejectPurchaseRequest` → `TLCG_P2P_BACKEND` — sets status=`Đã từ chối`, writes `metadata.rejectionNote`; gated so only the active stage's approver can reject
 
 **`BACKEND_URL = '/api/voucher'`** (Vercel proxy) — do NOT hardcode a direct GAS exec URL.
 
@@ -44,9 +44,11 @@ Set Script Property after deploy: key=`PURCHASE_REQUEST_FOLDER_ID`, value=`1SJ-p
 
 **Step 3 — Phê duyệt**
 
-- `budget_approver` email **required**.
-- `supplier_approver` **optional** (no toast if empty).
-- `final_approver` exists but is **disabled** in UI — not part of submission payload.
+- `budget_approver` email **required** (FE + BE validation).
+- `supplier_approver` **required** — both budget and supplier must be selected (FE + BE validation). Field is marked with `*` in UI.
+- `contract_approver` optional — if assigned, becomes active after parallel phase completes.
+- `purchasing_approver` optional — if assigned, becomes active after contract phase completes (or after parallel if contract not assigned).
+- Step 5 "Phê duyệt cuối" card has been **removed** and replaced with an info callout. Completion = after all assigned steps are approved.
 
 **Step 4 — Xác nhận**
 
@@ -127,9 +129,28 @@ requiredDate, priority, currency, items (JSON string of line objects),
 grandTotal, purpose,
 vendorName, vendorType, vendorTaxId, vendorAddress,
 vendorAccountName, vendorAccountNo, vendorBankName, vendorTransferNote,
-budgetCode, budgetApprover, supplierApprover, submittedAt,
+budgetCode,
+budgetApprover (required), budgetApproverNote,
+supplierApprover (required), supplierApproverNote,
+contractApprover (optional), purchasingApprover (optional),
+submittedAt,
 requesterSignature (base64), attachments (JSON string of [{fileName, fileData, mimeType}])
 ```
+
+**Metadata JSON** (col Q) initialized at submit to include per-role status:
+```json
+{
+  "budgetStatus": "Pending",
+  "supplierStatus": "Pending",
+  "contractStatus": "Pending | N/A",
+  "purchasingStatus": "Pending | N/A",
+  "requesterEmail": "...",
+  "budgetApproverNote": "...",
+  "supplierApproverNote": "...",
+  ...
+}
+```
+Roles not assigned at submit get `N/A` status (auto-skipped by `computePRApprovalState_`).
 
 ## Items line object structure
 
@@ -152,11 +173,65 @@ item.desc || item.name || item.itemName || '—'
 - Drive URLs stored in `metadata.attachments[]` as `{fileName, fileUrl}`
 - **Never use `/api/drive-upload`** (no Service Account quota on personal Drive)
 
-## Email notifications after submit
+## Approval workflow (Phase 3 — Phê Duyệt)
 
-`handlePurchaseRequest` calls `sendPurchaseRequestEmails_(data, prNo)` after saving:
-- Requester (`data.requesterEmail`) gets confirmation email
-- Budget approver (`data.budgetApprover`) and supplier approver (`data.supplierApprover`) get approval-request emails
+Implements the global P2P approval model:
+
+```
+Submit → Phase A (Parallel): Budget + Supplier both active
+       → Phase B (Sequential): Contract (if assigned)
+       → Phase C (Sequential): Purchasing (if assigned)
+       → Hoàn thành
+```
+
+### `computePRApprovalState_(row, metadata)` in `TLCG_P2P_BACKEND.gs`
+
+Central helper used by approve, reject, and submit to determine:
+- Active `stage`: `'parallel'` | `'contract'` | `'purchasing'` | `'complete'`
+- `statusLabel` (written to col O)
+- Email addresses for each role
+
+**Stage advancement rules:**
+- `parallel` active while any of `{budget, supplier}` is assigned but not `Approved`
+- `contract` opens only when parallel complete AND contract email assigned AND not Approved
+- `purchasing` opens only when contract complete/skipped AND purchasing email assigned
+- Unassigned optional roles are auto-skipped (`N/A` initial status)
+
+### Status labels in sheet (col O)
+
+| Stage | Status text |
+|-------|-------------|
+| After submit | `Đang duyệt ngân sách & NCC (2/5)` |
+| Contract active | `Thẩm định Hợp đồng (4/5)` |
+| Purchasing active | `Mua hàng (5/5)` |
+| Done | `Hoàn thành` |
+| Rejected | `Đã từ chối` |
+
+### Frontend stage helper
+
+`_computePRStage(pr, meta)` in `purchase_request.html` mirrors the backend and returns `{ stage, budgetEmail, supplierEmail, contractEmail, purchasingEmail }`. Used by `_isMyPRTask` and drawer action gating.
+
+### Gate checks (BE + FE)
+
+- Approver may only act when their role's stage is the currently active one
+- Budget approving does NOT advance status until Supplier also approves (parallel stays open)
+- Out-of-order approve attempts are rejected with clear message
+
+---
+
+## Email notifications
+
+### On submit (`sendPurchaseRequestEmails_`)
+- Requester gets confirmation email
+- **Budget + Supplier approvers only** receive approval-request email on submit
+- Contract and Purchasing approvers are **not emailed at submit time**
+
+### On stage transition (`sendPurchaseRequestStageEmail_`)
+- Contract approver is emailed when parallel phase completes (both budget + supplier approved)
+- Purchasing approver is emailed when contract phase completes (or parallel completes if contract not assigned)
+
+### On completion (`sendPurchaseRequestCompletionEmail_`)
+- Requester notified when PR reaches `Hoàn thành`
 
 **Submit UX:** Spinner; **network `catch`** shows error toast (`submitForm`).
 
@@ -179,6 +254,35 @@ item.desc || item.name || item.itemName || '—'
 | `TLCG_CASH_BACKEND.gs` | Cash & Admin | `TLCG_CASH_BACKEND_URL` (fallback: `VOUCHER_BACKEND_URL`) |
 | `TLCG_O2C_BACKEND.gs` | O2C — Bán hàng (future) | `TLCG_O2C_BACKEND_URL` |
 
+## Stat pills / filter buckets
+
+`applyPRFilter(bucket)` accepts bucket strings (not raw status values):
+- `''` — All
+- `'dang-xu-ly'` — any in-progress status (not Hoàn thành / Đã từ chối)
+- `'hoan-thanh'` — Hoàn thành / Approved
+- `'tu-choi'` — Đã từ chối / Rejected
+
+`_prStatusBucket(status)` maps any stored status string to the correct bucket.
+
+---
+
+## Verification checklist
+
+| Scenario | Expected |
+|----------|----------|
+| Submit without supplier | Blocked (FE toast + BE `400`) |
+| Budget + Supplier only | Parallel → **Hoàn thành** (skip contract & purchasing) |
+| All 4 assigned | Parallel → contract email → contract approve → purchasing email → purchasing approve → **Hoàn thành** |
+| Contract skipped, purchasing assigned | Parallel → purchasing email → **Hoàn thành** |
+| Out-of-order approve | Rejected: "Chưa đến lượt duyệt của bạn" |
+| Reject at any stage | **Đã từ chối**, no further actions allowed |
+| My Task filter | Only shows PRs where user's role is in the currently active stage |
+| Emails on submit | Budget + Supplier only (not Contract/Purchasing) |
+
+After GAS redeploy: submit PR, approve from drawer as each role, confirm sheet col O (Status) and col Q (Metadata) update correctly.
+
+---
+
 ## When editing this flow
 
 - `BACKEND_URL` in `purchase_request.html` must stay as **`/api/voucher`** — never hardcode a direct GAS exec URL.
@@ -186,3 +290,4 @@ item.desc || item.name || item.itemName || '—'
 - Align **`Goods-KTT`** sheet headers with `seedGoods` column names (`Items`, `Min. Order`, `Status`, `Category`, `Unit`, `Specification`, `CUKCUK/QBO Code`).
 - `Purchase_Request_History` sheet is auto-created on first submit if missing.
 - PR numbers are **client-generated** (localStorage counter per day). GAS does not enforce uniqueness — do not rely on them as globally unique IDs.
+- `computePRApprovalState_` is the single source of truth for active stage in GAS. `_computePRStage` in `purchase_request.html` mirrors it client-side. Keep them in sync if logic changes.
