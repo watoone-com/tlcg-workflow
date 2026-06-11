@@ -1435,16 +1435,16 @@
             </div>
 
             <div class="summary-section">
-                <div class="summary-header"><i class="fas fa-user-check"></i> Người phê duyệt &amp; Chữ ký</div>
-                <div class="summary-row"><span class="summary-lbl">Ngân sách</span><span class="summary-val" id="sum-budget-approver">—</span></div>
-                <div class="summary-row"><span class="summary-lbl">NCC</span><span class="summary-val" id="sum-supplier-approver">—</span></div>
-                <div class="summary-row" id="sum-contract-approver-row" style="display:none;"><span class="summary-lbl">Hợp đồng</span><span class="summary-val" id="sum-contract-approver">—</span></div>
-                <div class="summary-row" id="sum-purchasing-approver-row" style="display:none;"><span class="summary-lbl">Mua hàng</span><span class="summary-val" id="sum-purchasing-approver">—</span></div>
+                <div class="summary-header"><i class="fas fa-diagram-project"></i> Chuỗi phê duyệt</div>
+                <div id="sum-approval-chain" style="display:flex;flex-direction:column;gap:0;"></div>
+            </div>
+
+            <div class="summary-section">
+                <div class="summary-header"><i class="fas fa-pen-nib"></i> Chữ ký người đề nghị</div>
                 <div class="summary-row">
-                    <span class="summary-lbl">Chữ ký</span>
                     <span class="summary-val" id="sum-signature">
-                        <img id="sum-sig-img" src="" alt="Chữ ký người đề nghị" style="display:none;max-height:40px;max-width:120px;vertical-align:middle;">
-                        <span id="sum-sig-placeholder">—</span>
+                        <img id="sum-sig-img" src="" alt="Chữ ký người đề nghị" style="display:none;max-height:48px;max-width:140px;vertical-align:middle;border:1px solid #e2e8f0;border-radius:6px;padding:4px;background:white;">
+                        <span id="sum-sig-placeholder" style="font-size:12px;color:#94a3b8;">Chưa ký</span>
                     </span>
                 </div>
             </div>
@@ -2457,33 +2457,97 @@
             attRow.style.display = 'none';
         }
 
-        const sel1 = document.getElementById('budget_approver');
-        document.getElementById('sum-budget-approver').textContent = sel1.options[sel1.selectedIndex]?.text || '—';
-        const sel2 = document.getElementById('supplier_approver');
-        document.getElementById('sum-supplier-approver').textContent = sel2.value ? sel2.options[sel2.selectedIndex]?.text : '—';
+        // ── Approval chain visual ────────────────────────────────
+        const _getSelText = id => {
+            const el = document.getElementById(id);
+            return el?.value ? (el.options[el.selectedIndex]?.text || '—') : '';
+        };
+        const _getVal = id => (document.getElementById(id)?.value || '').trim();
 
-        const sel3 = document.getElementById('contract_approver');
-        const sumContract = document.getElementById('sum-contract-approver');
-        const sumContractRow = document.getElementById('sum-contract-approver-row');
-        if (sumContract && sumContractRow) {
-            if (sel3?.value) {
-                sumContract.textContent = sel3.options[sel3.selectedIndex]?.text || '—';
-                sumContractRow.style.display = '';
-            } else {
-                sumContractRow.style.display = 'none';
-            }
-        }
+        const budgetName    = _getSelText('budget_approver');
+        const budgetNote    = _getVal('budget_approver_note');
+        const supplierName  = _getSelText('supplier_approver');
+        const supplierNote  = _getVal('supplier_approver_note');
+        const contractName  = _getSelText('contract_approver');
+        const purchasingName= _getSelText('purchasing_approver');
 
-        const sel4 = document.getElementById('purchasing_approver');
-        const sumPurchasing = document.getElementById('sum-purchasing-approver');
-        const sumPurchasingRow = document.getElementById('sum-purchasing-approver-row');
-        if (sumPurchasing && sumPurchasingRow) {
-            if (sel4?.value) {
-                sumPurchasing.textContent = sel4.options[sel4.selectedIndex]?.text || '—';
-                sumPurchasingRow.style.display = '';
-            } else {
-                sumPurchasingRow.style.display = 'none';
+        const chainEl = document.getElementById('sum-approval-chain');
+        if (chainEl) {
+            const roleCard = (icon, color, roleLabel, name, note, badge) => `
+                <div style="display:flex;align-items:flex-start;gap:10px;padding:10px 12px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:9px;">
+                    <div style="width:32px;height:32px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px;">
+                        <i class="${icon}" style="color:white;font-size:12px;"></i>
+                    </div>
+                    <div style="flex:1;min-width:0;">
+                        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                            <span style="font-size:12px;font-weight:600;color:#1e293b;">${roleLabel}</span>
+                            ${badge ? `<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:20px;background:${badge.bg};color:${badge.text};">${badge.label}</span>` : ''}
+                        </div>
+                        <div style="font-size:13px;color:#334155;margin-top:2px;font-weight:500;">${name}</div>
+                        ${note ? `<div style="font-size:11px;color:#64748b;margin-top:3px;font-style:italic;">"${note}"</div>` : ''}
+                    </div>
+                </div>`;
+
+            const parallelBadge = { bg: '#dbeafe', text: '#1d4ed8', label: 'Song song' };
+            const seqBadge      = { bg: '#f3f4f6', text: '#374151', label: 'Tuần tự' };
+            const optBadge      = (name) => name ? seqBadge : { bg: '#f1f5f9', text: '#94a3b8', label: 'Bỏ qua' };
+
+            let html = '';
+
+            // Phase A header
+            html += `<div style="display:flex;align-items:center;gap:8px;padding:8px 0 6px;">
+                <div style="flex:1;height:1px;background:#e2e8f0;"></div>
+                <span style="font-size:10px;font-weight:700;color:#64748b;letter-spacing:.5px;white-space:nowrap;">GIAI ĐOẠN A — SONG SONG</span>
+                <div style="flex:1;height:1px;background:#e2e8f0;"></div>
+            </div>`;
+            html += `<div style="display:flex;flex-direction:column;gap:6px;">`;
+            html += roleCard('fas fa-coins',     '#3b82f6', 'Người phê duyệt ngân sách', budgetName   || '—', budgetNote,   parallelBadge);
+            html += roleCard('fas fa-handshake', '#8b5cf6', 'Người phê duyệt NCC',       supplierName || '—', supplierNote, parallelBadge);
+            html += `</div>`;
+
+            // Connector
+            html += `<div style="display:flex;justify-content:center;padding:4px 0;">
+                <div style="width:2px;height:18px;background:linear-gradient(#e2e8f0,#cbd5e1);border-radius:2px;"></div>
+            </div>`;
+
+            // Phase B
+            if (contractName) {
+                html += `<div style="display:flex;align-items:center;gap:8px;padding:4px 0 6px;">
+                    <div style="flex:1;height:1px;background:#e2e8f0;"></div>
+                    <span style="font-size:10px;font-weight:700;color:#64748b;letter-spacing:.5px;white-space:nowrap;">GIAI ĐOẠN B — TUẦN TỰ</span>
+                    <div style="flex:1;height:1px;background:#e2e8f0;"></div>
+                </div>`;
+                html += roleCard('fas fa-file-contract', '#f59e0b', 'Người thẩm định hợp đồng', contractName, '', seqBadge);
+                html += `<div style="display:flex;justify-content:center;padding:4px 0;">
+                    <div style="width:2px;height:18px;background:linear-gradient(#e2e8f0,#cbd5e1);border-radius:2px;"></div>
+                </div>`;
             }
+
+            // Phase C
+            if (purchasingName) {
+                html += `<div style="display:flex;align-items:center;gap:8px;padding:4px 0 6px;">
+                    <div style="flex:1;height:1px;background:#e2e8f0;"></div>
+                    <span style="font-size:10px;font-weight:700;color:#64748b;letter-spacing:.5px;white-space:nowrap;">GIAI ĐOẠN C — TUẦN TỰ</span>
+                    <div style="flex:1;height:1px;background:#e2e8f0;"></div>
+                </div>`;
+                html += roleCard('fas fa-cart-shopping', '#10b981', 'Người mua hàng', purchasingName, '', seqBadge);
+                html += `<div style="display:flex;justify-content:center;padding:4px 0;">
+                    <div style="width:2px;height:18px;background:linear-gradient(#e2e8f0,#cbd5e1);border-radius:2px;"></div>
+                </div>`;
+            }
+
+            // Done node
+            html += `<div style="display:flex;align-items:center;gap:10px;padding:8px 12px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:9px;">
+                <div style="width:32px;height:32px;border-radius:50%;background:#22c55e;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+                    <i class="fas fa-circle-check" style="color:white;font-size:13px;"></i>
+                </div>
+                <div>
+                    <div style="font-size:12px;font-weight:700;color:#166534;">Hoàn thành</div>
+                    <div style="font-size:11px;color:#4ade80;margin-top:1px;">Sau khi tất cả các bước được duyệt</div>
+                </div>
+            </div>`;
+
+            chainEl.innerHTML = html;
         }
 
         // Signature preview in summary
