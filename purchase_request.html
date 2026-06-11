@@ -860,7 +860,7 @@
     <!-- ── Page content ────────────────────────────────────────── -->
     <main class="page-content" id="main-content" tabindex="-1">
 
-        <h1 style="font-family:var(--font-display); font-size:22px; font-weight:700; text-align:center; margin:4px 0 0; text-wrap:balance;">Đề nghị mua hàng</h1>
+        <h1 style="font-family:var(--font-display); font-size:22px; font-weight:700; text-align:center; margin:4px 0 0; text-wrap:balance;">ĐỀ NGHỊ MUA HÀNG</h1>
 
         <!-- Progress stepper -->
         <div class="progress-stepper" role="navigation" aria-label="Các bước phiếu">
@@ -1469,7 +1469,7 @@
             </div>
             <h2 style="font-family:var(--font-display); font-size:22px; font-weight:700;">Đề nghị đã được gửi!</h2>
             <p style="color:var(--text-secondary); max-width:400px;">
-                Đề nghị mua hàng của bạn đã được gửi thành công. Người phê duyệt sẽ nhận được thông báo qua email.
+                ĐỀ NGHỊ MUA HÀNG của bạn đã được gửi thành công. Người phê duyệt sẽ nhận được thông báo qua email.
             </p>
             <p id="success-pr-no" style="font-size:15px; font-weight:600; color:var(--primary);"></p>
             <div style="display:flex; gap:10px; flex-wrap:wrap; justify-content:center; margin-top:8px;">
@@ -1489,7 +1489,7 @@
         <div class="recent-pr-card">
             <!-- Header -->
             <div class="recent-pr-header">
-                <h3><i class="fas fa-list-check" style="color:var(--primary);margin-right:8px;" aria-hidden="true"></i>Đề nghị mua hàng gần đây</h3>
+                <h3><i class="fas fa-list-check" style="color:var(--primary);margin-right:8px;" aria-hidden="true"></i>ĐỀ NGHỊ MUA HÀNG gần đây</h3>
                 <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
                     <span id="pr-last-refresh" style="font-size:12px;color:var(--text-secondary);"></span>
                     <button type="button" id="my-pr-task-btn" onclick="toggleMyPRTaskFilter()"
@@ -2748,7 +2748,7 @@
                 const ss = document.getElementById('success-screen');
                 ss.style.display = 'flex';
                 document.getElementById('success-pr-no').textContent = 'Số phiếu: ' + _prNo;
-                showToast('Đề nghị mua hàng đã được gửi thành công!', 'success', 4000);
+                showToast('ĐỀ NGHỊ MUA HÀNG đã được gửi thành công!', 'success', 4000);
                 // Invalidate cache and reload list so new PR appears immediately
                 localStorage.removeItem(_PR_CACHE_KEY);
                 localStorage.removeItem(_PR_CACHE_TS_KEY);
