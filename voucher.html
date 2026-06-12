@@ -5770,8 +5770,9 @@
                     document.getElementById('acknowledge-modal-overlay').classList.remove('show');
                     const isThu = (currentModalVoucher?.voucherType || '').toUpperCase().includes('THU');
                     showToast(isThu ? 'Đã xác nhận thu tiền thành công!' : 'Đã xác nhận nhận tiền thành công!', 'success');
+                    voucherHistoryCache.delete(currentModalVoucher?.voucherNumber);
                     closeVoucherModal();
-                    loadRecentVouchers();
+                    loadRecentVouchers(true);
                 } else {
                     showToast(result.message || 'Lỗi xác nhận', 'error');
                     confirmBtn.disabled = false;
@@ -5918,7 +5919,7 @@
                         showToast(`Đã nhập ${d.imported} phiếu. Email phê duyệt đã gửi tới Kế toán trưởng.` +
                             (d.errors && d.errors.length ? ` Lỗi: ${d.errors.length} dòng.` : ''), 'success');
                     }
-                    loadRecentVouchers();
+                    loadRecentVouchers(true);
                 } else if (result.data && result.data.invalid && result.data.invalid.length) {
                     // Show validation error modal
                     showImportValidationErrors(result.data.invalid);
@@ -6091,7 +6092,7 @@
                 clearBulkSelection();
                 // Close modal without confirm dialog (called programmatically)
                 document.getElementById('bulk-approve-modal-overlay').classList.remove('show');
-                loadRecentVouchers();
+                loadRecentVouchers(true);
             } catch (err) {
                 console.error('bulkApproveSelected error:', err);
                 showToast('Lỗi kết nối khi duyệt: ' + err.message, 'error');
@@ -7046,8 +7047,9 @@
                 
                 if (result.success) {
                     showToast('Đã phê duyệt phiếu thành công!', 'success');
+                    voucherHistoryCache.delete(currentModalVoucher.voucherNumber);
                     closeVoucherModal();
-                    loadRecentVouchers();
+                    loadRecentVouchers(true);
                 } else {
                     showToast(result.message || 'Lỗi phê duyệt', 'error');
                     modalFooter.querySelectorAll('button').forEach(btn => btn.disabled = false);
@@ -7149,8 +7151,9 @@
                 
                 if (result.success) {
                     showToast('Đã từ chối phiếu thành công!', 'success');
+                    voucherHistoryCache.delete(currentModalVoucher.voucherNumber);
                     closeVoucherModal();
-                    loadRecentVouchers();
+                    loadRecentVouchers(true);
                 } else {
                     const errorMsg = result.message || 'Lỗi từ chối';
                     // Check for already processed error
