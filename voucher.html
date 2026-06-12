@@ -5312,7 +5312,17 @@
                 };
             }
             if (state.bucket === 'approved') return { status: 'Đã duyệt (3/3)', detail: 'Chờ người nộp xác nhận', statusClass: 'approved' };
-            if (state.bucket === 'in-progress') return { status: `Đang duyệt (${state.progressNum}/3)`, detail: 'Đang chờ bước duyệt tiếp theo', statusClass: 'in-progress' };
+            if (state.bucket === 'in-progress') {
+                const role = getCallerRole();
+                const isMyTurn = (role === 'accountant' && state.progressNum === 0)
+                              || (role === 'legalRep'    && state.progressNum === 1)
+                              || (role === 'treasurer'   && state.progressNum === 2);
+                return {
+                    status: `Đang duyệt (${state.progressNum}/3)`,
+                    detail: isMyTurn ? 'Đến lượt bạn phê duyệt — hãy mở chi tiết' : 'Đang chờ bước duyệt tiếp theo',
+                    statusClass: 'in-progress'
+                };
+            }
             return { status: 'Đang treo', detail: 'Chưa có phê duyệt', statusClass: 'pending' };
         }
 
@@ -5451,11 +5461,27 @@
             const approvers = statusData.approvers || statusData;
             const progress = parseInt((statusData.approvalProgress || '0/3').split('/')[0], 10) || 0;
             const state = normalizeVoucherState(voucher);
+
+            // Build approver name map from history entries (summary API omits per-role names)
+            const nameByStep = {};
+            (historyEntries || []).forEach(h => {
+                const cp = h.meta?.companyApprovers;
+                if (!cp?.approvalProgress) return;
+                const p = parseInt(cp.approvalProgress.split('/')[0]);
+                const action = h.action || '';
+                const m = action.match(/^Duyệt bởi\s+(.+?)(?:\s*[-–].*)?$/);
+                if (m) {
+                    if (p === 1 && !nameByStep.accountant) nameByStep.accountant = m[1].trim();
+                    else if (p === 2 && !nameByStep.legalRep) nameByStep.legalRep = m[1].trim();
+                    else if (p === 3 && !nameByStep.treasurer) nameByStep.treasurer = m[1].trim();
+                }
+            });
+
             const steps = [
                 { key: 'submit', title: 'Đã nộp phiếu', done: true, meta: voucher.employee || voucher.requestorEmail || 'Người nộp' },
-                { key: 'accountant', title: 'Duyệt bước 1 (Kế toán)', done: progress >= 1, meta: approvers.accountant?.name || 'Chờ xử lý' },
-                { key: 'legalRep', title: 'Duyệt bước 2 (Đại diện pháp luật)', done: progress >= 2, meta: approvers.legalRep?.name || 'Chờ xử lý' },
-                { key: 'treasurer', title: 'Duyệt bước 3 (Thủ quỹ)', done: progress >= 3, meta: approvers.treasurer?.name || 'Chờ xử lý' },
+                { key: 'accountant', title: 'Duyệt bước 1 (Kế toán)', done: progress >= 1, meta: approvers.accountant?.name || nameByStep.accountant || 'Chờ xử lý' },
+                { key: 'legalRep', title: 'Duyệt bước 2 (Đại diện pháp luật)', done: progress >= 2, meta: approvers.legalRep?.name || nameByStep.legalRep || 'Chờ xử lý' },
+                { key: 'treasurer', title: 'Duyệt bước 3 (Thủ quỹ)', done: progress >= 3, meta: approvers.treasurer?.name || nameByStep.treasurer || 'Chờ xử lý' },
                 {
                     key: 'ack',
                     title: (voucher.voucherType || '').toUpperCase().includes('THU') ? 'Xác nhận đã thu tiền' : 'Xác nhận đã nhận tiền',
@@ -6228,7 +6254,8 @@
                     modalContent.innerHTML = await renderVoucherDetails(voucher, historyData, isRequester);
                     
                     // Add action buttons based on voucher status AND user role
-                    if (voucher.status === 'Pending') {
+                    const vState = normalizeVoucherState(voucher);
+                    if (vState.bucket === 'pending' || vState.bucket === 'in-progress') {
                         if (isRequester) {
                             // Requester can only view and print their pending request
                             modalFooter.innerHTML = `
