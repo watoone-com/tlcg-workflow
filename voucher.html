@@ -6462,9 +6462,10 @@
                 }).join('');
             }
             
-            // Approver signature section (only for pending AND only for approvers, not requesters)
+            // Approver signature section (only for actionable states AND only for approvers, not requesters)
             let approverSignatureSection = '';
-            if (voucher.status === 'Pending' && !isRequester) {
+            const vStateForSig = normalizeVoucherState(voucher);
+            if ((vStateForSig.bucket === 'pending' || vStateForSig.bucket === 'in-progress') && !isRequester) {
                 approverSignatureSection = `
                     <div class="approver-signature-section">
                         <h4>✍️ Chữ ký người phê duyệt</h4>
