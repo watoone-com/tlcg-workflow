@@ -4350,9 +4350,20 @@
             b.classList.toggle('active', (b.dataset.value || b.dataset.priority) === priorityNorm);
         });
 
-        // Vendor (pre-fill free-text vendor field if available)
-        const vendorNewEl = document.getElementById('vendor_new');
-        if (vendorNewEl && pr.suggestedVendor) vendorNewEl.value = pr.suggestedVendor;
+        // Vendor — restore full details from metadata.vendorDetails + vendor name from column 8
+        const vd = (meta && meta.vendorDetails) ? meta.vendorDetails : {};
+        const vendorName = pr.suggestedVendor || '';
+        const _svEl = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
+        _svEl('vendor_new',           vendorName);
+        _svEl('vendor_final_name',    vendorName);
+        _svEl('vendor_type_final',    vd.vendorType    || '');
+        _svEl('vendor_taxid_final',   vd.vendorTaxId   || '');
+        _svEl('vendor_address_final', vd.vendorAddress || '');
+        _svEl('vendor_account_name',  vd.vendorAccountName  || '');
+        _svEl('vendor_account_no',    vd.vendorAccountNo    || '');
+        _svEl('vendor_bank_name',     vd.vendorBankName     || '');
+        _svEl('vendor_transfer_note', vd.vendorTransferNote || '');
+        if (vendorName && typeof onVendorNewInput === 'function') onVendorNewInput();
 
         // -- Items: re-populate into sections --
         if (Array.isArray(items) && items.length > 0) {
