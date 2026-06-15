@@ -3122,6 +3122,8 @@
                 opt.value = email; opt.textContent = name;
                 sel.appendChild(opt);
             });
+            // Default to first Kế Toán Chi employee
+            if (ktChi.length > 0) sel.value = (ktChi[0].employee_email || ktChi[0]['Email'] || '').trim();
         }
         // budget_approver, supplier_approver, contract_approver are populated
         // by seedApproversFromCompany() when the user selects a company
