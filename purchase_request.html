@@ -1912,6 +1912,22 @@
         clearVendorFields();
         generateRequestNumber();
         if (sel.value) loadVendors(key);
+
+        // Populate budget/supplier/contract approvers from company roles
+        const companiesArr = (typeof TLCG_COMPANIES_DATA !== 'undefined' && TLCG_COMPANIES_DATA?.companies_data) || [];
+        const matchedEntry = companiesArr.find(c => {
+            const cKey  = c['Mã định danh'] || '';
+            const cName = c['Tên công ty']  || '';
+            return (cKey ? `${cName} (${cKey})` : cName) === sel.value;
+        });
+        if (matchedEntry) {
+            seedApproversFromCompany(matchedEntry);
+        } else {
+            ['budget_approver', 'supplier_approver', 'contract_approver'].forEach(id => {
+                const s = document.getElementById(id);
+                if (s) s.innerHTML = '<option value="">-- Chọn --</option>';
+            });
+        }
     }
 
     function generateRequestNumber() {
@@ -3089,18 +3105,57 @@
     }
 
     function seedApprovers(employees) {
-        const active = employees.filter(e => (e.employee_status || e['Status'] || '').toLowerCase() === 'active');
-        ['budget_approver','supplier_approver','contract_approver','purchasing_approver','final_approver'].forEach(id => {
-            const sel = document.getElementById(id);
-            if (!sel) return;
-            active.forEach(e => {
-                const name = (e.full_name || e['Họ và tên'] || '').trim();
+        _allEmployees = employees; // store for seedApproversFromCompany cross-reference
+        // purchasing_approver: filter by department 'Kế Toán Chi'
+        const ktChi = employees.filter(e =>
+            (e.employee_status || e['Status'] || '').toLowerCase() === 'active' &&
+            (e.department_name || e['Bộ phận'] || '') === 'Kế Toán Chi'
+        );
+        const sel = document.getElementById('purchasing_approver');
+        if (sel) {
+            sel.innerHTML = '<option value="">-- Không có --</option>';
+            ktChi.forEach(e => {
+                const name  = (e.full_name || e['Họ và tên'] || '').trim();
                 const email = (e.employee_email || e['Email'] || '').trim();
                 if (!name) return;
                 const opt = document.createElement('option');
                 opt.value = email; opt.textContent = name;
                 sel.appendChild(opt);
             });
+        }
+        // budget_approver, supplier_approver, contract_approver are populated
+        // by seedApproversFromCompany() when the user selects a company
+    }
+
+    function seedApproversFromCompany(entry) {
+        const roles = [
+            { email: (entry['Email Đại diện pháp luật'] || '').trim(), fallbackName: (entry['Đại diện pháp luật'] || '').trim() },
+            { email: (entry['Email Kế toán trưởng']     || '').trim(), fallbackName: (entry['Kế toán trưởng']     || '').trim() },
+            { email: (entry['Email Thủ quỹ']            || '').trim(), fallbackName: (entry['Thủ quỹ']            || '').trim() },
+        ].filter(r => r.email);
+
+        const treasurerEmail = (entry['Email Thủ quỹ'] || '').trim();
+
+        ['budget_approver', 'supplier_approver', 'contract_approver'].forEach(id => {
+            const sel = document.getElementById(id);
+            if (!sel) return;
+            const isOptional = id === 'contract_approver';
+            sel.innerHTML = isOptional
+                ? '<option value="">-- Không có --</option>'
+                : '<option value="">-- Chọn --</option>';
+
+            roles.forEach(r => {
+                // Cross-reference email → proper display name from employee list
+                const emp  = _allEmployees.find(e => (e.employee_email || e['Email'] || '') === r.email);
+                const name = emp ? (emp.full_name || emp['Họ và tên'] || r.fallbackName) : r.fallbackName;
+                if (!name) return;
+                const opt = document.createElement('option');
+                opt.value = r.email; opt.textContent = name;
+                sel.appendChild(opt);
+            });
+
+            // Default to Treasurer for budget and supplier; no default for contract
+            if (!isOptional && treasurerEmail) sel.value = treasurerEmail;
         });
     }
 
@@ -4333,13 +4388,22 @@
         // -- Basic fields (underscore IDs from the actual form) --
         const _sv = (id, val) => { const el = document.getElementById(id); if (el) el.value = val || ''; };
 
-        _sv('requester_name',      pr.requesterName   || '');
-        _sv('required_date',       pr.requiredDate    || '');
-        _sv('purpose',             pr.purpose         || '');
-        _sv('department',          pr.department      || '');
-        _sv('budget_approver',     pr.budgetApprover  || '');
-        _sv('supplier_approver',   pr.supplierApprover  || '');
-        _sv('contract_approver',   pr.contractApprover  || '');
+        _sv('requester_name', pr.requesterName || '');
+        _sv('required_date',  pr.requiredDate  || '');
+        _sv('purpose',        pr.purpose       || '');
+        _sv('department',     pr.department    || '');
+
+        // Restore company selection → triggers seedApproversFromCompany to populate the approver selects
+        const companySel = document.getElementById('company_code');
+        if (companySel && pr.company) {
+            companySel.value = pr.company;
+            onCompanyChange();
+        }
+
+        // Now set the previously-chosen approver values (options are now present)
+        _sv('budget_approver',     pr.budgetApprover     || '');
+        _sv('supplier_approver',   pr.supplierApprover   || '');
+        _sv('contract_approver',   pr.contractApprover   || '');
         _sv('purchasing_approver', pr.purchasingApprover || '');
 
         // Priority
