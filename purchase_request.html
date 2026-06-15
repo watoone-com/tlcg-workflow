@@ -3127,11 +3127,31 @@
         // by seedApproversFromCompany() when the user selects a company
     }
 
+    // Robust key lookup — handles corrupted unicode in auto-generated embed file
+    function _companyVal(entry, exactKey, prefixFallback) {
+        if (entry[exactKey] !== undefined) return (entry[exactKey] || '').trim();
+        // fallback: find a key that starts with the first N chars of exactKey
+        const prefix = prefixFallback || exactKey.substring(0, 12);
+        for (const k of Object.keys(entry)) {
+            if (k.startsWith(prefix)) return (entry[k] || '').trim();
+        }
+        return '';
+    }
+
     function seedApproversFromCompany(entry) {
         const roles = [
-            { email: (entry['Email Đại diện pháp luật'] || '').trim(), fallbackName: (entry['Đại diện pháp luật'] || '').trim() },
-            { email: (entry['Email Kế toán trưởng']     || '').trim(), fallbackName: (entry['Kế toán trưởng']     || '').trim() },
-            { email: (entry['Email Thủ quỹ']            || '').trim(), fallbackName: (entry['Thủ quỹ']            || '').trim() },
+            {
+                email:        _companyVal(entry, 'Email Đại diện pháp luật', 'Email Đại diệ'),
+                fallbackName: _companyVal(entry, 'Đại diện pháp luật', 'Đại diện')
+            },
+            {
+                email:        _companyVal(entry, 'Email Kế toán trưởng', 'Email Kế toán'),
+                fallbackName: _companyVal(entry, 'Kế toán trưởng', 'Kế toán trưởng')
+            },
+            {
+                email:        _companyVal(entry, 'Email Thủ quỹ', 'Email Thủ quỹ'),
+                fallbackName: _companyVal(entry, 'Thủ quỹ', 'Thủ quỹ')
+            },
         ].filter(r => r.email);
 
         const treasurerEmail = (entry['Email Thủ quỹ'] || '').trim();
