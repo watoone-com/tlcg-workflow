@@ -399,6 +399,15 @@
             transform: translateY(0);
         }
 
+        .notif-item {
+            padding: 10px 14px;
+            cursor: pointer;
+            border-bottom: 0.5px solid #f1f5f9;
+            transition: background 0.15s;
+        }
+        .notif-item:last-child { border-bottom: none; }
+        .notif-item:hover { background: #f8fafc; }
+
         .user-dropdown-item {
             width: 100%;
             text-align: left;
@@ -2553,9 +2562,14 @@
                     <!-- User Avatar -->
                     <div id="nav-user-section" class="flex items-center gap-2">
                         <!-- Notification bell -->
-                        <div id="notif-bell-wrapper" style="position:relative;display:inline-flex;align-items:center;">
+                        <div id="notif-bell-wrapper" onclick="toggleNotifDropdown()" style="position:relative;display:inline-flex;align-items:center;cursor:pointer;padding:4px;">
                             <i class="fas fa-bell" style="font-size:18px;color:#6e6e73;" aria-label="Thông báo"></i>
                             <span id="notif-badge" style="display:none;position:absolute;top:-6px;right:-7px;background:#FF3B30;color:white;border-radius:50%;font-size:10px;font-weight:700;min-width:16px;height:16px;align-items:center;justify-content:center;padding:0 3px;line-height:1;pointer-events:none;">0</span>
+                            <!-- Dropdown panel -->
+                            <div id="notif-dropdown" style="display:none;position:absolute;top:calc(100% + 10px);right:0;width:280px;background:white;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.12);border:0.5px solid rgba(60,60,67,0.18);z-index:1000;overflow:hidden;">
+                                <div style="padding:10px 14px;border-bottom:0.5px solid #f1f5f9;font-size:12px;font-weight:700;color:#374151;">Việc cần làm của tôi</div>
+                                <div style="max-height:320px;overflow-y:auto;" id="notif-dropdown-body"></div>
+                            </div>
                         </div>
                         <div id="nav-login-btn" class="hidden">
                             <button onclick="window.location.href='index.html'" style="color: #007AFF; font-weight: 600; background: none; border: none; cursor: pointer;">Sign In</button>
@@ -5273,7 +5287,8 @@
             if (overdueWrap) overdueWrap.style.display = stats.overdue > 0 ? 'inline-flex' : 'none';
 
             // Update nav notification badge
-            updateNotifBadge(countMyPendingVoucherActions(vouchers));
+            const _pendingItems = _pendingVoucherItems(vouchers);
+            updateNotifBadge(_pendingItems.length, _pendingItems);
         }
 
         function applyStatFilter(statusValue) {
@@ -5589,7 +5604,7 @@
             } catch(e) { return 'submitter'; }
         }
 
-        function countMyPendingVoucherActions(vouchers) {
+        function _pendingVoucherItems(vouchers) {
             const role = getCallerRole();
             return vouchers.filter(v => {
                 const s = normalizeVoucherState(v);
@@ -5599,16 +5614,52 @@
                 if (role === 'treasurer')  return s.progressNum === 2;
                 if (role === 'admin')      return s.progressNum === 0 && s.bucket !== 'rejected';
                 return false;
-            }).length;
+            });
         }
 
-        function updateNotifBadge(count) {
+        function countMyPendingVoucherActions(vouchers) {
+            return _pendingVoucherItems(vouchers).length;
+        }
+
+        function updateNotifBadge(count, items) {
             ['notif-badge', 'notif-badge-mobile'].forEach(id => {
                 const b = document.getElementById(id); if (!b) return;
                 b.textContent = count > 99 ? '99+' : String(count);
                 b.style.display = count > 0 ? 'flex' : 'none';
             });
+            // Rebuild dropdown content
+            const body = document.getElementById('notif-dropdown-body');
+            if (!body) return;
+            if (!items || items.length === 0) {
+                body.innerHTML = `<div style="padding:16px;text-align:center;font-size:13px;color:#94a3b8;">Không có việc cần làm</div>`;
+                return;
+            }
+            body.innerHTML = items.slice(0, 15).map(v => {
+                const no   = v.voucherNumber || '—';
+                const type = (v.voucherType || 'Phiếu').toUpperCase().includes('THU') ? 'Phiếu thu' : 'Phiếu chi';
+                const comp = v.company || v.employee || '';
+                return `<div class="notif-item" onclick="toggleNotifDropdown();openVoucherDetail('${no.replace(/'/g,"\\'")}')">
+                    <div style="font-size:12px;font-weight:700;color:#1d4ed8;">${no}</div>
+                    <div style="font-size:11px;color:#475569;margin-top:1px;">${type}${comp ? ' · ' + comp : ''}</div>
+                </div>`;
+            }).join('') + (items.length > 15 ? `<div style="padding:8px 14px;font-size:11px;color:#94a3b8;text-align:center;">+${items.length-15} phiếu khác</div>` : '');
         }
+
+        function toggleNotifDropdown() {
+            const panel = document.getElementById('notif-dropdown');
+            if (!panel) return;
+            const open = panel.style.display === 'block';
+            panel.style.display = open ? 'none' : 'block';
+        }
+
+        // Close dropdown when clicking outside
+        document.addEventListener('click', function(e) {
+            const wrapper = document.getElementById('notif-bell-wrapper');
+            const panel   = document.getElementById('notif-dropdown');
+            if (panel && panel.style.display === 'block' && wrapper && !wrapper.contains(e.target)) {
+                panel.style.display = 'none';
+            }
+        });
 
         function isMyTask(v) {
             const state = normalizeVoucherState(v);
