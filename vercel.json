@@ -5,6 +5,13 @@
   "framework": null,
   "cleanUrls": true,
   "trailingSlash": false,
+  "redirects": [
+    {
+      "source": "/nghiem_thu",
+      "destination": "/acceptance_minutes",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     {
       "source": "/",

@@ -486,6 +486,10 @@
                 <div class="sidebar-icon-box" style="background:#007AFF;"><i class="fas fa-file-pen"></i></div>
                 <span>Đề Nghị Mua Hàng</span>
             </button>
+            <button onclick="window.location.href='acceptance_minutes.html'" class="sidebar-item" data-tooltip="Biên Bản Nghiệm Thu" data-page="acceptance-minutes">
+                <div class="sidebar-icon-box" style="background:#34C759;"><i class="fas fa-clipboard-check"></i></div>
+                <span>Biên Bản Nghiệm Thu</span>
+            </button>
             <button class="sidebar-item active">
                 <div class="sidebar-icon-box" style="background: #5856D6;"><i class="fas fa-file-invoice-dollar"></i></div>
                 <span>Đề Nghị Thanh Toán</span>
@@ -612,6 +616,37 @@
                         <span style="font-size: 12px; color: var(--text-secondary);">Số phiếu:</span>
                         <span id="req-no-pill" class="req-no-pill" style="margin-left: 8px;"></span>
                     </div>
+                </div>
+            </div>
+
+            <!-- AM No gate ─────────────────────────────────── -->
+            <div class="form-card" style="border-color: rgba(52,199,89,0.4);">
+                <div class="form-card-header" style="background: rgba(52,199,89,0.06);">
+                    <i class="fas fa-clipboard-check" style="color: #34C759; font-size: 14px;"></i>
+                    <h2>Biên Bản Nghiệm Thu <span style="font-size:12px;font-weight:500;color:#1a7a3c;background:rgba(52,199,89,0.12);padding:2px 8px;border-radius:20px;margin-left:6px;">Bắt buộc</span></h2>
+                </div>
+                <div class="form-card-body">
+                    <div class="form-row">
+                        <div class="form-group w2">
+                            <label for="am_no_field">Số Biên Bản Nghiệm Thu (AM No) <span class="req">*</span></label>
+                            <div style="display:flex;gap:8px;align-items:flex-start;">
+                                <input type="text" id="am_no_field" placeholder="Ví dụ: EV-AM20260615000001" oninput="onAMNoInput()" style="flex:1;">
+                                <button type="button" onclick="validateAMNo()" style="white-space:nowrap;flex-shrink:0;padding:9px 14px;font-size:13px;background:rgba(0,0,0,0.05);border:1px solid rgba(0,0,0,0.12);border-radius:8px;cursor:pointer;font-family:var(--font-body);">
+                                    <i class="fas fa-search"></i> Xác minh
+                                </button>
+                            </div>
+                            <p id="am-validation-status" style="font-size:12px;margin-top:5px;color:var(--text-secondary);min-height:16px;"></p>
+                        </div>
+                        <div class="form-group">
+                            <label>Số PR liên kết</label>
+                            <input type="text" id="pm_pr_no" placeholder="Tự động điền sau khi xác minh AM" readonly style="background:var(--bg);">
+                        </div>
+                    </div>
+                    <p style="font-size:12px;color:var(--text-secondary);margin-top:4px;padding:8px 12px;background:rgba(52,199,89,0.06);border-radius:8px;">
+                        <i class="fas fa-info-circle" style="margin-right:4px;color:#34C759;"></i>
+                        Đề nghị thanh toán chỉ được xử lý sau khi Biên Bản Nghiệm Thu đã được người phụ trách xác nhận (trạng thái: <b>Đã nghiệm thu</b>).
+                        <a href="acceptance_minutes.html" target="_blank" style="color:var(--primary);font-weight:600;margin-left:4px;">Tạo biên bản →</a>
+                    </p>
                 </div>
             </div>
 
@@ -1636,11 +1671,22 @@
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang gửi...';
 
+        // AM gate — hard block if not validated
+        const amNoVal = (document.getElementById('am_no_field')?.value || '').trim();
+        if (!amNoVal || !_amValidated) {
+            showToast('Vui lòng xác minh Biên Bản Nghiệm Thu trước khi gửi.', 'error');
+            isSubmitting = false;
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Gửi đề nghị'; }
+            return;
+        }
+
         const payload = {
             action: 'sendPaymentRequest',
             requestId:        requestId,
             requestorEmail:   loggedInUser?.email || '',
             requestorName:    loggedInUser?.name  || '',
+            amNo:             amNoVal,
+            prRequestNo:      document.getElementById('pm_pr_no')?.value || (_amData?.prNo || ''),
             companyCode:      getSelectedCompanyMaj() || companyCode,
             companyName:      document.getElementById('company_name').value,
             companyKey:       document.getElementById('company_key_or_taxid').value,
@@ -1811,10 +1857,79 @@
     let currentStep = 1;
     const totalSteps = 5;
 
+    // ── AM No validation ────────────────────────────────────────────
+    let _amValidated  = false;
+    let _amData       = null; // holds { amNo, prNo, status, company }
+
+    function onAMNoInput() {
+        _amValidated = false;
+        _amData      = null;
+        document.getElementById('am-validation-status').textContent = '';
+        document.getElementById('pm_pr_no').value = '';
+    }
+
+    async function validateAMNo() {
+        const amNo = (document.getElementById('am_no_field').value || '').trim();
+        if (!amNo) { showToast('Vui lòng nhập số biên bản nghiệm thu.', 'error'); return; }
+        const statusEl = document.getElementById('am-validation-status');
+        statusEl.textContent = 'Đang xác minh...';
+        statusEl.style.color = 'var(--text-secondary)';
+        try {
+            const params = new URLSearchParams();
+            params.append('data', JSON.stringify({ action: 'getAcceptanceMinutesDetail', amNo: amNo }));
+            const res    = await fetch('/api/voucher', { method: 'POST', mode: 'cors', redirect: 'follow', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() });
+            const result = JSON.parse(await res.text());
+            const am     = result.data?.am;
+            if (!result.success || !am) {
+                _amValidated = false; _amData = null;
+                statusEl.textContent = '❌ Không tìm thấy biên bản: ' + amNo;
+                statusEl.style.color = 'var(--error)';
+                return;
+            }
+            if (am.status !== 'Đã nghiệm thu') {
+                _amValidated = false; _amData = null;
+                statusEl.textContent = `⚠️ Biên bản chưa được xác nhận (trạng thái: ${am.status}). Vui lòng chờ phê duyệt.`;
+                statusEl.style.color = 'var(--warning)';
+                return;
+            }
+            _amValidated = true;
+            _amData      = { amNo: am.amNo, prNo: am.prNo, status: am.status, company: am.company };
+            document.getElementById('pm_pr_no').value = am.prNo || '';
+            statusEl.textContent = `✅ Đã xác minh — ${am.company} · PR: ${am.prNo} · ${am.receiverName || ''}`;
+            statusEl.style.color = '#1a7a3c';
+            showToast('Biên bản ' + amNo + ' hợp lệ!', 'success');
+        } catch (e) {
+            _amValidated = false; _amData = null;
+            statusEl.textContent = '❌ Lỗi xác minh: ' + e.message;
+            statusEl.style.color = 'var(--error)';
+        }
+    }
+
+    // Pre-fill amNo / prNo from URL params (called from acceptance_minutes.html "Tạo Payment" link)
+    function readPMTUrlParams() {
+        const p    = new URLSearchParams(window.location.search);
+        const amNo = p.get('amNo');
+        const prNo = p.get('prNo');
+        if (amNo) {
+            document.getElementById('am_no_field').value = amNo;
+            setTimeout(() => validateAMNo(), 600);
+        }
+        if (prNo) {
+            document.getElementById('pm_pr_no').value = prNo;
+        }
+    }
+
     function validateAndNext(currentStep) {
         if (currentStep === 1) {
             if (!document.getElementById('company_code').value) {
                 showToast('Vui lòng chọn công ty.', 'error'); return;
+            }
+            const amNo = (document.getElementById('am_no_field').value || '').trim();
+            if (!amNo) {
+                showToast('Vui lòng nhập số Biên Bản Nghiệm Thu.', 'error'); return;
+            }
+            if (!_amValidated) {
+                showToast('Vui lòng nhấn "Xác minh" để kiểm tra biên bản nghiệm thu trước khi tiếp tục.', 'error'); return;
             }
         }
         if (currentStep === 2) {
@@ -1880,6 +1995,7 @@
         loadMasterData();
         updateStepperUI();
         preloadVendors();
+        readPMTUrlParams();
         document.getElementById('due_date').min = new Date().toISOString().split('T')[0]; // background — no await, warms cache before user picks company
         document.addEventListener('click', (e) => {
             const vendorBox = document.getElementById('vendor-combobox');

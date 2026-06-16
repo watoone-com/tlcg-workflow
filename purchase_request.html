@@ -852,6 +852,10 @@
             <div class="sidebar-icon-box" style="background:#007AFF;"><i class="fas fa-file-pen"></i></div>
             <span>Đề Nghị Mua Hàng</span>
         </button>
+        <button type="button" onclick="window.open('acceptance_minutes.html','_blank')" class="sidebar-item">
+            <div class="sidebar-icon-box" style="background:#34C759;"><i class="fas fa-clipboard-check"></i></div>
+            <span>Biên Bản Nghiệm Thu</span>
+        </button>
         <button type="button" onclick="window.open('payment_request.html','_blank')" class="sidebar-item">
             <div class="sidebar-icon-box" style="background:#5856D6;"><i class="fas fa-file-invoice-dollar"></i></div>
             <span>Đề Nghị Thanh Toán</span>
@@ -4364,6 +4368,16 @@
         let actionsHtml = `<button class="pr-action-btn pr-btn-print" onclick="printPR('${safePrNo}')">
             <i class="fas fa-print" aria-hidden="true"></i> In phiếu
         </button>`;
+
+        // "Tạo Biên Bản Nghiệm Thu" CTA when PR is fully approved (Hoàn thành)
+        const isApprovedFinal = activeStatus === 'hoàn thành' || activeStatus === 'approved';
+        if (isApprovedFinal) {
+            const encPrNo = encodeURIComponent(pr.prNo || '');
+            actionsHtml += `<button class="pr-action-btn" style="background:rgba(52,199,89,0.12);color:#1a7a3c;border:1px solid rgba(52,199,89,0.35);"
+                onclick="window.open('acceptance_minutes.html?prNo=${encPrNo}','_blank')">
+                <i class="fas fa-clipboard-check" aria-hidden="true"></i> Tạo Biên Bản Nghiệm Thu
+            </button>`;
+        }
 
         if (approveRole) {
             const sigPreview = _prApproverSigData

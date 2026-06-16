@@ -145,6 +145,19 @@ function doPost(e) {
         return handleGetPurchaseOrderTypes(data);
       case 'getGoodsCatalog':
         return handleGetGoodsCatalog(data);
+      // ── Acceptance Minutes ────────────────────────────────────
+      case 'createAcceptanceMinutes':
+        return handleCreateAcceptanceMinutes(data);
+      case 'getAcceptanceMinutesHistory':
+        return handleGetAcceptanceMinutesHistory(data);
+      case 'getAcceptanceMinutesDetail':
+        return handleGetAcceptanceMinutesDetail(data);
+      case 'getAcceptanceMinutesByPR':
+        return handleGetAcceptanceMinutesByPR(data);
+      case 'approveAcceptanceMinutes':
+        return handleApproveAcceptanceMinutes(data);
+      case 'rejectAcceptanceMinutes':
+        return handleRejectAcceptanceMinutes(data);
       default:
         return createResponse(false, 'Invalid action: ' + action);
     }
@@ -244,6 +257,19 @@ function handleSendPaymentRequest(data) {
     rowData[CONFIG.COLUMNS.OVERALL_STATUS] = 'Pending';
     rowData[CONFIG.COLUMNS.SUBMITTED_AT] = new Date().toISOString();
     
+    // Validate AM reference (hard gate — AM must be Đã nghiệm thu)
+    const amNo = (data.amNo || '').toString().trim();
+    if (!amNo) {
+      return createResponse(false, 'Vui lòng nhập số Biên Bản Nghiệm Thu (AM No) để tiến hành thanh toán.');
+    }
+    const amRecord = getAMByNo_(amNo);
+    if (!amRecord) {
+      return createResponse(false, 'Biên bản nghiệm thu ' + amNo + ' không tồn tại trong hệ thống.');
+    }
+    if (amRecord.status !== 'Đã nghiệm thu') {
+      return createResponse(false, 'Biên bản nghiệm thu ' + amNo + ' chưa được xác nhận (trạng thái hiện tại: ' + amRecord.status + '). Vui lòng chờ phê duyệt trước khi tạo đề nghị thanh toán.');
+    }
+
     // Store metadata
     const metadata = {
       requesterSignature: requesterSignature,
@@ -257,7 +283,9 @@ function handleSendPaymentRequest(data) {
       legalComment: data.legalComment || '',
       accountingComment: data.accountingComment || '',
       directorComment: data.directorComment || '',
-      isNewVendor: data.isNewVendor === true || data.isNewVendor === 'true'
+      isNewVendor: data.isNewVendor === true || data.isNewVendor === 'true',
+      amNo: amNo,
+      amPrNo: amRecord.prNo || ''
     };
     rowData[CONFIG.COLUMNS.METADATA] = JSON.stringify(metadata);
     
@@ -2438,6 +2466,445 @@ function sendPurchaseRequestSendBackEmail_(row, prNo, targetStep, note, senderRo
       + '<p>Trân trọng,<br>Hệ thống Workflow TLC Group</p>';
     GmailApp.sendEmail(contractEmail, subject3, '', { htmlBody: body3, name: 'TLC Group Workflow' });
     Logger.log('[P2P] ✅ Send-back email (step 3) sent to: ' + contractEmail);
+  }
+}
+
+// ==================== ACCEPTANCE MINUTES ====================
+/**
+ * Acceptance Minutes (Biên Bản Nghiệm Thu)
+ * Sheet: Acceptance_Minutes_History
+ * Columns: A=AM No, B=Company, C=PR No, D=Department, E=Receiver Name,
+ *          F=Receiver Email, G=AM Date, H=Items Received (JSON), I=Status,
+ *          J=Submitted At, K=Dept Head Approver Email, L=Metadata (JSON)
+ */
+var AM_SHEET_NAME = 'Acceptance_Minutes_History';
+var AM_COL = {
+  AM_NO:          0,
+  COMPANY:        1,
+  PR_NO:          2,
+  DEPARTMENT:     3,
+  RECEIVER_NAME:  4,
+  RECEIVER_EMAIL: 5,
+  AM_DATE:        6,
+  ITEMS:          7,
+  STATUS:         8,
+  SUBMITTED_AT:   9,
+  DEPT_HEAD_EMAIL: 10,
+  METADATA:       11
+};
+
+/** Get or auto-create the AM sheet with headers. */
+function getOrCreateAMSheet_() {
+  var ss    = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  var sheet = ss.getSheetByName(AM_SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(AM_SHEET_NAME);
+    sheet.appendRow([
+      'AM No', 'Company', 'PR No', 'Department', 'Receiver Name',
+      'Receiver Email', 'AM Date', 'Items Received (JSON)', 'Status',
+      'Submitted At', 'Dept Head Approver Email', 'Metadata (JSON)'
+    ]);
+    Logger.log('[AM] Created sheet: ' + AM_SHEET_NAME);
+  }
+  return sheet;
+}
+
+/** Find an AM row by amNo. Returns {rowIndex, row[], status, prNo} or null. */
+function getAMByNo_(amNo) {
+  if (!amNo) return null;
+  try {
+    var sheet = getOrCreateAMSheet_();
+    var data  = sheet.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      if ((data[i][AM_COL.AM_NO] || '').toString().trim() === amNo.trim()) {
+        return {
+          rowIndex: i + 1, // 1-based sheet row
+          row: data[i],
+          status:  (data[i][AM_COL.STATUS]  || '').toString().trim(),
+          prNo:    (data[i][AM_COL.PR_NO]   || '').toString().trim(),
+          company: (data[i][AM_COL.COMPANY] || '').toString().trim(),
+          metadata: (function() {
+            try { return JSON.parse(data[i][AM_COL.METADATA] || '{}'); } catch(_) { return {}; }
+          })()
+        };
+      }
+    }
+  } catch (e) {
+    Logger.log('[AM] getAMByNo_ error: ' + e.message);
+  }
+  return null;
+}
+
+/** Upload base64 file to the AM Drive folder. Returns Drive URL or ''. */
+function uploadAMFile_(base64DataUrl, fileName, mimeType, amNo) {
+  try {
+    var folderId = getCfg_('ACCEPTANCE_MINUTES_FOLDER_ID', getCfg_('PURCHASE_REQUEST_FOLDER_ID', '1SJ-pUa6jg2rmJTzle-TvvSNrKMUduvx3'));
+    var parent   = DriveApp.getFolderById(folderId);
+    var sub      = parent.getFoldersByName('AM_Docs').hasNext()
+      ? parent.getFoldersByName('AM_Docs').next()
+      : parent.createFolder('AM_Docs');
+    var amFolder = sub.getFoldersByName(amNo).hasNext()
+      ? sub.getFoldersByName(amNo).next()
+      : sub.createFolder(amNo);
+    var b64  = base64DataUrl.includes(',') ? base64DataUrl.split(',')[1] : base64DataUrl;
+    var blob = Utilities.newBlob(Utilities.base64Decode(b64), mimeType || 'application/octet-stream', fileName || 'file');
+    var f    = amFolder.createFile(blob);
+    try { f.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (_) {}
+    return f.getUrl();
+  } catch (e) {
+    Logger.log('[AM] uploadAMFile_ error: ' + e.message);
+    return '';
+  }
+}
+
+/** Create a new Acceptance Minutes record. */
+function handleCreateAcceptanceMinutes(data) {
+  try {
+    var amNo         = (data.amNo          || '').toString().trim();
+    var companyName  = (data.companyName   || '').toString().trim();
+    var prNo         = (data.prNo          || '').toString().trim();
+    var department   = (data.department    || '').toString().trim();
+    var receiverName = (data.receiverName  || '').toString().trim();
+    var receiverEmail= (data.receiverEmail || '').toString().trim().toLowerCase();
+    var amDate       = (data.amDate        || '').toString().trim();
+    var deptHeadEmail= (data.deptHeadEmail || '').toString().trim().toLowerCase();
+    var itemsRaw     = (data.items         || '[]').toString();
+
+    if (!companyName)   return createResponse(false, 'Thiếu tên công ty.');
+    if (!prNo)          return createResponse(false, 'Thiếu số đề nghị mua hàng (PR No).');
+    if (!receiverName)  return createResponse(false, 'Thiếu tên người nhận hàng.');
+    if (!receiverEmail) return createResponse(false, 'Thiếu email người nhận hàng.');
+    if (!deptHeadEmail) return createResponse(false, 'Vui lòng chọn người phụ trách xác nhận nghiệm thu.');
+    if (!(data.receiverSignature || '').toString().trim())
+      return createResponse(false, 'Chữ ký người nhận hàng là bắt buộc.');
+
+    // Validate items
+    var parsedItems;
+    try { parsedItems = JSON.parse(itemsRaw); } catch (e) {
+      return createResponse(false, 'Dữ liệu hàng hóa không hợp lệ: ' + e.message);
+    }
+    if (!Array.isArray(parsedItems) || parsedItems.length === 0)
+      return createResponse(false, 'Vui lòng nhập ít nhất 1 hàng hóa / dịch vụ.');
+
+    // Validate PR exists and is Hoàn thành
+    var ss      = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    var prSheet = ss.getSheetByName(PR_SHEET_NAME);
+    if (prSheet) {
+      var prData = prSheet.getDataRange().getValues();
+      var prFound = false;
+      for (var pi = 1; pi < prData.length; pi++) {
+        if ((prData[pi][0] || '').toString().trim() === prNo) {
+          prFound = true;
+          var prStatus = (prData[pi][14] || '').toString().trim();
+          if (prStatus !== 'Hoàn thành') {
+            return createResponse(false, 'Phiếu đề nghị ' + prNo + ' chưa hoàn thành phê duyệt (trạng thái: ' + prStatus + ').');
+          }
+          break;
+        }
+      }
+      if (!prFound) return createResponse(false, 'Không tìm thấy phiếu đề nghị mua hàng: ' + prNo);
+    }
+
+    // Fallback AM number
+    if (!amNo) {
+      var now2    = new Date();
+      var ds2     = Utilities.formatDate(now2, 'Asia/Ho_Chi_Minh', 'yyyyMMdd');
+      amNo = 'AM-' + ds2 + '-' + Math.floor(Math.random() * 100000).toString().padStart(6, '0');
+    }
+
+    // Check duplicate
+    if (getAMByNo_(amNo)) return createResponse(false, 'Số biên bản ' + amNo + ' đã tồn tại.');
+
+    var submittedAt = new Date().toISOString();
+
+    // Upload receiver signature
+    var receiverSigUrl = uploadAMFile_(data.receiverSignature, 'receiver_sig.jpg', 'image/jpeg', amNo);
+
+    // Upload attachments
+    var attachmentRecords = [];
+    try {
+      var rawAtt = Array.isArray(data.attachments) ? data.attachments
+        : (typeof data.attachments === 'string' ? JSON.parse(data.attachments || '[]') : []);
+      (rawAtt || []).forEach(function(f) {
+        if (!f.fileData) return;
+        var url = uploadAMFile_(f.fileData, f.fileName || 'attachment', f.mimeType || 'application/octet-stream', amNo);
+        attachmentRecords.push({ fileName: f.fileName, fileUrl: url });
+      });
+    } catch (ae) {
+      Logger.log('[AM] Attachment upload error: ' + ae.message);
+    }
+
+    var metadata = {
+      receiverSignature: receiverSigUrl,
+      attachments:       attachmentRecords,
+      deptHeadStatus:    'Pending',
+      deptHeadApprovedAt: '',
+      deptHeadSignature: '',
+      deptHeadNote:      '',
+      rejectionNote:     '',
+      companyCode:       data.companyCode || '',
+      requesterEmail:    receiverEmail
+    };
+
+    var sheet = getOrCreateAMSheet_();
+    sheet.appendRow([
+      amNo, companyName, prNo, department, receiverName,
+      receiverEmail, amDate || submittedAt.substring(0,10),
+      JSON.stringify(parsedItems),
+      'Chờ xác nhận', submittedAt, deptHeadEmail,
+      JSON.stringify(metadata)
+    ]);
+    Logger.log('[AM] Created: ' + amNo);
+
+    // Email dept head
+    sendAMApprovalRequestEmail_(amNo, companyName, prNo, receiverName, deptHeadEmail, parsedItems);
+
+    return createResponse(true, 'Biên bản nghiệm thu đã được tạo thành công.', { amNo: amNo });
+  } catch (e) {
+    Logger.log('[AM] handleCreateAcceptanceMinutes error: ' + e.message);
+    return createResponse(false, 'Lỗi khi tạo biên bản nghiệm thu: ' + e.message);
+  }
+}
+
+/** Return AM history for the requesting user (receiver or dept head). */
+function handleGetAcceptanceMinutesHistory(data) {
+  try {
+    var email = (data.email || data.requesterEmail || '').toString().trim().toLowerCase();
+    var sheet = getOrCreateAMSheet_();
+    var rows  = sheet.getDataRange().getValues();
+    var results = [];
+    for (var i = 1; i < rows.length; i++) {
+      var r = rows[i];
+      var rEmail = (r[AM_COL.RECEIVER_EMAIL] || '').toString().toLowerCase();
+      var dhEmail= (r[AM_COL.DEPT_HEAD_EMAIL]|| '').toString().toLowerCase();
+      if (!email || rEmail === email || dhEmail === email) {
+        var meta = {};
+        try { meta = JSON.parse(r[AM_COL.METADATA] || '{}'); } catch (_) {}
+        results.push({
+          amNo:          r[AM_COL.AM_NO],
+          company:       r[AM_COL.COMPANY],
+          prNo:          r[AM_COL.PR_NO],
+          department:    r[AM_COL.DEPARTMENT],
+          receiverName:  r[AM_COL.RECEIVER_NAME],
+          receiverEmail: r[AM_COL.RECEIVER_EMAIL],
+          amDate:        r[AM_COL.AM_DATE] ? r[AM_COL.AM_DATE].toString() : '',
+          status:        r[AM_COL.STATUS],
+          submittedAt:   r[AM_COL.SUBMITTED_AT] ? r[AM_COL.SUBMITTED_AT].toString() : '',
+          deptHeadEmail: r[AM_COL.DEPT_HEAD_EMAIL],
+          deptHeadStatus: meta.deptHeadStatus || 'Pending',
+          items:         (function() { try { return JSON.parse(r[AM_COL.ITEMS] || '[]'); } catch(_) { return []; } })(),
+          metadata:      meta
+        });
+      }
+    }
+    results.reverse(); // newest first
+    return createResponse(true, 'OK', { acceptanceMinutes: results });
+  } catch (e) {
+    Logger.log('[AM] handleGetAcceptanceMinutesHistory error: ' + e.message);
+    return createResponse(false, 'Lỗi: ' + e.message);
+  }
+}
+
+/** Return a single AM record by amNo. */
+function handleGetAcceptanceMinutesDetail(data) {
+  try {
+    var amNo = (data.amNo || '').toString().trim();
+    if (!amNo) return createResponse(false, 'Thiếu amNo.');
+    var rec = getAMByNo_(amNo);
+    if (!rec) return createResponse(false, 'Không tìm thấy biên bản: ' + amNo);
+    var r = rec.row;
+    var meta = rec.metadata;
+    return createResponse(true, 'OK', {
+      am: {
+        amNo:          r[AM_COL.AM_NO],
+        company:       r[AM_COL.COMPANY],
+        prNo:          r[AM_COL.PR_NO],
+        department:    r[AM_COL.DEPARTMENT],
+        receiverName:  r[AM_COL.RECEIVER_NAME],
+        receiverEmail: r[AM_COL.RECEIVER_EMAIL],
+        amDate:        r[AM_COL.AM_DATE] ? r[AM_COL.AM_DATE].toString() : '',
+        status:        r[AM_COL.STATUS],
+        submittedAt:   r[AM_COL.SUBMITTED_AT] ? r[AM_COL.SUBMITTED_AT].toString() : '',
+        deptHeadEmail: r[AM_COL.DEPT_HEAD_EMAIL],
+        items:         (function() { try { return JSON.parse(r[AM_COL.ITEMS] || '[]'); } catch(_) { return []; } })(),
+        metadata:      meta
+      }
+    });
+  } catch (e) {
+    Logger.log('[AM] handleGetAcceptanceMinutesDetail error: ' + e.message);
+    return createResponse(false, 'Lỗi: ' + e.message);
+  }
+}
+
+/** Return all AMs linked to a given PR number — used by Payment Request validation. */
+function handleGetAcceptanceMinutesByPR(data) {
+  try {
+    var prNo  = (data.prNo || '').toString().trim();
+    if (!prNo) return createResponse(false, 'Thiếu prNo.');
+    var sheet = getOrCreateAMSheet_();
+    var rows  = sheet.getDataRange().getValues();
+    var results = [];
+    for (var i = 1; i < rows.length; i++) {
+      if ((rows[i][AM_COL.PR_NO] || '').toString().trim() === prNo) {
+        var meta = {};
+        try { meta = JSON.parse(rows[i][AM_COL.METADATA] || '{}'); } catch (_) {}
+        results.push({
+          amNo:          rows[i][AM_COL.AM_NO],
+          company:       rows[i][AM_COL.COMPANY],
+          prNo:          rows[i][AM_COL.PR_NO],
+          receiverName:  rows[i][AM_COL.RECEIVER_NAME],
+          amDate:        rows[i][AM_COL.AM_DATE] ? rows[i][AM_COL.AM_DATE].toString() : '',
+          status:        rows[i][AM_COL.STATUS],
+          deptHeadEmail: rows[i][AM_COL.DEPT_HEAD_EMAIL],
+          deptHeadStatus: meta.deptHeadStatus || 'Pending'
+        });
+      }
+    }
+    return createResponse(true, 'OK', { acceptanceMinutes: results });
+  } catch (e) {
+    Logger.log('[AM] handleGetAcceptanceMinutesByPR error: ' + e.message);
+    return createResponse(false, 'Lỗi: ' + e.message);
+  }
+}
+
+/** Dept head approves an AM → sets status to Đã nghiệm thu. */
+function handleApproveAcceptanceMinutes(data) {
+  try {
+    var amNo          = (data.amNo          || '').toString().trim();
+    var approverEmail = (data.approverEmail || '').toString().trim().toLowerCase();
+    var approverSig   = (data.approverSignature || '').toString().trim();
+    var note          = (data.note          || '').toString().trim();
+
+    if (!amNo)          return createResponse(false, 'Thiếu amNo.');
+    if (!approverEmail) return createResponse(false, 'Thiếu email người phê duyệt.');
+    if (!approverSig)   return createResponse(false, 'Chữ ký người phê duyệt là bắt buộc.');
+
+    var rec = getAMByNo_(amNo);
+    if (!rec) return createResponse(false, 'Không tìm thấy biên bản: ' + amNo);
+
+    var deptHead = (rec.row[AM_COL.DEPT_HEAD_EMAIL] || '').toString().trim().toLowerCase();
+    if (approverEmail !== deptHead)
+      return createResponse(false, 'Bạn không phải là người phụ trách xác nhận biên bản này.');
+    if (rec.status === 'Đã nghiệm thu')
+      return createResponse(false, 'Biên bản này đã được xác nhận rồi.');
+    if (rec.status === 'Từ chối')
+      return createResponse(false, 'Biên bản đã bị từ chối. Không thể phê duyệt.');
+
+    // Upload signature
+    var sigUrl = uploadAMFile_(approverSig, 'depthead_sig.jpg', 'image/jpeg', amNo);
+    var approvedAt = new Date().toISOString();
+
+    var meta = rec.metadata;
+    meta.deptHeadStatus    = 'Approved';
+    meta.deptHeadApprovedAt = approvedAt;
+    meta.deptHeadSignature = sigUrl;
+    meta.deptHeadNote      = note;
+
+    var sheet = getOrCreateAMSheet_();
+    sheet.getRange(rec.rowIndex, AM_COL.STATUS   + 1).setValue('Đã nghiệm thu');
+    sheet.getRange(rec.rowIndex, AM_COL.METADATA + 1).setValue(JSON.stringify(meta));
+    Logger.log('[AM] Approved: ' + amNo + ' by ' + approverEmail);
+
+    // Email receiver
+    var receiverEmail = (rec.row[AM_COL.RECEIVER_EMAIL] || '').toString().trim();
+    var receiverName  = (rec.row[AM_COL.RECEIVER_NAME]  || '').toString().trim();
+    sendAMOutcomeEmail_(amNo, rec.company, rec.prNo, receiverEmail, receiverName, true, note);
+
+    return createResponse(true, 'Biên bản ' + amNo + ' đã được xác nhận.', { amNo: amNo, status: 'Đã nghiệm thu' });
+  } catch (e) {
+    Logger.log('[AM] handleApproveAcceptanceMinutes error: ' + e.message);
+    return createResponse(false, 'Lỗi: ' + e.message);
+  }
+}
+
+/** Dept head rejects an AM → sets status to Từ chối. */
+function handleRejectAcceptanceMinutes(data) {
+  try {
+    var amNo          = (data.amNo          || '').toString().trim();
+    var approverEmail = (data.approverEmail || '').toString().trim().toLowerCase();
+    var note          = (data.note          || '').toString().trim();
+
+    if (!amNo)          return createResponse(false, 'Thiếu amNo.');
+    if (!approverEmail) return createResponse(false, 'Thiếu email người phê duyệt.');
+    if (!note)          return createResponse(false, 'Vui lòng nhập lý do từ chối.');
+
+    var rec = getAMByNo_(amNo);
+    if (!rec) return createResponse(false, 'Không tìm thấy biên bản: ' + amNo);
+
+    var deptHead = (rec.row[AM_COL.DEPT_HEAD_EMAIL] || '').toString().trim().toLowerCase();
+    if (approverEmail !== deptHead)
+      return createResponse(false, 'Bạn không phải là người phụ trách xác nhận biên bản này.');
+    if (rec.status === 'Đã nghiệm thu')
+      return createResponse(false, 'Biên bản này đã được xác nhận rồi.');
+
+    var meta = rec.metadata;
+    meta.deptHeadStatus = 'Rejected';
+    meta.rejectionNote  = note;
+    meta.deptHeadNote   = note;
+
+    var sheet = getOrCreateAMSheet_();
+    sheet.getRange(rec.rowIndex, AM_COL.STATUS   + 1).setValue('Từ chối');
+    sheet.getRange(rec.rowIndex, AM_COL.METADATA + 1).setValue(JSON.stringify(meta));
+    Logger.log('[AM] Rejected: ' + amNo + ' by ' + approverEmail);
+
+    var receiverEmail = (rec.row[AM_COL.RECEIVER_EMAIL] || '').toString().trim();
+    var receiverName  = (rec.row[AM_COL.RECEIVER_NAME]  || '').toString().trim();
+    sendAMOutcomeEmail_(amNo, rec.company, rec.prNo, receiverEmail, receiverName, false, note);
+
+    return createResponse(true, 'Biên bản ' + amNo + ' đã bị từ chối.', { amNo: amNo, status: 'Từ chối' });
+  } catch (e) {
+    Logger.log('[AM] handleRejectAcceptanceMinutes error: ' + e.message);
+    return createResponse(false, 'Lỗi: ' + e.message);
+  }
+}
+
+/** Email dept head requesting approval. */
+function sendAMApprovalRequestEmail_(amNo, companyName, prNo, receiverName, deptHeadEmail, items) {
+  if (!deptHeadEmail) return;
+  var itemList = items.slice(0, 5).map(function(it) {
+    return '<li>' + (it.desc || it.name || '—') + ' — Đặt: ' + (it.orderedQty || 0) + ' / Nhận: ' + (it.receivedQty || 0) + ' ' + (it.unit || '') + '</li>';
+  }).join('') + (items.length > 5 ? '<li>... và ' + (items.length - 5) + ' dòng khác</li>' : '');
+  var subject = '[BIÊN BẢN NGHIỆM THU] Yêu cầu xác nhận - ' + amNo;
+  var body = '<p>Kính gửi,</p>'
+    + '<p>Biên bản nghiệm thu <b>' + amNo + '</b> đã được tạo bởi <b>' + receiverName + '</b> và đang chờ xác nhận của bạn.</p>'
+    + '<table cellpadding="6" style="border-collapse:collapse;font-size:13px;">'
+    + '<tr><td style="font-weight:700;padding-right:16px;">Số biên bản:</td><td>' + amNo + '</td></tr>'
+    + '<tr><td style="font-weight:700;">Công ty:</td><td>' + companyName + '</td></tr>'
+    + '<tr><td style="font-weight:700;">Phiếu mua hàng:</td><td>' + prNo + '</td></tr>'
+    + '<tr><td style="font-weight:700;">Người nhận hàng:</td><td>' + receiverName + '</td></tr>'
+    + '</table>'
+    + '<br><b>Danh sách hàng hóa:</b><ul>' + itemList + '</ul>'
+    + '<p>Vui lòng đăng nhập vào hệ thống để xem chi tiết và xác nhận.</p>'
+    + '<p>Trân trọng,<br>Hệ thống Workflow TLC Group</p>';
+  try {
+    GmailApp.sendEmail(deptHeadEmail, subject, '', { htmlBody: body, name: 'TLC Group Workflow' });
+    Logger.log('[AM] ✅ Approval request email sent to: ' + deptHeadEmail);
+  } catch (e) {
+    Logger.log('[AM] ⚠️ Email to dept head failed: ' + e.message);
+  }
+}
+
+/** Email receiver with approve/reject outcome. */
+function sendAMOutcomeEmail_(amNo, companyName, prNo, receiverEmail, receiverName, approved, note) {
+  if (!receiverEmail) return;
+  var statusLabel = approved ? 'ĐÃ ĐƯỢC XÁC NHẬN ✅' : 'BỊ TỪ CHỐI ❌';
+  var subject = '[BIÊN BẢN NGHIỆM THU] ' + statusLabel + ' - ' + amNo;
+  var noteHtml = note ? '<div style="background:#fffbeb;border-left:4px solid #f59e0b;padding:10px 14px;margin:14px 0;border-radius:4px;"><b>Ghi chú:</b><br>' + note + '</div>' : '';
+  var body = '<p>Kính gửi ' + receiverName + ',</p>'
+    + '<p>Biên bản nghiệm thu <b>' + amNo + '</b> (phiếu mua hàng: <b>' + prNo + '</b>) '
+    + (approved ? 'đã được <b>xác nhận</b>. Bạn có thể tiến hành tạo Đề nghị Thanh toán.' : 'đã <b>bị từ chối</b>. Vui lòng xem xét lại và tạo biên bản mới nếu cần.')
+    + '</p>'
+    + '<table cellpadding="6" style="border-collapse:collapse;font-size:13px;">'
+    + '<tr><td style="font-weight:700;padding-right:16px;">Công ty:</td><td>' + companyName + '</td></tr>'
+    + '<tr><td style="font-weight:700;">Số biên bản:</td><td>' + amNo + '</td></tr>'
+    + '</table>'
+    + noteHtml
+    + '<p>Trân trọng,<br>Hệ thống Workflow TLC Group</p>';
+  try {
+    GmailApp.sendEmail(receiverEmail, subject, '', { htmlBody: body, name: 'TLC Group Workflow' });
+    Logger.log('[AM] ✅ Outcome email sent to: ' + receiverEmail);
+  } catch (e) {
+    Logger.log('[AM] ⚠️ Outcome email failed: ' + e.message);
   }
 }
 

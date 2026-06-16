@@ -1,0 +1,1569 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Biên Bản Nghiệm Thu - TLCGroup</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;1,9..40,400&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary:        #007AFF;
+            --primary-hover:  #0056CC;
+            --primary-light:  rgba(0,122,255,0.10);
+            --success:        #34C759;
+            --success-hover:  #28A745;
+            --warning:        #FF9500;
+            --error:          #FF3B30;
+            --bg:             #F2F2F7;
+            --surface:        #FFFFFF;
+            --text-primary:   #000000;
+            --text-secondary: rgba(60,60,67,0.60);
+            --border:         rgba(0,0,0,0.10);
+            --sep:            rgba(60,60,67,0.18);
+            --shadow:         0 2px 8px rgba(0,0,0,0.07);
+            --shadow-lg:      0 8px 24px rgba(0,0,0,0.09);
+            --font-display:   'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+            --font-body:      'DM Sans', -apple-system, BlinkMacSystemFont, 'Helvetica Neue', Arial, sans-serif;
+            --radius-sm:      8px;
+            --radius-md:      12px;
+            --radius-lg:      14px;
+            --sidebar-width:  280px;
+        }
+
+        html { color-scheme: light; }
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: var(--font-body); background: var(--bg); color: var(--text-primary); min-height: 100vh; -webkit-font-smoothing: antialiased; touch-action: manipulation; }
+
+        @media (prefers-reduced-motion: reduce) {
+          *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
+        }
+
+        /* ── Sidebar ─────────────────────────────────────────────── */
+        .ipad-sidebar { width: var(--sidebar-width); background: rgba(249,249,249,0.94); backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); border-right: 0.5px solid rgba(60,60,67,0.29); position: fixed; top: 0; left: 0; height: 100vh; overflow-y: auto; z-index: 50; display: none; flex-direction: column; transition: width 0.25s cubic-bezier(0.4,0,0.2,1); }
+        @media (min-width: 768px) { .ipad-sidebar { display: flex; } .ipad-main { margin-left: var(--sidebar-width); } .mobile-nav { display: none !important; } }
+        .ipad-sidebar.collapsed { width: 72px; }
+        .ipad-sidebar.collapsed .sidebar-header > div > span, .ipad-sidebar.collapsed .sidebar-section-title, .ipad-sidebar.collapsed .sidebar-item > span, .ipad-sidebar.collapsed .sidebar-signout-text, .ipad-sidebar.collapsed .sidebar-user-info { display: none; }
+        .ipad-sidebar.collapsed .sidebar-item { justify-content: center; padding: 12px; margin: 2px 6px; width: calc(100% - 12px); }
+        .ipad-sidebar.collapsed:hover { width: 280px; }
+        .ipad-sidebar.collapsed:hover .sidebar-header > div > span, .ipad-sidebar.collapsed:hover .sidebar-section-title, .ipad-sidebar.collapsed:hover .sidebar-item > span, .ipad-sidebar.collapsed:hover .sidebar-signout-text, .ipad-sidebar.collapsed:hover .sidebar-user-info { display: block; }
+        .ipad-sidebar.collapsed:hover .sidebar-item { justify-content: flex-start; padding: 10px 12px; margin: 2px 8px; width: calc(100% - 16px); }
+        .ipad-main.sidebar-collapsed { margin-left: 72px; }
+        .sidebar-header { padding: 18px 16px; border-bottom: 0.5px solid rgba(60,60,67,0.29); position: relative; display: flex; align-items: center; justify-content: space-between; }
+        .sidebar-section { padding: 8px 0; position: relative; }
+        .sidebar-section:not(:first-of-type)::before { content: ''; position: absolute; top: 0; left: 16px; right: 16px; height: 0.5px; background: rgba(60,60,67,0.18); }
+        .sidebar-section-title { font-size: 12px; font-weight: 600; color: #6e6e73; text-transform: uppercase; padding: 12px 16px 6px; letter-spacing: 0.5px; }
+        .sidebar-item { display: flex; align-items: center; gap: 12px; padding: 10px 16px; margin: 2px 8px; border-radius: 10px; cursor: pointer; transition: background-color 0.2s, transform 0.2s, color 0.2s; color: #000; font-size: 15px; font-weight: 400; border: none; background: transparent; width: calc(100% - 16px); text-align: left; }
+        .sidebar-item:hover { background: rgba(0,0,0,0.04); transform: translateX(2px); }
+        .sidebar-item.active { background: var(--primary); color: white; }
+        .sidebar-icon-box { width: 28px; height: 28px; border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 14px; color: white; flex-shrink: 0; box-shadow: 0 1px 3px rgba(0,0,0,0.12); }
+        .sidebar-user { padding: 16px; border-top: 0.5px solid rgba(60,60,67,0.29); margin-top: auto; }
+
+        /* ── Layout ───────────────────────────────────────────────── */
+        .page-content { max-width: 860px; margin: 0 auto; padding: 20px 16px 60px; display: flex; flex-direction: column; gap: 16px; }
+        nav.sticky { backdrop-filter: saturate(180%) blur(20px); -webkit-backdrop-filter: saturate(180%) blur(20px); background: rgba(255,255,255,0.80); border-bottom: 0.5px solid rgba(0,0,0,0.10); }
+
+        /* ── Progress stepper ─────────────────────────────────────── */
+        .progress-stepper { background: white; border-radius: var(--radius-lg); border: 0.5px solid var(--border); box-shadow: var(--shadow); padding: 20px 16px; }
+        .stepper-container { position: relative; display: flex; align-items: center; justify-content: space-between; }
+        .stepper-line { position: absolute; top: 20px; left: 0; right: 0; height: 2px; background: rgba(0,0,0,0.10); z-index: 1; }
+        .stepper-line-progress { position: absolute; top: 0; left: 0; height: 100%; background: var(--primary); transition: width 0.3s cubic-bezier(0.4,0,0.2,1); }
+        .stepper-step { display: flex; flex-direction: column; align-items: center; gap: 8px; position: relative; z-index: 2; cursor: pointer; appearance: none; border: none; background: transparent; padding: 0; font: inherit; color: inherit; text-align: center; }
+        .stepper-step:focus-visible .stepper-circle { box-shadow: 0 0 0 3px rgba(0,122,255,0.35); border-color: var(--primary); }
+        .stepper-circle { width: 40px; height: 40px; border-radius: 50%; background: white; border: 2px solid rgba(0,0,0,0.15); display: flex; align-items: center; justify-content: center; font-size: 14px; font-weight: 600; transition: background-color 0.2s, border-color 0.2s, color 0.2s, box-shadow 0.2s; }
+        .stepper-step.active   .stepper-circle { background: var(--primary); border-color: var(--primary); color: white; box-shadow: 0 2px 8px rgba(0,122,255,0.24); }
+        .stepper-step.completed .stepper-circle { background: var(--success); border-color: var(--success); color: white; }
+        .stepper-label { font-size: 12px; font-weight: 500; color: var(--text-secondary); text-align: center; max-width: 80px; }
+        .stepper-step.active    .stepper-label { color: var(--primary); font-weight: 600; }
+        .stepper-step.completed .stepper-label { color: var(--success); }
+        @media (max-width: 640px) { .stepper-circle { width: 32px; height: 32px; font-size: 12px; } .stepper-label { font-size: 10px; max-width: 60px; } }
+
+        /* ── Form cards ───────────────────────────────────────────── */
+        .form-step { display: none; }
+        .form-step.active { display: block; }
+        .form-card { background: white; border-radius: var(--radius-lg); border: 0.5px solid var(--border); box-shadow: var(--shadow); overflow: hidden; }
+        .form-card + .form-card { margin-top: 12px; }
+        .form-card-header { display: flex; align-items: center; gap: 10px; padding: 14px 20px 12px; border-bottom: 0.5px solid rgba(0,0,0,0.08); background: rgba(242,242,247,0.6); }
+        .form-card-header h2 { font-size: 15px; font-weight: 600; color: var(--text-primary); }
+        .form-card-body { padding: 18px 20px; }
+        .form-row   { display: flex; flex-wrap: wrap; gap: 14px; }
+        .form-group { flex: 1; min-width: 200px; display: flex; flex-direction: column; }
+        .form-group.full { flex: 1 1 100%; }
+        .form-group.w2   { flex: 2 1 300px; }
+        label { font-size: 12px; font-weight: 500; color: var(--text-secondary); margin-bottom: 4px; }
+        .req  { color: var(--error); margin-left: 2px; }
+        input:not([type="hidden"]):not([type="radio"]):not([type="checkbox"]), select, textarea { width: 100%; padding: 9px 12px; border: 1px solid rgba(0,0,0,0.15); border-radius: var(--radius-sm); font-size: 14px; font-family: var(--font-body); color: var(--text-primary); background: white; outline-offset: 2px; transition: border-color 0.15s, box-shadow 0.15s; }
+        input:not([type="hidden"]):not([type="radio"]):not([type="checkbox"]):focus-visible, select:focus-visible, textarea:focus-visible { outline: 2px solid var(--primary); border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,122,255,0.12); }
+        input[readonly], input:disabled { background: var(--bg); color: #64748b; cursor: default; }
+        textarea { resize: vertical; min-height: 80px; }
+
+        /* ── Items table (AM version) ─────────────────────────────── */
+        .items-wrap { overflow-x: auto; margin: 0 -4px; }
+        .items-table { width: 100%; border-collapse: collapse; min-width: 700px; font-size: 13px; }
+        .items-table th { background: var(--bg); font-weight: 500; color: var(--text-secondary); padding: 8px 10px; border-bottom: 1px solid rgba(0,0,0,0.10); text-align: left; white-space: nowrap; }
+        .items-table td { padding: 4px 6px; border-bottom: 0.5px solid rgba(0,0,0,0.06); vertical-align: middle; }
+        .items-table tr:last-child td { border-bottom: none; }
+        .items-table td input, .items-table td select { border: none; background: transparent; padding: 6px 8px; border-radius: 6px; font-size: 13px; width: 100%; outline-offset: 1px; }
+        .items-table td input:focus-visible, .items-table td select:focus-visible { background: rgba(0,122,255,0.06); outline: 2px solid var(--primary); box-shadow: none; }
+        .col-no   { width: 36px; text-align: center; color: var(--text-secondary); font-size: 12px; }
+        .col-acc  { width: 48px; text-align: center; }
+        .accepted-badge { display: inline-block; padding: 2px 8px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+        .accepted-yes { background: rgba(52,199,89,0.12); color: #1a7a3c; }
+        .accepted-no  { background: rgba(255,59,48,0.10); color: #c0392b; }
+
+        /* ── Nav buttons ──────────────────────────────────────────── */
+        .btn { display: inline-flex; align-items: center; gap: 8px; padding: 10px 20px; border-radius: 20px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; font-family: var(--font-body); transition: background-color 0.2s, transform 0.15s, box-shadow 0.2s; }
+        .btn:focus-visible { outline: 2px solid var(--primary); outline-offset: 3px; }
+        .btn:active { transform: scale(0.97); }
+        .btn-primary { background: var(--primary); color: white; }
+        .btn-primary:hover { background: var(--primary-hover); box-shadow: 0 4px 12px rgba(0,122,255,0.30); }
+        .btn-ghost { background: rgba(0,0,0,0.05); color: var(--text-primary); }
+        .btn-ghost:hover { background: rgba(0,0,0,0.09); }
+        .btn-success { background: var(--success); color: white; }
+        .btn-success:hover { background: var(--success-hover); }
+        .btn-danger { background: rgba(255,59,48,0.10); color: var(--error); }
+        .btn-danger:hover { background: rgba(255,59,48,0.18); }
+        .step-nav { display: flex; justify-content: space-between; align-items: center; padding-top: 8px; }
+
+        /* ── Status badge ─────────────────────────────────────────── */
+        .am-status-badge { display: inline-block; padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+        .am-status-pending  { background: rgba(255,149,0,0.12); color: #b45309; }
+        .am-status-approved { background: rgba(52,199,89,0.12); color: #1a7a3c; }
+        .am-status-rejected { background: rgba(255,59,48,0.10); color: #c0392b; }
+
+        /* ── List view ────────────────────────────────────────────── */
+        .am-list-section { background: white; border-radius: var(--radius-lg); border: 0.5px solid var(--border); box-shadow: var(--shadow); overflow: hidden; margin-top: 4px; }
+        .am-list-header { display: flex; align-items: center; justify-content: space-between; padding: 14px 20px 12px; border-bottom: 0.5px solid rgba(0,0,0,0.08); background: rgba(242,242,247,0.6); }
+        .am-list-filters { display: flex; gap: 8px; flex-wrap: wrap; padding: 12px 20px; border-bottom: 0.5px solid rgba(0,0,0,0.06); }
+        .am-filter-pill { padding: 5px 14px; border-radius: 20px; border: 1px solid rgba(0,0,0,0.12); background: white; color: var(--text-secondary); font-size: 13px; font-weight: 500; cursor: pointer; font-family: var(--font-body); transition: background-color 0.15s, color 0.15s; }
+        .am-filter-pill.active { background: var(--primary); color: white; border-color: var(--primary); }
+        .am-card { padding: 14px 20px; border-bottom: 0.5px solid rgba(0,0,0,0.06); cursor: pointer; transition: background-color 0.15s; }
+        .am-card:last-child { border-bottom: none; }
+        .am-card:hover { background: rgba(0,122,255,0.03); }
+        .am-card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+        .am-no { font-weight: 700; color: var(--primary); font-size: 14px; }
+        .am-meta { font-size: 12px; color: var(--text-secondary); margin-top: 3px; }
+        .am-empty { text-align: center; padding: 40px 20px; color: var(--text-secondary); font-size: 14px; }
+
+        /* ── Drawer ───────────────────────────────────────────────── */
+        .am-drawer-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.35); z-index: 200; opacity: 0; pointer-events: none; transition: opacity 0.3s; }
+        .am-drawer-overlay.open { opacity: 1; pointer-events: auto; }
+        .am-drawer { position: fixed; top: 0; right: 0; width: min(500px,95vw); height: 100vh; background: white; z-index: 201; transform: translateX(100%); transition: transform 0.35s cubic-bezier(0.4,0,0.2,1); display: flex; flex-direction: column; box-shadow: -4px 0 40px rgba(0,0,0,0.15); }
+        .am-drawer.open { transform: translateX(0); }
+        .am-drawer-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px; border-bottom: 0.5px solid rgba(0,0,0,0.10); background: rgba(249,249,249,0.95); flex-shrink: 0; }
+        .am-drawer-body { flex: 1; overflow-y: auto; padding: 20px; }
+        .am-drawer-actions { padding: 16px 20px; border-top: 0.5px solid rgba(0,0,0,0.10); background: white; flex-shrink: 0; display: flex; gap: 10px; flex-wrap: wrap; }
+        .drawer-section { margin-bottom: 20px; }
+        .drawer-section h3 { font-size: 12px; font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 10px; }
+        .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+        .info-item label { font-size: 11px; color: var(--text-secondary); font-weight: 500; }
+        .info-item p { font-size: 14px; color: var(--text-primary); margin-top: 2px; }
+
+        /* ── Sig upload widget ────────────────────────────────────── */
+        .sig-upload-zone { border: 1.5px dashed rgba(0,0,0,0.18); border-radius: var(--radius-md); padding: 16px; text-align: center; cursor: pointer; transition: border-color 0.2s, background-color 0.2s; }
+        .sig-upload-zone:hover { border-color: var(--primary); background: var(--primary-light); }
+        .sig-upload-zone.has-sig { border-color: var(--success); background: rgba(52,199,89,0.06); }
+        .sig-preview { max-width: 260px; max-height: 90px; border-radius: 8px; margin: 6px auto 0; display: block; }
+
+        /* ── Attachment pills ─────────────────────────────────────── */
+        .attach-list { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 10px; }
+        .attach-pill { display: flex; align-items: center; gap: 6px; background: var(--bg); border: 0.5px solid var(--border); border-radius: 20px; padding: 4px 10px 4px 8px; font-size: 12px; }
+        .attach-pill button { background: none; border: none; color: #999; cursor: pointer; font-size: 12px; padding: 0; line-height: 1; }
+
+        /* ── Toast ────────────────────────────────────────────────── */
+        .toast-container { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); z-index: 9999; display: flex; flex-direction: column; align-items: center; gap: 8px; pointer-events: none; }
+        .toast { padding: 10px 20px; border-radius: 20px; font-size: 14px; font-weight: 500; color: white; pointer-events: auto; animation: toastIn 0.25s ease; box-shadow: 0 4px 16px rgba(0,0,0,0.18); }
+        .toast-success { background: #1c1c1e; }
+        .toast-error   { background: #FF3B30; }
+        .toast-info    { background: var(--primary); }
+        @keyframes toastIn { from { opacity:0; transform:translateY(12px); } to { opacity:1; transform:translateY(0); } }
+
+        /* ── Notif item ───────────────────────────────────────────── */
+        .am-notif-item { padding: 10px 14px; border-bottom: 0.5px solid #f1f5f9; cursor: pointer; transition: background 0.15s; font-size: 13px; }
+        .am-notif-item:last-child { border-bottom: none; }
+        .am-notif-item:hover { background: #f8fafc; }
+    </style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SIDEBAR
+══════════════════════════════════════════════════════════════ -->
+<aside class="ipad-sidebar" id="sidebar">
+    <div class="sidebar-header">
+        <div style="display:flex;align-items:center;gap:10px;">
+            <img src="brand_assets/tlc logo transparancy.png" alt="TLC" style="height:32px;width:auto;" decoding="async">
+            <span style="font-weight:700;font-size:15px;">TLCGroup</span>
+        </div>
+        <button onclick="toggleSidebar()" style="background:transparent;border:none;cursor:pointer;color:#6e6e73;font-size:16px;padding:4px;" title="Thu gọn sidebar">
+            <i class="fas fa-bars"></i>
+        </button>
+    </div>
+
+    <div class="sidebar-section">
+        <div class="sidebar-section-title">Menu</div>
+        <button class="sidebar-item" onclick="window.location.href='index.html'">
+            <div class="sidebar-icon-box" style="background:#5856D6;"><i class="fas fa-home"></i></div>
+            <span>Dashboard</span>
+        </button>
+    </div>
+
+    <div class="sidebar-section">
+        <div class="sidebar-section-title">Workflows</div>
+        <button class="sidebar-item" onclick="window.open('purchase_request.html','_blank')">
+            <div class="sidebar-icon-box" style="background:#007AFF;"><i class="fas fa-shopping-cart"></i></div>
+            <span>Đề Nghị Mua Hàng</span>
+        </button>
+        <button class="sidebar-item active">
+            <div class="sidebar-icon-box" style="background:#34C759;"><i class="fas fa-clipboard-check"></i></div>
+            <span>Biên Bản Nghiệm Thu</span>
+        </button>
+        <button class="sidebar-item" onclick="window.open('payment_request.html','_blank')">
+            <div class="sidebar-icon-box" style="background:#FF9500;"><i class="fas fa-file-invoice-dollar"></i></div>
+            <span>Đề Nghị Thanh Toán</span>
+        </button>
+        <button class="sidebar-item" onclick="window.open('voucher.html','_blank')">
+            <div class="sidebar-icon-box" style="background:#FF2D55;"><i class="fas fa-receipt"></i></div>
+            <span>Phiếu Thu Chi</span>
+        </button>
+    </div>
+
+    <div class="sidebar-user">
+        <div style="display:flex;align-items:center;gap:10px;">
+            <img id="sidebar-avatar" src="" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;display:none;">
+            <div class="sidebar-user-info">
+                <p id="sidebar-user-name"  style="font-size:14px;font-weight:600;margin:0;">—</p>
+                <p id="sidebar-user-role"  style="font-size:13px;color:#6e6e73;margin:0;"></p>
+            </div>
+        </div>
+        <button type="button" onclick="handleLogout()" style="width:100%;margin-top:12px;padding:8px;background:rgba(255,59,48,0.1);color:#FF3B30;border:none;border-radius:8px;font-size:14px;font-weight:500;cursor:pointer;font-family:var(--font-body);">
+            <i class="fas fa-sign-out-alt" style="margin-right:6px;"></i>
+            <span class="sidebar-signout-text">Sign Out</span>
+        </button>
+    </div>
+</aside>
+
+<!-- ══════════════════════════════════════════════════════════════
+     MAIN
+══════════════════════════════════════════════════════════════ -->
+<div class="ipad-main" id="ipad-main">
+
+    <!-- Mobile nav -->
+    <nav class="mobile-nav sticky top-0 z-50 bg-white border-b border-gray-200 px-4 py-3 shadow-sm" style="display:flex;">
+        <div class="flex items-center justify-between w-full">
+            <a href="index.html" style="display:flex;align-items:center;gap:8px;text-decoration:none;color:inherit;">
+                <img src="brand_assets/tlc logo transparancy.png" alt="TLC" style="height:32px;width:auto;" decoding="async">
+            </a>
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div style="position:relative;display:inline-flex;align-items:center;">
+                    <i class="fas fa-bell" style="font-size:18px;color:#6e6e73;" aria-label="Thông báo"></i>
+                    <span id="notif-badge-mobile" style="display:none;position:absolute;top:-6px;right:-7px;background:#FF3B30;color:white;border-radius:50%;font-size:10px;font-weight:700;min-width:16px;height:16px;align-items:center;justify-content:center;padding:0 3px;line-height:1;pointer-events:none;">0</span>
+                </div>
+                <button onclick="window.history.back()" style="background:transparent;border:none;color:#6e6e73;cursor:pointer;font-size:13px;display:flex;align-items:center;gap:6px;">
+                    <i class="fas fa-chevron-left"></i> Quay lại
+                </button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Desktop nav -->
+    <nav class="hidden md:block sticky top-0 z-40" style="background:rgba(249,249,249,0.94);backdrop-filter:saturate(180%) blur(20px);-webkit-backdrop-filter:saturate(180%) blur(20px);border-bottom:0.5px solid rgba(60,60,67,0.29);padding:18px 16px;">
+        <div style="display:flex;align-items:center;justify-content:space-between;max-width:1200px;margin:0 auto;">
+            <a href="index.html" style="display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit;">
+                <img src="brand_assets/tlc logo transparancy.png" alt="TLC" style="height:60px;width:auto;object-fit:contain;" decoding="async">
+                <span style="font-weight:600;font-size:17px;color:#000;">Business Process Management (BPM)</span>
+            </a>
+            <div id="nav-user-section" class="flex items-center gap-2">
+                <div id="notif-bell-wrapper" onclick="_toggleNotifDropdown()" style="position:relative;display:inline-flex;align-items:center;cursor:pointer;padding:4px;">
+                    <i class="fas fa-bell" style="font-size:18px;color:#6e6e73;" aria-label="Thông báo"></i>
+                    <span id="notif-badge" style="display:none;position:absolute;top:-6px;right:-7px;background:#FF3B30;color:white;border-radius:50%;font-size:10px;font-weight:700;min-width:16px;height:16px;align-items:center;justify-content:center;padding:0 3px;line-height:1;pointer-events:none;">0</span>
+                    <div id="notif-dropdown" style="display:none;position:absolute;top:calc(100% + 10px);right:0;width:280px;background:white;border-radius:12px;box-shadow:0 8px 30px rgba(0,0,0,0.12);border:0.5px solid rgba(60,60,67,0.18);z-index:1000;overflow:hidden;">
+                        <div style="padding:10px 14px;border-bottom:0.5px solid #f1f5f9;font-size:12px;font-weight:700;color:#374151;">Việc cần làm của tôi</div>
+                        <div style="max-height:320px;overflow-y:auto;" id="notif-dropdown-body"></div>
+                    </div>
+                </div>
+                <div id="nav-user-avatar" class="hidden">
+                    <img id="nav-avatar" src="" class="w-8 h-8 rounded-full cursor-pointer" alt="User">
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Toast -->
+    <div id="toast-container" class="toast-container" role="status" aria-live="polite" aria-relevant="additions"></div>
+
+    <!-- ── Page content ──────────────────────────────────────── -->
+    <main class="page-content" id="main-content" tabindex="-1">
+
+        <h1 style="font-family:var(--font-display);font-size:22px;font-weight:700;text-align:center;margin:4px 0 0;">BIÊN BẢN NGHIỆM THU</h1>
+
+        <!-- Progress stepper -->
+        <div class="progress-stepper" role="navigation" aria-label="Các bước biên bản">
+            <div class="stepper-container">
+                <div class="stepper-line"><div class="stepper-line-progress" id="stepper-progress"></div></div>
+                <button type="button" class="stepper-step active" data-step="1" onclick="goToStep(1)" aria-label="Bước 1 — Công ty & PR">
+                    <div class="stepper-circle">1</div>
+                    <span class="stepper-label">Công ty &amp; PR</span>
+                </button>
+                <button type="button" class="stepper-step" data-step="2" onclick="goToStep(2)" aria-label="Bước 2 — Hàng hóa">
+                    <div class="stepper-circle">2</div>
+                    <span class="stepper-label">Hàng hóa</span>
+                </button>
+                <button type="button" class="stepper-step" data-step="3" onclick="goToStep(3)" aria-label="Bước 3 — Xác nhận & Ký">
+                    <div class="stepper-circle">3</div>
+                    <span class="stepper-label">Xác nhận &amp; Ký</span>
+                </button>
+                <button type="button" class="stepper-step" data-step="4" onclick="goToStep(4)" aria-label="Bước 4 — Review">
+                    <div class="stepper-circle">4</div>
+                    <span class="stepper-label">Kiểm tra</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════
+             STEP 1 — CÔNG TY & PR
+        ════════════════════════════════════════════════════════ -->
+        <div class="form-step active" id="step-1">
+            <div class="form-card">
+                <div class="form-card-header">
+                    <i class="fas fa-building" style="color:var(--primary);font-size:14px;"></i>
+                    <h2>Công Ty & Thông Tin Chung</h2>
+                </div>
+                <div class="form-card-body">
+                    <div class="form-row">
+                        <div class="form-group w2">
+                            <label>Công Ty <span class="req">*</span></label>
+                            <select id="company_code" onchange="onCompanyChange()" required>
+                                <option value="">-- Chọn công ty --</option>
+                            </select>
+                            <input type="hidden" id="company_name">
+                            <input type="hidden" id="company_key_or_taxid">
+                        </div>
+                        <div class="form-group">
+                            <label>Số Biên Bản (AM No)</label>
+                            <input type="text" id="am_no" placeholder="Tự động tạo" readonly style="background:var(--bg);">
+                        </div>
+                    </div>
+                    <div class="form-row" style="margin-top:14px;">
+                        <div class="form-group w2">
+                            <label>Số Đề Nghị Mua Hàng (PR No) <span class="req">*</span></label>
+                            <div style="display:flex;gap:8px;align-items:flex-start;">
+                                <input type="text" id="pr_no" placeholder="Ví dụ: EV-PR20260615000001" oninput="onPRNoInput()">
+                                <button type="button" class="btn btn-ghost" onclick="lookupPR()" style="white-space:nowrap;flex-shrink:0;padding:9px 14px;font-size:13px;">
+                                    <i class="fas fa-search"></i> Tra cứu
+                                </button>
+                            </div>
+                            <p id="pr-lookup-status" style="font-size:12px;margin-top:4px;color:var(--text-secondary);"></p>
+                        </div>
+                        <div class="form-group">
+                            <label>Ngày Nghiệm Thu <span class="req">*</span></label>
+                            <input type="date" id="am_date" required>
+                        </div>
+                    </div>
+                    <div class="form-row" style="margin-top:14px;">
+                        <div class="form-group">
+                            <label>Người Nhận Hàng <span class="req">*</span></label>
+                            <select id="receiver_name" onchange="onReceiverChange()">
+                                <option value="">-- Chọn người nhận --</option>
+                            </select>
+                            <input type="hidden" id="receiver_email">
+                        </div>
+                        <div class="form-group">
+                            <label>Phòng Ban</label>
+                            <input type="text" id="department" placeholder="Ví dụ: Kế toán, Kho, ...">
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="step-nav">
+                <span></span>
+                <button type="button" class="btn btn-primary" onclick="validateAndNext(1)">
+                    Tiếp theo <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════
+             STEP 2 — HÀNG HÓA NGHIỆM THU
+        ════════════════════════════════════════════════════════ -->
+        <div class="form-step" id="step-2">
+            <div class="form-card">
+                <div class="form-card-header">
+                    <i class="fas fa-boxes" style="color:var(--primary);font-size:14px;"></i>
+                    <h2>Hàng Hóa Nghiệm Thu</h2>
+                </div>
+                <div class="form-card-body">
+                    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">Kiểm tra từng mặt hàng theo phiếu đặt hàng. Cập nhật số lượng thực nhận và tình trạng.</p>
+                    <div class="items-wrap">
+                        <table class="items-table">
+                            <thead>
+                                <tr>
+                                    <th class="col-no">#</th>
+                                    <th style="min-width:220px;">Mô Tả Hàng Hóa / Dịch Vụ</th>
+                                    <th style="width:90px;">Đặt hàng</th>
+                                    <th style="width:90px;">Thực nhận <span class="req">*</span></th>
+                                    <th style="width:60px;">Đơn vị</th>
+                                    <th style="min-width:140px;">Tình trạng</th>
+                                    <th class="col-acc">✓</th>
+                                </tr>
+                            </thead>
+                            <tbody id="am-items-tbody"></tbody>
+                        </table>
+                    </div>
+                    <div id="pr-items-empty" style="text-align:center;padding:24px;color:var(--text-secondary);font-size:13px;display:none;">
+                        <i class="fas fa-info-circle" style="margin-right:6px;"></i> Tra cứu số PR ở Bước 1 để tự động nạp danh sách hàng hóa.
+                    </div>
+                </div>
+            </div>
+
+            <div class="step-nav">
+                <button type="button" class="btn btn-ghost" onclick="goToStep(1)">
+                    <i class="fas fa-arrow-left"></i> Quay lại
+                </button>
+                <button type="button" class="btn btn-primary" onclick="validateAndNext(2)">
+                    Tiếp theo <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════
+             STEP 3 — XÁC NHẬN & KÝ
+        ════════════════════════════════════════════════════════ -->
+        <div class="form-step" id="step-3">
+            <div class="form-card">
+                <div class="form-card-header">
+                    <i class="fas fa-user-check" style="color:var(--primary);font-size:14px;"></i>
+                    <h2>Người Phụ Trách Xác Nhận</h2>
+                </div>
+                <div class="form-card-body">
+                    <div class="form-row">
+                        <div class="form-group w2">
+                            <label>Người Phụ Trách Xác Nhận (Trưởng bộ phận) <span class="req">*</span></label>
+                            <select id="dept_head_email">
+                                <option value="">-- Chọn người xác nhận --</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="form-row" style="margin-top:14px;">
+                        <div class="form-group full">
+                            <label>Ghi chú bổ sung</label>
+                            <textarea id="submission_note" placeholder="Ghi chú về quá trình nhận hàng (không bắt buộc)..."></textarea>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-card">
+                <div class="form-card-header">
+                    <i class="fas fa-signature" style="color:var(--primary);font-size:14px;"></i>
+                    <h2>Chữ Ký Người Nhận Hàng <span class="req">*</span></h2>
+                </div>
+                <div class="form-card-body">
+                    <div id="receiver-sig-zone" class="sig-upload-zone" onclick="document.getElementById('receiver-sig-input').click()">
+                        <i class="fas fa-upload" style="font-size:20px;color:#94a3b8;margin-bottom:8px;"></i>
+                        <p style="font-size:13px;color:var(--text-secondary);">Nhấn để tải lên chữ ký</p>
+                        <p style="font-size:11px;color:#94a3b8;margin-top:4px;">PNG hoặc JPG, tối đa 500 KB</p>
+                        <img id="receiver-sig-preview" class="sig-preview" src="" alt="" style="display:none;">
+                    </div>
+                    <input type="file" id="receiver-sig-input" accept="image/png,image/jpeg,image/jpg" style="display:none;" onchange="handleReceiverSigUpload(event)">
+                    <p style="font-size:12px;color:var(--text-secondary);margin-top:8px;">Chữ ký này xác nhận rằng bạn đã thực sự nhận hàng và kiểm tra theo danh sách trên.</p>
+                </div>
+            </div>
+
+            <div class="form-card">
+                <div class="form-card-header">
+                    <i class="fas fa-paperclip" style="color:var(--primary);font-size:14px;"></i>
+                    <h2>Tài Liệu Đính Kèm</h2>
+                </div>
+                <div class="form-card-body">
+                    <p style="font-size:13px;color:var(--text-secondary);margin-bottom:10px;">Phiếu giao hàng, biên bản kiểm tra chất lượng, ảnh thực tế,... (tối đa 5 file, 30 MB)</p>
+                    <button type="button" class="btn btn-ghost" onclick="document.getElementById('am-attach-input').click()" style="font-size:13px;padding:8px 16px;">
+                        <i class="fas fa-plus"></i> Thêm tệp
+                    </button>
+                    <input type="file" id="am-attach-input" multiple style="display:none;" onchange="handleAMAttachment(event)">
+                    <div class="attach-list" id="am-attach-list"></div>
+                </div>
+            </div>
+
+            <div class="step-nav">
+                <button type="button" class="btn btn-ghost" onclick="goToStep(2)">
+                    <i class="fas fa-arrow-left"></i> Quay lại
+                </button>
+                <button type="button" class="btn btn-primary" onclick="validateAndNext(3)">
+                    Kiểm tra <i class="fas fa-arrow-right"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- ═══════════════════════════════════════════════════════
+             STEP 4 — REVIEW & SUBMIT
+        ════════════════════════════════════════════════════════ -->
+        <div class="form-step" id="step-4">
+            <div class="form-card">
+                <div class="form-card-header">
+                    <i class="fas fa-check-circle" style="color:var(--success);font-size:14px;"></i>
+                    <h2>Kiểm Tra Trước Khi Gửi</h2>
+                </div>
+                <div class="form-card-body" id="summary-content">
+                    <!-- Filled by buildSummary() -->
+                </div>
+            </div>
+
+            <div class="step-nav">
+                <button type="button" class="btn btn-ghost" onclick="goToStep(3)">
+                    <i class="fas fa-arrow-left"></i> Quay lại
+                </button>
+                <button type="button" class="btn btn-success" id="submit-btn" onclick="submitAM()">
+                    <i class="fas fa-paper-plane"></i> Gửi Biên Bản Nghiệm Thu
+                </button>
+            </div>
+        </div>
+
+        <!-- ══════════════════════════════════════════════════════
+             AM LIST
+        ══════════════════════════════════════════════════════ -->
+        <div class="am-list-section">
+            <div class="am-list-header">
+                <h2 style="font-size:15px;font-weight:600;">Danh Sách Biên Bản Nghiệm Thu</h2>
+                <button type="button" class="btn btn-ghost" style="font-size:13px;padding:7px 14px;" onclick="loadAMHistory(true)">
+                    <i class="fas fa-sync-alt"></i> Làm mới
+                </button>
+            </div>
+            <div class="am-list-filters">
+                <button class="am-filter-pill active" onclick="applyAMFilter('')">Tất cả</button>
+                <button class="am-filter-pill" onclick="applyAMFilter('dang-xu-ly')">Chờ xác nhận</button>
+                <button class="am-filter-pill" onclick="applyAMFilter('hoan-thanh')">Đã nghiệm thu</button>
+                <button class="am-filter-pill" onclick="applyAMFilter('tu-choi')">Từ chối</button>
+            </div>
+            <div id="am-list-body">
+                <div class="am-empty"><i class="fas fa-spinner fa-spin" style="margin-right:6px;"></i>Đang tải...</div>
+            </div>
+        </div>
+
+    </main>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     DRAWER — dept head approve/reject
+══════════════════════════════════════════════════════════════ -->
+<div class="am-drawer-overlay" id="am-drawer-overlay" onclick="closeAMDrawer()"></div>
+<aside class="am-drawer" id="am-drawer" role="dialog" aria-modal="true" aria-labelledby="am-drawer-title">
+    <div class="am-drawer-head">
+        <h4 id="am-drawer-title" style="font-size:16px;font-weight:700;"></h4>
+        <button onclick="closeAMDrawer()" style="background:transparent;border:none;font-size:18px;cursor:pointer;color:#6e6e73;" aria-label="Đóng"><i class="fas fa-times"></i></button>
+    </div>
+    <div class="am-drawer-body" id="am-drawer-body"></div>
+    <div class="am-drawer-actions" id="am-drawer-actions" style="display:none;"></div>
+</aside>
+
+<!-- ══════════════════════════════════════════════════════════════
+     REJECT MODAL
+══════════════════════════════════════════════════════════════ -->
+<div id="am-reject-modal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.4);z-index:500;align-items:center;justify-content:center;">
+    <div style="background:white;border-radius:16px;padding:24px;width:min(420px,92vw);box-shadow:0 20px 60px rgba(0,0,0,0.2);">
+        <h3 style="font-size:16px;font-weight:700;margin-bottom:12px;">Từ Chối Nghiệm Thu</h3>
+        <p style="font-size:13px;color:var(--text-secondary);margin-bottom:12px;">Vui lòng nhập lý do từ chối để người nhận hàng biết cần điều chỉnh gì.</p>
+        <textarea id="am-reject-note" style="width:100%;padding:9px 12px;border:1px solid rgba(0,0,0,0.15);border-radius:8px;font-size:14px;font-family:var(--font-body);min-height:90px;" placeholder="Lý do từ chối..."></textarea>
+        <div style="display:flex;gap:10px;margin-top:16px;justify-content:flex-end;">
+            <button class="btn btn-ghost" onclick="document.getElementById('am-reject-modal').style.display='none'">Huỷ</button>
+            <button class="btn btn-danger" onclick="confirmRejectAM()">Xác nhận từ chối</button>
+        </div>
+    </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════════════
+     SCRIPTS
+══════════════════════════════════════════════════════════════ -->
+<script src="tlcg_companies_embed.js"></script>
+<script>
+// ── Constants (same as purchase_request.html) ─────────────────
+const BACKEND_URL = '/api/voucher';
+const _MASTER_KEY    = 'tlc_master_data';
+const _MASTER_TS_KEY = 'tlc_master_data_timestamp';
+const _MASTER_TTL    = 30 * 60 * 1000;
+const _AM_CACHE_KEY  = 'tlcg_am_list_cache';
+const _AM_CACHE_TS   = 'tlcg_am_list_cache_ts';
+const _AM_CACHE_TTL  = 5 * 60 * 1000;
+const _RECEIVER_SIG_KEY  = 'tlcg_user_signature';
+const _DH_SIG_KEY        = 'tlcg_approver_signature';
+const MAX_ATTACH_FILES   = 5;
+const MAX_ATTACH_BYTES   = 5  * 1024 * 1024;
+const MAX_ATTACH_TOTAL   = 30 * 1024 * 1024;
+
+// ── Module state ──────────────────────────────────────────────
+let _currentStep     = 1;
+let _amNo            = '';
+let _allAMs          = [];
+let _filteredAMs     = [];
+let _currentAMFilter = '';
+let _currentAMDrawer = null;
+let _allEmployees    = [];
+let _receiverSigData = null;
+let _dhSigData       = null;            // dept head sig (for approval)
+let _amAttachFiles   = [];
+let _prLookupData    = null;            // PR data fetched in step 1
+let _amCompanyApprovers = null;         // from getCompanyApprovers
+
+// ── Session ──────────────────────────────────────────────────
+function restoreSession() {
+    const stored = localStorage.getItem('tlc_current_user');
+    if (!stored) return;
+    try {
+        const user = JSON.parse(stored);
+        if (!user?.email) return;
+        document.getElementById('sidebar-user-name').textContent = user.name || user.email;
+        document.getElementById('sidebar-user-role').textContent = user.role || '';
+        const avatarUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(user.name||'U')}&background=007AFF&color=fff&size=80`;
+        const av = document.getElementById('sidebar-avatar');
+        if (av) { av.src = avatarUrl; av.style.display = 'block'; }
+        const navAv = document.getElementById('nav-avatar');
+        if (navAv) { navAv.src = avatarUrl; document.getElementById('nav-user-avatar').classList.remove('hidden'); }
+        // Pre-fill receiver
+        setTimeout(() => {
+            const sel = document.getElementById('receiver_name');
+            if (!sel) return;
+            for (let i = 0; i < sel.options.length; i++) {
+                if ((sel.options[i].dataset.email||'').toLowerCase() === (user.email||'').toLowerCase()) {
+                    sel.selectedIndex = i;
+                    document.getElementById('receiver_email').value = user.email;
+                    break;
+                }
+            }
+        }, 600);
+    } catch (_) {}
+}
+
+function handleLogout() {
+    localStorage.removeItem('tlc_current_user');
+    window.location.href = 'index.html';
+}
+
+// ── Sidebar collapse ─────────────────────────────────────────
+function toggleSidebar() {
+    const sb = document.getElementById('sidebar');
+    const main = document.getElementById('ipad-main');
+    sb.classList.toggle('collapsed');
+    main.classList.toggle('sidebar-collapsed');
+    localStorage.setItem('pr_sidebar_collapsed', sb.classList.contains('collapsed') ? '1' : '0');
+}
+
+// ── Toast ─────────────────────────────────────────────────────
+function showToast(msg, type = 'info', duration = 3500) {
+    const c = document.getElementById('toast-container');
+    const t = document.createElement('div');
+    t.className = `toast toast-${type}`;
+    t.textContent = msg;
+    c.appendChild(t);
+    setTimeout(() => t.remove(), duration);
+}
+
+// ── Stepper ───────────────────────────────────────────────────
+function goToStep(n) {
+    document.querySelectorAll('.form-step').forEach(el => el.classList.remove('active'));
+    document.getElementById('step-' + n).classList.add('active');
+    document.querySelectorAll('.stepper-step').forEach(btn => {
+        const s = parseInt(btn.dataset.step);
+        btn.classList.remove('active','completed');
+        if (s === n) { btn.classList.add('active'); btn.setAttribute('aria-current','step'); }
+        else if (s < n) { btn.classList.add('completed'); btn.removeAttribute('aria-current'); }
+        else { btn.removeAttribute('aria-current'); }
+    });
+    const pct = ((n-1)/3)*100;
+    document.getElementById('stepper-progress').style.width = pct + '%';
+    _currentStep = n;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function validateAndNext(step) {
+    if (step === 1) {
+        const co = document.getElementById('company_code').value;
+        const pr = document.getElementById('pr_no').value.trim();
+        const dt = document.getElementById('am_date').value;
+        const rc = document.getElementById('receiver_name').value;
+        if (!co) { showToast('Vui lòng chọn công ty.', 'error'); return; }
+        if (!pr) { showToast('Vui lòng nhập số phiếu mua hàng.', 'error'); return; }
+        if (!dt) { showToast('Vui lòng chọn ngày nghiệm thu.', 'error'); return; }
+        if (!rc) { showToast('Vui lòng chọn người nhận hàng.', 'error'); return; }
+        if (!_prLookupData) { showToast('Vui lòng tra cứu và xác nhận số PR trước.', 'error'); return; }
+        goToStep(2);
+    } else if (step === 2) {
+        const rows = document.querySelectorAll('#am-items-tbody tr');
+        if (rows.length === 0) { showToast('Chưa có hàng hóa nào. Tra cứu PR ở Bước 1.', 'error'); return; }
+        let ok = true;
+        rows.forEach(tr => {
+            const rv = tr.querySelector('.recv-qty');
+            if (rv && (isNaN(parseFloat(rv.value)) || parseFloat(rv.value) < 0)) { ok = false; }
+        });
+        if (!ok) { showToast('Vui lòng nhập số lượng thực nhận hợp lệ.', 'error'); return; }
+        goToStep(3);
+    } else if (step === 3) {
+        const dh = document.getElementById('dept_head_email').value;
+        if (!dh) { showToast('Vui lòng chọn người phụ trách xác nhận.', 'error'); return; }
+        if (!_receiverSigData) { showToast('Vui lòng tải lên chữ ký người nhận hàng.', 'error'); return; }
+        buildSummary();
+        goToStep(4);
+    }
+}
+
+// ── Company dropdown (same as purchase_request.html) ─────────
+function _companyVal(entry, exactKey, prefixFallback) {
+    if (entry[exactKey] !== undefined) return (entry[exactKey] || '').trim();
+    const prefix = prefixFallback || exactKey.substring(0, 12);
+    for (const k of Object.keys(entry)) {
+        if (k.startsWith(prefix)) return (entry[k] || '').trim();
+    }
+    return '';
+}
+
+function loadCompanies() {
+    const sel   = document.getElementById('company_code');
+    const embed = (typeof TLCG_COMPANIES_DATA !== 'undefined' && TLCG_COMPANIES_DATA) || null;
+    const arr   = (embed && embed.companies_data) || [];
+    sel.innerHTML = '<option value="">-- Chọn công ty --</option>';
+    if (arr.length === 0) {
+        sel.innerHTML = '<option value="">-- Không có dữ liệu (thiếu tlcg_companies_embed.js) --</option>';
+        return;
+    }
+    arr.forEach(c => {
+        const name = c['Tên công ty'] || '';
+        const key  = c['Mã định danh'] || '';
+        const code = c['Mã công ty'] || key;
+        const opt  = document.createElement('option');
+        opt.value         = `${name} (${key})`;
+        opt.textContent   = `${name} (${key})`;
+        opt.dataset.name  = name;
+        opt.dataset.key   = key;
+        opt.dataset.code  = code;
+        sel.appendChild(opt);
+    });
+}
+
+function onCompanyChange() {
+    const sel = document.getElementById('company_code');
+    const opt = sel.options[sel.selectedIndex];
+    document.getElementById('company_name').value         = opt?.dataset?.name || '';
+    document.getElementById('company_key_or_taxid').value = opt?.dataset?.key  || '';
+    generateAMNumber();
+    // Reset PR lookup if company changes
+    _prLookupData = null;
+    document.getElementById('pr-lookup-status').textContent = '';
+}
+
+function generateAMNumber() {
+    const sel = document.getElementById('company_code');
+    const opt = sel.options[sel.selectedIndex];
+    const raw = (opt?.dataset?.code || '').replace(/[^A-Z0-9]/gi, '').toUpperCase();
+    if (!raw) { document.getElementById('am_no').value = ''; return; }
+    const now  = new Date();
+    const YYYY = now.getFullYear();
+    const MM   = String(now.getMonth()+1).padStart(2,'0');
+    const DD   = String(now.getDate()).padStart(2,'0');
+    const dateStr    = `${YYYY}${MM}${DD}`;
+    const counterKey = `vc_${raw}_AM_${dateStr}`;
+    const counter    = parseInt(localStorage.getItem(counterKey) || '0') + 1;
+    localStorage.setItem(counterKey, counter);
+    _amNo = `${raw}-AM${dateStr}${String(counter).padStart(6,'0')}`;
+    document.getElementById('am_no').value = _amNo;
+}
+
+// ── Master data (same cache as purchase_request.html) ─────────
+async function _fetchAndCacheMaster() {
+    const params = new URLSearchParams({ action: 'getMasterData' });
+    const res    = await fetch(BACKEND_URL, { method: 'POST', mode: 'cors', redirect: 'follow', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() });
+    const result = JSON.parse(await res.text());
+    if (!result.success) return null;
+    const data = result.data || result;
+    const prev = JSON.parse(localStorage.getItem(_MASTER_KEY) || '{}');
+    if ((!data.goods || data.goods.length === 0) && prev.goods?.length > 0) data.goods = prev.goods;
+    localStorage.setItem(_MASTER_KEY, JSON.stringify(data));
+    localStorage.setItem(_MASTER_TS_KEY, new Date().toISOString());
+    return data;
+}
+
+function _applyMasterData(data) {
+    _allEmployees = (data.employees || []).filter(e => (e.employee_status||e.Status||'').toLowerCase() === 'active');
+    seedReceivers();
+    seedDeptHeads();
+}
+
+function loadMasterData() {
+    const cached = localStorage.getItem(_MASTER_KEY);
+    if (cached) { try { _applyMasterData(JSON.parse(cached)); } catch (_) {} }
+    const ts  = localStorage.getItem(_MASTER_TS_KEY);
+    const age = ts ? Date.now() - new Date(ts).getTime() : Infinity;
+    if (age > _MASTER_TTL || !cached) {
+        _fetchAndCacheMaster().then(data => { if (data) _applyMasterData(data); });
+    }
+}
+
+function seedReceivers() {
+    const sel = document.getElementById('receiver_name');
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">-- Chọn người nhận --</option>';
+    _allEmployees.forEach(e => {
+        const name  = e.full_name || e['Full Name'] || '';
+        const email = (e.employee_email || e['Email'] || '').toLowerCase();
+        if (!name || !email) return;
+        const opt = document.createElement('option');
+        opt.value         = name;
+        opt.textContent   = name;
+        opt.dataset.email = email;
+        sel.appendChild(opt);
+    });
+    if (cur) sel.value = cur;
+    // Re-apply session pre-fill
+    const stored = localStorage.getItem('tlc_current_user');
+    if (stored) {
+        try {
+            const u = JSON.parse(stored);
+            for (let i = 0; i < sel.options.length; i++) {
+                if ((sel.options[i].dataset.email||'') === (u.email||'').toLowerCase()) {
+                    sel.selectedIndex = i;
+                    document.getElementById('receiver_email').value = u.email;
+                    break;
+                }
+            }
+        } catch (_) {}
+    }
+}
+
+function onReceiverChange() {
+    const sel = document.getElementById('receiver_name');
+    const opt = sel.options[sel.selectedIndex];
+    document.getElementById('receiver_email').value = opt?.dataset?.email || '';
+}
+
+function seedDeptHeads() {
+    const sel = document.getElementById('dept_head_email');
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">-- Chọn người xác nhận --</option>';
+    _allEmployees.forEach(e => {
+        const name  = e.full_name || e['Full Name'] || '';
+        const email = (e.employee_email || e['Email'] || '').toLowerCase();
+        if (!name || !email) return;
+        const opt = document.createElement('option');
+        opt.value       = email;
+        opt.textContent = name;
+        sel.appendChild(opt);
+    });
+    if (cur) sel.value = cur;
+}
+
+// ── PR lookup ─────────────────────────────────────────────────
+function onPRNoInput() {
+    _prLookupData = null;
+    document.getElementById('pr-lookup-status').textContent = '';
+}
+
+async function lookupPR() {
+    const prNo = document.getElementById('pr_no').value.trim();
+    if (!prNo) { showToast('Vui lòng nhập số PR.', 'error'); return; }
+    const statusEl = document.getElementById('pr-lookup-status');
+    statusEl.textContent = 'Đang tra cứu...';
+    statusEl.style.color = 'var(--text-secondary)';
+    try {
+        const params = new URLSearchParams();
+        params.append('data', JSON.stringify({ action: 'getPurchaseRequestHistory' }));
+        const res    = await fetch(BACKEND_URL, { method: 'POST', mode: 'cors', redirect: 'follow', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() });
+        const result = JSON.parse(await res.text());
+        const list   = (result.requests || result.data?.requests || []);
+        const pr     = list.find(r => (r.prNo||'').trim() === prNo);
+        if (!pr) {
+            statusEl.textContent = '❌ Không tìm thấy phiếu: ' + prNo;
+            statusEl.style.color = 'var(--error)';
+            _prLookupData = null;
+            return;
+        }
+        if (pr.status !== 'Hoàn thành') {
+            statusEl.textContent = '⚠️ Phiếu chưa hoàn thành phê duyệt (trạng thái: ' + pr.status + ')';
+            statusEl.style.color = 'var(--warning)';
+            _prLookupData = null;
+            return;
+        }
+        _prLookupData = pr;
+        statusEl.textContent = '✅ Tìm thấy: ' + pr.company + ' — ' + pr.requesterName;
+        statusEl.style.color = 'var(--success)';
+        // Auto-fill company if not already chosen
+        const companySel = document.getElementById('company_code');
+        if (!companySel.value && pr.company) {
+            for (let i = 0; i < companySel.options.length; i++) {
+                if ((companySel.options[i].dataset.name||'') === pr.company) {
+                    companySel.selectedIndex = i;
+                    onCompanyChange();
+                    break;
+                }
+            }
+        }
+        // Populate items table from PR
+        populateItemsFromPR(pr);
+        showToast('Đã nạp ' + (JSON.parse(pr.items||'[]')).length + ' mặt hàng từ PR.', 'success');
+    } catch (e) {
+        statusEl.textContent = '❌ Lỗi tra cứu: ' + e.message;
+        statusEl.style.color = 'var(--error)';
+    }
+}
+
+function populateItemsFromPR(pr) {
+    const tbody = document.getElementById('am-items-tbody');
+    tbody.innerHTML = '';
+    let items = [];
+    try { items = JSON.parse(pr.items || '[]'); } catch (_) {}
+    if (items.length === 0) {
+        document.getElementById('pr-items-empty').style.display = 'block';
+        return;
+    }
+    document.getElementById('pr-items-empty').style.display = 'none';
+    items.forEach((it, idx) => {
+        const desc = it.desc || it.name || it.itemName || '—';
+        const qty  = parseFloat(it.qty) || 0;
+        const unit = it.unit || '';
+        const tr   = document.createElement('tr');
+        tr.dataset.orderedQty = qty;
+        tr.dataset.unit       = unit;
+        tr.dataset.desc       = desc;
+        tr.innerHTML = `
+          <td class="col-no">${idx+1}</td>
+          <td><span style="font-size:13px;">${escHtml(desc)}</span></td>
+          <td style="text-align:center;color:var(--text-secondary);">${qty}</td>
+          <td><input type="number" class="recv-qty" value="${qty}" min="0" step="0.01" style="text-align:center;"></td>
+          <td style="text-align:center;color:var(--text-secondary);">${escHtml(unit)}</td>
+          <td><input type="text" class="item-condition" placeholder="Tốt / Hỏng / Thiếu..."></td>
+          <td class="col-acc"><input type="checkbox" class="item-accepted" checked title="Chấp nhận?"></td>`;
+        tbody.appendChild(tr);
+    });
+}
+
+function escHtml(s) {
+    return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Receiver signature upload (same pattern as PR) ────────────
+async function compressImageSignature(file, maxW, maxH, quality) {
+    return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = e => {
+            const img = new Image();
+            img.onload = () => {
+                let w = img.width, h = img.height;
+                const ratio = Math.min(maxW/w, maxH/h, 1);
+                w = Math.round(w * ratio); h = Math.round(h * ratio);
+                const canvas = document.createElement('canvas');
+                canvas.width = w; canvas.height = h;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#ffffff';
+                ctx.fillRect(0, 0, w, h);
+                ctx.drawImage(img, 0, 0, w, h);
+                resolve(canvas.toDataURL('image/jpeg', quality));
+            };
+            img.onerror = reject;
+            img.src = e.target.result;
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+    });
+}
+
+async function handleReceiverSigUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    if (!['image/png','image/jpeg','image/jpg'].includes(file.type)) {
+        showToast('Vui lòng chọn file PNG hoặc JPG', 'error'); return;
+    }
+    const data = await compressImageSignature(file, 800, 400, 0.7);
+    if (data.length > 500*1024) { showToast('Chữ ký vẫn quá lớn (tối đa 500KB).', 'error'); return; }
+    _receiverSigData = data;
+    localStorage.setItem(_RECEIVER_SIG_KEY, data);
+    const zone    = document.getElementById('receiver-sig-zone');
+    const preview = document.getElementById('receiver-sig-preview');
+    zone.classList.add('has-sig');
+    preview.src = data; preview.style.display = 'block';
+    showToast('Đã tải lên chữ ký người nhận.', 'success');
+}
+
+// ── Dept head signature (for approval in drawer) ──────────────
+async function _amFetchSampleSignature(signatureUrl) {
+    if (!signatureUrl?.trim()) return null;
+    const fd = new FormData();
+    fd.append('data', JSON.stringify({ action: 'fetchSignatureImage', imageUrl: signatureUrl }));
+    const response = await fetch(BACKEND_URL, { method: 'POST', body: fd });
+    const result   = await response.json();
+    if (result.success && result.data?.imageBase64) return result.data.imageBase64;
+    return null;
+}
+
+async function _amGenerateImageHash(imageDataUrl, size = 16) {
+    return new Promise(resolve => {
+        const img = new Image();
+        img.onload = () => {
+            const canvas = document.createElement('canvas');
+            canvas.width = size; canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0, size, size);
+            const d = ctx.getImageData(0, 0, size, size).data;
+            let sum = 0;
+            const gray = [];
+            for (let i = 0; i < d.length; i += 4) {
+                const g = Math.round(0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2]);
+                gray.push(g); sum += g;
+            }
+            const avg  = sum / gray.length;
+            const hash = gray.map(g => g >= avg ? '1' : '0').join('');
+            resolve(hash);
+        };
+        img.onerror = () => resolve(null);
+        img.src = imageDataUrl;
+    });
+}
+
+async function _amCompareSignatures(uploadedBase64, sampleUrl) {
+    const sampleBase64 = await _amFetchSampleSignature(sampleUrl);
+    if (!sampleBase64) return { verified: true, reason: 'no_sample', similarity: 0 };
+    const [uploadedHash, sampleHash] = await Promise.all([
+        _amGenerateImageHash(uploadedBase64),
+        _amGenerateImageHash(sampleBase64)
+    ]);
+    if (!uploadedHash || !sampleHash) return { verified: true, reason: 'hash_error', similarity: 0 };
+    let match = 0;
+    for (let i = 0; i < uploadedHash.length; i++) {
+        if (uploadedHash[i] === sampleHash[i]) match++;
+    }
+    const similarity = (match / uploadedHash.length) * 100;
+    const THRESHOLD  = 75;
+    return {
+        verified:   similarity >= THRESHOLD,
+        similarity: similarity.toFixed(1),
+        reason:     similarity >= THRESHOLD ? 'match' : 'mismatch',
+        threshold:  THRESHOLD
+    };
+}
+
+async function handleDeptHeadSigUpload(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+    if (!['image/png','image/jpeg','image/jpg'].includes(file.type)) {
+        showToast('Vui lòng chọn file PNG hoặc JPG', 'error'); return;
+    }
+    const data = await compressImageSignature(file, 800, 400, 0.7);
+    if (data.length > 500*1024) { showToast('Chữ ký quá lớn (tối đa 500KB).', 'error'); return; }
+    _dhSigData = data;
+    localStorage.setItem(_DH_SIG_KEY, data);
+    const preview = document.getElementById('dh-sig-preview');
+    const zone    = document.getElementById('dh-sig-zone');
+    if (preview) { preview.src = data; preview.style.display = 'block'; }
+    if (zone)    zone.classList.add('has-sig');
+    showToast('Đã tải lên chữ ký.', 'success');
+}
+
+// ── Attachments ───────────────────────────────────────────────
+function handleAMAttachment(event) {
+    const files = Array.from(event.target.files);
+    if (_amAttachFiles.length + files.length > MAX_ATTACH_FILES) {
+        showToast(`Tối đa ${MAX_ATTACH_FILES} tệp đính kèm.`, 'error'); return;
+    }
+    let totalBytes = _amAttachFiles.reduce((s, f) => s + f.file.size, 0);
+    for (const file of files) {
+        if (file.size > MAX_ATTACH_BYTES) { showToast(file.name + ': tệp quá lớn (tối đa 5 MB).', 'error'); continue; }
+        if (totalBytes + file.size > MAX_ATTACH_TOTAL) { showToast('Tổng dung lượng vượt 30 MB.', 'error'); break; }
+        totalBytes += file.size;
+        _amAttachFiles.push({ file, name: file.name });
+    }
+    renderAttachPills();
+    event.target.value = '';
+}
+
+function renderAttachPills() {
+    const list = document.getElementById('am-attach-list');
+    list.innerHTML = '';
+    _amAttachFiles.forEach((entry, idx) => {
+        const pill = document.createElement('div');
+        pill.className = 'attach-pill';
+        pill.innerHTML = `<i class="fas fa-file" style="color:#94a3b8;"></i><span>${escHtml(entry.name)}</span><button type="button" onclick="removeAttach(${idx})" aria-label="Xoá">×</button>`;
+        list.appendChild(pill);
+    });
+}
+
+function removeAttach(idx) {
+    _amAttachFiles.splice(idx, 1);
+    renderAttachPills();
+}
+
+function _fileToBase64(file) {
+    return new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload  = e => resolve(e.target.result);
+        r.onerror = reject;
+        r.readAsDataURL(file);
+    });
+}
+
+// ── Summary (step 4) ──────────────────────────────────────────
+function buildSummary() {
+    const co   = document.getElementById('company_name').value || document.getElementById('company_code').options[document.getElementById('company_code').selectedIndex]?.dataset?.name || '—';
+    const prNo = document.getElementById('pr_no').value.trim() || '—';
+    const amNo = document.getElementById('am_no').value || _amNo || '—';
+    const dt   = document.getElementById('am_date').value || '—';
+    const recv = document.getElementById('receiver_name').value || '—';
+    const dh   = document.getElementById('dept_head_email').value || '—';
+    const rows = document.querySelectorAll('#am-items-tbody tr');
+    let itemsHtml = '';
+    rows.forEach((tr, idx) => {
+        const desc  = tr.dataset.desc || '—';
+        const oQty  = tr.dataset.orderedQty || 0;
+        const rQty  = tr.querySelector('.recv-qty')?.value || 0;
+        const cond  = tr.querySelector('.item-condition')?.value || '—';
+        const acc   = tr.querySelector('.item-accepted')?.checked ? '<span class="accepted-badge accepted-yes">✓ Chấp nhận</span>' : '<span class="accepted-badge accepted-no">✗ Không chấp nhận</span>';
+        const unit  = tr.dataset.unit || '';
+        itemsHtml += `<tr><td style="padding:6px 8px;font-size:13px;">${idx+1}</td><td style="padding:6px 8px;font-size:13px;">${escHtml(desc)}</td><td style="padding:6px 8px;font-size:13px;text-align:center;">${oQty}</td><td style="padding:6px 8px;font-size:13px;text-align:center;font-weight:600;">${rQty}</td><td style="padding:6px 8px;font-size:13px;text-align:center;">${escHtml(unit)}</td><td style="padding:6px 8px;font-size:13px;">${escHtml(cond)}</td><td style="padding:6px 8px;">${acc}</td></tr>`;
+    });
+    document.getElementById('summary-content').innerHTML = `
+        <div class="info-grid" style="margin-bottom:16px;">
+            <div class="info-item"><label>Công ty</label><p>${escHtml(co)}</p></div>
+            <div class="info-item"><label>Số AM</label><p style="color:var(--primary);font-weight:700;">${escHtml(amNo)}</p></div>
+            <div class="info-item"><label>Số PR tham chiếu</label><p>${escHtml(prNo)}</p></div>
+            <div class="info-item"><label>Ngày nghiệm thu</label><p>${escHtml(dt)}</p></div>
+            <div class="info-item"><label>Người nhận hàng</label><p>${escHtml(recv)}</p></div>
+            <div class="info-item"><label>Người xác nhận</label><p>${escHtml(dh)}</p></div>
+        </div>
+        <div class="items-wrap"><table class="items-table">
+            <thead><tr><th>#</th><th>Hàng hóa</th><th>Đặt</th><th>Nhận</th><th>ĐV</th><th>Tình trạng</th><th>Chấp nhận</th></tr></thead>
+            <tbody>${itemsHtml}</tbody>
+        </table></div>
+        ${_receiverSigData ? `<div style="margin-top:16px;"><p style="font-size:12px;font-weight:500;color:var(--text-secondary);margin-bottom:6px;">CHỮ KÝ NGƯỜI NHẬN</p><img src="${_receiverSigData}" style="max-width:200px;max-height:70px;border-radius:8px;border:1px solid rgba(0,0,0,0.10);"></div>` : ''}
+    `;
+}
+
+// ── Submit ────────────────────────────────────────────────────
+async function submitAM() {
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang gửi...';
+    try {
+        const amNoVal  = document.getElementById('am_no').value || _amNo;
+        const coName   = document.getElementById('company_name').value;
+        const coCode   = document.getElementById('company_code').options[document.getElementById('company_code').selectedIndex]?.dataset?.code || '';
+        const prNo     = document.getElementById('pr_no').value.trim();
+        const dept     = document.getElementById('department').value.trim();
+        const rName    = document.getElementById('receiver_name').value;
+        const rEmail   = document.getElementById('receiver_email').value;
+        const amDate   = document.getElementById('am_date').value;
+        const dhEmail  = document.getElementById('dept_head_email').value;
+        const note     = document.getElementById('submission_note').value.trim();
+
+        // Build items array
+        const rows  = document.querySelectorAll('#am-items-tbody tr');
+        const items = [];
+        rows.forEach(tr => {
+            items.push({
+                desc:        tr.dataset.desc || '',
+                orderedQty:  parseFloat(tr.dataset.orderedQty) || 0,
+                receivedQty: parseFloat(tr.querySelector('.recv-qty')?.value) || 0,
+                unit:        tr.dataset.unit || '',
+                condition:   tr.querySelector('.item-condition')?.value || '',
+                accepted:    tr.querySelector('.item-accepted')?.checked === true
+            });
+        });
+
+        // Build attachments
+        const attachPayload = [];
+        for (const entry of _amAttachFiles) {
+            const b64 = await _fileToBase64(entry.file);
+            attachPayload.push({ fileName: entry.name, fileData: b64, mimeType: entry.file.type || 'application/octet-stream' });
+        }
+
+        const payload = {
+            action:           'createAcceptanceMinutes',
+            amNo:             amNoVal,
+            companyName:      coName,
+            companyCode:      coCode,
+            prNo:             prNo,
+            department:       dept,
+            receiverName:     rName,
+            receiverEmail:    rEmail,
+            amDate:           amDate,
+            deptHeadEmail:    dhEmail,
+            items:            JSON.stringify(items),
+            submissionNote:   note,
+            receiverSignature: _receiverSigData || '',
+            attachments:      attachPayload
+        };
+
+        const sendParams = new URLSearchParams();
+        sendParams.append('data', JSON.stringify(payload));
+        const res    = await fetch(BACKEND_URL, { method: 'POST', mode: 'cors', redirect: 'follow', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: sendParams.toString() });
+        const result = JSON.parse(await res.text());
+
+        if (!result.success) throw new Error(result.message || 'Lỗi gửi biên bản.');
+
+        showToast('✅ Biên bản ' + (result.data?.amNo || amNoVal) + ' đã gửi thành công!', 'success', 5000);
+        // Reset form
+        resetForm();
+        loadAMHistory(true);
+    } catch (e) {
+        showToast('❌ ' + e.message, 'error', 6000);
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fas fa-paper-plane"></i> Gửi Biên Bản Nghiệm Thu';
+    }
+}
+
+function resetForm() {
+    _prLookupData    = null;
+    _receiverSigData = null;
+    _amAttachFiles   = [];
+    _amNo            = '';
+    document.getElementById('company_code').selectedIndex = 0;
+    document.getElementById('company_name').value = '';
+    document.getElementById('company_key_or_taxid').value = '';
+    document.getElementById('am_no').value = '';
+    document.getElementById('pr_no').value = '';
+    document.getElementById('am_date').value = '';
+    document.getElementById('department').value = '';
+    document.getElementById('submission_note').value = '';
+    document.getElementById('dept_head_email').selectedIndex = 0;
+    document.getElementById('am-items-tbody').innerHTML = '';
+    document.getElementById('pr-lookup-status').textContent = '';
+    const zone = document.getElementById('receiver-sig-zone');
+    zone.classList.remove('has-sig');
+    document.getElementById('receiver-sig-preview').style.display = 'none';
+    renderAttachPills();
+    goToStep(1);
+}
+
+// ── AM list ───────────────────────────────────────────────────
+function _amStatusBucket(status) {
+    const s = (status || '').toLowerCase();
+    if (s === 'đã nghiệm thu') return 'hoan-thanh';
+    if (s === 'từ chối')       return 'tu-choi';
+    if (s)                     return 'dang-xu-ly';
+    return '';
+}
+
+function _amStatusClass(status) {
+    const b = _amStatusBucket(status);
+    if (b === 'hoan-thanh') return 'am-status-approved';
+    if (b === 'tu-choi')    return 'am-status-rejected';
+    return 'am-status-pending';
+}
+
+function applyAMFilter(bucket) {
+    _currentAMFilter = bucket;
+    document.querySelectorAll('.am-filter-pill').forEach(p => {
+        const active = (p.textContent.trim() === 'Tất cả' && bucket === '') ||
+                       (p.getAttribute('onclick') || '').includes(`'${bucket}'`);
+        p.classList.toggle('active', active);
+    });
+    _filteredAMs = bucket === '' ? _allAMs : _allAMs.filter(am => _amStatusBucket(am.status) === bucket);
+    renderAMList();
+}
+
+function renderAMList() {
+    const body = document.getElementById('am-list-body');
+    if (_filteredAMs.length === 0) {
+        body.innerHTML = '<div class="am-empty"><i class="fas fa-inbox" style="font-size:24px;display:block;margin-bottom:8px;color:#d1d5db;"></i>Không có biên bản nào.</div>';
+        return;
+    }
+    body.innerHTML = _filteredAMs.map(am => `
+        <div class="am-card" onclick="openAMDrawer('${escHtml(am.amNo)}')">
+            <div class="am-card-top">
+                <div>
+                    <div class="am-no">${escHtml(am.amNo)}</div>
+                    <div class="am-meta">${escHtml(am.company)} · PR: ${escHtml(am.prNo)} · ${escHtml(am.amDate ? am.amDate.substring(0,10) : '')}</div>
+                    <div class="am-meta" style="margin-top:2px;">Người nhận: ${escHtml(am.receiverName)} · Xác nhận: ${escHtml(am.deptHeadEmail)}</div>
+                </div>
+                <span class="am-status-badge ${_amStatusClass(am.status)}">${escHtml(am.status)}</span>
+            </div>
+        </div>
+    `).join('');
+}
+
+async function loadAMHistory(forceRefresh = false) {
+    const myEmail = (() => { try { return (JSON.parse(localStorage.getItem('tlc_current_user')||'{}').email||'').toLowerCase(); } catch(_) { return ''; } })();
+    const cached = localStorage.getItem(_AM_CACHE_KEY);
+    const ts     = localStorage.getItem(_AM_CACHE_TS);
+    const age    = ts ? Date.now() - new Date(ts).getTime() : Infinity;
+
+    if (!forceRefresh && cached && age < _AM_CACHE_TTL) {
+        try {
+            _allAMs = JSON.parse(cached);
+            applyAMFilter(_currentAMFilter);
+            _updateAMStats();
+            return;
+        } catch (_) {}
+    }
+    try {
+        const params = new URLSearchParams();
+        params.append('data', JSON.stringify({ action: 'getAcceptanceMinutesHistory', email: myEmail }));
+        const res    = await fetch(BACKEND_URL, { method: 'POST', mode: 'cors', redirect: 'follow', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() });
+        const result = JSON.parse(await res.text());
+        _allAMs = result.data?.acceptanceMinutes || result.acceptanceMinutes || [];
+        localStorage.setItem(_AM_CACHE_KEY, JSON.stringify(_allAMs));
+        localStorage.setItem(_AM_CACHE_TS,  new Date().toISOString());
+        applyAMFilter(_currentAMFilter);
+        _updateAMStats();
+    } catch (e) {
+        document.getElementById('am-list-body').innerHTML = `<div class="am-empty">Lỗi tải danh sách: ${e.message}</div>`;
+    }
+}
+
+function _updateAMStats() {
+    const pending = _pendingAMItems(_allAMs);
+    _updateAMNotifBadge(pending.length, pending);
+}
+
+// ── Drawer ────────────────────────────────────────────────────
+function openAMDrawer(amNo) {
+    const am = _allAMs.find(a => a.amNo === amNo);
+    if (!am) return;
+    _currentAMDrawer = amNo;
+    document.getElementById('am-drawer-overlay').classList.add('open');
+    document.getElementById('am-drawer').classList.add('open');
+    renderAMDrawer(am);
+    // Fetch company approvers for dept head verification
+    const coKey = am.metadata?.companyCode || '';
+    if (coKey) {
+        const p = new URLSearchParams();
+        p.append('data', JSON.stringify({ action: 'getCompanyApprovers', companyKey: coKey }));
+        fetch(BACKEND_URL, { method: 'POST', mode: 'cors', redirect: 'follow', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: p.toString() })
+          .then(r => r.json()).then(res => { _amCompanyApprovers = res.data || null; })
+          .catch(() => {});
+    }
+}
+
+function closeAMDrawer() {
+    document.getElementById('am-drawer-overlay').classList.remove('open');
+    document.getElementById('am-drawer').classList.remove('open');
+    _currentAMDrawer = null;
+    _dhSigData       = null;
+}
+
+async function renderAMDrawer(am) {
+    const myEmail = (() => { try { return (JSON.parse(localStorage.getItem('tlc_current_user')||'{}').email||'').toLowerCase(); } catch(_) { return ''; } })();
+    document.getElementById('am-drawer-title').textContent = am.amNo;
+    const meta   = am.metadata || {};
+    const isDeptHead = (am.deptHeadEmail||'').toLowerCase() === myEmail;
+    const isReceiver = (am.receiverEmail||'').toLowerCase() === myEmail;
+
+    // Items table
+    const items   = am.items || [];
+    const itemRows = items.map((it, i) => `<tr><td style="padding:5px 8px;font-size:12px;color:var(--text-secondary);">${i+1}</td><td style="padding:5px 8px;font-size:13px;">${escHtml(it.desc||'—')}</td><td style="padding:5px 8px;font-size:12px;text-align:center;">${it.orderedQty||0}</td><td style="padding:5px 8px;font-size:12px;text-align:center;font-weight:600;">${it.receivedQty||0}</td><td style="padding:5px 8px;font-size:12px;text-align:center;">${escHtml(it.unit||'')}</td><td style="padding:5px 8px;font-size:12px;">${escHtml(it.condition||'—')}</td><td style="padding:5px 8px;">${it.accepted ? '<span class="accepted-badge accepted-yes">✓</span>' : '<span class="accepted-badge accepted-no">✗</span>'}</td></tr>`).join('');
+
+    // Attachments
+    const attHtml = (meta.attachments||[]).filter(a=>a.fileUrl).map(a => `<a href="${a.fileUrl}" target="_blank" style="font-size:12px;color:var(--primary);display:flex;align-items:center;gap:6px;"><i class="fas fa-file"></i>${escHtml(a.fileName)}</a>`).join('');
+
+    document.getElementById('am-drawer-body').innerHTML = `
+        <div class="drawer-section">
+            <div class="info-grid">
+                <div class="info-item"><label>Số AM</label><p style="color:var(--primary);font-weight:700;">${escHtml(am.amNo)}</p></div>
+                <div class="info-item"><label>Trạng thái</label><p><span class="am-status-badge ${_amStatusClass(am.status)}">${escHtml(am.status)}</span></p></div>
+                <div class="info-item"><label>Công ty</label><p>${escHtml(am.company)}</p></div>
+                <div class="info-item"><label>Số PR</label><p>${escHtml(am.prNo)}</p></div>
+                <div class="info-item"><label>Người nhận hàng</label><p>${escHtml(am.receiverName)}</p></div>
+                <div class="info-item"><label>Ngày nghiệm thu</label><p>${escHtml((am.amDate||'').substring(0,10))}</p></div>
+                <div class="info-item"><label>Người xác nhận</label><p>${escHtml(am.deptHeadEmail)}</p></div>
+                <div class="info-item"><label>Gửi lúc</label><p style="font-size:12px;">${escHtml((am.submittedAt||'').substring(0,16).replace('T',' '))}</p></div>
+            </div>
+        </div>
+        <div class="drawer-section">
+            <h3>Danh Sách Hàng Hóa</h3>
+            <div class="items-wrap"><table class="items-table">
+                <thead><tr><th>#</th><th>Mô tả</th><th>Đặt</th><th>Nhận</th><th>ĐV</th><th>Tình trạng</th><th>✓</th></tr></thead>
+                <tbody>${itemRows}</tbody>
+            </table></div>
+        </div>
+        ${meta.receiverSignature ? `<div class="drawer-section"><h3>Chữ Ký Người Nhận</h3><img src="${meta.receiverSignature.startsWith('http') ? meta.receiverSignature : meta.receiverSignature}" style="max-width:220px;max-height:80px;border-radius:8px;border:1px solid rgba(0,0,0,0.10);"></div>` : ''}
+        ${meta.deptHeadSignature ? `<div class="drawer-section"><h3>Chữ Ký Người Xác Nhận</h3><img src="${meta.deptHeadSignature}" style="max-width:220px;max-height:80px;border-radius:8px;border:1px solid rgba(0,0,0,0.10);"></div>` : ''}
+        ${meta.rejectionNote ? `<div style="background:#fff5f5;border-left:4px solid var(--error);padding:10px 14px;border-radius:4px;margin-bottom:16px;"><b>Lý do từ chối:</b><br><span style="font-size:13px;">${escHtml(meta.rejectionNote)}</span></div>` : ''}
+        ${attHtml ? `<div class="drawer-section"><h3>Tài Liệu Đính Kèm</h3><div style="display:flex;flex-direction:column;gap:6px;">${attHtml}</div></div>` : ''}
+        ${am.status === 'Đã nghiệm thu' ? `<div style="background:rgba(52,199,89,0.08);border:1px solid rgba(52,199,89,0.3);border-radius:10px;padding:12px 16px;margin-top:4px;"><p style="font-size:13px;color:#1a7a3c;font-weight:600;"><i class="fas fa-check-circle" style="margin-right:6px;"></i>Biên bản đã được xác nhận.</p><p style="font-size:12px;color:#1a7a3c;margin-top:4px;">Bạn có thể tạo <a href="payment_request.html?amNo=${encodeURIComponent(am.amNo)}&prNo=${encodeURIComponent(am.prNo)}" target="_blank" style="font-weight:700;color:var(--primary);text-decoration:underline;">Đề Nghị Thanh Toán →</a></p></div>` : ''}
+        ${isDeptHead && am.status === 'Chờ xác nhận' ? `<div class="drawer-section" id="dh-sig-section" style="margin-top:8px;">
+            <h3>Chữ Ký Xác Nhận <span class="req">*</span></h3>
+            <div id="dh-sig-zone" class="sig-upload-zone" onclick="document.getElementById('dh-sig-input').click()">
+                <i class="fas fa-upload" style="font-size:18px;color:#94a3b8;margin-bottom:6px;"></i>
+                <p style="font-size:13px;color:var(--text-secondary);">Tải lên chữ ký của bạn</p>
+                <img id="dh-sig-preview" class="sig-preview" src="" alt="" style="display:none;">
+            </div>
+            <input type="file" id="dh-sig-input" accept="image/png,image/jpeg,image/jpg" style="display:none;" onchange="handleDeptHeadSigUpload(event)">
+        </div>` : ''}
+    `;
+
+    // Actions area
+    const actionsEl = document.getElementById('am-drawer-actions');
+    actionsEl.style.display = 'flex';
+    let actionsHtml = '';
+    if (isDeptHead && am.status === 'Chờ xác nhận') {
+        actionsHtml = `
+            <button class="btn btn-success" onclick="approveAM('${escHtml(am.amNo)}')"><i class="fas fa-check"></i> Xác Nhận Nghiệm Thu</button>
+            <button class="btn btn-danger" onclick="openRejectModal('${escHtml(am.amNo)}')"><i class="fas fa-times"></i> Từ Chối</button>`;
+    } else if (am.status === 'Đã nghiệm thu') {
+        actionsHtml = `<a href="payment_request.html?amNo=${encodeURIComponent(am.amNo)}&prNo=${encodeURIComponent(am.prNo)}" target="_blank" class="btn btn-primary"><i class="fas fa-file-invoice-dollar"></i> Tạo Đề Nghị Thanh Toán</a>`;
+    } else {
+        actionsEl.style.display = 'none';
+    }
+    actionsEl.innerHTML = actionsHtml;
+}
+
+// ── Approve AM ────────────────────────────────────────────────
+async function approveAM(amNo) {
+    const myEmail = (() => { try { return (JSON.parse(localStorage.getItem('tlc_current_user')||'{}').email||'').toLowerCase(); } catch(_) { return ''; } })();
+    if (!myEmail) { showToast('Vui lòng đăng nhập trước.', 'error'); return; }
+    if (!_dhSigData) { showToast('Vui lòng tải lên chữ ký trước khi xác nhận.', 'error'); return; }
+
+    // pHash verification if dept head is a registered approver
+    if (_amCompanyApprovers) {
+        const roles = [_amCompanyApprovers.legalRep, _amCompanyApprovers.accountant, _amCompanyApprovers.treasurer];
+        const match = roles.find(r => r && (r.email||'').toLowerCase() === myEmail);
+        if (match?.signature) {
+            showToast('Đang xác minh chữ ký...', 'info', 2000);
+            const vResult = await _amCompareSignatures(_dhSigData, match.signature);
+            if (!vResult.verified && vResult.reason === 'mismatch') {
+                alert(`❌ KHÔNG THỂ XÁC NHẬN\n\nChữ ký không khớp với mẫu đã đăng ký.\nĐộ tương đồng: ${vResult.similarity}% (yêu cầu ≥ 75%)\n\nVui lòng tải lên chữ ký đúng của bạn.`);
+                return;
+            }
+        }
+    }
+
+    if (!confirm(`Xác nhận nghiệm thu biên bản ${amNo}?`)) return;
+
+    try {
+        const params = new URLSearchParams();
+        params.append('data', JSON.stringify({
+            action:             'approveAcceptanceMinutes',
+            amNo:               amNo,
+            approverEmail:      myEmail,
+            approverSignature:  _dhSigData,
+            note:               ''
+        }));
+        const res    = await fetch(BACKEND_URL, { method: 'POST', mode: 'cors', redirect: 'follow', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() });
+        const result = JSON.parse(await res.text());
+        if (!result.success) throw new Error(result.message || 'Lỗi xác nhận.');
+        showToast('✅ Biên bản ' + amNo + ' đã được xác nhận!', 'success', 4000);
+        closeAMDrawer();
+        localStorage.removeItem(_AM_CACHE_KEY);
+        loadAMHistory(true);
+    } catch (e) {
+        showToast('❌ ' + e.message, 'error', 5000);
+    }
+}
+
+// ── Reject AM ─────────────────────────────────────────────────
+let _rejectingAMNo = null;
+function openRejectModal(amNo) {
+    _rejectingAMNo = amNo;
+    document.getElementById('am-reject-note').value = '';
+    document.getElementById('am-reject-modal').style.display = 'flex';
+}
+
+async function confirmRejectAM() {
+    const note = document.getElementById('am-reject-note').value.trim();
+    if (!note) { showToast('Vui lòng nhập lý do từ chối.', 'error'); return; }
+    const myEmail = (() => { try { return (JSON.parse(localStorage.getItem('tlc_current_user')||'{}').email||'').toLowerCase(); } catch(_) { return ''; } })();
+    document.getElementById('am-reject-modal').style.display = 'none';
+    try {
+        const params = new URLSearchParams();
+        params.append('data', JSON.stringify({
+            action:        'rejectAcceptanceMinutes',
+            amNo:          _rejectingAMNo,
+            approverEmail: myEmail,
+            note:          note
+        }));
+        const res    = await fetch(BACKEND_URL, { method: 'POST', mode: 'cors', redirect: 'follow', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() });
+        const result = JSON.parse(await res.text());
+        if (!result.success) throw new Error(result.message || 'Lỗi từ chối.');
+        showToast('Biên bản đã bị từ chối.', 'info', 3500);
+        closeAMDrawer();
+        localStorage.removeItem(_AM_CACHE_KEY);
+        loadAMHistory(true);
+    } catch (e) {
+        showToast('❌ ' + e.message, 'error', 5000);
+    }
+}
+
+// ── Notification bell ─────────────────────────────────────────
+function _pendingAMItems(list) {
+    const myEmail = (() => { try { return (JSON.parse(localStorage.getItem('tlc_current_user')||'{}').email||'').toLowerCase(); } catch(_) { return ''; } })();
+    if (!myEmail) return [];
+    return list.filter(am => {
+        const dhEmail = (am.deptHeadEmail||'').toLowerCase();
+        const rcEmail = (am.receiverEmail||'').toLowerCase();
+        if (dhEmail === myEmail && am.status === 'Chờ xác nhận') return true;
+        if (rcEmail === myEmail && am.status === 'Từ chối')       return true;
+        return false;
+    });
+}
+
+function _updateAMNotifBadge(count, items) {
+    ['notif-badge','notif-badge-mobile'].forEach(id => {
+        const b = document.getElementById(id);
+        if (!b) return;
+        b.textContent   = count > 99 ? '99+' : String(count);
+        b.style.display = count > 0 ? 'flex' : 'none';
+    });
+    const body = document.getElementById('notif-dropdown-body');
+    if (!body) return;
+    if (items.length === 0) {
+        body.innerHTML = '<div style="padding:20px;text-align:center;font-size:13px;color:#94a3b8;">Không có việc cần làm</div>';
+        return;
+    }
+    const show = items.slice(0, 15);
+    let html = show.map(am => {
+        const tag = am.status === 'Từ chối' ? `<span style="background:rgba(255,149,0,0.15);color:#b45309;border-radius:4px;font-size:10px;font-weight:700;padding:1px 5px;margin-left:6px;">Từ chối</span>` : '';
+        return `<div class="am-notif-item" onclick="_toggleNotifDropdown();openAMDrawer('${escHtml(am.amNo)}')">
+            <span style="color:var(--primary);font-weight:700;">${escHtml(am.amNo)}</span>${tag}
+            <div style="color:#6e6e73;font-size:12px;margin-top:2px;">${escHtml(am.company)}</div>
+        </div>`;
+    }).join('');
+    if (items.length > 15) html += `<div style="padding:8px 14px;font-size:12px;color:#94a3b8;text-align:center;">+${items.length-15} biên bản khác</div>`;
+    body.innerHTML = html;
+}
+
+function _toggleNotifDropdown() {
+    const dd = document.getElementById('notif-dropdown');
+    if (!dd) return;
+    dd.style.display = dd.style.display === 'none' ? 'block' : 'none';
+}
+
+document.addEventListener('click', function(e) {
+    const wrapper = document.getElementById('notif-bell-wrapper');
+    if (wrapper && !wrapper.contains(e.target)) {
+        const dd = document.getElementById('notif-dropdown');
+        if (dd) dd.style.display = 'none';
+    }
+});
+
+// ── URL params — pre-fill from PR drawer link ─────────────────
+function readURLParams() {
+    const p    = new URLSearchParams(window.location.search);
+    const prNo = p.get('prNo');
+    if (prNo) {
+        document.getElementById('pr_no').value = prNo;
+        // Auto-trigger lookup
+        setTimeout(() => lookupPR(), 800);
+    }
+}
+
+// ── Init ──────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+    // Restore sidebar collapsed state
+    if (localStorage.getItem('pr_sidebar_collapsed') === '1') {
+        document.getElementById('sidebar').classList.add('collapsed');
+        document.getElementById('ipad-main').classList.add('sidebar-collapsed');
+    }
+    // Set today as default AM date
+    const today = new Date();
+    const yyyy  = today.getFullYear();
+    const mm    = String(today.getMonth()+1).padStart(2,'0');
+    const dd    = String(today.getDate()).padStart(2,'0');
+    document.getElementById('am_date').value = `${yyyy}-${mm}-${dd}`;
+
+    restoreSession();
+    loadCompanies();
+    loadMasterData();
+    loadAMHistory();
+    readURLParams();
+});
+</script>
+</body>
+</html>

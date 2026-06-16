@@ -1,0 +1,100 @@
+---
+description: Notification bell badge and dropdown panel on voucher and PR pages
+globs:
+  - voucher.html
+  - purchase_request.html
+---
+
+# Notification Bell — Badge + Dropdown
+
+## Overview
+
+Both `voucher.html` and `purchase_request.html` have a red bell badge in the top nav (desktop and mobile) that shows the count of items requiring the current user's action. Clicking the bell opens a dropdown panel listing each pending item by number; clicking a row opens the detail directly.
+
+## HTML Structure
+
+Inserted in `#nav-user-section` (desktop) and in the mobile nav right-side flex div.
+
+```html
+<div id="notif-bell-wrapper" onclick="toggleNotifDropdown() /* or _toggleNotifDropdown() */" style="position:relative;display:inline-flex;align-items:center;cursor:pointer;padding:4px;">
+    <i class="fas fa-bell" style="font-size:18px;color:#6e6e73;"></i>
+    <span id="notif-badge" style="display:none;position:absolute;top:-6px;right:-7px;...">0</span>
+    <div id="notif-dropdown" style="display:none;position:absolute;top:calc(100% + 10px);right:0;width:280px;...">
+        <div>Việc cần làm của tôi</div>
+        <div id="notif-dropdown-body" style="max-height:320px;overflow-y:auto;"></div>
+    </div>
+</div>
+<!-- Mobile: separate <span id="notif-badge-mobile"> in mobile nav -->
+```
+
+## JavaScript Functions
+
+### `voucher.html`
+
+| Function | Purpose |
+|---|---|
+| `_pendingVoucherItems(vouchers)` | Filters `allLoadedVouchers` to those needing the current user's action |
+| `countMyPendingVoucherActions(vouchers)` | Returns `.length` of above |
+| `updateNotifBadge(count, items)` | Updates both badges + rebuilds `#notif-dropdown-body` |
+| `toggleNotifDropdown()` | Toggles `#notif-dropdown` display |
+
+Called at end of `updateVoucherStats(vouchers)`.
+
+### `purchase_request.html`
+
+| Function | Purpose |
+|---|---|
+| `_pendingPRItems(list)` | Filters `_allPRs` to those needing the current user's action |
+| `_countPendingPRActions(list)` | Returns `.length` of above |
+| `_updateNotifBadge(count, items)` | Updates both badges + rebuilds `#notif-dropdown-body` |
+| `_toggleNotifDropdown()` | Toggles `#notif-dropdown` display |
+
+Called at end of `_updatePRStats(list)`.
+
+Both pages also attach a `document.addEventListener('click', ...)` that closes the dropdown when clicking outside `#notif-bell-wrapper`.
+
+## What Counts as "My Pending Action"
+
+### Vouchers
+Role is determined by `getCallerRole()` (reads `tlc_current_user` from localStorage):
+- `accountant` → vouchers with `progressNum === 0`
+- `legalRep` → vouchers with `progressNum === 1`
+- `treasurer` → vouchers with `progressNum === 2`
+- `admin` → vouchers at `progressNum === 0` that are not rejected
+- `submitter` → not counted (they see their own flow in the list itself)
+
+### PRs
+Mirrors the exact gate logic in `renderPRDrawer`:
+- `parallel` stage: email matches `budgetApproverEmail` and `budgetStatus !== 'Approved'`
+- `parallel` stage: email matches `supplierApproverEmail` and `supplierStatus !== 'Approved'`
+- `contract` stage: email matches `contractApproverEmail`
+- `purchasing` stage: email matches `purchasingApproverEmail`
+- Any stage: `status === 'trả lại bổ sung'` and `requestorEmail === myEmail` (submitter needs to resubmit)
+
+## Dropdown Row Behavior
+
+- **Vouchers:** shows voucher number (blue) + type + company; click calls `openVoucherDetail(voucherNumber)`
+- **PRs:** shows PR number (blue) + company; "Trả lại" amber tag for returned PRs; click calls `openPRDrawer(prNo)`
+- Capped at 15 rows; shows "+N phiếu khác" if more
+- Empty state: "Không có việc cần làm"
+
+## CSS Classes
+
+- `voucher.html`: `.notif-item` — hover highlight, border-bottom separator
+- `purchase_request.html`: `.pr-notif-item` — same pattern
+
+## Badge IDs
+
+| ID | Location |
+|---|---|
+| `notif-badge` | Desktop nav (both pages) |
+| `notif-badge-mobile` | Mobile nav (both pages) |
+| `notif-dropdown` | Dropdown panel wrapper |
+| `notif-dropdown-body` | Scrollable content area inside panel |
+| `notif-bell-wrapper` | Clickable bell container (click-outside detection anchor) |
+
+## Rules
+
+- **Do not** add a separate backend call for the count — it is always derived from already-loaded data (`allLoadedVouchers` / `_allPRs`).
+- **Do not** change the count logic independently of `renderPRDrawer` gate checks — they must stay in sync.
+- If a new approval stage is added to either flow, update both `_pendingVoucherItems` / `_pendingPRItems` AND `renderPRDrawer` / the voucher approval logic together.
