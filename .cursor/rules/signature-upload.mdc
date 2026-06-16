@@ -30,7 +30,30 @@ const base64 = canvas.toDataURL('image/jpeg', quality);
 - Check: `base64Data.length > 500 * 1024`
 - Error message: `'Chữ ký vẫn quá lớn sau khi nén (tối đa 500KB). Vui lòng chọn ảnh nhỏ hơn.'`
 
+## Mandatory Scope — Every Submission and Approval
+
+**EVERY submission and EVERY approval action requires a signature upload. No exceptions.**
+
+| Page | Action | Signature required |
+|---|---|---|
+| `purchase_request.html` | PR submission (requester, Step 3 wizard) | Yes — already implemented |
+| `purchase_request.html` | PR approval (approver, drawer) | Yes — approver uploads before clicking Duyệt |
+| `voucher.html` | Voucher submission (requester) | Yes — already implemented |
+| `voucher.html` | Voucher approval (individual modal) | Yes — already implemented |
+| `voucher.html` | Voucher bulk approval | Yes — already implemented |
+| `payment_request.html` | Payment request submission | Yes |
+
+### Verification requirement
+- Budget / Supplier / Contract approvers: run `compareSignatures` against their registered sample from `Master Company` sheet via `getCompanyApprovers` endpoint. Block if similarity < 75%.
+- Purchasing approver (Kế Toán Chi department): no registered sample → upload required but similarity check skipped (same as "no_sample" fallback).
+- Requester signatures: no verification against sample needed.
+
+### Sample signature source
+- Fetched via `getCompanyApprovers` action → `TLCG_CASH_BACKEND.gs` → Master Company sheet columns F (legalRep), J (accountant), N (treasurer)
+- Approver email matched against `legalRep.email`, `accountant.email`, `treasurer.email` to find the correct sample URL.
+
 ## Files Affected
 - `voucher.html` — requester signature, approver modal signature, bulk approver signature, acknowledge signature
+- `purchase_request.html` — requester signature (Step 3), approver signature (drawer)
 - `payment_request.html` — any signature inputs
 - `approve_voucher.html`, `reject_voucher.html`, `approve_payment_request.html`, `reject_payment_request.html`

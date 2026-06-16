@@ -1926,6 +1926,18 @@ function handleApprovePurchaseRequest(data) {
     metadata[approverRole + 'ApprovedAt'] = now;
     metadata[approverRole + 'Note']       = note;
 
+    // Store approver signature and verification result if provided
+    if (data.approverSignature) {
+      metadata[approverRole + 'Signature'] = data.approverSignature;
+    }
+    if (data.signatureVerification) {
+      try {
+        metadata[approverRole + 'SignatureVerification'] = JSON.parse(data.signatureVerification);
+      } catch(e) {
+        metadata[approverRole + 'SignatureVerification'] = { raw: data.signatureVerification };
+      }
+    }
+
     // Compute new state after this approval
     var stateAfter = computePRApprovalState_(row, metadata);
     var newStatus  = stateAfter.statusLabel;

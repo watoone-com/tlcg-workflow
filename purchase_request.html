@@ -1669,6 +1669,11 @@
     let _signatureData = null;
     const _SIG_KEY     = 'tlcg_user_signature'; // shared storage key with voucher.html
 
+    /* ── Approver signature state (drawer only) ──────────────────── */
+    let _prApproverSigData  = null; // base64 of approver's uploaded signature
+    let _prCompanyApprovers = null; // {legalRep, accountant, treasurer, _company} fetched per company
+    const _APPROVER_SIG_KEY = 'tlcg_approver_signature'; // shared with voucher.html
+
     /* ── Toast ──────────────────────────────────────────────────── */
     function showToast(msg, type = 'info', duration = 3500) {
         const c = document.getElementById('toast-container');
@@ -1711,6 +1716,91 @@
     function loadSavedSignature() {
         const saved = localStorage.getItem(_SIG_KEY);
         if (saved) { _signatureData = saved; _displaySig(saved); }
+    }
+
+    /* ── Approver signature helpers (ported from voucher.html) ───── */
+
+    async function _prFetchSampleSignature(signatureUrl) {
+        if (!signatureUrl || signatureUrl.trim() === '') return null;
+        try {
+            const formData = new FormData();
+            formData.append('data', JSON.stringify({ action: 'fetchSignatureImage', imageUrl: signatureUrl }));
+            const response = await fetch(BACKEND_URL, { method: 'POST', body: formData });
+            const result   = await response.json();
+            if (result.success && result.data && result.data.imageBase64) return result.data.imageBase64;
+            console.warn('⚠️ Failed to fetch sample signature:', result.message);
+            return null;
+        } catch (err) {
+            console.error('❌ Error fetching sample signature:', err);
+            return null;
+        }
+    }
+
+    async function _prGenerateImageHash(imageDataUrl, size = 16) {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.crossOrigin = 'Anonymous';
+            img.onload = () => {
+                try {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = size; canvas.height = size;
+                    const ctx = canvas.getContext('2d');
+                    ctx.drawImage(img, 0, 0, size, size);
+                    const pixels = ctx.getImageData(0, 0, size, size).data;
+                    const grayscale = [];
+                    for (let i = 0; i < pixels.length; i += 4) {
+                        grayscale.push(pixels[i] * 0.299 + pixels[i+1] * 0.587 + pixels[i+2] * 0.114);
+                    }
+                    const avg  = grayscale.reduce((a, b) => a + b, 0) / grayscale.length;
+                    const hash = grayscale.map(g => g >= avg ? '1' : '0').join('');
+                    resolve(hash);
+                } catch (e) { resolve(null); }
+            };
+            img.onerror = () => resolve(null);
+            img.src = imageDataUrl;
+        });
+    }
+
+    async function _prCompareSignatures(uploadedBase64, sampleUrl) {
+        const sampleBase64 = await _prFetchSampleSignature(sampleUrl);
+        if (!sampleBase64) return { verified: true, reason: 'no_sample', similarity: 0 };
+        const [uploadedHash, sampleHash] = await Promise.all([
+            _prGenerateImageHash(uploadedBase64),
+            _prGenerateImageHash(sampleBase64)
+        ]);
+        if (!uploadedHash || !sampleHash) return { verified: false, reason: 'hash_failed', similarity: 0 };
+        let diff = 0;
+        for (let i = 0; i < uploadedHash.length; i++) { if (uploadedHash[i] !== sampleHash[i]) diff++; }
+        const similarity = ((uploadedHash.length - diff) / uploadedHash.length) * 100;
+        const THRESHOLD  = 75;
+        const verified   = similarity >= THRESHOLD;
+        console.log(`🔍 PR signature: ${similarity.toFixed(1)}% similarity — ${verified ? '✅ OK' : '⚠️ MISMATCH'}`);
+        return { verified, similarity: similarity.toFixed(1), reason: verified ? 'match' : 'mismatch', threshold: THRESHOLD };
+    }
+
+    async function handlePRApproverSigUpload(event) {
+        const file = event.target.files[0];
+        if (!file) return;
+        if (!['image/png', 'image/jpeg', 'image/jpg'].includes(file.type)) {
+            showToast('Vui lòng chọn file PNG hoặc JPG', 'error'); return;
+        }
+        try {
+            const data = await compressImageSignature(file, 800, 400, 0.7);
+            if (data.length > 500 * 1024) {
+                showToast('Chữ ký quá lớn (tối đa 500KB). Vui lòng dùng ảnh nhỏ hơn.', 'error'); return;
+            }
+            _prApproverSigData = data;
+            localStorage.setItem(_APPROVER_SIG_KEY, data);
+            const preview = document.getElementById('pr-approver-sig-preview');
+            if (preview) {
+                preview.innerHTML = `<img src="${data}" style="max-height:48px;max-width:160px;object-fit:contain;border:1px solid #e2e8f0;border-radius:6px;background:white;">`;
+            }
+            const btn = document.getElementById('pr-approver-sig-upload-btn');
+            if (btn) btn.textContent = 'Đổi chữ ký';
+            showToast('Chữ ký đã lưu. Sẽ tự động dùng lại cho các phê duyệt sau.', 'success');
+        } catch (err) {
+            showToast('Lỗi khi tải chữ ký. Vui lòng thử lại.', 'error');
+        }
     }
 
     async function handleSigUpload(event) {
@@ -3913,7 +4003,7 @@
         document.getElementById('pr-drawer-title').textContent = prNo;
         document.getElementById('pr-drawer-overlay').classList.add('open');
         document.getElementById('pr-drawer').classList.add('open');
-        renderPRDrawer(pr);
+        renderPRDrawer(pr);  // async — fire and forget
     }
 
     function closePRDrawer() {
@@ -3924,7 +4014,7 @@
     }
 
     /* ── Render Drawer Content ──────────────────────────────────── */
-    function renderPRDrawer(pr) {
+    async function renderPRDrawer(pr) {
         const body      = document.getElementById('pr-drawer-body');
         const actionsEl = document.getElementById('pr-drawer-actions');
         if (!body) return;
@@ -4152,13 +4242,52 @@
                 approveRole = 'purchasing';
             }
         }
-        const safePrNo    = _escAttrPR(pr.prNo || '');
+        const safePrNo = _escAttrPR(pr.prNo || '');
+
+        // Fetch company approvers (for signature sample) when this user needs to approve
+        if (approveRole) {
+            const companyName = pr.company || '';
+            if (companyName && (!_prCompanyApprovers || _prCompanyApprovers._company !== companyName)) {
+                try {
+                    const r = await fetch(BACKEND_URL, {
+                        method: 'POST', mode: 'cors', redirect: 'follow',
+                        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                        body: new URLSearchParams({ action: 'getCompanyApprovers', companyName }).toString()
+                    });
+                    const d = JSON.parse(await r.text());
+                    _prCompanyApprovers = d.success && d.data && d.data.approvers
+                        ? { ...d.data.approvers, _company: companyName }
+                        : { _company: companyName };
+                } catch(e) {
+                    _prCompanyApprovers = { _company: companyName };
+                }
+            }
+            // Load cached approver signature from localStorage
+            if (!_prApproverSigData) {
+                _prApproverSigData = localStorage.getItem(_APPROVER_SIG_KEY) || null;
+            }
+        }
 
         let actionsHtml = `<button class="pr-action-btn pr-btn-print" onclick="printPR('${safePrNo}')">
             <i class="fas fa-print" aria-hidden="true"></i> In phiếu
         </button>`;
+
         if (approveRole) {
+            const sigPreview = _prApproverSigData
+                ? `<img src="${_prApproverSigData}" style="max-height:48px;max-width:160px;object-fit:contain;border:1px solid #e2e8f0;border-radius:6px;background:white;">`
+                : `<span style="font-size:11px;color:#94a3b8;">Chưa có chữ ký — bắt buộc trước khi duyệt</span>`;
+
             actionsHtml += `
+            <div style="width:100%;border:1px dashed #cbd5e1;border-radius:8px;padding:8px 10px;background:#f8fafc;margin-bottom:4px;">
+                <div style="font-size:11px;font-weight:600;color:#475569;margin-bottom:6px;">✍️ Chữ ký người phê duyệt</div>
+                <div id="pr-approver-sig-preview" style="min-height:48px;display:flex;align-items:center;margin-bottom:6px;">${sigPreview}</div>
+                <label class="pr-action-btn pr-btn-secondary" style="cursor:pointer;font-size:12px;padding:6px 12px;">
+                    <i class="fas fa-upload" aria-hidden="true"></i>
+                    <span id="pr-approver-sig-upload-btn">${_prApproverSigData ? 'Đổi chữ ký' : 'Tải lên chữ ký'}</span>
+                    <input type="file" accept="image/png,image/jpeg,image/jpg" style="display:none;"
+                           onchange="handlePRApproverSigUpload(event)">
+                </label>
+            </div>
             <button class="pr-action-btn pr-btn-approve" onclick="approvePR('${safePrNo}', '${approveRole}')">
                 <i class="fas fa-check" aria-hidden="true"></i> Duyệt
             </button>
@@ -4182,12 +4311,45 @@
         try { currentUser = JSON.parse(localStorage.getItem('tlc_current_user') || '{}'); } catch(e) {}
         const myEmail = (currentUser.email || '').toLowerCase().trim();
         if (!myEmail) { showToast('Vui lòng đăng nhập trước.', 'error'); return; }
+
+        // Require signature upload before proceeding
+        if (!_prApproverSigData) {
+            showToast('Vui lòng tải lên chữ ký trước khi duyệt.', 'error'); return;
+        }
+
         if (!confirm(`Xác nhận duyệt đề nghị ${prNo}?`)) return;
+
+        // Signature verification — compare against registered sample if available
+        let verificationResult = { verified: true, reason: 'no_sample', similarity: '0' };
+        const sampleUrl = _prCompanyApprovers
+            ? (_prCompanyApprovers.legalRep?.email  === myEmail ? _prCompanyApprovers.legalRep.signature
+            :  _prCompanyApprovers.accountant?.email === myEmail ? _prCompanyApprovers.accountant.signature
+            :  _prCompanyApprovers.treasurer?.email  === myEmail ? _prCompanyApprovers.treasurer.signature
+            :  null)
+            : null;
+        if (sampleUrl) {
+            try {
+                verificationResult = await _prCompareSignatures(_prApproverSigData, sampleUrl);
+                if (!verificationResult.verified && verificationResult.reason === 'mismatch') {
+                    alert(
+                        `❌ KHÔNG THỂ PHÊ DUYỆT: Chữ ký không khớp!\n\n` +
+                        `📊 Độ tương đồng: ${verificationResult.similarity}%\n` +
+                        `📏 Ngưỡng yêu cầu: ${verificationResult.threshold}%\n\n` +
+                        `Vui lòng tải lên chữ ký đã đăng ký trong hệ thống.`
+                    );
+                    return;
+                }
+            } catch(e) {
+                console.warn('⚠️ Signature verification error (proceeding):', e);
+            }
+        }
 
         try {
             const params = new URLSearchParams({
                 action: 'approvePurchaseRequest',
-                prNo, approverEmail: myEmail, approverRole: role, note: ''
+                prNo, approverEmail: myEmail, approverRole: role, note: '',
+                approverSignature: _prApproverSigData,
+                signatureVerification: JSON.stringify(verificationResult)
             });
             const res    = await fetch(BACKEND_URL, {
                 method: 'POST', mode: 'cors', redirect: 'follow',
