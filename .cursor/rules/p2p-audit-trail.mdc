@@ -1,0 +1,82 @@
+---
+description: Every P2P flow handler in TLCG_P2P_BACKEND.gs must call _appendAuditLog_() for every state-changing action.
+globs: ["TLCG_P2P_BACKEND.gs", "TLCG_CASH_BACKEND.gs"]
+alwaysApply: true
+---
+
+# P2P Audit Trail Rule
+
+## Requirement
+Every workflow in the TLCG P2P system that changes the status of a document **must**
+call `_appendAuditLog_()` immediately after writing the new status to the sheet and
+calling `SpreadsheetApp.flush()`.
+
+This creates an immutable, append-only event log — one row per action — that can be
+inspected in Google Sheets without touching the source record.
+
+## Pattern
+
+```javascript
+// 1. Write the new status to the source sheet (in-place update as usual)
+sheet.getRange(rowIndex, STATUS_COL).setValue(newStatus);
+sheet.getRange(rowIndex, METADATA_COL).setValue(JSON.stringify(metadata));
+SpreadsheetApp.flush();
+
+// 2. Immediately append to the audit log (NEVER skip this step)
+_appendAuditLog_({
+  sheetName:  '<FLOW>_Audit_Log',   // e.g. 'PR_Audit_Log', 'AM_Audit_Log', 'PMT_Audit_Log'
+  docNo:      docNo,                // document number: PR No, AM No, PMT No, …
+  flow:       '<FLOW>',             // short code: 'PR' | 'AM' | 'PMT' | …
+  company:    companyName,
+  action:     '<ACTION>',           // 'Submit' | 'Approve' | 'Reject' | 'Return' | 'Resubmit'
+  role:       '<ROLE>',             // 'requester' | 'budget' | 'supplier' | 'contract' | 'purchasing' | 'deptHead' | …
+  actorEmail: actorEmail,
+  actorName:  actorName || '',      // optional — leave '' if not available
+  prevStatus: currentStatus,        // status BEFORE this action
+  newStatus:  newStatus,            // status AFTER this action
+  note:       note || '',           // rejection reason / approval note
+  extra:      { /* optional structured extras */ }
+});
+```
+
+## Audit log sheet schema (auto-created by _appendAuditLog_ if missing)
+
+| Col | Header        | Description                                  |
+|-----|---------------|----------------------------------------------|
+| A   | Document No   | PR No / AM No / PMT No etc.                  |
+| B   | Flow          | Short flow code: PR, AM, PMT …               |
+| C   | Company       | Company name                                 |
+| D   | Action        | Submit / Approve / Reject / Return / Resubmit|
+| E   | Role          | Actor's role in this approval step           |
+| F   | Actor Email   | Email of the person who triggered the action |
+| G   | Actor Name    | Display name (may be empty)                  |
+| H   | Prev Status   | Status string before the action              |
+| I   | New Status    | Status string after the action               |
+| J   | Timestamp     | ISO 8601 UTC string (auto-set by helper)     |
+| K   | Note          | Approval note / rejection reason             |
+| L   | Extra (JSON)  | Serialised extra data (sig URL, step, etc.)  |
+
+## Rules for every new flow
+
+1. **One `_<FLOW>_Audit_Log` sheet per flow** — named `<FLOW>_Audit_Log`
+   (e.g. `PMT_Audit_Log`). The helper auto-creates it.
+2. **Call `_appendAuditLog_()` for every action** that changes document status:
+   - Submit / create
+   - Every approve step (each approver role gets its own row)
+   - Reject
+   - Return / send-back
+   - Resubmit
+3. **Never call it conditionally** — the helper swallows its own errors so it
+   will never break the main flow.
+4. **Never delete or overwrite audit log rows** — the log is append-only. If a
+   correction is needed, append a new "Correction" action row instead.
+
+## Existing implementations (for reference)
+
+| Flow | Audit Log Sheet   | Handlers wired                                   |
+|------|-------------------|--------------------------------------------------|
+| PR   | `PR_Audit_Log`    | submit, approve (4 roles), reject, return, resubmit |
+| AM   | `AM_Audit_Log`    | create, approve (deptHead), reject (deptHead)    |
+
+When implementing **Payment Request (PMT)** or any future flow, follow the exact
+same pattern above.

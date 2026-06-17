@@ -1427,6 +1427,75 @@ function handleGetP2PMasterData(data) {
   }
 }
 
+// ==================== SHARED AUDIT LOG ====================
+/**
+ * Append one event row to a "<flow>_Audit_Log" sheet.
+ * Auto-creates the sheet (with headers) if it does not exist yet.
+ *
+ * Schema (A–K):
+ *   A  Document No   – PR No / AM No / PMT No / etc.
+ *   B  Flow          – "PR" | "AM" | "PMT" | ...
+ *   C  Company       – company name
+ *   D  Action        – "Submit" | "Approve" | "Reject" | "Return" | "Resubmit"
+ *   E  Role          – who did this: "requester" | "budget" | "supplier" | "deptHead" | …
+ *   F  Actor Email   – email of the person who triggered the action
+ *   G  Actor Name    – display name (optional, '' if unknown)
+ *   H  Prev Status   – status string before the action
+ *   I  New Status    – status string after the action
+ *   J  Timestamp     – ISO 8601 UTC string
+ *   K  Note          – approval note / rejection reason (may be empty)
+ *   L  Extra JSON    – serialised extra data (sig URL, verification, etc.)
+ *
+ * Every future P2P flow MUST call this function for every state-changing action.
+ *
+ * @param {object} opts
+ * @param {string} opts.sheetName   – e.g. 'PR_Audit_Log' or 'AM_Audit_Log'
+ * @param {string} opts.docNo       – document number (PR No, AM No, …)
+ * @param {string} opts.flow        – short flow code: 'PR', 'AM', 'PMT', …
+ * @param {string} opts.company     – company name
+ * @param {string} opts.action      – 'Submit' | 'Approve' | 'Reject' | 'Return' | 'Resubmit'
+ * @param {string} opts.role        – actor role label
+ * @param {string} opts.actorEmail  – email of the actor
+ * @param {string} [opts.actorName] – display name of actor (optional)
+ * @param {string} opts.prevStatus  – status before this action
+ * @param {string} opts.newStatus   – status after this action
+ * @param {string} [opts.note]      – free-text note / rejection reason
+ * @param {object} [opts.extra]     – any extra data to serialise into column L
+ */
+function _appendAuditLog_(opts) {
+  try {
+    var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    var sheet = ss.getSheetByName(opts.sheetName);
+    if (!sheet) {
+      sheet = ss.insertSheet(opts.sheetName);
+      sheet.appendRow([
+        'Document No', 'Flow', 'Company', 'Action', 'Role',
+        'Actor Email', 'Actor Name', 'Prev Status', 'New Status',
+        'Timestamp', 'Note', 'Extra (JSON)'
+      ]);
+      sheet.setFrozenRows(1);
+      Logger.log('[Audit] Created sheet: ' + opts.sheetName);
+    }
+    sheet.appendRow([
+      opts.docNo      || '',
+      opts.flow       || '',
+      opts.company    || '',
+      opts.action     || '',
+      opts.role       || '',
+      opts.actorEmail || '',
+      opts.actorName  || '',
+      opts.prevStatus || '',
+      opts.newStatus  || '',
+      new Date().toISOString(),
+      opts.note       || '',
+      opts.extra ? JSON.stringify(opts.extra) : ''
+    ]);
+  } catch (e) {
+    // Audit failures must never break the main flow — log but swallow
+    Logger.log('[Audit] ⚠️ _appendAuditLog_ failed for ' + opts.docNo + ': ' + e.message);
+  }
+}
+
 // ==================== PURCHASE REQUEST (ĐỀ NGHỊ MUA HÀNG) ====================
 
 /**
@@ -1618,6 +1687,20 @@ function handlePurchaseRequest(data) {
 
     Logger.log('[P2P] ✅ Purchase request saved: ' + prNo);
     SpreadsheetApp.flush();
+
+    _appendAuditLog_({
+      sheetName:  'PR_Audit_Log',
+      docNo:      prNo,
+      flow:       'PR',
+      company:    companyName,
+      action:     'Submit',
+      role:       'requester',
+      actorEmail: data.requesterEmail || '',
+      actorName:  requesterName,
+      prevStatus: '',
+      newStatus:  'Đang duyệt ngân sách & NCC (2/5)',
+      note:       data.purpose || ''
+    });
 
     // Send email notifications (non-blocking — failures must not break submission)
     try {
@@ -1976,6 +2059,23 @@ function handleApprovePurchaseRequest(data) {
 
     Logger.log('[P2P] ✅ PR approved: ' + prNo + ' role=' + approverRole + ' newStatus=' + newStatus);
 
+    _appendAuditLog_({
+      sheetName:  'PR_Audit_Log',
+      docNo:      prNo,
+      flow:       'PR',
+      company:    (row[1] || '').toString(),
+      action:     'Approve',
+      role:       approverRole,
+      actorEmail: approverEmail,
+      actorName:  '',
+      prevStatus: currentStatus,
+      newStatus:  newStatus,
+      note:       note,
+      extra:      data.approverSignature
+        ? { signatureUploaded: true, verification: data.signatureVerification || null }
+        : null
+    });
+
     // Stage transition emails: notify the next stage approver when their stage opens
     if (stateAfter.stage === 'contract' && stateBeforeApprove.stage === 'parallel') {
       // Parallel just completed → notify contract approver
@@ -2075,6 +2175,20 @@ function handleRejectPurchaseRequest(data) {
     SpreadsheetApp.flush();
 
     Logger.log('[P2P] ✅ PR rejected: ' + prNo + ' by=' + approverEmail);
+
+    _appendAuditLog_({
+      sheetName:  'PR_Audit_Log',
+      docNo:      prNo,
+      flow:       'PR',
+      company:    (row[1] || '').toString(),
+      action:     'Reject',
+      role:       rejectRole,
+      actorEmail: approverEmail,
+      prevStatus: currentStatus,
+      newStatus:  'Đã từ chối',
+      note:       note
+    });
+
     return createResponse(true, 'Đã từ chối thành công.', { prNo: prNo, status: 'Đã từ chối' });
 
   } catch (error) {
@@ -2198,6 +2312,20 @@ function handleSendBackPurchaseRequest(data) {
     SpreadsheetApp.flush();
 
     Logger.log('[P2P] ✅ PR sent back: ' + prNo + ' targetStep=' + targetStep + ' by=' + approverEmail);
+
+    _appendAuditLog_({
+      sheetName:  'PR_Audit_Log',
+      docNo:      prNo,
+      flow:       'PR',
+      company:    (row[1] || '').toString(),
+      action:     'Return',
+      role:       approverRole,
+      actorEmail: approverEmail,
+      prevStatus: currentStatus,
+      newStatus:  newStatus,
+      note:       note,
+      extra:      { targetStep: targetStep }
+    });
 
     try {
       sendPurchaseRequestSendBackEmail_(row, prNo, targetStep, note, approverRole, metadata);
@@ -2377,6 +2505,20 @@ function handleResubmitPurchaseRequest(data) {
     SpreadsheetApp.flush();
 
     Logger.log('[P2P] ✅ PR resubmitted: ' + prNo + ' resubmitCount=' + newMetadata.resubmitCount);
+
+    _appendAuditLog_({
+      sheetName:  'PR_Audit_Log',
+      docNo:      prNo,
+      flow:       'PR',
+      company:    companyName,
+      action:     'Resubmit',
+      role:       'requester',
+      actorEmail: requesterEmail,
+      actorName:  requesterName,
+      prevStatus: currentStatus,
+      newStatus:  'Đang duyệt ngân sách & NCC (2/5)',
+      note:       'Gửi lại lần ' + newMetadata.resubmitCount
+    });
 
     try {
       sendPurchaseRequestResubmitEmails_(prNo, data, newAttachmentRecords);
@@ -2656,6 +2798,21 @@ function handleCreateAcceptanceMinutes(data) {
     ]);
     Logger.log('[AM] Created: ' + amNo);
 
+    _appendAuditLog_({
+      sheetName:  'AM_Audit_Log',
+      docNo:      amNo,
+      flow:       'AM',
+      company:    companyName,
+      action:     'Submit',
+      role:       'receiver',
+      actorEmail: receiverEmail,
+      actorName:  receiverName,
+      prevStatus: '',
+      newStatus:  'Chờ xác nhận',
+      note:       'Biên bản cho PR: ' + prNo,
+      extra:      { prNo: prNo }
+    });
+
     // Email dept head
     sendAMApprovalRequestEmail_(amNo, companyName, prNo, receiverName, deptHeadEmail, parsedItems);
 
@@ -2805,6 +2962,20 @@ function handleApproveAcceptanceMinutes(data) {
     sheet.getRange(rec.rowIndex, AM_COL.METADATA + 1).setValue(JSON.stringify(meta));
     Logger.log('[AM] Approved: ' + amNo + ' by ' + approverEmail);
 
+    _appendAuditLog_({
+      sheetName:  'AM_Audit_Log',
+      docNo:      amNo,
+      flow:       'AM',
+      company:    rec.company,
+      action:     'Approve',
+      role:       'deptHead',
+      actorEmail: approverEmail,
+      prevStatus: rec.status,
+      newStatus:  'Đã nghiệm thu',
+      note:       note,
+      extra:      { prNo: rec.prNo, signatureUploaded: !!sigUrl }
+    });
+
     // Email receiver
     var receiverEmail = (rec.row[AM_COL.RECEIVER_EMAIL] || '').toString().trim();
     var receiverName  = (rec.row[AM_COL.RECEIVER_NAME]  || '').toString().trim();
@@ -2846,6 +3017,20 @@ function handleRejectAcceptanceMinutes(data) {
     sheet.getRange(rec.rowIndex, AM_COL.STATUS   + 1).setValue('Từ chối');
     sheet.getRange(rec.rowIndex, AM_COL.METADATA + 1).setValue(JSON.stringify(meta));
     Logger.log('[AM] Rejected: ' + amNo + ' by ' + approverEmail);
+
+    _appendAuditLog_({
+      sheetName:  'AM_Audit_Log',
+      docNo:      amNo,
+      flow:       'AM',
+      company:    rec.company,
+      action:     'Reject',
+      role:       'deptHead',
+      actorEmail: approverEmail,
+      prevStatus: rec.status,
+      newStatus:  'Từ chối',
+      note:       note,
+      extra:      { prNo: rec.prNo }
+    });
 
     var receiverEmail = (rec.row[AM_COL.RECEIVER_EMAIL] || '').toString().trim();
     var receiverName  = (rec.row[AM_COL.RECEIVER_NAME]  || '').toString().trim();
