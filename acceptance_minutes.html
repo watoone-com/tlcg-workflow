@@ -185,6 +185,25 @@
         .am-notif-item { padding: 10px 14px; border-bottom: 0.5px solid #f1f5f9; cursor: pointer; transition: background 0.15s; font-size: 13px; }
         .am-notif-item:last-child { border-bottom: none; }
         .am-notif-item:hover { background: #f8fafc; }
+
+        /* ── PR dropdown combobox ─────────────────────────────────── */
+        .pr-combobox { position: relative; }
+        .pr-dropdown { display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; max-height: 260px; overflow-y: auto; background: white; border: 1px solid rgba(0,0,0,0.12); border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.13); z-index: 1000; }
+        .pr-dropdown.show { display: block; }
+        .pr-dropdown-item { padding: 10px 14px; cursor: pointer; border-bottom: 0.5px solid rgba(0,0,0,0.06); transition: background 0.12s; }
+        .pr-dropdown-item:last-child { border-bottom: none; }
+        .pr-dropdown-item:hover, .pr-dropdown-item:focus { background: rgba(0,122,255,0.06); outline: none; }
+        .pr-dropdown-empty { padding: 12px 14px; font-size: 13px; color: #8e8e93; text-align: center; }
+
+        /* ── Searchable select (receiver) ─────────────────────────── */
+        .searchable-select { position: relative; }
+        .search-input { width: 100%; padding: 9px 12px; border: 1px solid rgba(0,0,0,0.15); border-radius: 8px; font-family: inherit; font-size: 14px; background: white; color: #000; transition: border-color 0.15s, box-shadow 0.15s; box-sizing: border-box; }
+        .search-input:focus-visible { outline: 2px solid var(--primary); border-color: var(--primary); box-shadow: 0 0 0 3px rgba(0,122,255,0.12); }
+        .dropdown-options { display: none; position: absolute; top: calc(100% + 4px); left: 0; right: 0; max-height: 220px; overflow-y: auto; background: white; border: 1px solid rgba(0,0,0,0.12); border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.13); z-index: 1000; }
+        .dropdown-options.show { display: block; }
+        .dropdown-option { padding: 9px 12px; cursor: pointer; font-size: 14px; transition: background 0.12s; }
+        .dropdown-option:hover { background: rgba(0,122,255,0.08); }
+        .dropdown-empty { padding: 10px 12px; font-size: 13px; color: #8e8e93; text-align: center; }
     </style>
 </head>
 <body>
@@ -351,9 +370,13 @@
                         <div class="form-group w2">
                             <label>Số Đề Nghị Mua Hàng (PR No) <span class="req">*</span></label>
                             <div style="display:flex;gap:8px;align-items:flex-start;">
-                                <input type="text" id="pr_no" placeholder="Ví dụ: EV-PR20260615000001" oninput="onPRNoInput()">
-                                <button type="button" class="btn btn-ghost" onclick="lookupPR()" style="white-space:nowrap;flex-shrink:0;padding:9px 14px;font-size:13px;">
-                                    <i class="fas fa-search"></i> Tra cứu
+                                <div class="pr-combobox" id="pr-combobox" style="flex:1;">
+                                    <input type="text" id="pr_no" placeholder="Nhập hoặc chọn từ danh sách..."
+                                           oninput="onPRNoInput()" onfocus="onPRSearchFocus()" autocomplete="off">
+                                    <div class="pr-dropdown" id="pr-dropdown"></div>
+                                </div>
+                                <button type="button" class="btn btn-ghost" onclick="lookupPR()" title="Làm mới & tra cứu" style="white-space:nowrap;flex-shrink:0;padding:9px 12px;font-size:13px;">
+                                    <i class="fas fa-rotate-right"></i>
                                 </button>
                             </div>
                             <p id="pr-lookup-status" style="font-size:12px;margin-top:4px;color:var(--text-secondary);"></p>
@@ -373,7 +396,7 @@
                         </div>
                         <div class="form-group">
                             <label>Phòng Ban</label>
-                            <input type="text" id="department" placeholder="Ví dụ: Kế toán, Kho, ...">
+                            <input type="text" id="department" readonly>
                         </div>
                     </div>
                 </div>
@@ -588,6 +611,9 @@ const _MASTER_TTL    = 30 * 60 * 1000;
 const _AM_CACHE_KEY  = 'tlcg_am_list_cache';
 const _AM_CACHE_TS   = 'tlcg_am_list_cache_ts';
 const _AM_CACHE_TTL  = 5 * 60 * 1000;
+const _PR_LIST_KEY   = 'tlcg_pr_list_cache';
+const _PR_LIST_TS    = 'tlcg_pr_list_cache_ts';
+const _PR_LIST_TTL   = 5 * 60 * 1000;
 const _RECEIVER_SIG_KEY  = 'tlcg_user_signature';
 const _DH_SIG_KEY        = 'tlcg_approver_signature';
 const MAX_ATTACH_FILES   = 5;
@@ -606,6 +632,7 @@ let _receiverSigData = null;
 let _dhSigData       = null;            // dept head sig (for approval)
 let _amAttachFiles   = [];
 let _prLookupData    = null;            // PR data fetched in step 1
+let _allPRs          = [];             // cached PR list for fast dropdown
 let _amCompanyApprovers = null;         // from getCompanyApprovers
 
 // ── Session ──────────────────────────────────────────────────
@@ -622,7 +649,7 @@ function restoreSession() {
         if (av) { av.src = avatarUrl; av.style.display = 'block'; }
         const navAv = document.getElementById('nav-avatar');
         if (navAv) { navAv.src = avatarUrl; document.getElementById('nav-user-avatar').classList.remove('hidden'); }
-        // Pre-fill receiver
+        // Pre-fill receiver (after master data loads)
         setTimeout(() => {
             const sel = document.getElementById('receiver_name');
             if (!sel) return;
@@ -630,6 +657,8 @@ function restoreSession() {
                 if ((sel.options[i].dataset.email||'').toLowerCase() === (user.email||'').toLowerCase()) {
                     sel.selectedIndex = i;
                     document.getElementById('receiver_email').value = user.email;
+                    document.getElementById('department').value     = sel.options[i].dataset.dept || '';
+                    if (sel._syncSearchInput) sel._syncSearchInput();
                     break;
                 }
             }
@@ -800,21 +829,90 @@ function loadMasterData() {
     }
 }
 
+// ── Searchable combobox (mirrors purchase_request.html) ───────
+function makeSearchable(selectElement) {
+    if (selectElement._searchable) return;
+    selectElement._searchable = true;
+    const container = document.createElement('div');
+    container.className = 'searchable-select';
+    selectElement.parentNode.insertBefore(container, selectElement);
+    container.appendChild(selectElement);
+    selectElement.style.display = 'none';
+
+    const input = document.createElement('input');
+    input.type         = 'text';
+    input.className    = 'search-input';
+    input.placeholder  = selectElement.options[0]?.text || '-- Chọn --';
+    input.autocomplete = 'off';
+    container.appendChild(input);
+
+    const optionsContainer = document.createElement('div');
+    optionsContainer.className = 'dropdown-options';
+    container.appendChild(optionsContainer);
+
+    function getFilteredOptions(q) {
+        return Array.from(selectElement.options).filter((o, i) => {
+            if (i === 0) return false;
+            if (!q) return true;
+            const haystack = [o.text, o.dataset.dept].filter(Boolean).join(' ').toLowerCase();
+            return haystack.includes(q.toLowerCase());
+        });
+    }
+
+    function showOptions(q = '') {
+        const matches = getFilteredOptions(q);
+        optionsContainer.innerHTML = '';
+        if (!matches.length) {
+            optionsContainer.innerHTML = '<div class="dropdown-empty">Không tìm thấy</div>';
+        } else {
+            matches.forEach(option => {
+                const div  = document.createElement('div');
+                div.className = 'dropdown-option';
+                const dept = option.dataset.dept || '';
+                div.innerHTML = `<div style="font-weight:500">${option.text}</div>${dept ? `<div style="font-size:12px;color:#8e8e93;margin-top:1px">${dept}</div>` : ''}`;
+                div.addEventListener('mousedown', ev => {
+                    ev.preventDefault();
+                    selectElement.value = option.value;
+                    input.value = option.text;
+                    optionsContainer.classList.remove('show');
+                    selectElement.dispatchEvent(new Event('change', { bubbles: true }));
+                });
+                optionsContainer.appendChild(div);
+            });
+        }
+        optionsContainer.classList.add('show');
+    }
+
+    input.addEventListener('focus', ()  => showOptions(input.value));
+    input.addEventListener('input', ()  => showOptions(input.value));
+    input.addEventListener('blur',  ()  => setTimeout(() => optionsContainer.classList.remove('show'), 150));
+
+    // Allow external code to sync the visible input when select.value is set programmatically
+    selectElement._syncSearchInput = () => {
+        const sel = selectElement.options[selectElement.selectedIndex];
+        input.value = sel && sel.index > 0 ? sel.text : '';
+    };
+}
+
 function seedReceivers() {
     const sel = document.getElementById('receiver_name');
     const cur = sel.value;
     sel.innerHTML = '<option value="">-- Chọn người nhận --</option>';
     _allEmployees.forEach(e => {
-        const name  = e.full_name || e['Full Name'] || '';
+        const name  = (e.full_name || e['Full Name'] || '').trim();
         const email = (e.employee_email || e['Email'] || '').toLowerCase();
+        const dept  = (e.department_name || e['Bộ phận'] || '').trim();
         if (!name || !email) return;
         const opt = document.createElement('option');
         opt.value         = name;
         opt.textContent   = name;
         opt.dataset.email = email;
+        opt.dataset.dept  = dept;
         sel.appendChild(opt);
     });
     if (cur) sel.value = cur;
+    // Apply searchable combobox (idempotent)
+    makeSearchable(sel);
     // Re-apply session pre-fill
     const stored = localStorage.getItem('tlc_current_user');
     if (stored) {
@@ -824,6 +922,8 @@ function seedReceivers() {
                 if ((sel.options[i].dataset.email||'') === (u.email||'').toLowerCase()) {
                     sel.selectedIndex = i;
                     document.getElementById('receiver_email').value = u.email;
+                    document.getElementById('department').value     = sel.options[i].dataset.dept || '';
+                    if (sel._syncSearchInput) sel._syncSearchInput();
                     break;
                 }
             }
@@ -835,6 +935,7 @@ function onReceiverChange() {
     const sel = document.getElementById('receiver_name');
     const opt = sel.options[sel.selectedIndex];
     document.getElementById('receiver_email').value = opt?.dataset?.email || '';
+    document.getElementById('department').value     = opt?.dataset?.dept  || '';
 }
 
 function seedDeptHeads() {
@@ -853,54 +954,133 @@ function seedDeptHeads() {
     if (cur) sel.value = cur;
 }
 
+// ── PR cache pre-load ──────────────────────────────────────────
+async function _preloadPRCache() {
+    const cached = localStorage.getItem(_PR_LIST_KEY);
+    const ts     = localStorage.getItem(_PR_LIST_TS);
+    const age    = ts ? Date.now() - new Date(ts).getTime() : Infinity;
+    if (cached && age < _PR_LIST_TTL) {
+        try { _allPRs = JSON.parse(cached); return; } catch (_) {}
+    }
+    try {
+        const params = new URLSearchParams();
+        params.append('data', JSON.stringify({ action: 'getPurchaseRequestHistory' }));
+        const res    = await fetch(BACKEND_URL, { method: 'POST', mode: 'cors', redirect: 'follow', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() });
+        const result = JSON.parse(await res.text());
+        _allPRs = result.requests || result.data?.requests || [];
+        localStorage.setItem(_PR_LIST_KEY, JSON.stringify(_allPRs));
+        localStorage.setItem(_PR_LIST_TS,  new Date().toISOString());
+    } catch (e) { console.warn('PR cache preload failed:', e.message); }
+}
+
+// ── PR dropdown helpers ────────────────────────────────────────
+function _getPRDropdownItems(query) {
+    const selName = document.getElementById('company_name').value || '';
+    const q       = (query || '').toLowerCase();
+    return _allPRs.filter(pr => {
+        if (pr.status !== 'Hoàn thành') return false;
+        if (selName && pr.company && pr.company !== selName) return false;
+        if (!q) return true;
+        return (pr.prNo||'').toLowerCase().includes(q)
+            || (pr.requesterName||'').toLowerCase().includes(q)
+            || (pr.description||'').toLowerCase().includes(q);
+    });
+}
+
+function _renderPRDropdown(items) {
+    const dd = document.getElementById('pr-dropdown');
+    if (!items.length) {
+        dd.innerHTML = '<div class="pr-dropdown-empty">Không tìm thấy phiếu phù hợp</div>';
+    } else {
+        dd.innerHTML = items.slice(0, 40).map(pr => {
+            const amount = parseFloat(pr.grandTotal || pr.totalAmount || 0);
+            const amtStr = amount ? amount.toLocaleString('vi-VN') + ' ₫' : '';
+            const date   = pr.requestDate ? new Date(pr.requestDate).toLocaleDateString('vi-VN') : '';
+            const meta   = [pr.requesterName, date, amtStr].filter(Boolean).join(' · ');
+            return `<div class="pr-dropdown-item" tabindex="0"
+                        onmousedown="event.preventDefault();selectPRFromDropdown('${escHtml(pr.prNo||'')}')"
+                        onkeydown="if(event.key==='Enter'){selectPRFromDropdown('${escHtml(pr.prNo||'')}');}">
+                <div style="font-weight:600;color:var(--primary);font-size:13px;">${escHtml(pr.prNo||'')}</div>
+                ${meta ? `<div style="font-size:12px;color:var(--text-secondary);margin-top:2px;">${escHtml(meta)}</div>` : ''}
+            </div>`;
+        }).join('');
+    }
+    dd.classList.add('show');
+}
+
+function onPRSearchFocus() {
+    _renderPRDropdown(_getPRDropdownItems(document.getElementById('pr_no').value));
+}
+
+function selectPRFromDropdown(prNo) {
+    document.getElementById('pr_no').value = prNo;
+    document.getElementById('pr-dropdown').classList.remove('show');
+    _applyPRLookup(prNo);
+}
+
 // ── PR lookup ─────────────────────────────────────────────────
 function onPRNoInput() {
     _prLookupData = null;
     document.getElementById('pr-lookup-status').textContent = '';
+    const q     = document.getElementById('pr_no').value;
+    const items = _getPRDropdownItems(q);
+    if (q.length > 0 || items.length > 0) { _renderPRDropdown(items); }
+    else { document.getElementById('pr-dropdown').classList.remove('show'); }
+}
+
+function _applyPRLookup(prNo) {
+    const statusEl = document.getElementById('pr-lookup-status');
+    const pr       = _allPRs.find(r => (r.prNo||'').trim() === prNo);
+    if (!pr) {
+        statusEl.textContent = '❌ Không tìm thấy phiếu: ' + prNo;
+        statusEl.style.color = 'var(--error)';
+        _prLookupData = null;
+        return;
+    }
+    if (pr.status !== 'Hoàn thành') {
+        statusEl.textContent = `⚠️ Phiếu chưa hoàn thành (trạng thái: ${pr.status})`;
+        statusEl.style.color = 'var(--warning)';
+        _prLookupData = null;
+        return;
+    }
+    _prLookupData = pr;
+    statusEl.textContent = `✅ ${pr.company} — ${pr.requesterName}`;
+    statusEl.style.color = 'var(--success)';
+    // Auto-fill company if not already chosen
+    const companySel = document.getElementById('company_code');
+    if (!companySel.value && pr.company) {
+        for (let i = 0; i < companySel.options.length; i++) {
+            if ((companySel.options[i].dataset.name||'') === pr.company) {
+                companySel.selectedIndex = i;
+                onCompanyChange();
+                break;
+            }
+        }
+    }
+    populateItemsFromPR(pr);
+    let itemCount = 0;
+    try { itemCount = JSON.parse(pr.items||'[]').length; } catch(_) {}
+    showToast(`Đã nạp ${itemCount} mặt hàng từ PR.`, 'success');
 }
 
 async function lookupPR() {
     const prNo = document.getElementById('pr_no').value.trim();
     if (!prNo) { showToast('Vui lòng nhập số PR.', 'error'); return; }
+    // If cache is warm, use it immediately
+    if (_allPRs.length > 0) { _applyPRLookup(prNo); return; }
+    // Otherwise fetch & refresh cache first
     const statusEl = document.getElementById('pr-lookup-status');
-    statusEl.textContent = 'Đang tra cứu...';
+    statusEl.textContent = 'Đang tải danh sách...';
     statusEl.style.color = 'var(--text-secondary)';
     try {
         const params = new URLSearchParams();
         params.append('data', JSON.stringify({ action: 'getPurchaseRequestHistory' }));
         const res    = await fetch(BACKEND_URL, { method: 'POST', mode: 'cors', redirect: 'follow', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() });
         const result = JSON.parse(await res.text());
-        const list   = (result.requests || result.data?.requests || []);
-        const pr     = list.find(r => (r.prNo||'').trim() === prNo);
-        if (!pr) {
-            statusEl.textContent = '❌ Không tìm thấy phiếu: ' + prNo;
-            statusEl.style.color = 'var(--error)';
-            _prLookupData = null;
-            return;
-        }
-        if (pr.status !== 'Hoàn thành') {
-            statusEl.textContent = '⚠️ Phiếu chưa hoàn thành phê duyệt (trạng thái: ' + pr.status + ')';
-            statusEl.style.color = 'var(--warning)';
-            _prLookupData = null;
-            return;
-        }
-        _prLookupData = pr;
-        statusEl.textContent = '✅ Tìm thấy: ' + pr.company + ' — ' + pr.requesterName;
-        statusEl.style.color = 'var(--success)';
-        // Auto-fill company if not already chosen
-        const companySel = document.getElementById('company_code');
-        if (!companySel.value && pr.company) {
-            for (let i = 0; i < companySel.options.length; i++) {
-                if ((companySel.options[i].dataset.name||'') === pr.company) {
-                    companySel.selectedIndex = i;
-                    onCompanyChange();
-                    break;
-                }
-            }
-        }
-        // Populate items table from PR
-        populateItemsFromPR(pr);
-        showToast('Đã nạp ' + (JSON.parse(pr.items||'[]')).length + ' mặt hàng từ PR.', 'success');
+        _allPRs = result.requests || result.data?.requests || [];
+        localStorage.setItem(_PR_LIST_KEY, JSON.stringify(_allPRs));
+        localStorage.setItem(_PR_LIST_TS,  new Date().toISOString());
+        _applyPRLookup(prNo);
     } catch (e) {
         statusEl.textContent = '❌ Lỗi tra cứu: ' + e.message;
         statusEl.style.color = 'var(--error)';
@@ -1526,10 +1706,17 @@ function _toggleNotifDropdown() {
 }
 
 document.addEventListener('click', function(e) {
+    // Close notif dropdown
     const wrapper = document.getElementById('notif-bell-wrapper');
     if (wrapper && !wrapper.contains(e.target)) {
         const dd = document.getElementById('notif-dropdown');
         if (dd) dd.style.display = 'none';
+    }
+    // Close PR dropdown when clicking outside
+    const prBox = document.getElementById('pr-combobox');
+    if (prBox && !prBox.contains(e.target)) {
+        const prDd = document.getElementById('pr-dropdown');
+        if (prDd) prDd.classList.remove('show');
     }
 });
 
@@ -1539,8 +1726,8 @@ function readURLParams() {
     const prNo = p.get('prNo');
     if (prNo) {
         document.getElementById('pr_no').value = prNo;
-        // Auto-trigger lookup
-        setTimeout(() => lookupPR(), 800);
+        // Wait for PR cache to warm, then apply lookup
+        setTimeout(() => lookupPR(), 1200);
     }
 }
 
@@ -1562,6 +1749,7 @@ window.addEventListener('DOMContentLoaded', () => {
     loadCompanies();
     loadMasterData();
     loadAMHistory();
+    _preloadPRCache(); // warm PR dropdown in background (no await — non-blocking)
     readURLParams();
 });
 </script>
