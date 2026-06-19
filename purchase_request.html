@@ -1020,6 +1020,20 @@
                             <input type="hidden" id="priority_value" value="binh_thuong">
                         </div>
                     </div>
+                    <div class="form-row" style="margin-top:8px;">
+                        <div class="form-group full">
+                            <label>Loại mua hàng <span class="req">*</span></label>
+                            <div class="priority-group" role="group" aria-label="Loại mua hàng" style="margin-top:4px;">
+                                <button type="button" class="priority-btn selected-binh_thuong" id="ptype-goods" aria-pressed="true" onclick="setPurchaseType('goods')">
+                                    <i class="fas fa-box" style="margin-right:6px;"></i>Hàng hóa
+                                </button>
+                                <button type="button" class="priority-btn" id="ptype-services" aria-pressed="false" onclick="setPurchaseType('services')">
+                                    <i class="fas fa-handshake" style="margin-right:6px;"></i>Dịch vụ
+                                </button>
+                            </div>
+                            <input type="hidden" id="purchase_type_value" value="goods">
+                        </div>
+                    </div>
                 </div>
             </div>
             <div class="step-navigation" style="background:transparent; border:none; padding:16px 0 0;">
@@ -1349,6 +1363,8 @@
                 </div>
                 <div class="form-card-body" style="display:flex; flex-direction:column; gap:12px;">
 
+                    <div id="p2p-branch-banner" style="display:none; padding:12px 14px; border-radius:10px; background:rgba(0,122,255,0.08); border:1px solid rgba(0,122,255,0.2); font-size:13px; line-height:1.5;"></div>
+
                     <!-- Approver 1: Budget -->
                     <div class="approver-card">
                         <div class="approver-header">
@@ -1400,8 +1416,8 @@
                         <div class="approver-header">
                             <div class="approver-num">3</div>
                             <div>
-                                <div class="approver-title">Người thẩm định hợp đồng <span style="font-size:11px;color:var(--text-secondary);font-weight:400;">(tùy chọn)</span></div>
-                                <div class="approver-sub">Thẩm định hợp đồng sau khi ngân sách &amp; NCC duyệt</div>
+                                <div class="approver-title">Người thẩm định hợp đồng <span id="contract-approver-req" style="display:none;" class="req">*</span><span id="contract-approver-opt" style="font-size:11px;color:var(--text-secondary);font-weight:400;">(tùy chọn)</span></div>
+                                <div class="approver-sub">Thẩm định hợp đồng sau khi Procurement hoàn tất đàm phán (quy trình đầy đủ)</div>
                             </div>
                         </div>
                         <div class="form-row">
@@ -1673,6 +1689,47 @@
     let _priority     = 'binh_thuong';
     let _prNo         = '';
     let _grandTotal   = 0;
+    let _purchaseType = 'goods';
+
+    function getP2PBranch() {
+        const pt = document.getElementById('purchase_type_value')?.value || _purchaseType || 'goods';
+        const gt = _grandTotal || 0;
+        if (pt === 'services' || gt >= 2000000) return 'full';
+        return 'simplified';
+    }
+
+    function setPurchaseType(type) {
+        _purchaseType = type;
+        document.getElementById('purchase_type_value').value = type;
+        ['goods', 'services'].forEach(k => {
+            const btn = document.getElementById('ptype-' + k);
+            if (!btn) return;
+            btn.className = 'priority-btn' + (k === type ? ' selected-binh_thuong' : '');
+            btn.setAttribute('aria-pressed', k === type ? 'true' : 'false');
+        });
+        renderBranchBanner();
+    }
+
+    function renderBranchBanner() {
+        const banner = document.getElementById('p2p-branch-banner');
+        if (!banner) return;
+        const branch = getP2PBranch();
+        const gtFmt = formatMoney(_grandTotal);
+        if (branch === 'full') {
+            banner.style.display = 'block';
+            banner.innerHTML = '<strong>Quy trình đầy đủ:</strong> PR → Hợp đồng → Biên bản nghiệm thu → Thanh toán (có thể nhiều đợt).<br>'
+                + 'Tổng ước tính: <strong>' + gtFmt + '</strong> — cần chọn người thẩm định hợp đồng.';
+        } else {
+            banner.style.display = 'block';
+            banner.innerHTML = '<strong>Quy trình rút gọn:</strong> PR → Thanh toán → Biên bản nhận hàng (hàng hóa &lt; 2.000.000₫).<br>'
+                + 'Tổng ước tính: <strong>' + gtFmt + '</strong>';
+        }
+        const reqEl = document.getElementById('contract-approver-req');
+        const optEl = document.getElementById('contract-approver-opt');
+        if (reqEl) reqEl.style.display = branch === 'full' ? 'inline' : 'none';
+        if (optEl) optEl.style.display = branch === 'full' ? 'none' : 'inline';
+    }
+
     let _currency     = 'VND';
 
     /* ── Vendor state ───────────────────────────────────────────── */
@@ -1910,6 +1967,7 @@
         document.getElementById('step-' + n).classList.add('active');
         currentStep = n;
         updateStepper(n);
+        if (n === 3) renderBranchBanner();
         const reduceMotion = typeof matchMedia !== 'undefined' && matchMedia('(prefers-reduced-motion: reduce)').matches;
         window.scrollTo({ top: 0, behavior: reduceMotion ? 'auto' : 'smooth' });
     }
@@ -1973,8 +2031,13 @@
         if (step === 3) {
             if (!document.getElementById('budget_approver').value)  { showToast('Vui lòng chọn người phê duyệt ngân sách.', 'error'); return; }
             if (!document.getElementById('supplier_approver').value) { showToast('Vui lòng chọn người phê duyệt NCC.', 'error'); return; }
+            if (getP2PBranch() === 'full' && !document.getElementById('contract_approver').value) {
+                showToast('Quy trình đầy đủ yêu cầu người thẩm định hợp đồng.', 'error'); return;
+            }
+            renderBranchBanner();
             buildSummary();
         }
+        if (step === 2) renderBranchBanner();
         goToStep(step + 1);
     }
 
@@ -2892,6 +2955,8 @@
             currency:         _currency,
             items:            JSON.stringify(items),
             grandTotal:       _grandTotal,
+            purchaseType:     document.getElementById('purchase_type_value')?.value || 'goods',
+            p2pBranch:        getP2PBranch(),
             purpose:          document.getElementById('purpose').value.trim(),
             vendorName:       document.getElementById('vendor_final_name').value || document.getElementById('vendor_new').value.trim(),
             vendorType:       document.getElementById('vendor_type_final').value,
@@ -4704,6 +4769,10 @@
         document.querySelectorAll('.priority-btn').forEach(b => {
             b.classList.toggle('active', (b.dataset.value || b.dataset.priority) === priorityNorm);
         });
+
+        const purchaseType = meta.purchaseType || pr.purchaseType || 'goods';
+        setPurchaseType(purchaseType);
+        if (typeof renderBranchBanner === 'function') renderBranchBanner();
 
         // Vendor — restore full details from metadata.vendorDetails + vendor name from column 8
         const vd = (meta && meta.vendorDetails) ? meta.vendorDetails : {};

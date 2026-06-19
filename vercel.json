@@ -10,6 +10,10 @@
       "source": "/nghiem_thu",
       "destination": "/acceptance_minutes",
       "permanent": true
+    },
+    {
+      "source": "/contract",
+      "destination": "/contract.html"
     }
   ],
   "rewrites": [

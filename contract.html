@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Hợp Đồng Mua Sắm - TLCGroup</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=Plus+Jakarta+Sans:wght@600;700&display=swap" rel="stylesheet">
+    <style>
+        :root { --primary:#007AFF; --success:#34C759; --warning:#FF9500; --error:#FF3B30; --bg:#F2F2F7; --text-secondary:rgba(60,60,67,0.6); --border:rgba(0,0,0,0.1); }
+        body { font-family:'DM Sans',sans-serif; background:var(--bg); margin:0; min-height:100vh; }
+        .page { max-width:820px; margin:0 auto; padding:20px 16px 60px; }
+        .card { background:#fff; border-radius:14px; border:0.5px solid var(--border); box-shadow:0 2px 8px rgba(0,0,0,0.06); margin-bottom:14px; overflow:hidden; }
+        .card-h { padding:14px 18px; background:rgba(242,242,247,0.7); border-bottom:0.5px solid var(--border); font-weight:600; display:flex; align-items:center; gap:8px; }
+        .card-b { padding:18px; }
+        label { font-size:12px; color:var(--text-secondary); display:block; margin-bottom:4px; }
+        input, select, textarea { width:100%; padding:9px 12px; border:1px solid rgba(0,0,0,0.15); border-radius:8px; font-size:14px; box-sizing:border-box; }
+        input[readonly] { background:var(--bg); }
+        .row { display:flex; flex-wrap:wrap; gap:14px; }
+        .fg { flex:1; min-width:200px; }
+        .fg.full { flex:1 1 100%; }
+        .btn { display:inline-flex; align-items:center; gap:6px; padding:10px 18px; border-radius:20px; border:none; font-weight:600; cursor:pointer; font-size:14px; }
+        .btn-primary { background:var(--primary); color:#fff; }
+        .btn-ghost { background:rgba(0,0,0,0.06); color:#000; }
+        .btn-success { background:var(--success); color:#fff; }
+        .btn-danger { background:rgba(255,59,48,0.12); color:var(--error); }
+        .step { display:none; } .step.active { display:block; }
+        .badge { display:inline-block; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; }
+        .badge-pending { background:rgba(255,149,0,0.12); color:#b45309; }
+        .badge-signed { background:rgba(52,199,89,0.12); color:#1a7a3c; }
+        .badge-reject { background:rgba(255,59,48,0.1); color:#c0392b; }
+        #toast { position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:#333; color:#fff; padding:10px 18px; border-radius:20px; font-size:13px; display:none; z-index:99; }
+        .amend-item { padding:10px 0; border-bottom:0.5px solid var(--border); font-size:13px; }
+    </style>
+</head>
+<body>
+<nav style="background:rgba(255,255,255,0.9);backdrop-filter:blur(12px);border-bottom:0.5px solid var(--border);padding:12px 20px;display:flex;align-items:center;justify-content:space-between;">
+    <a href="index.html" style="text-decoration:none;color:var(--primary);font-weight:600;"><i class="fas fa-arrow-left"></i> Trang chủ</a>
+    <span style="font-family:'Plus Jakarta Sans',sans-serif;font-weight:700;">HỢP ĐỒNG MUA SẮM</span>
+    <span style="width:80px;"></span>
+</nav>
+
+<main class="page">
+    <div id="create-view">
+        <h1 style="font-family:'Plus Jakarta Sans',sans-serif;font-size:22px;text-align:center;margin:8px 0 16px;">Tạo Hợp Đồng</h1>
+        <div class="step active" id="step-1">
+            <div class="card"><div class="card-h"><i class="fas fa-file-invoice"></i> Bước 1 — PR tham chiếu</div>
+            <div class="card-b">
+                <div class="fg full">
+                    <label>Số PR (đã hoàn thành phê duyệt) <span style="color:var(--error)">*</span></label>
+                    <div style="display:flex;gap:8px;">
+                        <input type="text" id="pr_no" placeholder="PR-YYYYMMDD-XXXXXX">
+                        <button type="button" class="btn btn-ghost" onclick="lookupPR()"><i class="fas fa-search"></i></button>
+                    </div>
+                    <p id="pr-status" style="font-size:12px;margin-top:6px;color:var(--text-secondary);"></p>
+                </div>
+            </div></div>
+            <div style="display:flex;justify-content:flex-end;margin-top:12px;">
+                <button type="button" class="btn btn-primary" onclick="goStep(2)">Tiếp theo →</button>
+            </div>
+        </div>
+        <div class="step" id="step-2">
+            <div class="card"><div class="card-h"><i class="fas fa-handshake"></i> Bước 2 — Chi tiết hợp đồng</div>
+            <div class="card-b">
+                <div class="row">
+                    <div class="fg"><label>Nhà cung cấp <span style="color:var(--error)">*</span></label><input id="vendor_name"></div>
+                    <div class="fg"><label>Liên hệ NCC</label><input id="vendor_contact" placeholder="Email / SĐT"></div>
+                </div>
+                <div class="row" style="margin-top:12px;">
+                    <div class="fg"><label>Giá trị hợp đồng (VND) <span style="color:var(--error)">*</span></label><input type="number" id="contract_value" min="0"></div>
+                    <div class="fg"><label>Ước tính PR</label><input id="pr_estimate" readonly></div>
+                </div>
+                <div class="row" style="margin-top:12px;">
+                    <div class="fg"><label>Ngày bắt đầu</label><input type="date" id="start_date"></div>
+                    <div class="fg"><label>Ngày kết thúc</label><input type="date" id="end_date"></div>
+                </div>
+                <div class="fg full" style="margin-top:12px;">
+                    <label>Điều khoản thanh toán (tùy chọn — có thể thay đổi theo HĐ ký)</label>
+                    <textarea id="payment_terms" rows="2" placeholder="VD: 30% khi ký HĐ, 50% nghiệm thu, 20% kết thúc"></textarea>
+                </div>
+                <div class="fg full" style="margin-top:12px;">
+                    <label>Link Google Drive (PDF hợp đồng đã ký)</label>
+                    <input id="doc_url" placeholder="https://drive.google.com/...">
+                </div>
+                <div class="fg full" style="margin-top:12px;">
+                    <label>Ghi chú</label><textarea id="notes" rows="2"></textarea>
+                </div>
+                <p id="value-warn" style="display:none;margin-top:10px;padding:10px;border-radius:8px;background:rgba(255,149,0,0.1);font-size:13px;color:#b45309;"></p>
+            </div></div>
+            <div style="display:flex;justify-content:space-between;margin-top:12px;">
+                <button type="button" class="btn btn-ghost" onclick="goStep(1)">← Quay lại</button>
+                <button type="button" class="btn btn-primary" onclick="goStep(3)">Tiếp theo →</button>
+            </div>
+        </div>
+        <div class="step" id="step-3">
+            <div class="card"><div class="card-h"><i class="fas fa-check"></i> Bước 3 — Xác nhận & Gửi</div>
+            <div class="card-b" id="review-summary" style="font-size:14px;line-height:1.7;"></div></div>
+            <div style="display:flex;justify-content:space-between;margin-top:12px;">
+                <button type="button" class="btn btn-ghost" onclick="goStep(2)">← Quay lại</button>
+                <button type="button" class="btn btn-success" id="submit-btn" onclick="submitContract()"><i class="fas fa-paper-plane"></i> Gửi thẩm định</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="detail-view" style="display:none;">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+            <h1 id="detail-title" style="font-family:'Plus Jakarta Sans',sans-serif;font-size:20px;margin:0;"></h1>
+            <span id="detail-badge" class="badge"></span>
+        </div>
+        <div class="card"><div class="card-b" id="detail-body"></div></div>
+        <div class="card" id="progress-card" style="display:none;"><div class="card-h">Tiến độ thanh toán</div><div class="card-b" id="progress-body"></div></div>
+        <div class="card"><div class="card-h">Phụ lục / Lịch sử</div><div class="card-b" id="amendments-body"></div></div>
+        <div id="detail-actions" style="display:flex;flex-wrap:wrap;gap:10px;margin-top:14px;"></div>
+    </div>
+</main>
+<div id="toast"></div>
+
+<script>
+const BACKEND_URL = '/api/voucher';
+let _prData = null;
+let _currentUser = null;
+let _detailContract = null;
+
+function showToast(msg, isError) {
+    const t = document.getElementById('toast');
+    t.textContent = msg;
+    t.style.background = isError ? '#FF3B30' : '#333';
+    t.style.display = 'block';
+    setTimeout(() => { t.style.display = 'none'; }, 3500);
+}
+
+function fmt(n) { return Number(n||0).toLocaleString('vi-VN') + ' ₫'; }
+
+function goStep(n) {
+    if (n === 2 && !_prData) { showToast('Vui lòng tra cứu PR hợp lệ trước.', true); return; }
+    if (n === 3) {
+        const v = parseFloat(document.getElementById('contract_value').value) || 0;
+        if (!document.getElementById('vendor_name').value.trim()) { showToast('Nhập tên NCC.', true); return; }
+        if (v <= 0) { showToast('Nhập giá trị hợp đồng.', true); return; }
+        buildReview();
+    }
+    document.querySelectorAll('.step').forEach(s => s.classList.remove('active'));
+    document.getElementById('step-' + n).classList.add('active');
+}
+
+async function lookupPR() {
+    const prNo = document.getElementById('pr_no').value.trim();
+    const st = document.getElementById('pr-status');
+    if (!prNo) { showToast('Nhập số PR.', true); return; }
+    st.textContent = 'Đang tra cứu...';
+    try {
+        const params = new URLSearchParams();
+        params.append('data', JSON.stringify({ action: 'getPurchaseRequestHistory' }));
+        const res = await fetch(BACKEND_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: params.toString() });
+        const result = JSON.parse(await res.text());
+        const pr = (result.data?.requests || result.requests || []).find(r => (r.prNo||'').trim() === prNo);
+        if (!pr) { _prData = null; st.textContent = '❌ Không tìm thấy PR'; return; }
+        if (pr.status !== 'Hoàn thành') { _prData = null; st.textContent = '⚠️ PR chưa hoàn thành: ' + pr.status; return; }
+        const branch = pr.p2pBranch || (() => { try { return JSON.parse(pr.metadata||'{}').p2pBranch; } catch(_) { return 'full'; } })();
+        if (branch !== 'full') { _prData = null; st.textContent = '⚠️ PR thuộc quy trình rút gọn — không cần hợp đồng.'; return; }
+        _prData = pr;
+        document.getElementById('vendor_name').value = pr.suggestedVendor || '';
+        document.getElementById('pr_estimate').value = fmt(pr.grandTotal);
+        st.textContent = `✅ ${pr.company} · ${pr.requesterName}`;
+        st.style.color = '#1a7a3c';
+    } catch (e) {
+        _prData = null;
+        st.textContent = '❌ ' + e.message;
+    }
+}
+
+function buildReview() {
+    const cv = parseFloat(document.getElementById('contract_value').value) || 0;
+    const pe = _prData ? parseFloat(_prData.grandTotal) || 0 : 0;
+    const warn = document.getElementById('value-warn');
+    if (Math.abs(cv - pe) > 0.01) {
+        warn.style.display = 'block';
+        warn.textContent = 'Giá trị HĐ khác ước tính PR. Khi được phê duyệt, giá trị PR sẽ được cập nhật tự động.';
+    } else warn.style.display = 'none';
+    document.getElementById('review-summary').innerHTML =
+        `<b>PR:</b> ${_prData?.prNo}<br><b>NCC:</b> ${document.getElementById('vendor_name').value}<br>`
+        + `<b>Giá trị HĐ:</b> ${fmt(cv)}<br><b>Thanh toán:</b> ${document.getElementById('payment_terms').value || '—'}`;
+}
+
+async function submitContract() {
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    try {
+        const payload = {
+            action: 'createContract',
+            prNo: document.getElementById('pr_no').value.trim(),
+            vendorName: document.getElementById('vendor_name').value.trim(),
+            vendorContact: document.getElementById('vendor_contact').value.trim(),
+            contractValue: parseFloat(document.getElementById('contract_value').value) || 0,
+            startDate: document.getElementById('start_date').value,
+            endDate: document.getElementById('end_date').value,
+            paymentTerms: document.getElementById('payment_terms').value.trim(),
+            docUrl: document.getElementById('doc_url').value.trim(),
+            notes: document.getElementById('notes').value.trim(),
+            createdBy: _currentUser?.name || '',
+            createdByEmail: _currentUser?.email || ''
+        };
+        const params = new URLSearchParams();
+        params.append('data', JSON.stringify(payload));
+        const res = await fetch(BACKEND_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: params.toString() });
+        const result = JSON.parse(await res.text());
+        if (!result.success) throw new Error(result.message);
+        showToast('✅ Hợp đồng ' + result.data.contractNo + ' đã gửi thẩm định!');
+        setTimeout(() => { window.location.href = 'contract.html?contractNo=' + encodeURIComponent(result.data.contractNo); }, 1200);
+    } catch (e) {
+        showToast(e.message, true);
+        btn.disabled = false;
+    }
+}
+
+async function loadContractDetail(contractNo) {
+    document.getElementById('create-view').style.display = 'none';
+    document.getElementById('detail-view').style.display = 'block';
+    const params = new URLSearchParams();
+    params.append('data', JSON.stringify({ action: 'getContractDetails', contractNo: contractNo }));
+    const res = await fetch(BACKEND_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: params.toString() });
+    const result = JSON.parse(await res.text());
+    if (!result.success) { showToast(result.message, true); return; }
+    const ct = result.data.contract;
+    _detailContract = ct;
+    document.getElementById('detail-title').textContent = ct.contractNo;
+    const badge = document.getElementById('detail-badge');
+    badge.textContent = ct.status;
+    badge.className = 'badge ' + (ct.status === 'Đã ký' || ct.status === 'Có phụ lục' ? 'badge-signed' : ct.status === 'Từ chối' ? 'badge-reject' : 'badge-pending');
+    document.getElementById('detail-body').innerHTML =
+        `<div><b>PR:</b> ${ct.prNo}</div><div><b>NCC:</b> ${ct.vendorName}</div>`
+        + `<div><b>Giá trị:</b> ${fmt(ct.contractValue)}</div>`
+        + `<div><b>Thời hạn:</b> ${ct.startDate || '—'} → ${ct.endDate || '—'}</div>`
+        + `<div><b>Thanh toán:</b> ${ct.paymentTerms || '—'}</div>`
+        + (ct.docUrl ? `<div style="margin-top:8px;"><a href="${ct.docUrl}" target="_blank" style="color:var(--primary);">Xem hợp đồng PDF →</a></div>` : '');
+    const prog = result.data.paymentProgress;
+    if (prog) {
+        document.getElementById('progress-card').style.display = 'block';
+        document.getElementById('progress-body').innerHTML =
+            `Đã thanh toán: <b>${fmt(prog.paidTotal)}</b> / ${fmt(prog.contractValue)} · Còn lại: <b>${fmt(prog.remaining)}</b>`;
+    }
+    const amds = result.data.amendments || [];
+    document.getElementById('amendments-body').innerHTML = amds.length
+        ? amds.map(a => `<div class="amend-item"><b>${a.amendmentNo}</b> · ${a.amendmentType} · ${a.status}<br>${a.description || ''}</div>`).join('')
+        : '<p style="color:var(--text-secondary);font-size:13px;">Chưa có phụ lục.</p>';
+    renderDetailActions(ct);
+}
+
+function renderDetailActions(ct) {
+    const el = document.getElementById('detail-actions');
+    el.innerHTML = '';
+    const email = (_currentUser?.email || '').toLowerCase();
+    const approver = (ct.contractApproverEmail || ct.metadata?.contractApproverEmail || '').toLowerCase();
+    if (ct.status === 'Chờ thẩm định' && email && email === approver) {
+        el.innerHTML += `<button class="btn btn-success" onclick="approveContract()"><i class="fas fa-check"></i> Phê duyệt</button>`;
+        el.innerHTML += `<button class="btn btn-danger" onclick="rejectContract()"><i class="fas fa-times"></i> Từ chối</button>`;
+    }
+    if (ct.status === 'Đã ký' || ct.status === 'Có phụ lục') {
+        el.innerHTML += `<a class="btn btn-primary" href="acceptance_minutes.html?contractNo=${encodeURIComponent(ct.contractNo)}&prNo=${encodeURIComponent(ct.prNo)}"><i class="fas fa-clipboard-check"></i> Tạo Biên bản NT</a>`;
+        el.innerHTML += `<button class="btn btn-ghost" onclick="createAmendment()"><i class="fas fa-file-signature"></i> Tạo phụ lục</button>`;
+    }
+}
+
+async function approveContract() {
+    const note = prompt('Ghi chú phê duyệt (tùy chọn):') || '';
+    const params = new URLSearchParams();
+    params.append('data', JSON.stringify({
+        action: 'approveContract', contractNo: _detailContract.contractNo,
+        approverEmail: _currentUser?.email, approverName: _currentUser?.name, note: note
+    }));
+    const res = await fetch(BACKEND_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: params.toString() });
+    const result = JSON.parse(await res.text());
+    if (result.success) { showToast('Đã phê duyệt hợp đồng!'); loadContractDetail(_detailContract.contractNo); }
+    else showToast(result.message, true);
+}
+
+async function rejectContract() {
+    const note = prompt('Lý do từ chối:');
+    if (!note) return;
+    const params = new URLSearchParams();
+    params.append('data', JSON.stringify({
+        action: 'rejectContract', contractNo: _detailContract.contractNo,
+        approverEmail: _currentUser?.email, note: note
+    }));
+    const res = await fetch(BACKEND_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: params.toString() });
+    const result = JSON.parse(await res.text());
+    if (result.success) { showToast('Đã từ chối.'); loadContractDetail(_detailContract.contractNo); }
+    else showToast(result.message, true);
+}
+
+async function createAmendment() {
+    const type = prompt('Loại phụ lục (Giá trị / Phạm vi / Thời gian / Khác):', 'Giá trị');
+    if (!type) return;
+    const newVal = prompt('Giá trị mới (nếu thay đổi giá trị):', _detailContract.contractValue);
+    const desc = prompt('Mô tả phụ lục:') || '';
+    const params = new URLSearchParams();
+    params.append('data', JSON.stringify({
+        action: 'createContractAmendment', contractNo: _detailContract.contractNo,
+        amendmentType: type, oldValue: _detailContract.contractValue, newValue: newVal,
+        description: desc, requestedBy: _currentUser?.name || ''
+    }));
+    const res = await fetch(BACKEND_URL, { method:'POST', headers:{'Content-Type':'application/x-www-form-urlencoded'}, body: params.toString() });
+    const result = JSON.parse(await res.text());
+    if (result.success) { showToast('Phụ lục đã tạo — chờ thẩm định.'); loadContractDetail(_detailContract.contractNo); }
+    else showToast(result.message, true);
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+    try { _currentUser = JSON.parse(localStorage.getItem('tlc_current_user') || 'null'); } catch(_) {}
+    const p = new URLSearchParams(window.location.search);
+    const cn = p.get('contractNo');
+    const prNo = p.get('prNo');
+    if (cn) loadContractDetail(cn);
+    else if (prNo) { document.getElementById('pr_no').value = prNo; lookupPR(); }
+});
+</script>
+</body>
+</html>

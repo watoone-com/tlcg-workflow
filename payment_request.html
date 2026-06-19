@@ -486,6 +486,10 @@
                 <div class="sidebar-icon-box" style="background:#007AFF;"><i class="fas fa-file-pen"></i></div>
                 <span>Đề Nghị Mua Hàng</span>
             </button>
+            <button onclick="window.location.href='contract.html'" class="sidebar-item" data-tooltip="Hợp Đồng" data-page="contract">
+                <div class="sidebar-icon-box" style="background:#5856D6;"><i class="fas fa-file-contract"></i></div>
+                <span>Hợp Đồng</span>
+            </button>
             <button onclick="window.location.href='acceptance_minutes.html'" class="sidebar-item" data-tooltip="Biên Bản Nghiệm Thu" data-page="acceptance-minutes">
                 <div class="sidebar-icon-box" style="background:#34C759;"><i class="fas fa-clipboard-check"></i></div>
                 <span>Biên Bản Nghiệm Thu</span>
@@ -619,34 +623,69 @@
                 </div>
             </div>
 
-            <!-- AM No gate ─────────────────────────────────── -->
+            <!-- PMT gate — dual mode (AM or direct PR) ───────────── -->
             <div class="form-card" style="border-color: rgba(52,199,89,0.4);">
                 <div class="form-card-header" style="background: rgba(52,199,89,0.06);">
-                    <i class="fas fa-clipboard-check" style="color: #34C759; font-size: 14px;"></i>
-                    <h2>Biên Bản Nghiệm Thu <span style="font-size:12px;font-weight:500;color:#1a7a3c;background:rgba(52,199,89,0.12);padding:2px 8px;border-radius:20px;margin-left:6px;">Bắt buộc</span></h2>
+                    <i class="fas fa-link" style="color: #34C759; font-size: 14px;"></i>
+                    <h2>Liên Kết Phiếu Tham Chiếu</h2>
                 </div>
                 <div class="form-card-body">
-                    <div class="form-row">
-                        <div class="form-group w2">
-                            <label for="am_no_field">Số Biên Bản Nghiệm Thu (AM No) <span class="req">*</span></label>
-                            <div style="display:flex;gap:8px;align-items:flex-start;">
-                                <input type="text" id="am_no_field" placeholder="Ví dụ: EV-AM20260615000001" oninput="onAMNoInput()" style="flex:1;">
-                                <button type="button" onclick="validateAMNo()" style="white-space:nowrap;flex-shrink:0;padding:9px 14px;font-size:13px;background:rgba(0,0,0,0.05);border:1px solid rgba(0,0,0,0.12);border-radius:8px;cursor:pointer;font-family:var(--font-body);">
-                                    <i class="fas fa-search"></i> Xác minh
-                                </button>
+                    <div class="form-row" style="margin-bottom:12px;">
+                        <div class="form-group full">
+                            <label>Loại đề nghị thanh toán</label>
+                            <div style="display:flex;flex-wrap:wrap;gap:10px;margin-top:6px;">
+                                <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+                                    <input type="radio" name="pmt_gate_mode" value="am" checked onchange="onPMTGateModeChange()"> Theo Biên bản nghiệm thu (AM)
+                                </label>
+                                <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;">
+                                    <input type="radio" name="pmt_gate_mode" value="pr" onchange="onPMTGateModeChange()"> Trực tiếp theo PR (hàng hóa &lt; 2tr)
+                                </label>
                             </div>
-                            <p id="am-validation-status" style="font-size:12px;margin-top:5px;color:var(--text-secondary);min-height:16px;"></p>
-                        </div>
-                        <div class="form-group">
-                            <label>Số PR liên kết</label>
-                            <input type="text" id="pm_pr_no" placeholder="Tự động điền sau khi xác minh AM" readonly style="background:var(--bg);">
                         </div>
                     </div>
-                    <p style="font-size:12px;color:var(--text-secondary);margin-top:4px;padding:8px 12px;background:rgba(52,199,89,0.06);border-radius:8px;">
-                        <i class="fas fa-info-circle" style="margin-right:4px;color:#34C759;"></i>
-                        Đề nghị thanh toán chỉ được xử lý sau khi Biên Bản Nghiệm Thu đã được người phụ trách xác nhận (trạng thái: <b>Đã nghiệm thu</b>).
-                        <a href="acceptance_minutes.html" target="_blank" style="color:var(--primary);font-weight:600;margin-left:4px;">Tạo biên bản →</a>
-                    </p>
+                    <div id="pmt-gate-am">
+                        <div class="form-row">
+                            <div class="form-group w2">
+                                <label for="am_no_field">Số Biên Bản Nghiệm Thu (AM No) <span class="req">*</span></label>
+                                <div style="display:flex;gap:8px;align-items:flex-start;">
+                                    <input type="text" id="am_no_field" placeholder="Ví dụ: AM-20260618-000001" oninput="onAMNoInput()" style="flex:1;">
+                                    <button type="button" onclick="validateAMNo()" style="white-space:nowrap;flex-shrink:0;padding:9px 14px;font-size:13px;background:rgba(0,0,0,0.05);border:1px solid rgba(0,0,0,0.12);border-radius:8px;cursor:pointer;font-family:var(--font-body);">
+                                        <i class="fas fa-search"></i> Xác minh
+                                    </button>
+                                </div>
+                                <p id="am-validation-status" style="font-size:12px;margin-top:5px;color:var(--text-secondary);min-height:16px;"></p>
+                            </div>
+                            <div class="form-group">
+                                <label>Số PR liên kết</label>
+                                <input type="text" id="pm_pr_no" placeholder="Tự động điền sau khi xác minh AM" readonly style="background:var(--bg);">
+                            </div>
+                        </div>
+                        <div id="payment-progress-panel" style="display:none;margin-top:12px;padding:12px 14px;border-radius:10px;background:rgba(0,122,255,0.06);border:1px solid rgba(0,122,255,0.15);font-size:13px;"></div>
+                        <div class="form-row" id="installment-note-row" style="display:none;margin-top:10px;">
+                            <div class="form-group full">
+                                <label for="installment_note">Ghi chú đợt thanh toán</label>
+                                <input type="text" id="installment_note" placeholder="VD: 50% sau nghiệm thu giai đoạn 1">
+                            </div>
+                        </div>
+                    </div>
+                    <div id="pmt-gate-pr" style="display:none;">
+                        <div class="form-row">
+                            <div class="form-group w2">
+                                <label for="direct_pr_no">Số PR (hàng hóa &lt; 2.000.000₫) <span class="req">*</span></label>
+                                <div style="display:flex;gap:8px;">
+                                    <input type="text" id="direct_pr_no" placeholder="PR-YYYYMMDD-XXXXXX" oninput="onDirectPRInput()" style="flex:1;">
+                                    <button type="button" onclick="validateDirectPR()" style="white-space:nowrap;padding:9px 14px;font-size:13px;background:rgba(0,0,0,0.05);border:1px solid rgba(0,0,0,0.12);border-radius:8px;cursor:pointer;">
+                                        <i class="fas fa-search"></i> Xác minh
+                                    </button>
+                                </div>
+                                <p id="direct-pr-status" style="font-size:12px;margin-top:5px;color:var(--text-secondary);"></p>
+                            </div>
+                        </div>
+                        <p style="font-size:12px;color:var(--text-secondary);margin-top:8px;padding:8px 12px;background:rgba(255,149,0,0.08);border-radius:8px;">
+                            <i class="fas fa-info-circle" style="margin-right:4px;color:var(--warning);"></i>
+                            Biên bản nhận hàng sẽ được tạo sau khi thanh toán được phê duyệt.
+                        </p>
+                    </div>
                 </div>
             </div>
 
@@ -1671,10 +1710,18 @@
         btn.disabled = true;
         btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang gửi...';
 
-        // AM gate — hard block if not validated
-        const amNoVal = (document.getElementById('am_no_field')?.value || '').trim();
-        if (!amNoVal || !_amValidated) {
+        // Reference gate — AM or direct PR
+        const gateMode = getPMTGateMode();
+        const amNoVal = gateMode === 'am' ? (document.getElementById('am_no_field')?.value || '').trim() : '';
+        const directPr = gateMode === 'pr' ? (document.getElementById('direct_pr_no')?.value || '').trim() : '';
+        if (gateMode === 'am' && (!amNoVal || !_amValidated)) {
             showToast('Vui lòng xác minh Biên Bản Nghiệm Thu trước khi gửi.', 'error');
+            isSubmitting = false;
+            if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Gửi đề nghị'; }
+            return;
+        }
+        if (gateMode === 'pr' && (!directPr || !_directPRValidated)) {
+            showToast('Vui lòng xác minh PR trước khi gửi.', 'error');
             isSubmitting = false;
             if (btn) { btn.disabled = false; btn.innerHTML = '<i class="fas fa-paper-plane"></i> Gửi đề nghị'; }
             return;
@@ -1686,7 +1733,8 @@
             requestorEmail:   loggedInUser?.email || '',
             requestorName:    loggedInUser?.name  || '',
             amNo:             amNoVal,
-            prRequestNo:      document.getElementById('pm_pr_no')?.value || (_amData?.prNo || ''),
+            prRequestNo:      gateMode === 'pr' ? directPr : (document.getElementById('pm_pr_no')?.value || (_amData?.prNo || '')),
+            installmentNote:  document.getElementById('installment_note')?.value?.trim() || '',
             companyCode:      getSelectedCompanyMaj() || companyCode,
             companyName:      document.getElementById('company_name').value,
             companyKey:       document.getElementById('company_key_or_taxid').value,
@@ -1696,6 +1744,10 @@
             vendorTaxId:      document.getElementById('vendor_taxid_final').value,
             vendorAddress:    document.getElementById('vendor_address_final').value,
             finalAmount:      finalAmount,
+            totalAmount:      finalAmount,
+            company:          document.getElementById('company_name').value,
+            requestor:        loggedInUser?.name || '',
+            supplier:         vendorName,
             dueDate:          dueDate,
             currency:         document.getElementById('currency').value,
             installmentNo:    document.getElementById('installment_no').value,
@@ -1857,9 +1909,88 @@
     let currentStep = 1;
     const totalSteps = 5;
 
-    // ── AM No validation ────────────────────────────────────────────
+    // ── AM No / PR direct validation ────────────────────────────────
     let _amValidated  = false;
-    let _amData       = null; // holds { amNo, prNo, status, company }
+    let _amData       = null;
+    let _directPRValidated = false;
+    let _directPRData = null;
+    let _paymentProgress = null;
+
+    function getPMTGateMode() {
+        return document.querySelector('input[name="pmt_gate_mode"]:checked')?.value || 'am';
+    }
+
+    function onPMTGateModeChange() {
+        const mode = getPMTGateMode();
+        document.getElementById('pmt-gate-am').style.display = mode === 'am' ? 'block' : 'none';
+        document.getElementById('pmt-gate-pr').style.display = mode === 'pr' ? 'block' : 'none';
+        _amValidated = false; _amData = null; _directPRValidated = false; _directPRData = null;
+        onAMNoInput();
+        onDirectPRInput();
+    }
+
+    function onDirectPRInput() {
+        _directPRValidated = false;
+        _directPRData = null;
+        const el = document.getElementById('direct-pr-status');
+        if (el) el.textContent = '';
+    }
+
+    async function validateDirectPR() {
+        const prNo = (document.getElementById('direct_pr_no')?.value || '').trim();
+        const statusEl = document.getElementById('direct-pr-status');
+        if (!prNo) { showToast('Vui lòng nhập số PR.', 'error'); return; }
+        statusEl.textContent = 'Đang xác minh...';
+        try {
+            const params = new URLSearchParams();
+            params.append('data', JSON.stringify({ action: 'validatePRForDirectPayment', prNo: prNo }));
+            const res = await fetch('/api/voucher', { method: 'POST', mode: 'cors', redirect: 'follow', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() });
+            const result = JSON.parse(await res.text());
+            if (!result.success) {
+                _directPRValidated = false; _directPRData = null;
+                statusEl.textContent = '❌ ' + (result.message || 'PR không hợp lệ');
+                statusEl.style.color = 'var(--error)';
+                return;
+            }
+            _directPRValidated = true;
+            _directPRData = result.data;
+            document.getElementById('pm_pr_no').value = prNo;
+            statusEl.textContent = `✅ ${result.data.vendorName || ''} · ${Number(result.data.grandTotal||0).toLocaleString('vi-VN')} ₫`;
+            statusEl.style.color = '#1a7a3c';
+            showToast('PR hợp lệ cho thanh toán trực tiếp!', 'success');
+        } catch (e) {
+            _directPRValidated = false;
+            statusEl.textContent = '❌ ' + e.message;
+            statusEl.style.color = 'var(--error)';
+        }
+    }
+
+    async function loadPaymentProgress(prNo) {
+        const panel = document.getElementById('payment-progress-panel');
+        const noteRow = document.getElementById('installment-note-row');
+        if (!panel || !prNo) return;
+        try {
+            const params = new URLSearchParams();
+            params.append('data', JSON.stringify({ action: 'getPaymentProgressByPR', prNo: prNo }));
+            const res = await fetch('/api/voucher', { method: 'POST', mode: 'cors', redirect: 'follow', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body: params.toString() });
+            const result = JSON.parse(await res.text());
+            if (!result.success) return;
+            _paymentProgress = result.data;
+            panel.style.display = 'block';
+            if (noteRow) noteRow.style.display = 'block';
+            const d = result.data;
+            const fmt = n => Number(n||0).toLocaleString('vi-VN') + ' ₫';
+            panel.innerHTML = `<strong>Tiến độ thanh toán PR ${escHtml(prNo)}</strong><br>`
+                + `Giá trị HĐ/PR: <b>${fmt(d.grandTotal)}</b> · Đã TT: <b>${fmt(d.paidTotal)}</b> · Còn lại: <b>${fmt(d.remaining)}</b>`
+                + (d.installments?.length ? `<br><span style="font-size:12px;color:var(--text-secondary);">Đã có ${d.installments.length} đợt thanh toán</span>` : '');
+            const amountEl = document.getElementById('final_amount');
+            if (amountEl && d.remaining > 0 && !amountEl.value) amountEl.value = d.remaining;
+        } catch (_) {}
+    }
+
+    function escHtml(s) {
+        return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
 
     function onAMNoInput() {
         _amValidated = false;
@@ -1898,6 +2029,7 @@
             statusEl.textContent = `✅ Đã xác minh — ${am.company} · PR: ${am.prNo} · ${am.receiverName || ''}`;
             statusEl.style.color = '#1a7a3c';
             showToast('Biên bản ' + amNo + ' hợp lệ!', 'success');
+            if (am.prNo) loadPaymentProgress(am.prNo);
         } catch (e) {
             _amValidated = false; _amData = null;
             statusEl.textContent = '❌ Lỗi xác minh: ' + e.message;
@@ -1924,12 +2056,15 @@
             if (!document.getElementById('company_code').value) {
                 showToast('Vui lòng chọn công ty.', 'error'); return;
             }
-            const amNo = (document.getElementById('am_no_field').value || '').trim();
-            if (!amNo) {
-                showToast('Vui lòng nhập số Biên Bản Nghiệm Thu.', 'error'); return;
-            }
-            if (!_amValidated) {
-                showToast('Vui lòng nhấn "Xác minh" để kiểm tra biên bản nghiệm thu trước khi tiếp tục.', 'error'); return;
+            const mode = getPMTGateMode();
+            if (mode === 'am') {
+                const amNo = (document.getElementById('am_no_field').value || '').trim();
+                if (!amNo) { showToast('Vui lòng nhập số Biên Bản Nghiệm Thu.', 'error'); return; }
+                if (!_amValidated) { showToast('Vui lòng nhấn "Xác minh" AM trước khi tiếp tục.', 'error'); return; }
+            } else {
+                const prNo = (document.getElementById('direct_pr_no').value || '').trim();
+                if (!prNo) { showToast('Vui lòng nhập số PR.', 'error'); return; }
+                if (!_directPRValidated) { showToast('Vui lòng xác minh PR trước khi tiếp tục.', 'error'); return; }
             }
         }
         if (currentStep === 2) {

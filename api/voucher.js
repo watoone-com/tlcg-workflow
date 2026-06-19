@@ -196,6 +196,18 @@ export default async function handler(req, res) {
     'getAcceptanceMinutesByPR',    // Lookup AMs by prNo (used by Payment Request validation)
     'approveAcceptanceMinutes',    // Dept head approves AM → Đã nghiệm thu
     'rejectAcceptanceMinutes',     // Dept head rejects AM → Từ chối
+    // ── Contract ──
+    'createContract',
+    'approveContract',
+    'rejectContract',
+    'getContractDetails',
+    'getContractsByPR',
+    'createContractAmendment',
+    'approveContractAmendment',
+    'rejectContractAmendment',
+    'getContractAmendments',
+    'validatePRForDirectPayment',
+    'getPaymentProgressByPR',
     // NOTE: 'getEmployees' intentionally NOT here — it must go to VOUCHER_BACKEND
     // which returns companies_data[]. Payment Request backend returns employees[] (different shape).
   ];

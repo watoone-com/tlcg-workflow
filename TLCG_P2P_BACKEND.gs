@@ -158,6 +158,29 @@ function doPost(e) {
         return handleApproveAcceptanceMinutes(data);
       case 'rejectAcceptanceMinutes':
         return handleRejectAcceptanceMinutes(data);
+      // ── Contract ───────────────────────────────────────────────
+      case 'createContract':
+        return handleCreateContract(data);
+      case 'approveContract':
+        return handleApproveContract(data);
+      case 'rejectContract':
+        return handleRejectContract(data);
+      case 'getContractDetails':
+        return handleGetContractDetails(data);
+      case 'getContractsByPR':
+        return handleGetContractsByPR(data);
+      case 'createContractAmendment':
+        return handleCreateContractAmendment(data);
+      case 'approveContractAmendment':
+        return handleApproveContractAmendment(data);
+      case 'rejectContractAmendment':
+        return handleRejectContractAmendment(data);
+      case 'getContractAmendments':
+        return handleGetContractAmendments(data);
+      case 'validatePRForDirectPayment':
+        return handleValidatePRForDirectPayment(data);
+      case 'getPaymentProgressByPR':
+        return handleGetPaymentProgressByPR(data);
       default:
         return createResponse(false, 'Invalid action: ' + action);
     }
@@ -201,6 +224,8 @@ function doGet(e) {
 function handleSendPaymentRequest(data) {
   try {
     Logger.log('[Payment Request] Processing submission...');
+
+    data = normalizePaymentRequestData_(data);
     
     // Validate required fields
     const validation = validatePaymentRequest(data);
@@ -257,17 +282,54 @@ function handleSendPaymentRequest(data) {
     rowData[CONFIG.COLUMNS.OVERALL_STATUS] = 'Pending';
     rowData[CONFIG.COLUMNS.SUBMITTED_AT] = new Date().toISOString();
     
-    // Validate AM reference (hard gate — AM must be Đã nghiệm thu)
+    // Validate AM / PR reference (dual-mode gate)
     const amNo = (data.amNo || '').toString().trim();
-    if (!amNo) {
-      return createResponse(false, 'Vui lòng nhập số Biên Bản Nghiệm Thu (AM No) để tiến hành thanh toán.');
-    }
-    const amRecord = getAMByNo_(amNo);
-    if (!amRecord) {
-      return createResponse(false, 'Biên bản nghiệm thu ' + amNo + ' không tồn tại trong hệ thống.');
-    }
-    if (amRecord.status !== 'Đã nghiệm thu') {
-      return createResponse(false, 'Biên bản nghiệm thu ' + amNo + ' chưa được xác nhận (trạng thái hiện tại: ' + amRecord.status + '). Vui lòng chờ phê duyệt trước khi tạo đề nghị thanh toán.');
+    const prRequestNo = (data.prRequestNo || data.prNo || '').toString().trim();
+    let amRecord = null;
+    let p2pBranch = 'full';
+    let contractCeiling = null;
+
+    if (amNo) {
+      amRecord = getAMByNo_(amNo);
+      if (!amRecord) {
+        return createResponse(false, 'Biên bản nghiệm thu ' + amNo + ' không tồn tại trong hệ thống.');
+      }
+      if (amRecord.status !== 'Đã nghiệm thu') {
+        return createResponse(false, 'Biên bản nghiệm thu ' + amNo + ' chưa được xác nhận (trạng thái hiện tại: ' + amRecord.status + '). Vui lòng chờ phê duyệt trước khi tạo đề nghị thanh toán.');
+      }
+      // AM already used by another PMT?
+      const existingForAm = getPMTsByPR_(amRecord.prNo || '').filter(function(p) {
+        return (p.amNo || '') === amNo && p.status !== 'Rejected' && p.status !== 'Từ chối';
+      });
+      if (existingForAm.length > 0) {
+        return createResponse(false, 'Biên bản nghiệm thu này đã được sử dụng trong đề nghị thanh toán khác.');
+      }
+      const prInfo = findPRByNo_(amRecord.prNo || '');
+      if (prInfo) {
+        p2pBranch = prInfo.metadata.p2pBranch || 'full';
+      }
+      const amMeta = amRecord.metadata || {};
+      if (amMeta.contractNo) {
+        const ct = getContractByNo_(amMeta.contractNo);
+        if (ct) contractCeiling = parseFloat(ct.contractValue) || 0;
+      }
+      if (contractCeiling === null && prInfo) {
+        contractCeiling = parseFloat(prInfo.row[13]) || 0;
+      }
+      const thisAmount = parseFloat(data.totalAmount) || 0;
+      const paidTotal = sumPaidPMTsForPR_(amRecord.prNo || '');
+      if (contractCeiling > 0 && paidTotal + thisAmount > contractCeiling + 0.01) {
+        return createResponse(false, 'Tổng thanh toán vượt quá giá trị hợp đồng/PR (' + contractCeiling.toLocaleString('vi-VN') + ' ₫).');
+      }
+    } else if (prRequestNo) {
+      const directResult = _validatePRForDirectPayment_(prRequestNo);
+      if (!directResult.ok) {
+        return createResponse(false, directResult.message || 'PR không hợp lệ cho thanh toán trực tiếp.');
+      }
+      p2pBranch = 'simplified';
+      contractCeiling = parseFloat(directResult.data.grandTotal) || 0;
+    } else {
+      return createResponse(false, 'Vui lòng nhập số Biên Bản Nghiệm Thu (AM No) hoặc số PR (hàng hóa < 2tr).');
     }
 
     // Store metadata
@@ -285,17 +347,45 @@ function handleSendPaymentRequest(data) {
       directorComment: data.directorComment || '',
       isNewVendor: data.isNewVendor === true || data.isNewVendor === 'true',
       amNo: amNo,
-      amPrNo: amRecord.prNo || ''
+      amPrNo: amRecord ? (amRecord.prNo || '') : prRequestNo,
+      p2pBranch: p2pBranch,
+      installmentNo: amNo ? (getPMTsByPR_(amRecord.prNo || '').filter(function(p) {
+        return p.status !== 'Rejected' && p.status !== 'Từ chối';
+      }).length + 1) : 1,
+      installmentNote: (data.installmentNote || '').toString(),
+      invoiceItems: data.productItems || [],
+      vendorAccountName: (data.vendorAccountName || '').toString(),
+      vendorAccountNo: (data.vendorAccountNo || '').toString(),
+      vendorBankName: (data.vendorBankName || '').toString(),
+      vendorBankTransferNote: (data.vendorBankTransferNote || '').toString(),
+      driveLink: (data.driveLink || '').toString(),
+      attachments: (data.attachments || '').toString()
     };
     rowData[CONFIG.COLUMNS.METADATA] = JSON.stringify(metadata);
     
     // Append to sheet
     sheet.appendRow(rowData);
+    SpreadsheetApp.flush();
     
     Logger.log('[Payment Request] Saved to sheet successfully');
     
     // Add to history
     appendHistory(data.requestId, 'Submitted', data.requestor, 'Request submitted for approval');
+
+    _appendAuditLog_({
+      sheetName:  'PMT_Audit_Log',
+      docNo:      data.requestId,
+      flow:       'PMT',
+      company:    data.company || '',
+      action:     'Submit',
+      role:       'requester',
+      actorEmail: data.requestorEmail || '',
+      actorName:  data.requestor || '',
+      prevStatus: '',
+      newStatus:  'Pending',
+      note:       (data.installmentNote || '').toString(),
+      extra:      { amNo: amNo, prNo: metadata.amPrNo, p2pBranch: p2pBranch, installmentNo: metadata.installmentNo }
+    });
     
     // Send email notifications to all approvers
     sendApprovalEmails(data, requesterSignature);
@@ -390,15 +480,34 @@ function handleApprovePaymentRequest(data) {
     // Store signature
     const signatureUrl = storeSignature(data.signature, data.requestId, data.stage + '_approver');
     
+    const prevOverall = (row[CONFIG.COLUMNS.OVERALL_STATUS] || 'Pending').toString();
+
     // Update status and signature
     sheet.getRange(rowIndex, statusCol + 1).setValue('Approved');
     sheet.getRange(rowIndex, signatureCol + 1).setValue(signatureUrl);
     
     // Check if all required approvals are complete
     const allApproved = checkAllApprovalsComplete(sheet, rowIndex);
+    const newOverall = allApproved ? 'Approved' : prevOverall;
     if (allApproved) {
       sheet.getRange(rowIndex, CONFIG.COLUMNS.OVERALL_STATUS + 1).setValue('Approved');
     }
+    SpreadsheetApp.flush();
+
+    _appendAuditLog_({
+      sheetName:  'PMT_Audit_Log',
+      docNo:      data.requestId,
+      flow:       'PMT',
+      company:    (row[CONFIG.COLUMNS.COMPANY] || '').toString(),
+      action:     'Approve',
+      role:       data.stage || 'approver',
+      actorEmail: (data.approverEmail || data.approver || '').toString(),
+      actorName:  (data.approver || '').toString(),
+      prevStatus: prevOverall,
+      newStatus:  newOverall,
+      note:       (data.comment || '').toString(),
+      extra:      { stage: data.stage, stageName: stageName }
+    });
     
     // Add to history
     appendHistory(data.requestId, 'Approved', data.approver, stageName + ' approved');
@@ -472,12 +581,30 @@ function handleRejectPaymentRequest(data) {
       return createResponse(false, stageName + ' already approved. Cannot reject.');
     }
     
+    const prevOverall = (row[CONFIG.COLUMNS.OVERALL_STATUS] || 'Pending').toString();
+
     // Update status
     sheet.getRange(rowIndex, statusCol + 1).setValue('Rejected');
     sheet.getRange(rowIndex, CONFIG.COLUMNS.OVERALL_STATUS + 1).setValue('Rejected');
+    SpreadsheetApp.flush();
+
+    const reason = data.rejectReason || 'No reason provided';
+    _appendAuditLog_({
+      sheetName:  'PMT_Audit_Log',
+      docNo:      data.requestId,
+      flow:       'PMT',
+      company:    (row[CONFIG.COLUMNS.COMPANY] || '').toString(),
+      action:     'Reject',
+      role:       data.stage || 'approver',
+      actorEmail: (data.approverEmail || data.approver || '').toString(),
+      actorName:  (data.approver || '').toString(),
+      prevStatus: prevOverall,
+      newStatus:  'Rejected',
+      note:       reason,
+      extra:      { stage: data.stage, stageName: stageName }
+    });
     
     // Add to history
-    const reason = data.rejectReason || 'No reason provided';
     appendHistory(data.requestId, 'Rejected', data.approver, stageName + ' rejected: ' + reason);
     
     // Send notification to requester
@@ -645,10 +772,60 @@ function handleGetPaymentRequestDetails(data) {
 
 // ==================== HELPER FUNCTIONS ====================
 
+/** Map payment_request.html (v2) payload fields to legacy sheet/email shape. */
+function normalizePaymentRequestData_(data) {
+  if (!data) return data;
+  data.company = (data.company || data.companyName || '').toString().trim();
+  data.requestor = (data.requestor || data.requestorName || '').toString().trim();
+  data.supplier = (data.supplier || data.vendorName || '').toString().trim();
+  data.totalAmount = data.totalAmount || data.finalAmount || '';
+  if (!data.requestDate) {
+    data.requestDate = new Date().toISOString().split('T')[0];
+  }
+  if (!data.purchaseType) data.purchaseType = 'services';
+  if (!data.department) data.department = data.department || '';
+  if (!data.paymentType) {
+    data.paymentType = [data.paymentType1, data.paymentType2].filter(Boolean).join(' / ');
+  }
+
+  if (!data.productItems || !data.productItems.length) {
+    var invoiceRaw = data.invoiceItems;
+    if (typeof invoiceRaw === 'string') {
+      try { invoiceRaw = JSON.parse(invoiceRaw); } catch (_) { invoiceRaw = []; }
+    }
+    if (Array.isArray(invoiceRaw) && invoiceRaw.length) {
+      data.productItems = invoiceRaw;
+    }
+  }
+
+  if (!data.paymentPhases || !data.paymentPhases.length) {
+    var phaseAmt = parseFloat(data.totalAmount) || 0;
+    data.paymentPhases = [{
+      phase: (data.installmentNo || '1').toString(),
+      amount: phaseAmt,
+      description: (data.paymentDescription || '').toString(),
+      paymentType: data.paymentType || ''
+    }];
+  }
+
+  return data;
+}
+
 function validatePaymentRequest(data) {
   const errors = [];
-  
+  const isV2 = !!(data.companyName || data.finalAmount || data.invoiceItems || data.vendorName);
+
   if (!data.requestId) errors.push('Request ID is required');
+
+  if (isV2) {
+    if (!data.company) errors.push('Company is required');
+    if (!data.requestor) errors.push('Requestor is required');
+    if (!data.supplier) errors.push('Supplier is required');
+    var amt = parseFloat(data.totalAmount || data.finalAmount);
+    if (!amt || amt <= 0) errors.push('Amount is required');
+    return { valid: errors.length === 0, errors: errors };
+  }
+
   if (!data.company) errors.push('Company is required');
   if (!data.requestor) errors.push('Requestor is required');
   if (!data.purchaseType) errors.push('Purchase type is required');
@@ -656,15 +833,15 @@ function validatePaymentRequest(data) {
   if (!data.budgetApprover) errors.push('Budget approver is required');
   if (!data.supplierApprover) errors.push('Supplier approver is required');
   if (!data.finalApprover) errors.push('Final approver is required');
-  
+
   if (!data.productItems || data.productItems.length === 0) {
     errors.push('At least one product item is required');
   }
-  
+
   if (!data.paymentPhases || data.paymentPhases.length === 0) {
     errors.push('At least one payment phase is required');
   }
-  
+
   return {
     valid: errors.length === 0,
     errors: errors
@@ -1538,6 +1715,14 @@ function handlePurchaseRequest(data) {
       return createResponse(false, 'Vui lòng nhập ít nhất 1 hàng hóa / dịch vụ.');
     }
 
+    var purchaseType = (data.purchaseType || 'goods').toString().trim().toLowerCase();
+    if (purchaseType !== 'goods' && purchaseType !== 'services') purchaseType = 'goods';
+    var p2pBranch = computeP2PBranch_(purchaseType, grandTotal);
+    if (p2pBranch === 'full' && !(data.contractApprover || '').toString().trim()) {
+      return createResponse(false,
+        'Đề nghị này (Dịch vụ hoặc giá trị ≥ 2.000.000₫) yêu cầu người thẩm định hợp đồng.');
+    }
+
     // Generate PR No if not provided (safety fallback — frontend usually provides it)
     if (!prNo) {
       var now = new Date();
@@ -1609,9 +1794,13 @@ function handlePurchaseRequest(data) {
       requesterSignature:    data.requesterSignature    || '',
       attachments:           attachmentRecords,
       // Per-role approval statuses — only set for assigned roles
+      purchaseType:    purchaseType,
+      p2pBranch:     p2pBranch,
       budgetStatus:    (data.budgetApprover    || '').trim() ? 'Pending' : 'N/A',
       supplierStatus:  (data.supplierApprover  || '').trim() ? 'Pending' : 'N/A',
-      contractStatus:  (data.contractApprover  || '').trim() ? 'Pending' : 'N/A',
+      // Full branch: contract review happens in Contract module, not PR chain
+      contractStatus:  p2pBranch === 'full' ? 'N/A'
+        : ((data.contractApprover || '').trim() ? 'Pending' : 'N/A'),
       purchasingStatus: (data.purchasingApprover || '').trim() ? 'Pending' : 'N/A',
       vendorDetails: {
         vendorType:         data.vendorType          || '',
@@ -1699,7 +1888,8 @@ function handlePurchaseRequest(data) {
       actorName:  requesterName,
       prevStatus: '',
       newStatus:  'Đang duyệt ngân sách & NCC (2/5)',
-      note:       data.purpose || ''
+      note:       data.purpose || '',
+      extra:      { purchaseType: purchaseType, p2pBranch: p2pBranch }
     });
 
     // Send email notifications (non-blocking — failures must not break submission)
@@ -1868,6 +2058,9 @@ function handleGetPurchaseRequestHistory(data) {
         return true;
       })
       .map(function(row) {
+        var meta = {};
+        try { meta = JSON.parse(row[16] || '{}'); } catch (_) {}
+        var p2pBranch = meta.p2pBranch || 'full';
         return {
           prNo:               row[0]  || '',
           company:            row[1]  || '',
@@ -1887,7 +2080,9 @@ function handleGetPurchaseRequestHistory(data) {
           metadata:           row[16] || '{}',
           contractApprover:   row[17] || '',
           purchasingApprover: row[18] || '',
-          attachmentUrls:     row[19] || ''
+          attachmentUrls:     row[19] || '',
+          purchaseType:       meta.purchaseType || 'goods',
+          p2pBranch:          p2pBranch
         };
       })
       .reverse(); // newest first
@@ -1923,7 +2118,10 @@ function computePRApprovalState_(row, metadata) {
 
   var budgetDone    = !budgetEmail    || metadata.budgetStatus    === 'Approved';
   var supplierDone  = !supplierEmail  || metadata.supplierStatus  === 'Approved';
-  var contractDone  = !contractEmail  || metadata.contractStatus  === 'Approved';
+  var p2pBranch     = metadata.p2pBranch || 'full';
+  // Full branch: contract approval is handled in Contract module — skip PR contract stage
+  var skipPRContract = p2pBranch === 'full';
+  var contractDone  = skipPRContract || !contractEmail || metadata.contractStatus === 'Approved';
   var purchasingDone = !purchasingEmail || metadata.purchasingStatus === 'Approved';
 
   // Parallel stage: either budget or supplier is assigned but not yet approved
@@ -2078,14 +2276,16 @@ function handleApprovePurchaseRequest(data) {
 
     // Stage transition emails: notify the next stage approver when their stage opens
     if (stateAfter.stage === 'contract' && stateBeforeApprove.stage === 'parallel') {
-      // Parallel just completed → notify contract approver
+      // Legacy PR contract stage (simplified branch only)
       try {
         sendPurchaseRequestStageEmail_(row, prNo, 'contract');
       } catch (e) {
         Logger.log('[P2P] ⚠️ Stage email (contract) failed: ' + e.message);
       }
-    } else if (stateAfter.stage === 'purchasing' && stateBeforeApprove.stage === 'contract') {
-      // Contract just completed → notify purchasing approver
+    } else if (stateAfter.stage === 'purchasing' &&
+      (stateBeforeApprove.stage === 'contract' ||
+       (stateBeforeApprove.stage === 'parallel' && (metadata.p2pBranch || 'full') === 'full'))) {
+      // Purchasing opens after contract stage OR directly after parallel for full branch
       try {
         sendPurchaseRequestStageEmail_(row, prNo, 'purchasing');
       } catch (e) {
@@ -2377,6 +2577,14 @@ function handleResubmitPurchaseRequest(data) {
       return createResponse(false, 'Vui lòng nhập ít nhất 1 hàng hóa / dịch vụ.');
     }
 
+    var purchaseType = (data.purchaseType || 'goods').toString().trim().toLowerCase();
+    if (purchaseType !== 'goods' && purchaseType !== 'services') purchaseType = 'goods';
+    var p2pBranch = computeP2PBranch_(purchaseType, grandTotal);
+    if (p2pBranch === 'full' && !(data.contractApprover || '').toString().trim()) {
+      return createResponse(false,
+        'Đề nghị này (Dịch vụ hoặc giá trị ≥ 2.000.000₫) yêu cầu người thẩm định hợp đồng.');
+    }
+
     var ss    = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
     var sheet = ss.getSheetByName(PR_SHEET_NAME);
     if (!sheet) return createResponse(false, 'Không tìm thấy sheet Purchase_Request_History.');
@@ -2463,9 +2671,12 @@ function handleResubmitPurchaseRequest(data) {
       resubmitCount:        (parseInt(existingMetadata.resubmitCount, 10) || 0) + 1,
       requesterSignature:   data.requesterSignature   || '',
       attachments:          newAttachmentRecords,
+      purchaseType:         purchaseType,
+      p2pBranch:            p2pBranch,
       budgetStatus:    (data.budgetApprover    || '').trim() ? 'Pending' : 'N/A',
       supplierStatus:  (data.supplierApprover  || '').trim() ? 'Pending' : 'N/A',
-      contractStatus:  (data.contractApprover  || '').trim() ? 'Pending' : 'N/A',
+      contractStatus:  p2pBranch === 'full' ? 'N/A'
+        : ((data.contractApprover || '').trim() ? 'Pending' : 'N/A'),
       purchasingStatus:(data.purchasingApprover|| '').trim() ? 'Pending' : 'N/A',
       vendorDetails: {
         vendorType:         data.vendorType         || '',
@@ -2720,6 +2931,9 @@ function handleCreateAcceptanceMinutes(data) {
     if (!(data.receiverSignature || '').toString().trim())
       return createResponse(false, 'Chữ ký người nhận hàng là bắt buộc.');
 
+    var contractNo = (data.contractNo || '').toString().trim();
+    var prInfoEarly = null;
+
     // Validate items
     var parsedItems;
     try { parsedItems = JSON.parse(itemsRaw); } catch (e) {
@@ -2745,6 +2959,22 @@ function handleCreateAcceptanceMinutes(data) {
         }
       }
       if (!prFound) return createResponse(false, 'Không tìm thấy phiếu đề nghị mua hàng: ' + prNo);
+    }
+
+    prInfoEarly = findPRByNo_(prNo);
+    var p2pBranchAM = prInfoEarly ? (prInfoEarly.metadata.p2pBranch || 'full') : 'full';
+    if (p2pBranchAM === 'full') {
+      if (!contractNo) {
+        return createResponse(false, 'Quy trình đầy đủ yêu cầu số Hợp đồng (Contract No).');
+      }
+      var ctCheck = getContractByNo_(contractNo);
+      if (!ctCheck) return createResponse(false, 'Không tìm thấy hợp đồng: ' + contractNo);
+      if (ctCheck.status !== 'Đã ký' && ctCheck.status !== 'Có phụ lục') {
+        return createResponse(false, 'Hợp đồng ' + contractNo + ' chưa được phê duyệt (trạng thái: ' + ctCheck.status + ').');
+      }
+      if ((ctCheck.prNo || '') !== prNo) {
+        return createResponse(false, 'Hợp đồng ' + contractNo + ' không thuộc PR ' + prNo + '.');
+      }
     }
 
     // Fallback AM number
@@ -2785,7 +3015,9 @@ function handleCreateAcceptanceMinutes(data) {
       deptHeadNote:      '',
       rejectionNote:     '',
       companyCode:       data.companyCode || '',
-      requesterEmail:    receiverEmail
+      requesterEmail:    receiverEmail,
+      contractNo:        contractNo || '',
+      purchaseType:      prInfoEarly ? (prInfoEarly.metadata.purchaseType || 'goods') : 'goods'
     };
 
     var sheet = getOrCreateAMSheet_();
@@ -2810,7 +3042,7 @@ function handleCreateAcceptanceMinutes(data) {
       prevStatus: '',
       newStatus:  'Chờ xác nhận',
       note:       'Biên bản cho PR: ' + prNo,
-      extra:      { prNo: prNo }
+      extra:      { prNo: prNo, contractNo: contractNo || '' }
     });
 
     // Email dept head
@@ -3135,4 +3367,656 @@ function sendPurchaseRequestResubmitEmails_(prNo, data, attachmentRecords) {
       Logger.log('[P2P] ⚠️ Resubmit email to ' + email + ' failed: ' + e.message);
     }
   });
+}
+
+// ==================== P2P BRANCH & SHARED HELPERS ====================
+
+/** @returns {'simplified'|'full'} */
+function computeP2PBranch_(purchaseType, grandTotal) {
+  var pt = (purchaseType || 'goods').toString().trim().toLowerCase();
+  var gt = parseFloat(grandTotal) || 0;
+  if (pt === 'services' || gt >= 2000000) return 'full';
+  return 'simplified';
+}
+
+/** @returns {{ row:Array, rowIndex:number, metadata:Object }|null} */
+function findPRByNo_(prNo) {
+  prNo = (prNo || '').toString().trim();
+  if (!prNo) return null;
+  var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  var sheet = ss.getSheetByName(PR_SHEET_NAME);
+  if (!sheet) return null;
+  var values = sheet.getDataRange().getValues();
+  for (var i = 1; i < values.length; i++) {
+    if ((values[i][0] || '').toString().trim() === prNo) {
+      var meta = {};
+      try { meta = JSON.parse(values[i][16] || '{}'); } catch (_) {}
+      if (!meta.p2pBranch) meta.p2pBranch = 'full';
+      return { row: values[i], rowIndex: i, metadata: meta };
+    }
+  }
+  return null;
+}
+
+function getPMTsByPR_(prNo) {
+  prNo = (prNo || '').toString().trim();
+  var results = [];
+  try {
+    var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    var sheet = ss.getSheetByName(CONFIG.SHEET_NAME);
+    if (!sheet || sheet.getLastRow() <= 1) return results;
+    var rows = sheet.getDataRange().getValues();
+    for (var i = 1; i < rows.length; i++) {
+      var rowPr = (rows[i][CONFIG.COLUMNS.PR_REQUEST_NO] || '').toString().trim();
+      if (rowPr !== prNo) continue;
+      var meta = {};
+      try { meta = JSON.parse(rows[i][CONFIG.COLUMNS.METADATA] || '{}'); } catch (_) {}
+      results.push({
+        requestId: rows[i][CONFIG.COLUMNS.REQUEST_ID] || '',
+        amount: parseFloat(rows[i][CONFIG.COLUMNS.TOTAL_AMOUNT]) || 0,
+        status: (rows[i][CONFIG.COLUMNS.OVERALL_STATUS] || '').toString(),
+        amNo: meta.amNo || '',
+        installmentNo: meta.installmentNo || 0,
+        installmentNote: meta.installmentNote || '',
+        submittedAt: rows[i][CONFIG.COLUMNS.SUBMITTED_AT] || ''
+      });
+    }
+  } catch (e) {
+    Logger.log('[P2P] getPMTsByPR_ error: ' + e.message);
+  }
+  return results;
+}
+
+function sumPaidPMTsForPR_(prNo) {
+  return getPMTsByPR_(prNo).filter(function(p) {
+    var s = (p.status || '').toString();
+    return s !== 'Rejected' && s !== 'Từ chối';
+  }).reduce(function(sum, p) { return sum + (p.amount || 0); }, 0);
+}
+
+function _validatePRForDirectPayment_(prNo) {
+  var prInfo = findPRByNo_(prNo);
+  if (!prInfo) return { ok: false, message: 'Không tìm thấy PR: ' + prNo };
+  var status = (prInfo.row[14] || '').toString().trim();
+  if (status !== 'Hoàn thành') {
+    return { ok: false, message: 'PR chưa được phê duyệt hoàn tất.' };
+  }
+  var p2pBranch = prInfo.metadata.p2pBranch || 'full';
+  if (p2pBranch !== 'simplified') {
+    return { ok: false, message: 'PR này thuộc quy trình đầy đủ — cần tạo Biên bản nghiệm thu trước khi thanh toán.' };
+  }
+  var existing = getPMTsByPR_(prNo).filter(function(p) {
+    var s = (p.status || '').toString();
+    return s !== 'Rejected' && s !== 'Từ chối';
+  });
+  if (existing.length > 0) {
+    return { ok: false, message: 'Đã tồn tại đề nghị thanh toán cho PR này.' };
+  }
+  var meta = prInfo.metadata;
+  return {
+    ok: true,
+    message: 'OK',
+    data: {
+      prNo: prNo,
+      vendorName: (meta.vendorDetails && meta.vendorDetails.vendorName) || (prInfo.row[8] || ''),
+      department: prInfo.row[3] || '',
+      grandTotal: prInfo.row[13] || 0,
+      requesterName: prInfo.row[4] || '',
+      purchaseType: meta.purchaseType || 'goods',
+      p2pBranch: p2pBranch
+    }
+  };
+}
+
+function handleValidatePRForDirectPayment(data) {
+  var prNo = (data.prNo || '').toString().trim();
+  if (!prNo) return createResponse(false, 'Thiếu số PR.');
+  var result = _validatePRForDirectPayment_(prNo);
+  if (!result.ok) return createResponse(false, result.message);
+  return createResponse(true, 'OK', result.data);
+}
+
+function handleGetPaymentProgressByPR(data) {
+  try {
+    var prNo = (data.prNo || '').toString().trim();
+    if (!prNo) return createResponse(false, 'Thiếu số PR.');
+    var prInfo = findPRByNo_(prNo);
+    if (!prInfo) return createResponse(false, 'Không tìm thấy PR: ' + prNo);
+
+    var ceiling = parseFloat(prInfo.row[13]) || 0;
+    var contracts = getContractsByPR_(prNo);
+    var signed = contracts.filter(function(c) {
+      return c.status === 'Đã ký' || c.status === 'Có phụ lục';
+    });
+    if (signed.length > 0) {
+      ceiling = parseFloat(signed[signed.length - 1].contractValue) || ceiling;
+    }
+
+    var installments = getPMTsByPR_(prNo).filter(function(p) {
+      var s = (p.status || '').toString();
+      return s !== 'Rejected' && s !== 'Từ chối';
+    });
+    var paidTotal = installments.reduce(function(s, p) { return s + (p.amount || 0); }, 0);
+
+    return createResponse(true, 'OK', {
+      prNo: prNo,
+      grandTotal: ceiling,
+      installments: installments,
+      paidTotal: paidTotal,
+      remaining: Math.max(0, ceiling - paidTotal)
+    });
+  } catch (e) {
+    return createResponse(false, 'Lỗi: ' + e.message);
+  }
+}
+
+// ==================== CONTRACT MODULE ====================
+
+var CT_SHEET_NAME = 'Contract_History';
+var CT_AMEND_SHEET = 'Contract_Amendments';
+
+var CT_COL = {
+  CONTRACT_NO: 0, PR_NO: 1, VENDOR_NAME: 2, VENDOR_CONTACT: 3,
+  CONTRACT_VALUE: 4, START_DATE: 5, END_DATE: 6, PAYMENT_TERMS: 7,
+  DOC_URL: 8, STATUS: 9, CREATED_BY: 10, CREATED_AT: 11,
+  APPROVED_BY: 12, APPROVED_AT: 13, NOTES: 14, METADATA: 15
+};
+
+var CT_AMD_COL = {
+  AMENDMENT_NO: 0, CONTRACT_NO: 1, PR_NO: 2, AMENDMENT_TYPE: 3,
+  OLD_VALUE: 4, NEW_VALUE: 5, DESCRIPTION: 6, DOC_URL: 7,
+  STATUS: 8, REQUESTED_BY: 9, REQUESTED_AT: 10,
+  APPROVED_BY: 11, APPROVED_AT: 12, METADATA: 13
+};
+
+function getOrCreateContractSheet_() {
+  var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  var sheet = ss.getSheetByName(CT_SHEET_NAME);
+  if (!sheet) {
+    sheet = ss.insertSheet(CT_SHEET_NAME);
+    sheet.appendRow([
+      'Contract No.', 'PR No.', 'Vendor Name', 'Vendor Contact', 'Contract Value',
+      'Start Date', 'End Date', 'Payment Terms', 'Contract Doc URL', 'Status',
+      'Created By', 'Created At', 'Approved By', 'Approved At', 'Notes', 'Metadata (JSON)'
+    ]);
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+function getOrCreateContractAmendmentSheet_() {
+  var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  var sheet = ss.getSheetByName(CT_AMEND_SHEET);
+  if (!sheet) {
+    sheet = ss.insertSheet(CT_AMEND_SHEET);
+    sheet.appendRow([
+      'Amendment No.', 'Contract No.', 'PR No.', 'Amendment Type',
+      'Old Value', 'New Value', 'Description', 'Doc URL', 'Status',
+      'Requested By', 'Requested At', 'Approved By', 'Approved At', 'Metadata (JSON)'
+    ]);
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+function generateContractNo_() {
+  var now = new Date();
+  var ds = Utilities.formatDate(now, 'Asia/Ho_Chi_Minh', 'yyyyMMdd');
+  return 'CT-' + ds + '-' + Math.floor(Math.random() * 100000).toString().padStart(6, '0');
+}
+
+function contractRowToObj_(row) {
+  var meta = {};
+  try { meta = JSON.parse(row[CT_COL.METADATA] || '{}'); } catch (_) {}
+  return {
+    contractNo: row[CT_COL.CONTRACT_NO] || '',
+    prNo: row[CT_COL.PR_NO] || '',
+    vendorName: row[CT_COL.VENDOR_NAME] || '',
+    vendorContact: row[CT_COL.VENDOR_CONTACT] || '',
+    contractValue: row[CT_COL.CONTRACT_VALUE] || 0,
+    startDate: row[CT_COL.START_DATE] || '',
+    endDate: row[CT_COL.END_DATE] || '',
+    paymentTerms: row[CT_COL.PAYMENT_TERMS] || '',
+    docUrl: row[CT_COL.DOC_URL] || '',
+    status: row[CT_COL.STATUS] || '',
+    createdBy: row[CT_COL.CREATED_BY] || '',
+    createdAt: row[CT_COL.CREATED_AT] || '',
+    approvedBy: row[CT_COL.APPROVED_BY] || '',
+    approvedAt: row[CT_COL.APPROVED_AT] || '',
+    notes: row[CT_COL.NOTES] || '',
+    metadata: meta
+  };
+}
+
+function getContractByNo_(contractNo) {
+  contractNo = (contractNo || '').toString().trim();
+  if (!contractNo) return null;
+  var sheet = getOrCreateContractSheet_();
+  if (sheet.getLastRow() <= 1) return null;
+  var rows = sheet.getDataRange().getValues();
+  for (var i = 1; i < rows.length; i++) {
+    if ((rows[i][CT_COL.CONTRACT_NO] || '').toString().trim() === contractNo) {
+      return contractRowToObj_(rows[i]);
+    }
+  }
+  return null;
+}
+
+function getContractsByPR_(prNo) {
+  prNo = (prNo || '').toString().trim();
+  var out = [];
+  var sheet = getOrCreateContractSheet_();
+  if (sheet.getLastRow() <= 1) return out;
+  var rows = sheet.getDataRange().getValues();
+  for (var i = 1; i < rows.length; i++) {
+    if ((rows[i][CT_COL.PR_NO] || '').toString().trim() === prNo) {
+      out.push(contractRowToObj_(rows[i]));
+    }
+  }
+  return out;
+}
+
+function syncPRGrandTotalFromContract_(prNo, contractValue, contractNo, actorEmail) {
+  var prInfo = findPRByNo_(prNo);
+  if (!prInfo) return;
+  var ss = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  var sheet = ss.getSheetByName(PR_SHEET_NAME);
+  var oldTotal = parseFloat(prInfo.row[13]) || 0;
+  var newTotal = parseFloat(contractValue) || 0;
+  prInfo.metadata.contractNo = contractNo;
+  prInfo.metadata.contractValue = newTotal;
+  if (!prInfo.metadata.prGrandTotalBefore) prInfo.metadata.prGrandTotalBefore = oldTotal;
+  sheet.getRange(prInfo.rowIndex + 1, 14).setValue(newTotal);
+  sheet.getRange(prInfo.rowIndex + 1, 17).setValue(JSON.stringify(prInfo.metadata));
+  SpreadsheetApp.flush();
+  if (Math.abs(oldTotal - newTotal) > 0.01) {
+    _appendAuditLog_({
+      sheetName: 'PR_Audit_Log', docNo: prNo, flow: 'PR',
+      company: (prInfo.row[1] || '').toString(), action: 'ContractApproved_PRUpdated',
+      role: 'contract', actorEmail: actorEmail || '', actorName: '',
+      prevStatus: (prInfo.row[14] || '').toString(), newStatus: (prInfo.row[14] || '').toString(),
+      note: 'Cập nhật giá trị PR theo hợp đồng ' + contractNo,
+      extra: { oldTotal: oldTotal, newTotal: newTotal, contractNo: contractNo }
+    });
+  }
+}
+
+function sendContractApprovalRequestEmail_(contractNo, prNo, contractValue, approverEmail, createdBy) {
+  if (!approverEmail) return;
+  var subject = '[THẨM ĐỊNH HỢP ĐỒNG] ' + contractNo + ' — PR ' + prNo;
+  var valueFmt = (parseFloat(contractValue) || 0).toLocaleString('vi-VN') + ' ₫';
+  var body = '<p>Kính gửi,</p>'
+    + '<p>Có hợp đồng mới cần thẩm định cho <b>PR ' + prNo + '</b>.</p>'
+    + '<table cellpadding="6" cellspacing="0" style="border-collapse:collapse;font-size:13px;">'
+    + '<tr><td style="font-weight:700;padding-right:16px;">Số HĐ:</td><td>' + contractNo + '</td></tr>'
+    + '<tr><td style="font-weight:700;padding-right:16px;">Giá trị:</td><td>' + valueFmt + '</td></tr>'
+    + '<tr><td style="font-weight:700;padding-right:16px;">Người tạo:</td><td>' + (createdBy || '—') + '</td></tr>'
+    + '</table>'
+    + '<p style="margin-top:16px;">Vui lòng đăng nhập hệ thống để phê duyệt hợp đồng.</p>'
+    + '<p>Trân trọng,<br>Hệ thống Workflow TLC Group</p>';
+  try {
+    GmailApp.sendEmail(approverEmail, subject, '', { htmlBody: body, name: 'TLC Group Workflow' });
+  } catch (e) {
+    Logger.log('[Contract] Email failed: ' + e.message);
+  }
+}
+
+function handleCreateContract(data) {
+  try {
+    var prNo = (data.prNo || '').toString().trim();
+    var vendorName = (data.vendorName || '').toString().trim();
+    var contractValue = parseFloat(data.contractValue) || 0;
+    if (!prNo) return createResponse(false, 'Thiếu số PR.');
+    if (!vendorName) return createResponse(false, 'Thiếu tên nhà cung cấp.');
+    if (contractValue <= 0) return createResponse(false, 'Giá trị hợp đồng phải lớn hơn 0.');
+
+    var prInfo = findPRByNo_(prNo);
+    if (!prInfo) return createResponse(false, 'Không tìm thấy PR: ' + prNo);
+    if ((prInfo.row[14] || '').toString().trim() !== 'Hoàn thành') {
+      return createResponse(false, 'PR chưa hoàn thành phê duyệt.');
+    }
+    if ((prInfo.metadata.p2pBranch || 'full') !== 'full') {
+      return createResponse(false, 'PR này thuộc quy trình rút gọn — không cần hợp đồng.');
+    }
+
+    var existing = getContractsByPR_(prNo).filter(function(c) {
+      return c.status === 'Chờ thẩm định' || c.status === 'Đã ký' || c.status === 'Có phụ lục';
+    });
+    if (existing.length > 0) {
+      return createResponse(false, 'Đã tồn tại hợp đồng cho PR này: ' + existing[0].contractNo);
+    }
+
+    var contractNo = (data.contractNo || '').toString().trim() || generateContractNo_();
+    if (getContractByNo_(contractNo)) return createResponse(false, 'Số hợp đồng đã tồn tại.');
+
+    var prGrandTotal = parseFloat(prInfo.row[13]) || 0;
+    var metadata = {
+      prGrandTotalBefore: prGrandTotal,
+      autoUpdated: false,
+      currentVersion: 1,
+      contractApproverEmail: (prInfo.row[17] || '').toString().trim()
+    };
+
+    var sheet = getOrCreateContractSheet_();
+    var createdAt = new Date().toISOString();
+    sheet.appendRow([
+      contractNo, prNo, vendorName,
+      (data.vendorContact || '').toString().trim(),
+      contractValue,
+      (data.startDate || '').toString().trim(),
+      (data.endDate || '').toString().trim(),
+      (data.paymentTerms || '').toString().trim(),
+      (data.docUrl || '').toString().trim(),
+      'Chờ thẩm định',
+      (data.createdBy || '').toString().trim(),
+      createdAt, '', '', (data.notes || '').toString().trim(),
+      JSON.stringify(metadata)
+    ]);
+    SpreadsheetApp.flush();
+
+    _appendAuditLog_({
+      sheetName: 'Contract_Audit_Log', docNo: contractNo, flow: 'CT',
+      company: (prInfo.row[1] || '').toString(), action: 'Submit', role: 'procurement',
+      actorEmail: (data.createdByEmail || '').toString(), actorName: (data.createdBy || '').toString(),
+      prevStatus: '', newStatus: 'Chờ thẩm định', note: 'PR: ' + prNo,
+      extra: { prNo: prNo, contractValue: contractValue }
+    });
+
+    var approverEmail = (prInfo.row[17] || '').toString().trim();
+    try {
+      sendContractApprovalRequestEmail_(contractNo, prNo, contractValue, approverEmail, data.createdBy);
+    } catch (_) {}
+
+    return createResponse(true, 'Hợp đồng đã được tạo.', { contractNo: contractNo });
+  } catch (e) {
+    return createResponse(false, 'Lỗi: ' + e.message);
+  }
+}
+
+function handleApproveContract(data) {
+  try {
+    var contractNo = (data.contractNo || '').toString().trim();
+    var approverEmail = (data.approverEmail || '').toString().trim().toLowerCase();
+    if (!contractNo) return createResponse(false, 'Thiếu số hợp đồng.');
+    if (!approverEmail) return createResponse(false, 'Thiếu email người duyệt.');
+
+    var sheet = getOrCreateContractSheet_();
+    var rows = sheet.getDataRange().getValues();
+    var rowIndex = -1;
+    for (var i = 1; i < rows.length; i++) {
+      if ((rows[i][CT_COL.CONTRACT_NO] || '').toString().trim() === contractNo) { rowIndex = i; break; }
+    }
+    if (rowIndex === -1) return createResponse(false, 'Không tìm thấy hợp đồng.');
+
+    var row = rows[rowIndex];
+    var status = (row[CT_COL.STATUS] || '').toString();
+    if (status !== 'Chờ thẩm định') {
+      return createResponse(false, 'Hợp đồng không ở trạng thái chờ thẩm định.');
+    }
+
+    var prNo = (row[CT_COL.PR_NO] || '').toString().trim();
+    var prInfo = findPRByNo_(prNo);
+    var assigned = prInfo ? (prInfo.row[17] || '').toString().trim().toLowerCase() : '';
+    if (assigned && approverEmail !== assigned) {
+      return createResponse(false, 'Bạn không được phân công thẩm định hợp đồng này.');
+    }
+
+    var now = new Date().toISOString();
+    sheet.getRange(rowIndex + 1, CT_COL.STATUS + 1).setValue('Đã ký');
+    sheet.getRange(rowIndex + 1, CT_COL.APPROVED_BY + 1).setValue(data.approverName || approverEmail);
+    sheet.getRange(rowIndex + 1, CT_COL.APPROVED_AT + 1).setValue(now);
+    SpreadsheetApp.flush();
+
+    syncPRGrandTotalFromContract_(prNo, row[CT_COL.CONTRACT_VALUE], contractNo, approverEmail);
+
+    _appendAuditLog_({
+      sheetName: 'Contract_Audit_Log', docNo: contractNo, flow: 'CT',
+      company: (row[CT_COL.VENDOR_NAME] || '').toString(), action: 'Approve', role: 'contract',
+      actorEmail: approverEmail, actorName: (data.approverName || '').toString(),
+      prevStatus: 'Chờ thẩm định', newStatus: 'Đã ký',
+      note: (data.note || '').toString(), extra: { prNo: prNo }
+    });
+
+    return createResponse(true, 'Hợp đồng đã được phê duyệt.', { contractNo: contractNo, status: 'Đã ký' });
+  } catch (e) {
+    return createResponse(false, 'Lỗi: ' + e.message);
+  }
+}
+
+function handleRejectContract(data) {
+  try {
+    var contractNo = (data.contractNo || '').toString().trim();
+    var approverEmail = (data.approverEmail || '').toString().trim().toLowerCase();
+    if (!contractNo) return createResponse(false, 'Thiếu số hợp đồng.');
+
+    var sheet = getOrCreateContractSheet_();
+    var rows = sheet.getDataRange().getValues();
+    var rowIndex = -1;
+    for (var i = 1; i < rows.length; i++) {
+      if ((rows[i][CT_COL.CONTRACT_NO] || '').toString().trim() === contractNo) { rowIndex = i; break; }
+    }
+    if (rowIndex === -1) return createResponse(false, 'Không tìm thấy hợp đồng.');
+
+    var prevStatus = (rows[rowIndex][CT_COL.STATUS] || '').toString();
+    sheet.getRange(rowIndex + 1, CT_COL.STATUS + 1).setValue('Từ chối');
+    SpreadsheetApp.flush();
+
+    _appendAuditLog_({
+      sheetName: 'Contract_Audit_Log', docNo: contractNo, flow: 'CT',
+      company: '', action: 'Reject', role: 'contract',
+      actorEmail: approverEmail, actorName: '',
+      prevStatus: prevStatus, newStatus: 'Từ chối',
+      note: (data.note || '').toString(), extra: {}
+    });
+
+    return createResponse(true, 'Đã từ chối hợp đồng.', { contractNo: contractNo });
+  } catch (e) {
+    return createResponse(false, 'Lỗi: ' + e.message);
+  }
+}
+
+function handleGetContractDetails(data) {
+  try {
+    var contractNo = (data.contractNo || '').toString().trim();
+    if (!contractNo) return createResponse(false, 'Thiếu số hợp đồng.');
+    var ct = getContractByNo_(contractNo);
+    if (!ct) return createResponse(false, 'Không tìm thấy hợp đồng.');
+    var prInfo = findPRByNo_(ct.prNo);
+    var approverFromPr = prInfo ? (prInfo.row[17] || '').toString().trim() : '';
+    ct.contractApproverEmail = approverFromPr || (ct.metadata && ct.metadata.contractApproverEmail) || '';
+    var amendments = getContractAmendments_(contractNo);
+    var prNo = ct.prNo;
+    var paidTotal = sumPaidPMTsForPR_(prNo);
+    return createResponse(true, 'OK', {
+      contract: ct,
+      amendments: amendments,
+      paymentProgress: {
+        contractValue: parseFloat(ct.contractValue) || 0,
+        paidTotal: paidTotal,
+        remaining: Math.max(0, (parseFloat(ct.contractValue) || 0) - paidTotal)
+      }
+    });
+  } catch (e) {
+    return createResponse(false, 'Lỗi: ' + e.message);
+  }
+}
+
+function handleGetContractsByPR(data) {
+  try {
+    var prNo = (data.prNo || '').toString().trim();
+    if (!prNo) return createResponse(false, 'Thiếu số PR.');
+    return createResponse(true, 'OK', { contracts: getContractsByPR_(prNo) });
+  } catch (e) {
+    return createResponse(false, 'Lỗi: ' + e.message);
+  }
+}
+
+function getContractAmendments_(contractNo) {
+  contractNo = (contractNo || '').toString().trim();
+  var out = [];
+  var sheet = getOrCreateContractAmendmentSheet_();
+  if (sheet.getLastRow() <= 1) return out;
+  var rows = sheet.getDataRange().getValues();
+  for (var i = 1; i < rows.length; i++) {
+    if ((rows[i][CT_AMD_COL.CONTRACT_NO] || '').toString().trim() !== contractNo) continue;
+    out.push({
+      amendmentNo: rows[i][CT_AMD_COL.AMENDMENT_NO] || '',
+      contractNo: rows[i][CT_AMD_COL.CONTRACT_NO] || '',
+      prNo: rows[i][CT_AMD_COL.PR_NO] || '',
+      amendmentType: rows[i][CT_AMD_COL.AMENDMENT_TYPE] || '',
+      oldValue: rows[i][CT_AMD_COL.OLD_VALUE] || '',
+      newValue: rows[i][CT_AMD_COL.NEW_VALUE] || '',
+      description: rows[i][CT_AMD_COL.DESCRIPTION] || '',
+      docUrl: rows[i][CT_AMD_COL.DOC_URL] || '',
+      status: rows[i][CT_AMD_COL.STATUS] || '',
+      requestedBy: rows[i][CT_AMD_COL.REQUESTED_BY] || '',
+      requestedAt: rows[i][CT_AMD_COL.REQUESTED_AT] || '',
+      approvedBy: rows[i][CT_AMD_COL.APPROVED_BY] || '',
+      approvedAt: rows[i][CT_AMD_COL.APPROVED_AT] || ''
+    });
+  }
+  return out;
+}
+
+function handleGetContractAmendments(data) {
+  var contractNo = (data.contractNo || '').toString().trim();
+  if (!contractNo) return createResponse(false, 'Thiếu số hợp đồng.');
+  return createResponse(true, 'OK', { amendments: getContractAmendments_(contractNo) });
+}
+
+function handleCreateContractAmendment(data) {
+  try {
+    var contractNo = (data.contractNo || '').toString().trim();
+    if (!contractNo) return createResponse(false, 'Thiếu số hợp đồng.');
+    var ct = getContractByNo_(contractNo);
+    if (!ct) return createResponse(false, 'Không tìm thấy hợp đồng.');
+    if (ct.status !== 'Đã ký' && ct.status !== 'Có phụ lục') {
+      return createResponse(false, 'Chỉ có thể tạo phụ lục cho hợp đồng đã ký.');
+    }
+
+    var pending = getContractAmendments_(contractNo).filter(function(a) {
+      return a.status === 'Chờ thẩm định';
+    });
+    if (pending.length > 0) {
+      return createResponse(false, 'Đang có phụ lục chờ thẩm định.');
+    }
+
+    var version = (ct.metadata.currentVersion || 1) + 1;
+    var amendNo = contractNo + '-PL-' + version;
+    var sheet = getOrCreateContractAmendmentSheet_();
+    var now = new Date().toISOString();
+    sheet.appendRow([
+      amendNo, contractNo, ct.prNo,
+      (data.amendmentType || 'Khác').toString(),
+      (data.oldValue !== undefined ? data.oldValue : ct.contractValue),
+      (data.newValue || '').toString(),
+      (data.description || '').toString(),
+      (data.docUrl || '').toString(),
+      'Chờ thẩm định',
+      (data.requestedBy || '').toString(), now, '', '', '{}'
+    ]);
+    SpreadsheetApp.flush();
+
+    var ctSheet = getOrCreateContractSheet_();
+    var rows = ctSheet.getDataRange().getValues();
+    for (var i = 1; i < rows.length; i++) {
+      if ((rows[i][CT_COL.CONTRACT_NO] || '').toString().trim() === contractNo) {
+        ctSheet.getRange(i + 1, CT_COL.STATUS + 1).setValue('Có phụ lục');
+        break;
+      }
+    }
+
+    var prInfo = findPRByNo_(ct.prNo);
+    var approverEmail = prInfo ? (prInfo.row[17] || '').toString().trim() : '';
+    try {
+      sendContractApprovalRequestEmail_(amendNo, ct.prNo, data.newValue || ct.contractValue, approverEmail, data.requestedBy);
+    } catch (_) {}
+
+    return createResponse(true, 'Phụ lục đã được tạo.', { amendmentNo: amendNo });
+  } catch (e) {
+    return createResponse(false, 'Lỗi: ' + e.message);
+  }
+}
+
+function handleApproveContractAmendment(data) {
+  try {
+    var amendmentNo = (data.amendmentNo || '').toString().trim();
+    if (!amendmentNo) return createResponse(false, 'Thiếu số phụ lục.');
+
+    var sheet = getOrCreateContractAmendmentSheet_();
+    var rows = sheet.getDataRange().getValues();
+    var rowIndex = -1;
+    for (var i = 1; i < rows.length; i++) {
+      if ((rows[i][CT_AMD_COL.AMENDMENT_NO] || '').toString().trim() === amendmentNo) { rowIndex = i; break; }
+    }
+    if (rowIndex === -1) return createResponse(false, 'Không tìm thấy phụ lục.');
+
+    var row = rows[rowIndex];
+    if ((row[CT_AMD_COL.STATUS] || '').toString() !== 'Chờ thẩm định') {
+      return createResponse(false, 'Phụ lục không ở trạng thái chờ thẩm định.');
+    }
+
+    var contractNo = (row[CT_AMD_COL.CONTRACT_NO] || '').toString().trim();
+    var prNo = (row[CT_AMD_COL.PR_NO] || '').toString().trim();
+    var amendType = (row[CT_AMD_COL.AMENDMENT_TYPE] || '').toString();
+    var newValue = row[CT_AMD_COL.NEW_VALUE];
+    var now = new Date().toISOString();
+
+    sheet.getRange(rowIndex + 1, CT_AMD_COL.STATUS + 1).setValue('Đã duyệt');
+    sheet.getRange(rowIndex + 1, CT_AMD_COL.APPROVED_BY + 1).setValue(data.approverName || data.approverEmail || '');
+    sheet.getRange(rowIndex + 1, CT_AMD_COL.APPROVED_AT + 1).setValue(now);
+
+    var ctSheet = getOrCreateContractSheet_();
+    var ctRows = ctSheet.getDataRange().getValues();
+    for (var j = 1; j < ctRows.length; j++) {
+      if ((ctRows[j][CT_COL.CONTRACT_NO] || '').toString().trim() === contractNo) {
+        if (amendType === 'Giá trị' && newValue !== '') {
+          ctSheet.getRange(j + 1, CT_COL.CONTRACT_VALUE + 1).setValue(parseFloat(newValue) || 0);
+          syncPRGrandTotalFromContract_(prNo, newValue, contractNo, data.approverEmail || '');
+        }
+        if (amendType === 'Thời gian' && newValue) {
+          ctSheet.getRange(j + 1, CT_COL.END_DATE + 1).setValue(newValue);
+        }
+        ctSheet.getRange(j + 1, CT_COL.STATUS + 1).setValue('Đã ký');
+        var meta = {};
+        try { meta = JSON.parse(ctRows[j][CT_COL.METADATA] || '{}'); } catch (_) {}
+        meta.currentVersion = (meta.currentVersion || 1) + 1;
+        ctSheet.getRange(j + 1, CT_COL.METADATA + 1).setValue(JSON.stringify(meta));
+        break;
+      }
+    }
+    SpreadsheetApp.flush();
+
+    _appendAuditLog_({
+      sheetName: 'Contract_Audit_Log', docNo: contractNo, flow: 'CT',
+      company: '', action: 'AmendmentApproved', role: 'contract',
+      actorEmail: (data.approverEmail || '').toString(), actorName: '',
+      prevStatus: 'Có phụ lục', newStatus: 'Đã ký',
+      note: amendmentNo, extra: { amendmentNo: amendmentNo, amendmentType: amendType }
+    });
+
+    return createResponse(true, 'Phụ lục đã được phê duyệt.', { amendmentNo: amendmentNo });
+  } catch (e) {
+    return createResponse(false, 'Lỗi: ' + e.message);
+  }
+}
+
+function handleRejectContractAmendment(data) {
+  try {
+    var amendmentNo = (data.amendmentNo || '').toString().trim();
+    if (!amendmentNo) return createResponse(false, 'Thiếu số phụ lục.');
+
+    var sheet = getOrCreateContractAmendmentSheet_();
+    var rows = sheet.getDataRange().getValues();
+    for (var i = 1; i < rows.length; i++) {
+      if ((rows[i][CT_AMD_COL.AMENDMENT_NO] || '').toString().trim() === amendmentNo) {
+        sheet.getRange(i + 1, CT_AMD_COL.STATUS + 1).setValue('Từ chối');
+        SpreadsheetApp.flush();
+        return createResponse(true, 'Đã từ chối phụ lục.', { amendmentNo: amendmentNo });
+      }
+    }
+    return createResponse(false, 'Không tìm thấy phụ lục.');
+  } catch (e) {
+    return createResponse(false, 'Lỗi: ' + e.message);
+  }
 }
