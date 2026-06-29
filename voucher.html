@@ -1756,23 +1756,6 @@
             background: #0284c7;
         }
 
-        .import-btn {
-            display: flex;
-            align-items: center;
-            gap: 0.5rem;
-            padding: 0.5rem 1rem;
-            background: #10b981;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 0.875rem;
-            font-weight: 500;
-            transition: background 0.2s;
-        }
-        .import-btn:hover { background: #059669; }
-        .import-btn:disabled { background: #6ee7b7; cursor: not-allowed; }
-
         .bulk-action-bar {
             display: none;
             align-items: center;
@@ -3055,10 +3038,6 @@
                     <span id="last-refresh-time" style="font-size: 0.75rem; color: #64748b; font-weight: normal;"></span>
                 </div>
                 <div style="display:flex;gap:0.5rem;align-items:center;">
-                    <button class="import-btn" id="import-vh-btn" onclick="importFromVHImport()" title="Nhập phiếu từ sheet VH_import" style="display:none;">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
-                        Nhập từ VH_import
-                    </button>
                     <button class="refresh-btn" onclick="loadRecentVouchers(true)" title="Làm mới danh sách phiếu">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"></polyline><polyline points="1 20 1 14 7 14"></polyline><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path></svg>
                         Làm mới
@@ -4400,10 +4379,6 @@
                     throw new Error('Invalid user data');
                 }
                 console.log('✅ User authenticated:', userData.name, '(' + userData.email + ')');
-                if (userData.isAdmin) {
-                    const importVhBtn = document.getElementById('import-vh-btn');
-                    if (importVhBtn) importVhBtn.style.display = '';
-                }
             } catch (e) {
                 console.error('❌ Invalid user data in localStorage:', e);
                 localStorage.removeItem('tlc_current_user');
@@ -5997,84 +5972,6 @@
         function clearBulkSelection() {
             document.querySelectorAll('.voucher-select-cb:checked').forEach(cb => cb.checked = false);
             document.getElementById('bulk-action-bar').classList.remove('show');
-        }
-
-        // ── Import from VH_import ───────────────────────────────────────────
-        const IMPORT_BTN_HTML = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg> Nhập từ VH_import`;
-
-        async function importFromVHImport() {
-            const btn = document.getElementById('import-vh-btn');
-            btn.disabled = true;
-            btn.textContent = 'Đang nhập...';
-            try {
-                const formData = new FormData();
-                formData.append('data', JSON.stringify({ action: 'importFromVHImport' }));
-                const response = await fetch(GOOGLE_APPS_SCRIPT_WEB_APP_URL, {
-                    method: 'POST', mode: 'cors', redirect: 'follow', body: formData
-                });
-                const result = await response.json();
-                if (result.success) {
-                    const d = result.data || {};
-                    if (!d.imported) {
-                        showToast(result.message || 'Không có phiếu mới để nhập.', 'info');
-                    } else {
-                        showToast(`Đã nhập ${d.imported} phiếu. Email phê duyệt đã gửi tới Kế toán trưởng.` +
-                            (d.errors && d.errors.length ? ` Lỗi: ${d.errors.length} dòng.` : ''), 'success');
-                    }
-                    loadRecentVouchers(true);
-                } else if (result.data && result.data.invalid && result.data.invalid.length) {
-                    // Show validation error modal
-                    showImportValidationErrors(result.data.invalid);
-                } else {
-                    showToast(result.message || 'Lỗi nhập dữ liệu', 'error');
-                }
-            } catch (err) {
-                console.error('importFromVHImport error:', err);
-                showToast('Lỗi kết nối khi nhập: ' + err.message, 'error');
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = IMPORT_BTN_HTML;
-            }
-        }
-
-        function showImportValidationErrors(invalidRows) {
-            // Build error rows table
-            const rowsHtml = invalidRows.map(function(r) {
-                return `<tr>
-                    <td style="padding:6px 10px;border-bottom:1px solid #fee2e2;font-weight:600;color:#dc2626;">Dòng ${r.row}</td>
-                    <td style="padding:6px 10px;border-bottom:1px solid #fee2e2;color:#64748b;">${(r.data && (r.data.company || r.data.employee)) ? (r.data.company || '') + (r.data.employee ? ' / ' + r.data.employee : '') : ''}</td>
-                    <td style="padding:6px 10px;border-bottom:1px solid #fee2e2;">${(r.errors || []).join('<br>')}</td>
-                </tr>`;
-            }).join('');
-
-            const modalHtml = `
-                <div id="import-error-overlay" style="position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:9999;display:flex;align-items:center;justify-content:center;" onclick="if(event.target===this)this.remove()">
-                    <div style="background:white;border-radius:10px;padding:28px;max-width:640px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.3);">
-                        <div style="display:flex;align-items:center;gap:10px;margin-bottom:16px;">
-                            <span style="font-size:1.5rem;">⚠️</span>
-                            <h3 style="margin:0;color:#dc2626;">Lỗi dữ liệu — Chưa nhập</h3>
-                        </div>
-                        <p style="color:#64748b;margin-bottom:16px;">Phát hiện <strong>${invalidRows.length} dòng lỗi</strong> trong sheet VH_import. Vui lòng sửa các dòng sau rồi thử lại:</p>
-                        <table style="width:100%;border-collapse:collapse;font-size:0.875rem;">
-                            <thead>
-                                <tr style="background:#fef2f2;">
-                                    <th style="padding:8px 10px;text-align:left;color:#b91c1c;">Dòng</th>
-                                    <th style="padding:8px 10px;text-align:left;color:#b91c1c;">Dữ liệu</th>
-                                    <th style="padding:8px 10px;text-align:left;color:#b91c1c;">Lỗi</th>
-                                </tr>
-                            </thead>
-                            <tbody>${rowsHtml}</tbody>
-                        </table>
-                        <div style="margin-top:20px;text-align:right;">
-                            <button onclick="document.getElementById('import-error-overlay').remove()" style="padding:8px 20px;background:#ef4444;color:white;border:none;border-radius:6px;cursor:pointer;font-size:0.875rem;">Đóng</button>
-                        </div>
-                    </div>
-                </div>`;
-
-            // Remove previous modal if any
-            const prev = document.getElementById('import-error-overlay');
-            if (prev) prev.remove();
-            document.body.insertAdjacentHTML('beforeend', modalHtml);
         }
 
         // ── Bulk approve selected vouchers ──────────────────────────────────
