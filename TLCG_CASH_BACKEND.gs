@@ -525,12 +525,33 @@ function getVoucherFromHistory(voucherNumber) {
     }
     
     if (!baseVoucher) return null;
-    
+
+    // The Submit row's meta may lack companyApprovers entirely (e.g. company-name
+    // mismatch at submission time, since fixed) and only get one introduced by a
+    // LATER history row (e.g. patchOneVoucherMissingApprovers_). Fall back to the
+    // most recent row that actually has companyApprovers if the Submit row doesn't.
+    let baseMetaObj = null;
+    try { baseMetaObj = baseVoucher.meta ? JSON.parse(baseVoucher.meta) : null; } catch (e) { baseMetaObj = null; }
+    if (!baseMetaObj || !baseMetaObj.companyApprovers || !baseMetaObj.companyApprovers.approvers) {
+      for (let i = data.length - 1; i >= 1; i--) {
+        if (data[i][0] !== voucherNumber) continue;
+        const rawMeta = (data[i][17] || '').toString().trim();
+        if (!rawMeta) continue;
+        try {
+          const parsed = JSON.parse(rawMeta);
+          if (parsed.companyApprovers && parsed.companyApprovers.approvers) {
+            baseVoucher.meta = rawMeta;
+            break;
+          }
+        } catch (e) { /* try an earlier row */ }
+      }
+    }
+
     // Parse meta and update with approval status from subsequent rows
     if (baseVoucher.meta) {
       try {
         const meta = JSON.parse(baseVoucher.meta);
-        
+
         // If has companyApprovers, scan all rows to update approval status
         if (meta.companyApprovers && meta.companyApprovers.approvers) {
           let approvalCount = 0;
@@ -2567,6 +2588,28 @@ function _getVoucherFromData_(voucherNumber, data) {
     }
   }
   if (!baseVoucher) return null;
+
+  // The Submit row's meta may lack companyApprovers entirely (e.g. company-name
+  // mismatch at submission time, since fixed) and only get one introduced by a
+  // LATER history row (e.g. patchOneVoucherMissingApprovers_). Fall back to the
+  // most recent row that actually has companyApprovers if the Submit row doesn't.
+  let baseMetaObj_ = null;
+  try { baseMetaObj_ = baseVoucher.meta ? JSON.parse(baseVoucher.meta) : null; } catch (e) { baseMetaObj_ = null; }
+  if (!baseMetaObj_ || !baseMetaObj_.companyApprovers || !baseMetaObj_.companyApprovers.approvers) {
+    for (let i = data.length - 1; i >= 1; i--) {
+      if (data[i][0] !== voucherNumber) continue;
+      const rawMeta = (data[i][17] || '').toString().trim();
+      if (!rawMeta) continue;
+      try {
+        const parsed = JSON.parse(rawMeta);
+        if (parsed.companyApprovers && parsed.companyApprovers.approvers) {
+          baseVoucher.meta = rawMeta;
+          break;
+        }
+      } catch (e) { /* try an earlier row */ }
+    }
+  }
+
   // Scan subsequent rows to update approval status (same logic as getVoucherFromHistory)
   if (baseVoucher.meta) {
     try {
