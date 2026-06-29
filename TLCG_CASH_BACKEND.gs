@@ -4640,42 +4640,42 @@ function cleanupDuplicateApprovalRows() {
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
-// patchMissingCompanyApprovers_
-// One-time utility: backfills `companyApprovers` into a voucher's meta when the
+// patchOneVoucherMissingApprovers_ / patchAllMissingCompanyApprovers_
+// Utility: backfills `companyApprovers` into a voucher's meta when the
 // Submit-row MetaJSON was saved without it (happens when handleGetCompanyApprovers
 // failed at submission time, e.g. due to a company-name mismatch against the
 // Master Company sheet — frontend silently submits with companyApprovers=null,
 // see TLCG_CASH_BACKEND.gs handleSendEmail ~line 754).
 //
-// Root cause for RI-PC20260518000006: voucher's stored company name
+// Root cause first seen on RI-PC20260518000006: voucher's stored company name
 // "CÔNG TY TNHH DỊCH VỤ RIOT GAMES" did not exactly match the Master Company
 // sheet's "CÔNG TY TRÁCH NHIỆM HỮU HẠN DỊCH VỤ RIOT GAMES" (same entity, TNHH
 // vs full legal-form name), so the approvers lookup returned no match and the
-// voucher was saved with no approval chain at all (0/3, stuck forever).
+// voucher was saved with no approval chain at all (0/3, stuck forever). Two
+// more RIOT vouchers (RI-PC20260626000012, RI-PC20260626000019) hit the same
+// gap later, confirming the underlying name-mismatch is still possible at
+// submission time — this patch is the recovery path until that's fixed at
+// the source (or as an ongoing safety net if it recurs for other companies).
 //
-// This script re-fetches the company's real approvers using the voucher's
-// COMPANY KEY (col D, e.g. "RIOT") rather than the mismatched name string, and
-// appends a new history row carrying the corrected companyApprovers meta — it
-// does not edit the original Submit row, so the audit trail is preserved.
+// This re-fetches the company's real approvers using the voucher's COMPANY
+// KEY (col D, e.g. "RIOT") rather than the possibly-mismatched name string,
+// and appends a new history row carrying the corrected companyApprovers meta
+// — it does not edit the original Submit row, so the audit trail is preserved.
 //
 // HOW TO RUN:
-//   Apps Script editor → select "patchMissingCompanyApprovers_" → ▶ Run
-//   Check Execution Log to confirm before/after meta.
-//   Safe to re-run — it's a no-op if the voucher's latest meta already has
-//   companyApprovers.
+//   - For specific voucher numbers: edit VOUCHER_NUMBERS below, then run
+//     patchSpecificMissingApprovers_ from the Apps Script editor.
+//   - To sweep the WHOLE sheet for any voucher missing companyApprovers, run
+//     patchAllMissingCompanyApprovers_ instead.
+//   Check Execution Log to confirm before/after meta. Safe to re-run — both
+//   are no-ops for any voucher whose latest meta already has companyApprovers.
 // ─────────────────────────────────────────────────────────────────────────────
-function patchMissingCompanyApprovers_() {
-  const VOUCHER_NUMBER = 'RI-PC20260518000006';
-
-  const sheet = SpreadsheetApp.openById(VOUCHER_HISTORY_SHEET_ID).getSheetByName(VH_SHEET_NAME);
-  if (!sheet) { Logger.log('❌ Sheet not found'); return; }
-
-  const data = sheet.getDataRange().getValues();
+function patchOneVoucherMissingApprovers_(voucherNumber, sheet, data) {
   const rows = [];
   for (let i = 1; i < data.length; i++) {
-    if ((data[i][0] || '').toString().trim() === VOUCHER_NUMBER) rows.push({ idx: i, row: data[i] });
+    if ((data[i][0] || '').toString().trim() === voucherNumber) rows.push({ idx: i, row: data[i] });
   }
-  if (!rows.length) { Logger.log('❌ Voucher not found: ' + VOUCHER_NUMBER); return; }
+  if (!rows.length) { Logger.log('❌ Voucher not found: ' + voucherNumber); return false; }
 
   // Parse latest valid meta (mirrors getVoucherFromHistory's "most recent row" preference)
   let meta = null;
@@ -4688,20 +4688,20 @@ function patchMissingCompanyApprovers_() {
 
   if (meta.companyApprovers && meta.companyApprovers.approvers &&
       Object.keys(meta.companyApprovers.approvers).length > 0) {
-    Logger.log('✅ ' + VOUCHER_NUMBER + ' already has companyApprovers — no-op. Current: ' + JSON.stringify(meta.companyApprovers));
-    return;
+    Logger.log('✅ ' + voucherNumber + ' already has companyApprovers — no-op.');
+    return false;
   }
 
   const base = rows[0].row; // Submit row — base voucher fields
   const companyName = (base[2] || '').toString().trim();  // C(2) = company_name
   const companyKey  = (base[3] || '').toString().trim();  // D(3) = company_key_or_taxid
 
-  Logger.log('🔍 Looking up approvers for company: "' + companyName + '" key: "' + companyKey + '"');
+  Logger.log('🔍 ' + voucherNumber + ': looking up approvers for company "' + companyName + '" key "' + companyKey + '"');
   const approversResult = handleGetCompanyApprovers({ companyName: companyName, companyKey: companyKey }, companyName);
   const approversJson = JSON.parse(approversResult.getContent());
   if (!approversJson.success || !approversJson.data || !approversJson.data.approvers) {
-    Logger.log('❌ Could not fetch approvers — aborting. Response: ' + JSON.stringify(approversJson));
-    return;
+    Logger.log('❌ ' + voucherNumber + ': could not fetch approvers — skipping. Response: ' + JSON.stringify(approversJson));
+    return false;
   }
 
   const fetched = approversJson.data.approvers; // { legalRep, accountant, treasurer }
@@ -4724,7 +4724,7 @@ function patchMissingCompanyApprovers_() {
   meta.companyApprovers = companyApprovers;
 
   appendHistory_({
-    voucherNumber: VOUCHER_NUMBER,
+    voucherNumber: voucherNumber,
     voucherType: (base[1] || '').toString(),
     company: companyName,
     companyKey: companyKey,
@@ -4750,14 +4750,76 @@ function patchMissingCompanyApprovers_() {
       companyApprovers.approvers.accountant,
       'accountant',
       companyApprovers,
-      VOUCHER_NUMBER,
+      voucherNumber,
       { voucherType: (base[1] || '').toString(), company: companyName, employee: (base[4] || '').toString(),
         amount: base[8] || 0, requestorEmail: (base[5] || '').toString(), submittedBy: (base[6] || '').toString() }
     );
-    Logger.log('📧 Sent approval email to accountant: ' + companyApprovers.approvers.accountant.email);
+    Logger.log('📧 ' + voucherNumber + ': sent approval email to accountant ' + companyApprovers.approvers.accountant.email);
   } catch (emailErr) {
-    Logger.log('⚠️ Could not send approval email: ' + emailErr.toString());
+    Logger.log('⚠️ ' + voucherNumber + ': could not send approval email: ' + emailErr.toString());
   }
 
-  Logger.log('✅ Patched ' + VOUCHER_NUMBER + ' with companyApprovers: ' + JSON.stringify(companyApprovers));
+  Logger.log('✅ Patched ' + voucherNumber + ' with companyApprovers: ' + JSON.stringify(companyApprovers));
+  return true;
+}
+
+/** Run this for a known, specific list of voucher numbers. */
+function patchSpecificMissingApprovers_() {
+  const VOUCHER_NUMBERS = [
+    'RI-PC20260518000006',
+    'RI-PC20260626000012',
+    'RI-PC20260626000019'
+  ];
+
+  const sheet = SpreadsheetApp.openById(VOUCHER_HISTORY_SHEET_ID).getSheetByName(VH_SHEET_NAME);
+  if (!sheet) { Logger.log('❌ Sheet not found'); return; }
+  const data = sheet.getDataRange().getValues();
+
+  let patched = 0;
+  VOUCHER_NUMBERS.forEach(function(vNo) {
+    if (patchOneVoucherMissingApprovers_(vNo, sheet, data)) patched++;
+  });
+  Logger.log('=== DONE: patched ' + patched + ' of ' + VOUCHER_NUMBERS.length + ' listed vouchers ===');
+}
+
+/**
+ * Sweep the ENTIRE Voucher_History sheet for any voucher whose latest meta
+ * is missing companyApprovers, and backfill them all in one run. Skips
+ * vouchers that are already Rejected or fully Approved/Received (no point
+ * starting an approval chain for those).
+ */
+function patchAllMissingCompanyApprovers_() {
+  const sheet = SpreadsheetApp.openById(VOUCHER_HISTORY_SHEET_ID).getSheetByName(VH_SHEET_NAME);
+  if (!sheet) { Logger.log('❌ Sheet not found'); return; }
+  const data = sheet.getDataRange().getValues();
+
+  // Find each voucher's latest row to check status before attempting a patch.
+  const latestRowByVoucher = {};
+  for (let i = 1; i < data.length; i++) {
+    const vNo = (data[i][0] || '').toString().trim();
+    if (vNo) latestRowByVoucher[vNo] = i; // later rows overwrite — last write wins
+  }
+
+  const candidates = [];
+  Object.keys(latestRowByVoucher).forEach(function(vNo) {
+    const row = data[latestRowByVoucher[vNo]];
+    const status = (row[9] || '').toString();
+    const isRejectedOrDone = status.includes('từ chối') || status.includes('Đã duyệt') ||
+                              status === 'Approved' || status === 'Received' || status === 'Rejected';
+    if (isRejectedOrDone) return;
+
+    let meta = null;
+    try { meta = JSON.parse((row[17] || '').toString()); } catch (e) { /* no meta */ }
+    const hasApprovers = meta && meta.companyApprovers && meta.companyApprovers.approvers &&
+                          Object.keys(meta.companyApprovers.approvers).length > 0;
+    if (!hasApprovers) candidates.push(vNo);
+  });
+
+  Logger.log('Found ' + candidates.length + ' voucher(s) missing companyApprovers: ' + candidates.join(', '));
+
+  let patched = 0;
+  candidates.forEach(function(vNo) {
+    if (patchOneVoucherMissingApprovers_(vNo, sheet, data)) patched++;
+  });
+  Logger.log('=== DONE: patched ' + patched + ' of ' + candidates.length + ' candidate(s) ===');
 }
