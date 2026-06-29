@@ -5112,8 +5112,21 @@
                 voucherEmployee,
                 isRequester
             });
-            
+
             return isRequester;
+        }
+
+        // Check if the current user is also the approver whose turn it currently is
+        // (e.g. the submitter also happens to be the company's accountant/legalRep/treasurer).
+        // Self-approval is now allowed on the backend, so the UI must show the Duyệt button
+        // for this case instead of treating them purely as the requester.
+        function isCurrentUserCurrentApprover(companyApprovers, approverRole) {
+            if (!companyApprovers || !approverRole) return false;
+            const currentEmail = getCurrentUserEmail().toLowerCase().trim();
+            if (!currentEmail) return false;
+            const approverInfo = companyApprovers[approverRole];
+            const approverEmail = (approverInfo?.email || '').toLowerCase().trim();
+            return !!approverEmail && approverEmail === currentEmail;
         }
         
         function showVoucherListSkeleton(count = 8) {
@@ -6346,7 +6359,14 @@
                     // Add action buttons based on voucher status AND user role
                     const vState = normalizeVoucherState(voucher);
                     if (vState.bucket === 'pending' || vState.bucket === 'in-progress') {
-                        if (isRequester) {
+                        // Self-approval is allowed: if the requester is also the company's
+                        // current approver (e.g. submitter is also Kế toán trưởng), show the
+                        // Duyệt/Từ chối buttons instead of hiding them as if they were a plain requester.
+                        const companyApproversForGate = currentModalMeta?.companyApprovers?.approvers ||
+                                                         currentModalMeta?.companyApprovers;
+                        const isAlsoCurrentApprover = isCurrentUserCurrentApprover(companyApproversForGate, currentApproverRole);
+                        console.log('Is current user also the current approver:', isAlsoCurrentApprover, 'role:', currentApproverRole);
+                        if (isRequester && !isAlsoCurrentApprover) {
                             // Requester can only view and print their pending request
                             modalFooter.innerHTML = `
                                 <button class="modal-btn modal-btn-secondary" onclick="closeVoucherModal()">Đóng</button>
@@ -6445,6 +6465,7 @@
         async function renderVoucherDetails(voucher, historyList, isRequester = false) {
             // ✅ PHASE 2: Load approval status from history meta (no separate API call)
             let approvalStatusHtml = '';
+            let isAlsoCurrentApprover = false; // requester is also the company's current approver — self-approval allowed
             try {
                 // Find the history entry with the highest approvalProgress
                 let statusData = null;
@@ -6473,6 +6494,8 @@
                     else if (progressNum === 2) currentApproverRole = 'treasurer';
                     else currentApproverRole = null;
                     console.log('Current approver role detected:', currentApproverRole, 'Progress:', progress);
+
+                    isAlsoCurrentApprover = isCurrentUserCurrentApprover(statusData.approvers, currentApproverRole);
 
                     approvalStatusHtml = `
                         <div class="approval-progress-section" style="background: #f8fafc; padding: 1rem; border-radius: 8px; margin-bottom: 1.5rem; border: 1px solid #e2e8f0;">
@@ -6555,7 +6578,7 @@
             // Approver signature section (only for actionable states AND only for approvers, not requesters)
             let approverSignatureSection = '';
             const vStateForSig = normalizeVoucherState(voucher);
-            if ((vStateForSig.bucket === 'pending' || vStateForSig.bucket === 'in-progress') && !isRequester) {
+            if ((vStateForSig.bucket === 'pending' || vStateForSig.bucket === 'in-progress') && (!isRequester || isAlsoCurrentApprover)) {
                 approverSignatureSection = `
                     <div class="approver-signature-section">
                         <h4>✍️ Chữ ký người phê duyệt</h4>
