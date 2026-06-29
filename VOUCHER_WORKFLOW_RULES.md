@@ -124,7 +124,7 @@ Step 4: submitter acknowledges receipt → status = Received
 
 Rules:
 - Steps must be sequential — step N cannot approve before step N-1
-- Self-approval blocked — requestor email cannot match approver email
+- Self-approval allowed — if the requestor is also a designated approver (accountant/legalRep/treasurer) for the company, they approve their own step like any other approver. The self-approval block was removed (previously rejected with "Người đề nghị không thể phê duyệt phiếu của chính họ.") because it left vouchers permanently stuck with no possible approver when the submitter was also the sole accountant/legalRep/treasurer for their company.
 - Each approver must upload a signature image
 - Signature is verified via perceptual hash (16×16 greyscale canvas, Hamming distance, ~75% similarity threshold)
 - Rejection at any step stops the workflow entirely
