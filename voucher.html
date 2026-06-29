@@ -6164,7 +6164,10 @@
                         voucherNumbers: batch,
                         approverEmail: user.email,
                         approverName: user.name || user.email,
-                        approverRole: approverRole,
+                        // approverRole intentionally omitted — backend resolves it
+                        // per-voucher from each voucher's own companyApprovers,
+                        // since the same person can hold different roles across
+                        // different companies (a single batch-wide role would be wrong).
                         approverSignature: finalSignature,
                         signatureVerification: verificationResult
                     }));
@@ -6191,6 +6194,14 @@
                 }
                 showToast(`Đã duyệt ${allApproved.length} phiếu.` +
                     (allFailed.length ? ` Thất bại: ${allFailed.length}.` : ''), 'success');
+                if (allFailed.length) {
+                    const MAX_SHOWN = 5;
+                    const detail = allFailed.slice(0, MAX_SHOWN)
+                        .map(f => `${f.voucherNumber}: ${f.error}`)
+                        .join('<br>') +
+                        (allFailed.length > MAX_SHOWN ? `<br>...và ${allFailed.length - MAX_SHOWN} phiếu khác` : '');
+                    showToast(detail, 'warning', `${allFailed.length} phiếu chưa duyệt được`);
+                }
                 clearBulkSelection();
                 // Close modal without confirm dialog (called programmatically)
                 document.getElementById('bulk-approve-modal-overlay').classList.remove('show');

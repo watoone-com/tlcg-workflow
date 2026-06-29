@@ -2281,11 +2281,32 @@ function sendBatchApprovalEmail_(approverRole, voucherList) {
 }
 
 /**
+ * Resolve which role (accountant/legalRep/treasurer) an email corresponds to
+ * for a SPECIFIC voucher's own companyApprovers — mirrors the per-voucher
+ * matching already done in handleApproveVoucher. A person can be accountant
+ * for one company and treasurer for another, so role must never be assumed
+ * globally (e.g. via IMPORT_APPROVERS) across a batch of vouchers.
+ */
+function resolveApproverRoleForVoucher_(companyApprovers, approverEmail) {
+  if (!companyApprovers || !companyApprovers.approvers) return null;
+  const a = companyApprovers.approvers;
+  const email = (approverEmail || '').toLowerCase().trim();
+  if (a.accountant && (a.accountant.email || '').toLowerCase().trim() === email) return 'accountant';
+  if (a.legalRep && (a.legalRep.email || '').toLowerCase().trim() === email) return 'legalRep';
+  if (a.treasurer && (a.treasurer.email || '').toLowerCase().trim() === email) return 'treasurer';
+  return null;
+}
+
+/**
  * Core approval logic for one voucher — used by both bulk-approve paths.
  * Skips signature verification (batch admin operation).
- * Returns { success, error, voucherData } — does NOT send next-step email (caller does that).
+ * Resolves approverRole PER-VOUCHER from that voucher's own companyApprovers
+ * (not a role passed in by the caller) — a single global role would be wrong
+ * whenever the same person holds different roles across different companies.
+ * Returns { success, error, voucherData, isFinal, nextRole } — does NOT send
+ * next-step email (caller does that).
  */
-function _approveVoucherCore_(voucherNumber, approverEmail, approverRole, signatureData) {
+function _approveVoucherCore_(voucherNumber, approverEmail, signatureData) {
   const existing = getVoucherFromHistory(voucherNumber);
   if (!existing) return { success: false, error: 'Không tìm thấy phiếu: ' + voucherNumber };
 
@@ -2299,8 +2320,12 @@ function _approveVoucherCore_(voucherNumber, approverEmail, approverRole, signat
     return { success: false, error: 'Phiếu không có thông tin phê duyệt tuần tự (companyApprovers).' };
   }
 
+  const approverRole = resolveApproverRoleForVoucher_(companyApprovers, approverEmail);
+  if (!approverRole) {
+    return { success: false, error: 'Email ' + approverEmail + ' không phải người phê duyệt của công ty này.' };
+  }
+
   const approver = companyApprovers.approvers[approverRole];
-  if (!approver) return { success: false, error: 'Vai trò phê duyệt không hợp lệ: ' + approverRole };
   if (approver.status === 'approved') return { success: false, error: 'Phiếu đã được duyệt bởi ' + approverRole };
   if (companyApprovers.overallStatus === 'Rejected') return { success: false, error: 'Phiếu đã bị từ chối.' };
 
@@ -2313,7 +2338,7 @@ function _approveVoucherCore_(voucherNumber, approverEmail, approverRole, signat
   const nowIso = new Date().toISOString();
   const sigData = signatureData || {};
   const approverSig  = sigData.approverSignature   || '';
-  const approverNm   = sigData.approverName        || (IMPORT_APPROVERS[approverRole] ? IMPORT_APPROVERS[approverRole].name : approverRole);
+  const approverNm   = sigData.approverName        || approver.name || approverRole;
   const sigVerResult = sigData.signatureVerification || null;
 
   companyApprovers.approvers[approverRole].status     = 'approved';
@@ -2349,6 +2374,7 @@ function _approveVoucherCore_(voucherNumber, approverEmail, approverRole, signat
   meta.approvedBy = approverEmail;
 
   const isFinal = (approverRole === 'treasurer' || approvalCount === 3);
+  let nextRole = null;
 
   if (isFinal) {
     companyApprovers.overallStatus = 'Approved';
@@ -2367,7 +2393,7 @@ function _approveVoucherCore_(voucherNumber, approverEmail, approverRole, signat
       amount:         existing.amount       || 0,
       status:         'Đã duyệt',
       dueDate:        existing.dueDate      || '',
-      action:         'Duyệt bởi ' + (IMPORT_APPROVERS[approverRole] ? IMPORT_APPROVERS[approverRole].name : approverRole),
+      action:         'Duyệt bởi ' + approverNm,
       attachments:    existing.attachments  || '',
       description:    existing.description  || '',
       note:           'Duyệt hàng loạt — tất cả 3 bước',
@@ -2377,7 +2403,7 @@ function _approveVoucherCore_(voucherNumber, approverEmail, approverRole, signat
     });
   } else {
     const sequence = companyApprovers.approvalSequence || ['accountant', 'legalRep', 'treasurer'];
-    const nextRole = sequence[sequence.indexOf(approverRole) + 1];
+    nextRole = sequence[sequence.indexOf(approverRole) + 1];
     companyApprovers.currentApprover = nextRole;
     companyApprovers.overallStatus = 'Partially Approved';
     companyApprovers.displayStatus = 'Đang duyệt (' + approvalCount + '/3)';
@@ -2393,7 +2419,7 @@ function _approveVoucherCore_(voucherNumber, approverEmail, approverRole, signat
       amount:         existing.amount       || 0,
       status:         'Đang duyệt (' + approvalCount + '/3)',
       dueDate:        existing.dueDate      || '',
-      action:         'Duyệt bởi ' + (IMPORT_APPROVERS[approverRole] ? IMPORT_APPROVERS[approverRole].name : approverRole),
+      action:         'Duyệt bởi ' + approverNm,
       attachments:    existing.attachments  || '',
       description:    existing.description  || '',
       note:           'Duyệt hàng loạt — bước ' + approvalCount + '/3',
@@ -2403,7 +2429,7 @@ function _approveVoucherCore_(voucherNumber, approverEmail, approverRole, signat
     });
   }
 
-  return { success: true, isFinal: isFinal, voucherData: existing };
+  return { success: true, isFinal: isFinal, nextRole: nextRole, voucherData: existing };
 }
 
 /**
@@ -2434,7 +2460,7 @@ function handleBulkApproveByToken(params) {
     const nextStepVouchers = [];
 
     for (let i = 0; i < voucherNumbers.length; i++) {
-      const result = _approveVoucherCore_(voucherNumbers[i], approverEmail, approverRole);
+      const result = _approveVoucherCore_(voucherNumbers[i], approverEmail);
       if (result.success) {
         approved.push(voucherNumbers[i]);
         if (!result.isFinal) {
@@ -2499,10 +2525,12 @@ function handleBulkApproveByToken(params) {
 /**
  * Bulk approve a list of vouchers via the UI (POST).
  * Triggers proper 3-tier flow — sends batch email to next approver.
+ * Role is resolved PER-VOUCHER from each voucher's own companyApprovers (the
+ * same person can hold different roles for different companies), so any
+ * requestBody.approverRole is ignored — there is no single role for a batch.
  * requestBody.voucherNumbers: string[]
  * requestBody.approverEmail: string
  * requestBody.approverName: string
- * requestBody.approverRole: string (optional — falls back to IMPORT_APPROVERS lookup)
  * requestBody.approverSignature: string (base64)
  * requestBody.signatureVerification: object
  */
@@ -2635,7 +2663,7 @@ function _appendHistoryToSheet_(entry, sheet) {
 /**
  * Like _approveVoucherCore_ but uses pre-loaded sheet data and sheet reference.
  */
-function _approveVoucherCoreWithSheet_(voucherNumber, approverEmail, approverRole, signatureData, sheet, sheetData) {
+function _approveVoucherCoreWithSheet_(voucherNumber, approverEmail, signatureData, sheet, sheetData) {
   const existing = _getVoucherFromData_(voucherNumber, sheetData);
   if (!existing) return { success: false, error: 'Không tìm thấy phiếu: ' + voucherNumber };
 
@@ -2649,8 +2677,15 @@ function _approveVoucherCoreWithSheet_(voucherNumber, approverEmail, approverRol
     return { success: false, error: 'Phiếu không có thông tin phê duyệt tuần tự (companyApprovers).' };
   }
 
+  // Resolve role PER-VOUCHER from this voucher's own companyApprovers — the same
+  // person can be accountant for one company and treasurer for another, so a
+  // single role passed in for the whole batch would be wrong here.
+  const approverRole = resolveApproverRoleForVoucher_(companyApprovers, approverEmail);
+  if (!approverRole) {
+    return { success: false, error: 'Email ' + approverEmail + ' không phải người phê duyệt của công ty này.' };
+  }
+
   const approver = companyApprovers.approvers[approverRole];
-  if (!approver) return { success: false, error: 'Vai trò phê duyệt không hợp lệ: ' + approverRole };
   if (approver.status === 'approved') return { success: false, error: 'Phiếu đã được duyệt bởi ' + approverRole };
   if (companyApprovers.overallStatus === 'Rejected') return { success: false, error: 'Phiếu đã bị từ chối.' };
 
@@ -2662,7 +2697,7 @@ function _approveVoucherCoreWithSheet_(voucherNumber, approverEmail, approverRol
   const nowIso = new Date().toISOString();
   const sigData = signatureData || {};
   const approverSig  = sigData.approverSignature   || '';
-  const approverNm   = sigData.approverName        || (IMPORT_APPROVERS[approverRole] ? IMPORT_APPROVERS[approverRole].name : approverRole);
+  const approverNm   = sigData.approverName        || approver.name || approverRole;
   const sigVerResult = sigData.signatureVerification || null;
 
   companyApprovers.approvers[approverRole].status     = 'approved';
@@ -2687,6 +2722,7 @@ function _approveVoucherCoreWithSheet_(voucherNumber, approverEmail, approverRol
   meta.approvedBy = approverEmail;
 
   const isFinal = (approverRole === 'treasurer' || approvalCount === 3);
+  let nextRole = null;
 
   if (isFinal) {
     companyApprovers.overallStatus = 'Approved';
@@ -2699,14 +2735,14 @@ function _approveVoucherCoreWithSheet_(voucherNumber, approverEmail, approverRol
       employee: existing.employee || '', requestorEmail: existing.requestorEmail || '',
       submittedBy: existing.submittedBy || '', amount: existing.amount || 0,
       status: 'Đã duyệt', dueDate: existing.dueDate || '',
-      action: 'Duyệt bởi ' + (IMPORT_APPROVERS[approverRole] ? IMPORT_APPROVERS[approverRole].name : approverRole),
+      action: 'Duyệt bởi ' + approverNm,
       attachments: existing.attachments || '', description: existing.description || '',
       note: 'Duyệt hàng loạt — tất cả 3 bước', approverEmail: approverEmail,
       approvedAt: nowIso, metaJson: JSON.stringify(meta)
     }, sheet);
   } else {
     const sequence = companyApprovers.approvalSequence || ['accountant', 'legalRep', 'treasurer'];
-    const nextRole = sequence[sequence.indexOf(approverRole) + 1];
+    nextRole = sequence[sequence.indexOf(approverRole) + 1];
     companyApprovers.currentApprover = nextRole;
     companyApprovers.overallStatus = 'Partially Approved';
     companyApprovers.displayStatus = 'Đang duyệt (' + approvalCount + '/3)';
@@ -2716,14 +2752,14 @@ function _approveVoucherCoreWithSheet_(voucherNumber, approverEmail, approverRol
       employee: existing.employee || '', requestorEmail: existing.requestorEmail || '',
       submittedBy: existing.submittedBy || '', amount: existing.amount || 0,
       status: 'Đang duyệt (' + approvalCount + '/3)', dueDate: existing.dueDate || '',
-      action: 'Duyệt bởi ' + (IMPORT_APPROVERS[approverRole] ? IMPORT_APPROVERS[approverRole].name : approverRole),
+      action: 'Duyệt bởi ' + approverNm,
       attachments: existing.attachments || '', description: existing.description || '',
       note: 'Duyệt hàng loạt — bước ' + approvalCount + '/3', approverEmail: approverEmail,
       approvedAt: nowIso, metaJson: JSON.stringify(meta)
     }, sheet);
   }
 
-  return { success: true, isFinal: isFinal, voucherData: existing };
+  return { success: true, isFinal: isFinal, nextRole: nextRole, voucherData: existing };
 }
 
 function handleBulkApprove(requestBody) {
@@ -2754,21 +2790,6 @@ function handleBulkApprove(requestBody) {
       );
     }
 
-    // Determine approver role from email
-    let approverRole = requestBody.approverRole || null;
-    if (!approverRole) {
-      const roles = Object.keys(IMPORT_APPROVERS);
-      for (let ri = 0; ri < roles.length; ri++) {
-        if (IMPORT_APPROVERS[roles[ri]].email.toLowerCase() === approverEmail.toLowerCase()) {
-          approverRole = roles[ri];
-          break;
-        }
-      }
-    }
-    if (!approverRole) {
-      return createResponse(false, 'Email ' + approverEmail + ' không có trong danh sách người phê duyệt.');
-    }
-
     const signatureData = {
       approverSignature: approverSignature,
       approverName: approverName,
@@ -2783,21 +2804,26 @@ function handleBulkApprove(requestBody) {
 
     const approved = [];
     const failed   = [];
-    const nextStepVouchers = [];
+    // Group vouchers awaiting their next step by that voucher's OWN resolved
+    // next role — different vouchers in the same batch can have different
+    // next roles (e.g. one voucher's accountant step just completed while
+    // another's legalRep step just completed), so they can't share one group.
+    const nextStepByRole = {}; // { accountant: [...], legalRep: [...], treasurer: [...] }
 
     for (let vi = 0; vi < voucherNumbers.length; vi++) {
-      const result = _approveVoucherCoreWithSheet_(voucherNumbers[vi], approverEmail, approverRole, signatureData, _bulkSheet, _bulkData);
+      const result = _approveVoucherCoreWithSheet_(voucherNumbers[vi], approverEmail, signatureData, _bulkSheet, _bulkData);
       if (result.success) {
         approved.push(voucherNumbers[vi]);
-        if (!result.isFinal) {
-          nextStepVouchers.push({
+        if (!result.isFinal && result.nextRole) {
+          if (!nextStepByRole[result.nextRole]) nextStepByRole[result.nextRole] = [];
+          nextStepByRole[result.nextRole].push({
             voucherNumber: voucherNumbers[vi],
             company:       result.voucherData ? result.voucherData.company     : '',
             employee:      result.voucherData ? result.voucherData.employee    : '',
             amount:        result.voucherData ? result.voucherData.amount      : '',
             description:   result.voucherData ? result.voucherData.description : ''
           });
-        } else {
+        } else if (result.isFinal) {
           try {
             const existing = result.voucherData;
             if (existing && existing.requestorEmail) {
@@ -2815,19 +2841,21 @@ function handleBulkApprove(requestBody) {
       }
     }
 
-    // Send batch email to next approver
-    if (nextStepVouchers.length) {
-      const sequence = ['accountant', 'legalRep', 'treasurer'];
-      const nextRole = sequence[sequence.indexOf(approverRole) + 1];
-      if (nextRole) {
-        try { sendBatchApprovalEmail_(nextRole, nextStepVouchers); } catch(e) { Logger.log('⚠️ ' + e); }
-      }
-    }
+    // Send one batch email per next-role group. NOTE: this still notifies via
+    // IMPORT_APPROVERS[role].email (the fixed roster), so for company-specific
+    // approvers outside that roster the notification may not reach the real
+    // next approver — the approval itself is still recorded correctly either way.
+    let nextStepCount = 0;
+    Object.keys(nextStepByRole).forEach(function(role) {
+      const list = nextStepByRole[role];
+      nextStepCount += list.length;
+      try { sendBatchApprovalEmail_(role, list); } catch(e) { Logger.log('⚠️ ' + e); }
+    });
 
     Logger.log('✅ bulkApprove: approved=' + approved.length + ', failed=' + failed.length);
     return createResponse(true,
       'Đã duyệt ' + approved.length + ' phiếu.' + (failed.length ? ' Thất bại: ' + failed.length + '.' : '') +
-      (nextStepVouchers.length ? ' Đã gửi email bước tiếp theo.' : ''),
+      (nextStepCount ? ' Đã gửi email bước tiếp theo.' : ''),
       { approved: approved, failed: failed }
     );
   } catch (error) {
