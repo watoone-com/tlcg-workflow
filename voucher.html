@@ -5482,11 +5482,22 @@
             const progress = parseInt((statusData.approvalProgress || '0/3').split('/')[0], 10) || 0;
             const state = normalizeVoucherState(voucher);
 
-            // Build approver name map from history entries (summary API omits per-role names)
+            // Build approver name map from history entries (summary API omits per-role names).
+            // Prefer the full companyApprovers.approvers snapshot from the most recent history
+            // row that has one — it carries names for ALL roles (including pending steps),
+            // not just whoever already approved. Fall back to parsing "Duyệt bởi X" from the
+            // action string only for entries that lack a full approvers snapshot.
             const nameByStep = {};
             (historyEntries || []).forEach(h => {
                 const cp = h.meta?.companyApprovers;
-                if (!cp?.approvalProgress) return;
+                if (!cp) return;
+                const a = cp.approvers;
+                if (a) {
+                    if (a.accountant?.name && !nameByStep.accountant) nameByStep.accountant = a.accountant.name;
+                    if (a.legalRep?.name && !nameByStep.legalRep) nameByStep.legalRep = a.legalRep.name;
+                    if (a.treasurer?.name && !nameByStep.treasurer) nameByStep.treasurer = a.treasurer.name;
+                }
+                if (!cp.approvalProgress) return;
                 const p = parseInt(cp.approvalProgress.split('/')[0]);
                 const action = h.action || '';
                 const m = action.match(/^Duyệt bởi\s+(.+?)(?:\s*[-–].*)?$/);
