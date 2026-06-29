@@ -4610,3 +4610,126 @@ function cleanupDuplicateApprovalRows() {
   SpreadsheetApp.flush();
   Logger.log('✅ Done — deleted ' + rowsToDelete.length + ' duplicate approval row(s).');
 }
+
+// ─────────────────────────────────────────────────────────────────────────────
+// patchMissingCompanyApprovers_
+// One-time utility: backfills `companyApprovers` into a voucher's meta when the
+// Submit-row MetaJSON was saved without it (happens when handleGetCompanyApprovers
+// failed at submission time, e.g. due to a company-name mismatch against the
+// Master Company sheet — frontend silently submits with companyApprovers=null,
+// see TLCG_CASH_BACKEND.gs handleSendEmail ~line 754).
+//
+// Root cause for RI-PC20260518000006: voucher's stored company name
+// "CÔNG TY TNHH DỊCH VỤ RIOT GAMES" did not exactly match the Master Company
+// sheet's "CÔNG TY TRÁCH NHIỆM HỮU HẠN DỊCH VỤ RIOT GAMES" (same entity, TNHH
+// vs full legal-form name), so the approvers lookup returned no match and the
+// voucher was saved with no approval chain at all (0/3, stuck forever).
+//
+// This script re-fetches the company's real approvers using the voucher's
+// COMPANY KEY (col D, e.g. "RIOT") rather than the mismatched name string, and
+// appends a new history row carrying the corrected companyApprovers meta — it
+// does not edit the original Submit row, so the audit trail is preserved.
+//
+// HOW TO RUN:
+//   Apps Script editor → select "patchMissingCompanyApprovers_" → ▶ Run
+//   Check Execution Log to confirm before/after meta.
+//   Safe to re-run — it's a no-op if the voucher's latest meta already has
+//   companyApprovers.
+// ─────────────────────────────────────────────────────────────────────────────
+function patchMissingCompanyApprovers_() {
+  const VOUCHER_NUMBER = 'RI-PC20260518000006';
+
+  const sheet = SpreadsheetApp.openById(VOUCHER_HISTORY_SHEET_ID).getSheetByName(VH_SHEET_NAME);
+  if (!sheet) { Logger.log('❌ Sheet not found'); return; }
+
+  const data = sheet.getDataRange().getValues();
+  const rows = [];
+  for (let i = 1; i < data.length; i++) {
+    if ((data[i][0] || '').toString().trim() === VOUCHER_NUMBER) rows.push({ idx: i, row: data[i] });
+  }
+  if (!rows.length) { Logger.log('❌ Voucher not found: ' + VOUCHER_NUMBER); return; }
+
+  // Parse latest valid meta (mirrors getVoucherFromHistory's "most recent row" preference)
+  let meta = null;
+  for (let r = rows.length - 1; r >= 0; r--) {
+    const raw = (rows[r].row[17] || '').toString().trim(); // R(17) = MetaJSON
+    if (!raw) continue;
+    try { meta = JSON.parse(raw); break; } catch (e) { /* try older row */ }
+  }
+  if (!meta) meta = {};
+
+  if (meta.companyApprovers && meta.companyApprovers.approvers &&
+      Object.keys(meta.companyApprovers.approvers).length > 0) {
+    Logger.log('✅ ' + VOUCHER_NUMBER + ' already has companyApprovers — no-op. Current: ' + JSON.stringify(meta.companyApprovers));
+    return;
+  }
+
+  const base = rows[0].row; // Submit row — base voucher fields
+  const companyName = (base[2] || '').toString().trim();  // C(2) = company_name
+  const companyKey  = (base[3] || '').toString().trim();  // D(3) = company_key_or_taxid
+
+  Logger.log('🔍 Looking up approvers for company: "' + companyName + '" key: "' + companyKey + '"');
+  const approversResult = handleGetCompanyApprovers({ companyName: companyName, companyKey: companyKey }, companyName);
+  const approversJson = JSON.parse(approversResult.getContent());
+  if (!approversJson.success || !approversJson.data || !approversJson.data.approvers) {
+    Logger.log('❌ Could not fetch approvers — aborting. Response: ' + JSON.stringify(approversJson));
+    return;
+  }
+
+  const fetched = approversJson.data.approvers; // { legalRep, accountant, treasurer }
+  const companyApprovers = {
+    approvers: {
+      accountant: { email: fetched.accountant.email, name: fetched.accountant.name, status: 'pending', signature: '', approvedAt: null, rejectedAt: null, rejectReason: '', order: 1 },
+      legalRep:   { email: fetched.legalRep.email,   name: fetched.legalRep.name,   status: 'pending', signature: '', approvedAt: null, rejectedAt: null, rejectReason: '', order: 2 },
+      treasurer:  { email: fetched.treasurer.email,  name: fetched.treasurer.name,  status: 'pending', signature: '', approvedAt: null, rejectedAt: null, rejectReason: '', order: 3 }
+    },
+    overallStatus: 'Pending Approval',
+    approvalProgress: '0/3',
+    currentApprover: 'accountant',
+    approvalSequence: ['accountant', 'legalRep', 'treasurer'],
+    displayStatus: 'Chờ duyệt',
+    fullyApprovedAt: null,
+    rejectedAt: null,
+    rejectedBy: null
+  };
+
+  meta.companyApprovers = companyApprovers;
+
+  appendHistory_({
+    voucherNumber: VOUCHER_NUMBER,
+    voucherType: (base[1] || '').toString(),
+    company: companyName,
+    companyKey: companyKey,
+    employee: (base[4] || '').toString(),
+    requestorEmail: (base[5] || '').toString(),
+    submittedBy: (base[6] || '').toString(),
+    amount: base[8] || 0,
+    status: 'Đang treo',
+    action: 'Cập nhật quy trình duyệt (khắc phục lỗi thiếu dữ liệu phê duyệt)',
+    dueDate: (base[10] || '').toString(),
+    attachments: '',
+    description: (base[13] || '').toString(),
+    note: 'Bổ sung danh sách người phê duyệt cho công ty "' + companyName + '" (key: ' + companyKey + '). ' +
+          'Kế toán trưởng: ' + fetched.accountant.name + ' — Đại diện pháp luật: ' + fetched.legalRep.name + ' — Thủ quỹ: ' + fetched.treasurer.name + '.',
+    metaJson: JSON.stringify(meta)
+  });
+
+  // Notify the first approver (accountant) so the voucher actually starts moving
+  try {
+    sendApprovalEmailToNextApprover(
+      { voucherType: (base[1] || '').toString(), company: companyName, employee: (base[4] || '').toString(),
+        amount: base[8] || 0, requestorEmail: (base[5] || '').toString(), submittedBy: (base[6] || '').toString() },
+      companyApprovers.approvers.accountant,
+      'accountant',
+      companyApprovers,
+      VOUCHER_NUMBER,
+      { voucherType: (base[1] || '').toString(), company: companyName, employee: (base[4] || '').toString(),
+        amount: base[8] || 0, requestorEmail: (base[5] || '').toString(), submittedBy: (base[6] || '').toString() }
+    );
+    Logger.log('📧 Sent approval email to accountant: ' + companyApprovers.approvers.accountant.email);
+  } catch (emailErr) {
+    Logger.log('⚠️ Could not send approval email: ' + emailErr.toString());
+  }
+
+  Logger.log('✅ Patched ' + VOUCHER_NUMBER + ' with companyApprovers: ' + JSON.stringify(companyApprovers));
+}
