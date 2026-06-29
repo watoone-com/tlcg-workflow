@@ -3494,14 +3494,19 @@ function handleGetCompanyApprovers(requestBody, directCompanyName) {
       const rowKey  = (row[2] || '').toString().trim(); // Column C (index 2): Company_Key_Or_Taxid
       
       Logger.log('Row ' + (i + 1) + ' - Name: "' + rowName + '" Key: "' + rowKey + '"');
-      
+
       const searchName = companyName.trim();
       const searchKey  = companyKey.trim();
-      
+
+      // Company key is unique on its own (e.g. "RIOT") — match on key alone when
+      // provided, instead of requiring the name to ALSO match exactly. The stored
+      // company name on a voucher can legitimately drift from the Master Company
+      // sheet's name (e.g. abbreviated "TNHH" vs full "TRÁCH NHIỆM HỮU HẠN" legal
+      // form), which previously caused valid vouchers to fail this lookup entirely.
       const isMatch = searchKey
-        ? rowName === searchName && rowKey === searchKey
+        ? rowKey === searchKey
         : rowName === searchName;
-      
+
       if (isMatch) {
         companyRow = row;
         Logger.log('✅ Found company match at row ' + (i + 1) + ': "' + rowName + '" / "' + rowKey + '"');
