@@ -1798,9 +1798,9 @@ function handlePurchaseRequest(data) {
       p2pBranch:     p2pBranch,
       budgetStatus:    (data.budgetApprover    || '').trim() ? 'Pending' : 'N/A',
       supplierStatus:  (data.supplierApprover  || '').trim() ? 'Pending' : 'N/A',
-      // Full branch: contract review happens in Contract module, not PR chain
-      contractStatus:  p2pBranch === 'full' ? 'N/A'
-        : ((data.contractApprover || '').trim() ? 'Pending' : 'N/A'),
+      // Full branch: contract review happens in Contract module, not PR chain.
+      // Simplified branch (goods, < 2.000.000₫): never requires contract review.
+      contractStatus:  'N/A',
       purchasingStatus: (data.purchasingApprover || '').trim() ? 'Pending' : 'N/A',
       vendorDetails: {
         vendorType:         data.vendorType          || '',
@@ -1869,7 +1869,7 @@ function handlePurchaseRequest(data) {
       'Đang duyệt ngân sách & NCC (2/5)',
       submittedAt,
       JSON.stringify(metadata),
-      data.contractApprover  || '',   // index 17 / col R
+      p2pBranch === 'full' ? (data.contractApprover || '') : '',  // index 17 / col R — simplified branch never has a contract step
       data.purchasingApprover || '',  // index 18 / col S
       attachmentUrlsStr              // index 19 / col T
     ]);
@@ -2119,8 +2119,12 @@ function computePRApprovalState_(row, metadata) {
   var budgetDone    = !budgetEmail    || metadata.budgetStatus    === 'Approved';
   var supplierDone  = !supplierEmail  || metadata.supplierStatus  === 'Approved';
   var p2pBranch     = metadata.p2pBranch || 'full';
-  // Full branch: contract approval is handled in Contract module — skip PR contract stage
-  var skipPRContract = p2pBranch === 'full';
+  // Full branch: contract approval is handled in the separate Contract module,
+  // so the PR's own contract stage is skipped there too. Simplified branch
+  // (goods, < 2.000.000₫) never requires contract review — ignore any stray
+  // contractApprover value (e.g. left over from a branch change) so it can't
+  // wrongly activate a contract stage for a PR that doesn't need one.
+  var skipPRContract = p2pBranch === 'full' || p2pBranch === 'simplified';
   var contractDone  = skipPRContract || !contractEmail || metadata.contractStatus === 'Approved';
   var purchasingDone = !purchasingEmail || metadata.purchasingStatus === 'Approved';
 
@@ -2133,7 +2137,7 @@ function computePRApprovalState_(row, metadata) {
   if (!parallelComplete) {
     stage = 'parallel';
     statusLabel = 'Đang duyệt ngân sách & NCC (2/5)';
-  } else if (contractEmail && !contractDone) {
+  } else if (!skipPRContract && contractEmail && !contractDone) {
     stage = 'contract';
     statusLabel = 'Thẩm định Hợp đồng (4/5)';
   } else if (purchasingEmail && !purchasingDone) {
@@ -2185,6 +2189,21 @@ function patchRecomputeAllPRStatuses_() {
 
     var metadata;
     try { metadata = JSON.parse(row[16] || '{}'); } catch (e) { metadata = {}; }
+
+    // Simplified branch never has a contract stage — clear any stray contract
+    // approver email (col R) left over from before computePRApprovalState_
+    // correctly ignored it for this branch, so the drawer stops showing a
+    // bogus "Thẩm định HĐ" step.
+    var p2pBranch = metadata.p2pBranch || 'full';
+    if (p2pBranch === 'simplified' && (row[17] || '').toString().trim()) {
+      sheet.getRange(i + 1, 18).setValue('');
+      row[17] = '';
+      Logger.log('✅ ' + prNo + ': cleared stray contract approver (simplified branch)');
+    }
+    if (p2pBranch === 'simplified' && metadata.contractStatus !== 'N/A') {
+      metadata.contractStatus = 'N/A';
+      sheet.getRange(i + 1, 17).setValue(JSON.stringify(metadata));
+    }
 
     var state = computePRApprovalState_(row, metadata);
     if (state.statusLabel !== currentStatus) {
@@ -2717,8 +2736,9 @@ function handleResubmitPurchaseRequest(data) {
       p2pBranch:            p2pBranch,
       budgetStatus:    (data.budgetApprover    || '').trim() ? 'Pending' : 'N/A',
       supplierStatus:  (data.supplierApprover  || '').trim() ? 'Pending' : 'N/A',
-      contractStatus:  p2pBranch === 'full' ? 'N/A'
-        : ((data.contractApprover || '').trim() ? 'Pending' : 'N/A'),
+      // Neither branch uses the PR's own contract stage (full → Contract module;
+      // simplified → never required) — see computePRApprovalState_.
+      contractStatus:  'N/A',
       purchasingStatus:(data.purchasingApprover|| '').trim() ? 'Pending' : 'N/A',
       vendorDetails: {
         vendorType:         data.vendorType         || '',
@@ -2751,7 +2771,7 @@ function handleResubmitPurchaseRequest(data) {
       'Đang duyệt ngân sách & NCC (2/5)',
       existingMetadata.submittedAt || new Date().toISOString(),
       JSON.stringify(newMetadata),
-      data.contractApprover   || '',
+      p2pBranch === 'full' ? (data.contractApprover || '') : '',  // simplified branch never has a contract step
       data.purchasingApprover || '',
       attachmentUrlsStr
     ]]);
