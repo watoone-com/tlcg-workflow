@@ -2156,6 +2156,48 @@ function computePRApprovalState_(row, metadata) {
   };
 }
 
+/**
+ * One-off sweep: recomputes column O (status) for every non-terminal row in
+ * Purchase_Request_History via computePRApprovalState_, fixing rows still
+ * showing a stale/legacy status label (e.g. "Đang duyệt nhà cung cấp (3/5)")
+ * left over from before the budget+supplier parallel-stage refactor.
+ * Skips terminal statuses (Đã từ chối / Rejected / Trả lại bổ sung) since
+ * those are not derived from computePRApprovalState_ and must not be touched.
+ * Run manually from the Apps Script editor.
+ */
+function patchRecomputeAllPRStatuses_() {
+  var ss    = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+  var sheet = ss.getSheetByName(PR_SHEET_NAME);
+  if (!sheet) { Logger.log('❌ Sheet not found: ' + PR_SHEET_NAME); return; }
+
+  var values = sheet.getDataRange().getValues();
+  var terminalStatuses = ['Đã từ chối', 'Rejected', 'Trả lại bổ sung'];
+  var fixedCount = 0;
+  var skippedCount = 0;
+
+  for (var i = 1; i < values.length; i++) {
+    var row = values[i];
+    var prNo = (row[0] || '').toString().trim();
+    if (!prNo) continue;
+
+    var currentStatus = (row[14] || '').toString().trim();
+    if (terminalStatuses.indexOf(currentStatus) !== -1) { skippedCount++; continue; }
+
+    var metadata;
+    try { metadata = JSON.parse(row[16] || '{}'); } catch (e) { metadata = {}; }
+
+    var state = computePRApprovalState_(row, metadata);
+    if (state.statusLabel !== currentStatus) {
+      sheet.getRange(i + 1, 15).setValue(state.statusLabel);
+      Logger.log('✅ ' + prNo + ': "' + currentStatus + '" → "' + state.statusLabel + '"');
+      fixedCount++;
+    }
+  }
+
+  SpreadsheetApp.flush();
+  Logger.log('Done. Fixed ' + fixedCount + ' row(s), skipped ' + skippedCount + ' terminal row(s).');
+}
+
 // ==================== APPROVE PURCHASE REQUEST ====================
 
 function handleApprovePurchaseRequest(data) {
