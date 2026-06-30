@@ -2217,6 +2217,11 @@ function patchRecomputeAllPRStatuses_() {
   Logger.log('Done. Fixed ' + fixedCount + ' row(s), skipped ' + skippedCount + ' terminal row(s).');
 }
 
+/** Temporary public wrapper so the Apps Script Run dropdown can find the patch — same effect as calling patchRecomputeAllPRStatuses_() directly. */
+function runPRStatusPatch() {
+  patchRecomputeAllPRStatuses_();
+}
+
 // ==================== APPROVE PURCHASE REQUEST ====================
 
 function handleApprovePurchaseRequest(data) {
