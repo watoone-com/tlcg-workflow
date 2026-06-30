@@ -5959,7 +5959,16 @@
                     }
                     voucherElement.dataset.statusClass = statusClass;
                     if (selectedVoucherNumber && voucher.voucherNumber === selectedVoucherNumber) {
-                        renderVoucherDrawer(voucher, [], false);
+                        // Re-fetch history so the drawer keeps showing approver names per step —
+                        // passing [] here would wipe them (history carries the per-role names,
+                        // the lightweight summary voucher object does not).
+                        try {
+                            const history = await fetchVoucherHistoryCached(voucher.voucherNumber);
+                            renderVoucherDrawer(voucher, history, false);
+                        } catch (historyErr) {
+                            console.warn('Drawer history refresh failed:', historyErr);
+                            renderVoucherDrawer(voucher, [], false);
+                        }
                     }
                 }
             } catch (error) {
