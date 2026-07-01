@@ -4155,7 +4155,7 @@
     }
 
     /* ── Open / Close Drawer ────────────────────────────────────── */
-    function openPRDrawer(prNo) {
+    async function openPRDrawer(prNo) {
         const pr = _allPRs.find(p => p.prNo === prNo);
         if (!pr) return;
         _currentPRDrawer = prNo;
@@ -4165,7 +4165,18 @@
         document.getElementById('pr-drawer-title').textContent = prNo;
         document.getElementById('pr-drawer-overlay').classList.add('open');
         document.getElementById('pr-drawer').classList.add('open');
-        renderPRDrawer(pr);  // async — fire and forget
+        const history = await _fetchPRHistory(prNo);
+        renderPRDrawer(pr, history);
+    }
+
+    async function _fetchPRHistory(prNo) {
+        try {
+            const fd = new FormData();
+            fd.append('data', JSON.stringify({ action: 'getP2PHistory', docNo: prNo, flow: 'PR' }));
+            const res  = await fetch(BACKEND_URL, { method: 'POST', body: fd });
+            const json = await res.json();
+            return (json.history || []).sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+        } catch(e) { return []; }
     }
 
     function closePRDrawer() {
@@ -4176,7 +4187,7 @@
     }
 
     /* ── Render Drawer Content ──────────────────────────────────── */
-    async function renderPRDrawer(pr) {
+    async function renderPRDrawer(pr, history = []) {
         const body      = document.getElementById('pr-drawer-body');
         const actionsEl = document.getElementById('pr-drawer-actions');
         if (!body) return;
@@ -4385,6 +4396,35 @@
             <div class="pr-drawer-section">
                 <div class="pr-drawer-section-title">Chữ ký người đề nghị</div>
                 ${sigHtml}
+            </div>
+
+            <div class="pr-drawer-section">
+                <div class="pr-drawer-section-title">Lịch sử hành động</div>
+                ${history.length === 0
+                    ? '<div style="font-size:12px;color:#94a3b8;padding:4px 0;">Chưa có lịch sử hành động.</div>'
+                    : history.map(h => {
+                        const colorMap = { Approve:'#22c55e', Reject:'#ef4444', Return:'#f59e0b', Submit:'#3b82f6', Resubmit:'#8b5cf6', AmendmentApproved:'#22c55e' };
+                        const dot = colorMap[h.action] || '#94a3b8';
+                        const labelMap = { Approve:'Đã duyệt', Reject:'Từ chối', Return:'Trả lại', Submit:'Gửi phiếu', Resubmit:'Gửi lại', AmendmentApproved:'Duyệt phụ lục' };
+                        const label = labelMap[h.action] || _escHtmlPR(h.action);
+                        const roleLabel = { budget:'Ngân sách', supplier:'Nhà cung cấp', contract:'Hợp đồng', purchasing:'Mua hàng', requester:'Người đề nghị', deptHead:'Trưởng phòng' }[h.role] || _escHtmlPR(h.role);
+                        return `<div style="display:flex;gap:10px;padding:7px 0;border-bottom:1px solid #f1f5f9;">
+                            <div style="width:8px;height:8px;border-radius:50%;background:${dot};margin-top:5px;flex-shrink:0;"></div>
+                            <div style="flex:1;min-width:0;">
+                                <div style="font-size:12px;font-weight:600;color:#1e293b;">
+                                    ${label}${roleLabel ? '<span style="font-weight:400;color:#64748b;"> · ' + roleLabel + '</span>' : ''}
+                                </div>
+                                <div style="font-size:11px;color:#64748b;margin-top:1px;">
+                                    ${_escHtmlPR(h.actorName || h.actorEmail)} · ${h.timestamp ? _formatPRDate(h.timestamp) : ''}
+                                </div>
+                                ${h.prevStatus && h.newStatus && h.prevStatus !== h.newStatus
+                                    ? '<div style="font-size:11px;color:#94a3b8;margin-top:1px;">' + _escHtmlPR(h.prevStatus) + ' → ' + _escHtmlPR(h.newStatus) + '</div>'
+                                    : ''}
+                                ${h.note ? '<div style="font-size:11px;color:#64748b;margin-top:2px;white-space:pre-wrap;">' + _escHtmlPR(h.note) + '</div>' : ''}
+                            </div>
+                        </div>`;
+                    }).join('')
+                }
             </div>
         `;
 

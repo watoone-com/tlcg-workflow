@@ -181,6 +181,8 @@ function doPost(e) {
         return handleValidatePRForDirectPayment(data);
       case 'getPaymentProgressByPR':
         return handleGetPaymentProgressByPR(data);
+      case 'getP2PHistory':
+        return handleGetP2PHistory(data);
       default:
         return createResponse(false, 'Invalid action: ' + action);
     }
@@ -386,7 +388,22 @@ function handleSendPaymentRequest(data) {
       note:       (data.installmentNote || '').toString(),
       extra:      { amNo: amNo, prNo: metadata.amPrNo, p2pBranch: p2pBranch, installmentNo: metadata.installmentNo }
     });
-    
+    try {
+      var pmtHistSheet_ = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID).getSheetByName(CONFIG.SHEET_NAME);
+      if (pmtHistSheet_) {
+        ensureP2PHistoryColumns_(pmtHistSheet_);
+        appendP2PHistoryRow_(pmtHistSheet_, 36, data.requestId, {
+          action:     'Submit',
+          role:       'requester',
+          actorEmail: data.requestorEmail || '',
+          actorName:  data.requestor || '',
+          prevStatus: '',
+          newStatus:  'Pending',
+          note:       (data.installmentNote || '').toString()
+        });
+      }
+    } catch (histErr_) { Logger.log('[PMT] history row error: ' + histErr_.message); }
+
     // Send email notifications to all approvers
     sendApprovalEmails(data, requesterSignature);
     
@@ -508,7 +525,19 @@ function handleApprovePaymentRequest(data) {
       note:       (data.comment || '').toString(),
       extra:      { stage: data.stage, stageName: stageName }
     });
-    
+    try {
+      var pmtHistSheet_ = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID).getSheetByName(CONFIG.SHEET_NAME);
+      if (pmtHistSheet_) appendP2PHistoryRow_(pmtHistSheet_, 36, data.requestId, {
+        action:     'Approve',
+        role:       data.stage || 'approver',
+        actorEmail: (data.approverEmail || data.approver || '').toString(),
+        actorName:  (data.approver || '').toString(),
+        prevStatus: prevOverall,
+        newStatus:  newOverall,
+        note:       (data.comment || '').toString()
+      });
+    } catch (histErr_) { Logger.log('[PMT] history row error: ' + histErr_.message); }
+
     // Add to history
     appendHistory(data.requestId, 'Approved', data.approver, stageName + ' approved');
     
@@ -603,7 +632,19 @@ function handleRejectPaymentRequest(data) {
       note:       reason,
       extra:      { stage: data.stage, stageName: stageName }
     });
-    
+    try {
+      var pmtHistSheet_ = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID).getSheetByName(CONFIG.SHEET_NAME);
+      if (pmtHistSheet_) appendP2PHistoryRow_(pmtHistSheet_, 36, data.requestId, {
+        action:     'Reject',
+        role:       data.stage || 'approver',
+        actorEmail: (data.approverEmail || data.approver || '').toString(),
+        actorName:  (data.approver || '').toString(),
+        prevStatus: prevOverall,
+        newStatus:  'Rejected',
+        note:       reason
+      });
+    } catch (histErr_) { Logger.log('[PMT] history row error: ' + histErr_.message); }
+
     // Add to history
     appendHistory(data.requestId, 'Rejected', data.approver, stageName + ' rejected: ' + reason);
     
@@ -1829,7 +1870,7 @@ function handlePurchaseRequest(data) {
         'Budget Approver Email', 'Supplier Approver Email',
         'Items (JSON)', 'Grand Total', 'Status', 'Submitted At', 'Metadata (JSON)',
         'Contract Approver Email', 'Purchasing Approver Email', 'Attachment URLs'
-      ]);
+      ].concat(P2P_HISTORY_HEADERS_));
       Logger.log('[P2P] Created sheet: ' + PR_SHEET_NAME);
     } else {
       // Ensure new columns exist on an existing sheet (migration-safe)
@@ -1845,6 +1886,8 @@ function handlePurchaseRequest(data) {
         sheet.getRange(1, hi + 1).setValue(expectedHeaders[hi]);
         Logger.log('[P2P] Added missing column: ' + expectedHeaders[hi]);
       }
+      // Ensure append-only history event columns exist
+      ensureP2PHistoryColumns_(sheet);
     }
 
     sheet.appendRow([
@@ -1871,7 +1914,8 @@ function handlePurchaseRequest(data) {
       JSON.stringify(metadata),
       p2pBranch === 'full' ? (data.contractApprover || '') : '',  // index 17 / col R — simplified branch never has a contract step
       data.purchasingApprover || '',  // index 18 / col S
-      attachmentUrlsStr              // index 19 / col T
+      attachmentUrlsStr,             // index 19 / col T
+      'submit'                       // index 20 / col U — Row_Type: marks this as the canonical data row
     ]);
 
     Logger.log('[P2P] ✅ Purchase request saved: ' + prNo);
@@ -1890,6 +1934,15 @@ function handlePurchaseRequest(data) {
       newStatus:  'Đang duyệt ngân sách & NCC (2/5)',
       note:       data.purpose || '',
       extra:      { purchaseType: purchaseType, p2pBranch: p2pBranch }
+    });
+    appendP2PHistoryRow_(sheet, 20, prNo, {
+      action:     'Submit',
+      role:       'requester',
+      actorEmail: data.requesterEmail || '',
+      actorName:  requesterName,
+      prevStatus: '',
+      newStatus:  'Đang duyệt ngân sách & NCC (2/5)',
+      note:       data.purpose || ''
     });
 
     // Send email notifications (non-blocking — failures must not break submission)
@@ -2054,6 +2107,9 @@ function handleGetPurchaseRequestHistory(data) {
     var requests = rows
       .filter(function(row) {
         if (!row[0]) return false; // skip empty PR No
+        // Skip event/history rows — only show submit rows in the list view
+        var rowType = (row[20] || '').toString();
+        if (rowType === 'event') return false;
         if (filterRequester && (row[4] || '').toString().toLowerCase() !== filterRequester) return false;
         return true;
       })
@@ -2339,6 +2395,15 @@ function handleApprovePurchaseRequest(data) {
         ? { signatureUploaded: true, verification: data.signatureVerification || null }
         : null
     });
+    appendP2PHistoryRow_(sheet, 20, prNo, {
+      action:     'Approve',
+      role:       approverRole,
+      actorEmail: approverEmail,
+      actorName:  (metadata[approverRole + 'Name'] || ''),
+      prevStatus: currentStatus,
+      newStatus:  newStatus,
+      note:       note
+    });
 
     // Stage transition emails: notify the next stage approver when their stage opens
     if (stateAfter.stage === 'contract' && stateBeforeApprove.stage === 'parallel') {
@@ -2447,6 +2512,14 @@ function handleRejectPurchaseRequest(data) {
       docNo:      prNo,
       flow:       'PR',
       company:    (row[1] || '').toString(),
+      action:     'Reject',
+      role:       rejectRole,
+      actorEmail: approverEmail,
+      prevStatus: currentStatus,
+      newStatus:  'Đã từ chối',
+      note:       note
+    });
+    appendP2PHistoryRow_(sheet, 20, prNo, {
       action:     'Reject',
       role:       rejectRole,
       actorEmail: approverEmail,
@@ -2591,6 +2664,14 @@ function handleSendBackPurchaseRequest(data) {
       newStatus:  newStatus,
       note:       note,
       extra:      { targetStep: targetStep }
+    });
+    appendP2PHistoryRow_(sheet, 20, prNo, {
+      action:     'Return',
+      role:       approverRole,
+      actorEmail: approverEmail,
+      prevStatus: currentStatus,
+      newStatus:  newStatus,
+      note:       'Bước ' + targetStep + ' — ' + note
     });
 
     try {
@@ -2789,6 +2870,15 @@ function handleResubmitPurchaseRequest(data) {
       docNo:      prNo,
       flow:       'PR',
       company:    companyName,
+      action:     'Resubmit',
+      role:       'requester',
+      actorEmail: requesterEmail,
+      actorName:  requesterName,
+      prevStatus: currentStatus,
+      newStatus:  'Đang duyệt ngân sách & NCC (2/5)',
+      note:       'Gửi lại lần ' + newMetadata.resubmitCount
+    });
+    appendP2PHistoryRow_(sheet, 20, prNo, {
       action:     'Resubmit',
       role:       'requester',
       actorEmail: requesterEmail,
@@ -3111,6 +3201,10 @@ function handleCreateAcceptanceMinutes(data) {
       note:       'Biên bản cho PR: ' + prNo,
       extra:      { prNo: prNo, contractNo: contractNo || '' }
     });
+    try { ensureP2PHistoryColumns_(sheet); appendP2PHistoryRow_(sheet, 12, amNo, {
+      action: 'Submit', role: 'receiver', actorEmail: receiverEmail, actorName: receiverName,
+      prevStatus: '', newStatus: 'Chờ xác nhận', note: 'PR: ' + prNo
+    }); } catch (histErr_) { Logger.log('[AM] history row error: ' + histErr_.message); }
 
     // Email dept head
     sendAMApprovalRequestEmail_(amNo, companyName, prNo, receiverName, deptHeadEmail, parsedItems);
@@ -3274,6 +3368,10 @@ function handleApproveAcceptanceMinutes(data) {
       note:       note,
       extra:      { prNo: rec.prNo, signatureUploaded: !!sigUrl }
     });
+    try { appendP2PHistoryRow_(sheet, 12, amNo, {
+      action: 'Approve', role: 'deptHead', actorEmail: approverEmail,
+      prevStatus: rec.status, newStatus: 'Đã nghiệm thu', note: note
+    }); } catch (histErr_) { Logger.log('[AM] history row error: ' + histErr_.message); }
 
     // Email receiver
     var receiverEmail = (rec.row[AM_COL.RECEIVER_EMAIL] || '').toString().trim();
@@ -3330,6 +3428,10 @@ function handleRejectAcceptanceMinutes(data) {
       note:       note,
       extra:      { prNo: rec.prNo }
     });
+    try { appendP2PHistoryRow_(sheet, 12, amNo, {
+      action: 'Reject', role: 'deptHead', actorEmail: approverEmail,
+      prevStatus: rec.status, newStatus: 'Từ chối', note: note
+    }); } catch (histErr_) { Logger.log('[AM] history row error: ' + histErr_.message); }
 
     var receiverEmail = (rec.row[AM_COL.RECEIVER_EMAIL] || '').toString().trim();
     var receiverName  = (rec.row[AM_COL.RECEIVER_NAME]  || '').toString().trim();
@@ -3577,6 +3679,114 @@ function handleGetPaymentProgressByPR(data) {
   }
 }
 
+// ==================== P2P APPEND-ONLY HISTORY ====================
+
+/**
+ * Column layout for P2P history event rows (appended to each flow's main data sheet):
+ *   Each sheet has its own base width (PR=20, PMT=36, AM=12, CT=16).
+ *   Event rows are padded to that width, then have 10 trailing event columns:
+ *   +0: Row_Type        ('submit' for the original row, 'event' for history rows)
+ *   +1: Event_Action    ('Submit'|'Approve'|'Reject'|'Return'|'Resubmit'|'AmendmentApproved')
+ *   +2: Event_Role      e.g. 'budget', 'supplier', 'requester', 'deptHead', 'contract'
+ *   +3: Event_Actor_Email
+ *   +4: Event_Actor_Name
+ *   +5: Event_Prev_Status
+ *   +6: Event_New_Status
+ *   +7: Event_Timestamp (ISO 8601)
+ *   +8: Event_Note
+ *   +9: Event_Meta_JSON
+ */
+
+var P2P_HISTORY_HEADERS_ = [
+  'Row_Type', 'Event_Action', 'Event_Role',
+  'Event_Actor_Email', 'Event_Actor_Name',
+  'Event_Prev_Status', 'Event_New_Status',
+  'Event_Timestamp', 'Event_Note', 'Event_Meta_JSON'
+];
+
+/** Ensure the 10 event columns exist in the header row; add if missing. */
+function ensureP2PHistoryColumns_(sheet) {
+  var lastCol = sheet.getLastColumn();
+  var header  = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  var missing = P2P_HISTORY_HEADERS_.filter(function(h) { return header.indexOf(h) === -1; });
+  if (missing.length === 0) return;
+  for (var j = 0; j < missing.length; j++) {
+    sheet.getRange(1, lastCol + j + 1).setValue(missing[j]);
+  }
+  Logger.log('[P2P] Added history columns: ' + missing.join(', '));
+}
+
+/**
+ * Appends one event row to a P2P flow's main data sheet.
+ * @param {Sheet}  sheet      - the already-open Sheet object
+ * @param {number} baseWidth  - number of data columns in that sheet (PR=20, PMT=36, AM=12, CT=16)
+ * @param {string} docNo      - the document identifier (PR No / Request ID / AM No / Contract No)
+ * @param {object} opts       - { action, role, actorEmail, actorName, prevStatus, newStatus, note, metaJson }
+ */
+function appendP2PHistoryRow_(sheet, baseWidth, docNo, opts) {
+  var base = new Array(baseWidth).fill('');
+  base[0] = docNo;
+  sheet.appendRow(base.concat([
+    'event',
+    opts.action     || '',
+    opts.role       || '',
+    opts.actorEmail || '',
+    opts.actorName  || '',
+    opts.prevStatus || '',
+    opts.newStatus  || '',
+    new Date().toISOString(),
+    opts.note       || '',
+    opts.metaJson   || ''
+  ]));
+}
+
+/**
+ * Returns all event rows for a given document number and flow.
+ * action: 'getP2PHistory', docNo: '<PR/PMT/AM/CT No>', flow: 'PR'|'PMT'|'AM'|'CT'
+ */
+function handleGetP2PHistory(data) {
+  try {
+    var docNo = (data.docNo || '').toString().trim();
+    var flow  = (data.flow  || '').toString().trim();
+    var cfgMap = {
+      PR:  { sheetName: PR_SHEET_NAME,       baseWidth: 20 },
+      PMT: { sheetName: CONFIG.SHEET_NAME,   baseWidth: 36 },
+      AM:  { sheetName: AM_SHEET_NAME,       baseWidth: 12 },
+      CT:  { sheetName: CT_SHEET_NAME,       baseWidth: 16 }
+    };
+    var cfg = cfgMap[flow];
+    if (!cfg || !docNo) return createResponse(false, 'Invalid docNo or flow.');
+    var ss    = SpreadsheetApp.openById(CONFIG.SPREADSHEET_ID);
+    var sheet = ss.getSheetByName(cfg.sheetName);
+    if (!sheet || sheet.getLastRow() <= 1) return createResponse(true, 'OK', { history: [] });
+    var typeColIdx = cfg.baseWidth; // 0-based index of Row_Type column
+    var rows = sheet.getDataRange().getValues().slice(1);
+    var history = rows
+      .filter(function(r) {
+        return (r[0] || '').toString().trim() === docNo
+            && (r[typeColIdx] || '').toString() === 'event';
+      })
+      .map(function(r) {
+        var b = typeColIdx;
+        return {
+          action:     (r[b + 1] || '').toString(),
+          role:       (r[b + 2] || '').toString(),
+          actorEmail: (r[b + 3] || '').toString(),
+          actorName:  (r[b + 4] || '').toString(),
+          prevStatus: (r[b + 5] || '').toString(),
+          newStatus:  (r[b + 6] || '').toString(),
+          timestamp:  r[b + 7] ? r[b + 7].toString() : '',
+          note:       (r[b + 8] || '').toString(),
+          metaJson:   (r[b + 9] || '').toString()
+        };
+      });
+    return createResponse(true, 'OK', { history: history });
+  } catch (e) {
+    Logger.log('[P2P] handleGetP2PHistory error: ' + e.message);
+    return createResponse(false, 'Lỗi: ' + e.message);
+  }
+}
+
 // ==================== CONTRACT MODULE ====================
 
 var CT_SHEET_NAME = 'Contract_History';
@@ -3788,6 +3998,11 @@ function handleCreateContract(data) {
       prevStatus: '', newStatus: 'Chờ thẩm định', note: 'PR: ' + prNo,
       extra: { prNo: prNo, contractValue: contractValue }
     });
+    try { ensureP2PHistoryColumns_(sheet); appendP2PHistoryRow_(sheet, 16, contractNo, {
+      action: 'Submit', role: 'procurement',
+      actorEmail: (data.createdByEmail || '').toString(), actorName: (data.createdBy || '').toString(),
+      prevStatus: '', newStatus: 'Chờ thẩm định', note: 'PR: ' + prNo
+    }); } catch (histErr_) { Logger.log('[CT] history row error: ' + histErr_.message); }
 
     var approverEmail = (prInfo.row[17] || '').toString().trim();
     try {
@@ -3843,6 +4058,11 @@ function handleApproveContract(data) {
       prevStatus: 'Chờ thẩm định', newStatus: 'Đã ký',
       note: (data.note || '').toString(), extra: { prNo: prNo }
     });
+    try { appendP2PHistoryRow_(sheet, 16, contractNo, {
+      action: 'Approve', role: 'contract', actorEmail: approverEmail,
+      actorName: (data.approverName || '').toString(),
+      prevStatus: 'Chờ thẩm định', newStatus: 'Đã ký', note: (data.note || '').toString()
+    }); } catch (histErr_) { Logger.log('[CT] history row error: ' + histErr_.message); }
 
     return createResponse(true, 'Hợp đồng đã được phê duyệt.', { contractNo: contractNo, status: 'Đã ký' });
   } catch (e) {
@@ -3875,6 +4095,10 @@ function handleRejectContract(data) {
       prevStatus: prevStatus, newStatus: 'Từ chối',
       note: (data.note || '').toString(), extra: {}
     });
+    try { appendP2PHistoryRow_(sheet, 16, contractNo, {
+      action: 'Reject', role: 'contract', actorEmail: approverEmail,
+      prevStatus: prevStatus, newStatus: 'Từ chối', note: (data.note || '').toString()
+    }); } catch (histErr_) { Logger.log('[CT] history row error: ' + histErr_.message); }
 
     return createResponse(true, 'Đã từ chối hợp đồng.', { contractNo: contractNo });
   } catch (e) {
@@ -4061,6 +4285,15 @@ function handleApproveContractAmendment(data) {
       prevStatus: 'Có phụ lục', newStatus: 'Đã ký',
       note: amendmentNo, extra: { amendmentNo: amendmentNo, amendmentType: amendType }
     });
+    try {
+      var ctHistSheet_ = getOrCreateContractSheet_();
+      appendP2PHistoryRow_(ctHistSheet_, 16, contractNo, {
+        action: 'AmendmentApproved', role: 'contract',
+        actorEmail: (data.approverEmail || '').toString(),
+        prevStatus: 'Có phụ lục', newStatus: 'Đã ký',
+        note: amendmentNo + ' (' + amendType + ')'
+      });
+    } catch (histErr_) { Logger.log('[CT] history row error: ' + histErr_.message); }
 
     return createResponse(true, 'Phụ lục đã được phê duyệt.', { amendmentNo: amendmentNo });
   } catch (e) {
